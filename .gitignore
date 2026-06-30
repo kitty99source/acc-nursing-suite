@@ -1,0 +1,13 @@
+﻿# Dependencies
+node_modules/
+
+# Build caches (NOT dist — dist is intentionally committed)
+.vite/
+*.tsbuildinfo
+
+# Local/OS
+*.local
+.DS_Store
+
+# Release bundle (uploaded as GitHub Release asset, not committed)
+acc-nursing-suite-dist.zip

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Strict offline Content-Security-Policy.
+      - connect-src 'none' blocks ALL outbound connections (fetch / XHR / WebSocket / EventSource).
+      - default-src 'self' keeps everything local; no CDNs, no external fonts.
+      - 'unsafe-inline' is required ONLY because vite-plugin-singlefile inlines the bundled
+        JS and CSS directly into this file. No eval is used (production React build).
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'; worker-src 'self' blob:;"
+    />
+    <title>ACC District Nursing Admin Suite</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

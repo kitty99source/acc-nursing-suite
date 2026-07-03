@@ -10,6 +10,7 @@ import {
   IconExport,
   IconSettings,
   IconPaste,
+  IconFolder,
 } from './icons';
 import { useStore } from '../state/store';
 
@@ -23,6 +24,7 @@ export type ModuleId =
   | 'declines'
   | 'quickpaste'
   | 'export'
+  | 'imported'
   | 'settings';
 
 interface NavEntry {
@@ -41,6 +43,7 @@ export function Sidebar({
   badges: Partial<Record<ModuleId, number>>;
 }) {
   const quickPasteEnabled = useStore((s) => s.data.settings.quickPasteInEnabled);
+  const hasImportedTables = useStore((s) => (s.data.customSheets?.length ?? 0) > 0);
 
   const entries: NavEntry[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <IconDashboard /> },
@@ -52,6 +55,7 @@ export function Sidebar({
     { id: 'declines', label: 'Decline Tracker', icon: <IconDecline /> },
     ...(quickPasteEnabled ? [{ id: 'quickpaste' as ModuleId, label: 'Quick Paste-In', icon: <IconPaste /> }] : []),
     { id: 'export', label: 'Export Center', icon: <IconExport /> },
+    ...(hasImportedTables ? [{ id: 'imported' as ModuleId, label: 'Imported Tables', icon: <IconFolder /> }] : []),
     { id: 'settings', label: 'Settings', icon: <IconSettings /> },
   ];
 

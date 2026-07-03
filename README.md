@@ -72,8 +72,10 @@ the in-browser working copy work in both modes.
 - **Decline Tracker** — receipt → nurse emailed → resubmission → outcome, with status dropdown.
 - **Quick Paste-In** — paste rows from your billing report, map the columns, review, then commit
   them as invoice lines. (Toggle off in Settings if you don't want it.)
-- **Export Center** — one-click `.xlsx` workbook (reproduces your toolkit exactly) and JSON
-  backup/restore.
+- **Export Center** — one-click `.xlsx` workbook (reproduces your toolkit exactly), **Excel import**
+  (`.xlsx` → JSON, with a preview + merge/replace), and JSON backup/restore.
+- **Imported Tables** — appears in the sidebar only after you import a workbook containing sheets
+  outside the standard set; shows each one as a generic table.
 - **Settings** — themes (Clinical Light / Warm Light / Dark / High Contrast), accent colour,
   density, font scale, expiry threshold, idle auto-lock, optional encryption, and data management.
 
@@ -123,6 +125,38 @@ All packages cap at **25 consults** — consults 26+ bill as NS04.
 > autosave* to a file you choose. They never appear when you just open `index.html`, which is the
 > intended simple experience. **Export Center → JSON backup / restore** also remains available.
 
+### Importing an Excel file
+
+You can pull an existing Excel workbook (`.xlsx`) back into the app — the reverse of the Excel
+export, and a convenient way to bring in your old toolkit data.
+
+1. Go to **Export Center → Import from Excel (.xlsx)** and choose a workbook.
+2. A **preview** appears showing what was found: counts per section, any **extra columns** (kept as
+   custom fields), any **unrecognised sheets** (imported as custom tables), and a **Merge vs
+   Replace** choice.
+   - **Merge** (default) adds the imported records to your existing data, skipping exact
+     duplicates.
+   - **Replace** clears billing, approvals, complex cases, declines, patients, claims and custom
+     tables first (your Settings are kept), then imports.
+3. Confirm to apply, or Cancel to discard.
+
+The importer is deliberately **flexible**:
+
+- **Header rows are detected**, so title/description rows above the header (as on the Approvals,
+  Complex Cases and Decline Tracker tabs) don't matter.
+- **Recognised tabs** — `Billing Log`, `NS04-NS05 Approvals`, `Complex Cases`, `Decline Tracker` —
+  map straight to your data. `Start Here` and `Year Summary` (a computed tab) are skipped.
+- **Unknown columns** on a recognised tab are preserved into a per-record *custom fields* bag and
+  shown as extra columns in that table.
+- **Unknown sheets** are captured verbatim as *custom tables* and shown under a new **Imported
+  Tables** section in the sidebar (only visible when you have some).
+- Claim / PO / ACC45 numbers are kept as **text** (so long numbers aren't mangled), dates are
+  normalised to the app's format, and free-text values like `6 hours p/month` are preserved.
+
+Everything you import is written back out on your next **Export Excel workbook**, so the round-trip
+is lossless. A fake demo workbook is included at [`samples/AdminSuite-DEMODATA.xlsx`](samples/AdminSuite-DEMODATA.xlsx)
+if you'd like to try the import (it contains obviously-fake demo data only).
+
 ### Privacy
 
 No data ever leaves your computer. There are no analytics and no network requests — the app's
@@ -167,8 +201,10 @@ acc-nursing-suite/
 │  │  ├─ storage.ts           # file format, File System Access API, fallbacks
 │  │  ├─ crypto.ts            # AES-GCM + PBKDF2 (Web Crypto)
 │  │  ├─ idb.ts               # IndexedDB working copy + file-handle store
-│  │  ├─ excel.ts             # ExcelJS workbook export
+│  │  ├─ excel.ts             # ExcelJS workbook export (+ custom-field/sheet round-trip)
 │  │  ├─ excel.test.ts        # export validity / column-label tests
+│  │  ├─ excelImport.ts       # flexible ExcelJS import (xlsx -> JSON) + merge logic
+│  │  ├─ excelImport.test.ts  # header-detection / mapping / merge tests
 │  │  ├─ theme.ts             # apply theme/accent/density/font-scale
 │  │  ├─ format.ts            # date/number/id helpers (timezone-safe)
 │  │  └─ sampleData.ts        # fake seed data + empty-data factory
@@ -176,7 +212,8 @@ acc-nursing-suite/
 │  ├─ components/             # Sidebar, TopBar, LockScreen, DataTable, Modal, UI, icons
 │  └─ modules/                # Dashboard, Patients, CalculatorModule, Approvals,
 │                             # Billing, ComplexCases, Declines, QuickPaste,
-│                             # ExportCenter, SettingsModule
+│                             # ExportCenter, ImportedTables, SettingsModule
+├─ samples/                   # AdminSuite-DEMODATA.xlsx (fake demo data for import testing)
 └─ scripts/verify-build.mjs   # checks the built file is offline + Excel is valid
 ```
 

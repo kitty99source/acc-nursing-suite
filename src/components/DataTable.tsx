@@ -10,6 +10,34 @@ export interface Column<T> {
   width?: number;
 }
 
+/**
+ * Build dynamic table columns for the union of `customFields` keys present
+ * across the given rows (imported from Excel). Returns [] when there are none,
+ * so tables look exactly as before when nothing custom has been imported.
+ */
+export function customColumns<T>(
+  rows: T[],
+  getCustom: (row: T) => Record<string, string> | undefined,
+): Column<T>[] {
+  const keys: string[] = [];
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const cf = getCustom(row);
+    if (!cf) continue;
+    for (const k of Object.keys(cf)) {
+      if (!seen.has(k)) {
+        seen.add(k);
+        keys.push(k);
+      }
+    }
+  }
+  return keys.map((k) => ({
+    key: `custom:${k}`,
+    header: k,
+    render: (row: T) => getCustom(row)?.[k] ?? '—',
+  }));
+}
+
 export function DataTable<T>({
   columns,
   rows,

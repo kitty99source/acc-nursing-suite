@@ -78,6 +78,8 @@ export interface Approval {
   accEmailedRenewalDate?: string; // ISO date
   poNumber: string;
   notes: string;
+  // Unrecognised columns absorbed during Excel import, preserved for round-trip.
+  customFields?: Record<string, string>;
 }
 
 export type InvoiceStatus = 'Awaiting Billing' | 'Billed' | 'Remittance';
@@ -97,6 +99,8 @@ export interface InvoiceLine {
   amountPaid?: number;
   status: InvoiceStatus;
   notes: string;
+  // Unrecognised columns absorbed during Excel import, preserved for round-trip.
+  customFields?: Record<string, string>;
 }
 
 export type ComplexCaseStatus = 'Open' | 'Monitoring' | 'Resolved';
@@ -114,6 +118,8 @@ export interface ComplexCase {
   nextReviewDate: string; // ISO date
   status: ComplexCaseStatus;
   notes: string;
+  // Unrecognised columns absorbed during Excel import, preserved for round-trip.
+  customFields?: Record<string, string>;
 }
 
 export type DeclineStatus =
@@ -135,6 +141,16 @@ export interface Decline {
   dateOutcomeReceived?: string; // ISO date
   status: DeclineStatus;
   notes: string;
+  // Unrecognised columns absorbed during Excel import, preserved for round-trip.
+  customFields?: Record<string, string>;
+}
+
+// A worksheet imported from Excel whose name/shape isn't part of the core
+// schema. Preserved verbatim so imports are lossless and can be re-exported.
+export interface CustomSheet {
+  name: string;
+  headers: string[];
+  rows: Record<string, string>[];
 }
 
 export type ThemeName = 'clinical-light' | 'warm-light' | 'dark' | 'high-contrast';
@@ -161,6 +177,8 @@ export interface AppData {
   complexCases: ComplexCase[];
   declines: Decline[];
   settings: Settings;
+  // Generic tables absorbed from Excel sheets that aren't part of the schema.
+  customSheets?: CustomSheet[];
 }
 
 export const SCHEMA_VERSION = 1;

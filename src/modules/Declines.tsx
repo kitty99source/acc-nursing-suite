@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '../state/store';
-import { DataTable, type Column } from '../components/DataTable';
+import { DataTable, customColumns, type Column } from '../components/DataTable';
 import { Modal } from '../components/Modal';
 import { useConfirm } from '../components/useConfirm';
 import {
@@ -127,6 +127,10 @@ export function Declines() {
       ),
     },
   ];
+
+  // Append any imported custom columns just before the actions column.
+  const extraColumns = customColumns(data.declines, (r) => r.customFields);
+  if (extraColumns.length) columns.splice(columns.length - 1, 0, ...extraColumns);
 
   return (
     <div>

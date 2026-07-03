@@ -34,6 +34,7 @@ import {
   clearFileHandle,
 } from '../lib/idb';
 import { uid } from '../lib/format';
+import { mergeImportIntoData, type ImportMode, type ImportResult } from '../lib/excelImport';
 
 // In-memory only. Never persisted, never logged, cleared on lock.
 let sessionPassphrase: string | undefined;
@@ -90,6 +91,7 @@ interface StoreState {
   clearSampleData: () => void;
   resetToEmpty: () => void;
   replaceData: (data: AppData) => void;
+  importFromExcel: (result: ImportResult, mode?: ImportMode) => void;
 
   // settings
   updateSettings: (patch: Partial<Settings>) => void;
@@ -477,6 +479,14 @@ export const useStore = create<StoreState>((set, get) => ({
 
   replaceData: (data: AppData) => {
     set({ data });
+    scheduleSave(get);
+  },
+
+  importFromExcel: (result: ImportResult, mode: ImportMode = 'merge') => {
+    set((s) => ({
+      data: mergeImportIntoData(s.data, result, mode),
+      status: { ...s.status, dirty: true },
+    }));
     scheduleSave(get);
   },
 

@@ -3,6 +3,35 @@ import type { AppData } from '../types';
 import { computeApproval, yearSummary } from './analytics';
 import { MONTH_NAMES } from './format';
 
+// Union of customFields keys across a set of records, in first-seen order.
+function collectCustomKeys(items: { customFields?: Record<string, string> }[]): string[] {
+  const keys: string[] = [];
+  const seen = new Set<string>();
+  for (const it of items) {
+    if (!it.customFields) continue;
+    for (const k of Object.keys(it.customFields)) {
+      if (!seen.has(k)) {
+        seen.add(k);
+        keys.push(k);
+      }
+    }
+  }
+  return keys;
+}
+
+// Write a record's custom-field values into the trailing columns (1-based
+// starting at `startCol`) that mirror the appended custom headers.
+function writeCustomCells(
+  row: ExcelJS.Row,
+  startCol: number,
+  keys: string[],
+  customFields?: Record<string, string>,
+) {
+  keys.forEach((k, i) => {
+    row.getCell(startCol + i).value = customFields?.[k] ?? null;
+  });
+}
+
 // ============================================================================
 // ExcelJS workbook export — reproduces the user's original toolkit workbook
 // exactly (tab order, column labels, dropdowns, conditional formatting).
@@ -104,7 +133,7 @@ function buildStartHere(wb: ExcelJS.Workbook) {
 // ---------------------------------------------------------------------------
 function buildBillingLog(wb: ExcelJS.Workbook, data: AppData) {
   const ws = wb.addWorksheet('Billing Log');
-  const headers = [
+  const baseHeaders = [
     'Patient Name',
     'Patient NHI',
     'Claim Number',
@@ -119,10 +148,13 @@ function buildBillingLog(wb: ExcelJS.Workbook, data: AppData) {
     'Status',
     'Notes',
   ];
+  const customKeys = collectCustomKeys(data.invoiceLines);
+  const headers = [...baseHeaders, ...customKeys];
   ws.columns = [
     { width: 24 }, { width: 12 }, { width: 16 }, { width: 22 }, { width: 14 },
     { width: 12 }, { width: 14 }, { width: 14 }, { width: 16 }, { width: 14 },
     { width: 14 }, { width: 20 }, { width: 36 },
+    ...customKeys.map(() => ({ width: 20 })),
   ];
   const headerRow = ws.addRow(headers);
   styleHeaderRow(headerRow);
@@ -147,6 +179,7 @@ function buildBillingLog(wb: ExcelJS.Workbook, data: AppData) {
     setMoneyCell(row.getCell(9), inv.amountInvoiced);
     setDateCell(row.getCell(10), inv.datePaid);
     setMoneyCell(row.getCell(11), inv.amountPaid);
+    writeCustomCells(row, baseHeaders.length + 1, customKeys, inv.customFields);
   }
 
   const lastRow = Math.max(ws.rowCount, 2);
@@ -279,7 +312,7 @@ function buildYearSummary(wb: ExcelJS.Workbook, data: AppData) {
 // ---------------------------------------------------------------------------
 function buildApprovals(wb: ExcelJS.Workbook, data: AppData) {
   const ws = wb.addWorksheet('NS04-NS05 Approvals');
-  const headers = [
+  const baseHeaders = [
     'Patient Name',
     'Patient NHI',
     'Patient DOB',
@@ -295,10 +328,13 @@ function buildApprovals(wb: ExcelJS.Workbook, data: AppData) {
     'PO Number',
     'Notes',
   ];
+  const customKeys = collectCustomKeys(data.approvals);
+  const headers = [...baseHeaders, ...customKeys];
   ws.columns = [
     { width: 24 }, { width: 12 }, { width: 14 }, { width: 16 }, { width: 14 },
     { width: 12 }, { width: 18 }, { width: 26 }, { width: 22 }, { width: 16 },
     { width: 22 }, { width: 22 }, { width: 14 }, { width: 36 },
+    ...customKeys.map(() => ({ width: 20 })),
   ];
   const headerRow = ws.addRow(headers);
   styleHeaderRow(headerRow);
@@ -328,6 +364,7 @@ function buildApprovals(wb: ExcelJS.Workbook, data: AppData) {
     setDateCell(row.getCell(7), a.approvalStartDate);
     setDateCell(row.getCell(8), a.approvalEndDate);
     setDateCell(row.getCell(12), a.accEmailedRenewalDate);
+    writeCustomCells(row, baseHeaders.length + 1, customKeys, a.customFields);
   }
 
   const lastRow = Math.max(ws.rowCount, 2);
@@ -370,7 +407,7 @@ function buildApprovals(wb: ExcelJS.Workbook, data: AppData) {
 // ---------------------------------------------------------------------------
 function buildComplexCases(wb: ExcelJS.Workbook, data: AppData) {
   const ws = wb.addWorksheet('Complex Cases');
-  const headers = [
+  const baseHeaders = [
     'Patient Name',
     'Claim Number',
     'Date Logged',
@@ -383,9 +420,12 @@ function buildComplexCases(wb: ExcelJS.Workbook, data: AppData) {
     'Status',
     'Notes',
   ];
+  const customKeys = collectCustomKeys(data.complexCases);
+  const headers = [...baseHeaders, ...customKeys];
   ws.columns = [
     { width: 24 }, { width: 16 }, { width: 14 }, { width: 40 }, { width: 40 },
     { width: 18 }, { width: 14 }, { width: 30 }, { width: 16 }, { width: 14 }, { width: 30 },
+    ...customKeys.map(() => ({ width: 20 })),
   ];
   const headerRow = ws.addRow(headers);
   styleHeaderRow(headerRow);
@@ -410,6 +450,7 @@ function buildComplexCases(wb: ExcelJS.Workbook, data: AppData) {
     [4, 5, 8, 11].forEach((col) => {
       row.getCell(col).alignment = { wrapText: true, vertical: 'top' };
     });
+    writeCustomCells(row, baseHeaders.length + 1, customKeys, c.customFields);
   }
   ws.views = [{ state: 'frozen', ySplit: 1 }];
   ws.autoFilter = 'A1:K1';
@@ -420,7 +461,7 @@ function buildComplexCases(wb: ExcelJS.Workbook, data: AppData) {
 // ---------------------------------------------------------------------------
 function buildDeclines(wb: ExcelJS.Workbook, data: AppData) {
   const ws = wb.addWorksheet('Decline Tracker');
-  const headers = [
+  const baseHeaders = [
     'Patient Name',
     'Claim Number',
     'Decline Received Date',
@@ -433,9 +474,12 @@ function buildDeclines(wb: ExcelJS.Workbook, data: AppData) {
     'Status',
     'Notes',
   ];
+  const customKeys = collectCustomKeys(data.declines);
+  const headers = [...baseHeaders, ...customKeys];
   ws.columns = [
     { width: 24 }, { width: 16 }, { width: 20 }, { width: 26 }, { width: 36 },
     { width: 18 }, { width: 24 }, { width: 20 }, { width: 20 }, { width: 32 }, { width: 30 },
+    ...customKeys.map(() => ({ width: 20 })),
   ];
   const headerRow = ws.addRow(headers);
   styleHeaderRow(headerRow);
@@ -461,6 +505,7 @@ function buildDeclines(wb: ExcelJS.Workbook, data: AppData) {
     [5, 11].forEach((col) => {
       row.getCell(col).alignment = { wrapText: true, vertical: 'top' };
     });
+    writeCustomCells(row, baseHeaders.length + 1, customKeys, d.customFields);
   }
 
   const lastRow = Math.max(ws.rowCount, 2);
@@ -480,6 +525,38 @@ function buildDeclines(wb: ExcelJS.Workbook, data: AppData) {
   ws.autoFilter = 'A1:K1';
 }
 
+// ---------------------------------------------------------------------------
+// Imported custom sheets (round-trip of AppData.customSheets)
+// ---------------------------------------------------------------------------
+function sanitizeSheetName(name: string, used: Set<string>): string {
+  // Excel sheet names: max 31 chars, cannot contain : \ / ? * [ ].
+  let base = (name || 'Sheet').replace(/[:\\/?*[\]]/g, ' ').trim().slice(0, 31) || 'Sheet';
+  let candidate = base;
+  let i = 2;
+  while (used.has(candidate.toLowerCase())) {
+    const suffix = ` (${i++})`;
+    candidate = base.slice(0, 31 - suffix.length) + suffix;
+  }
+  used.add(candidate.toLowerCase());
+  return candidate;
+}
+
+function buildCustomSheets(wb: ExcelJS.Workbook, data: AppData) {
+  const sheets = data.customSheets ?? [];
+  if (sheets.length === 0) return;
+  const used = new Set(wb.worksheets.map((w) => w.name.toLowerCase()));
+  for (const sheet of sheets) {
+    const ws = wb.addWorksheet(sanitizeSheetName(sheet.name, used));
+    ws.columns = sheet.headers.map(() => ({ width: 22 }));
+    const headerRow = ws.addRow(sheet.headers);
+    styleHeaderRow(headerRow);
+    for (const row of sheet.rows) {
+      ws.addRow(sheet.headers.map((h) => row[h] ?? ''));
+    }
+    ws.views = [{ state: 'frozen', ySplit: 1 }];
+  }
+}
+
 export async function buildWorkbookBuffer(data: AppData): Promise<ExcelJS.Buffer> {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'ACC District Nursing Admin Suite';
@@ -492,6 +569,7 @@ export async function buildWorkbookBuffer(data: AppData): Promise<ExcelJS.Buffer
   buildApprovals(wb, data);
   buildComplexCases(wb, data);
   buildDeclines(wb, data);
+  buildCustomSheets(wb, data);
 
   return wb.xlsx.writeBuffer();
 }

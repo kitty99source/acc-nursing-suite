@@ -170,6 +170,25 @@ export function buildLetterIssues(
   }
 
   if (parsed.kind === 'decline') {
+    const bodyNames = allMatches(parsed.rawText, /for\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/g);
+    const headerName = parsed.patient.name?.trim();
+    const conflicting = bodyNames.filter(
+      (n) => n !== headerName && !(headerName && headerName.includes(n.split(' ')[0])),
+    );
+    if (headerName && conflicting.length) {
+      const matched = !!(match.claimId && match.patientId && !match.ambiguous);
+      issues.push({
+        id: 'name-mismatch',
+        field: 'patientName',
+        message: matched
+          ? 'Letter body name differs — using stored patient name (review if needed).'
+          : 'Client details and letter body use different names.',
+        alternatives: matched && match.patient?.name
+          ? [match.patient.name, headerName, ...conflicting]
+          : [headerName, ...conflicting],
+        blocking: !matched,
+      });
+    }
     if (parsed.alternateClaimNumbers.length) {
       const primary = parsed.claim.claimNumber;
       const alts = primary
@@ -917,6 +936,20 @@ function scoreDecline(parsed: ParsedDeclineLetter, match: LetterMatch): {
     confidence: parsed.reason ? 95 : 30,
   });
   if (match.ambiguous) blockers.push(...match.notes);
+
+  const bodyNames = allMatches(parsed.rawText, /for\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/g);
+  const nameMismatch =
+    parsed.patient.name &&
+    bodyNames.some((n) => n !== parsed.patient.name && !parsed.patient.name!.includes(n.split(' ')[0]));
+  const matched = !!(match.claimId && match.patientId && !match.ambiguous);
+  if (nameMismatch) {
+    fieldConfidences.push({
+      field: 'nameConsistency',
+      value: 'mismatch',
+      confidence: matched ? 85 : 40,
+      note: matched ? 'Using stored patient name' : 'Name in body differs from client details',
+    });
+  }
 
   const overall = Math.round(fieldConfidences.reduce((s, f) => s + f.confidence, 0) / fieldConfidences.length);
   return { fieldConfidences, overallConfidence: blockers.length ? Math.min(overall, 90) : overall, blockers };

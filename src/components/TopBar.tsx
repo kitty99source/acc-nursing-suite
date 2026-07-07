@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useStore } from '../state/store';
 import { IconSave, IconFolder, IconLock } from './icons';
 import { formatDate } from '../lib/format';
@@ -47,10 +47,19 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const connectNewFile = useStore((s) => s.connectNewFile);
   const openExistingFile = useStore((s) => s.openExistingFile);
   const lock = useStore((s) => s.lock);
+  const topBarFlash = useStore((s) => s.topBarFlash);
+  const clearTopBarFlash = useStore((s) => s.clearTopBarFlash);
 
   const fileInput = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const { flash, showFlash, clearFlash } = useFlash();
+
+  useEffect(() => {
+    if (!topBarFlash) return;
+    showFlash(topBarFlash.text, topBarFlash.tone);
+    const timer = window.setTimeout(() => clearTopBarFlash(), 4000);
+    return () => window.clearTimeout(timer);
+  }, [topBarFlash, showFlash, clearTopBarFlash]);
 
   async function handleSave() {
     setBusy(true);

@@ -56,6 +56,8 @@ const ENTRY_POINT_HINTS: Record<string, string> = {
     'Opened from Claim Documents — approval or decline letter (auto-detected), filed for this claim; PDF stays on the claim.',
   'review-queue':
     'Opened from Human Review Queue — sign-off import from folder-watch staging. Confirm before saving to live data.',
+  compliance:
+    'Opened from Contract Compliance — import an ACC approval letter to file NS04/NS05 periods and resolve missing-approval flags.',
 };
 
 function LetterIssueFix({
@@ -402,6 +404,16 @@ function ImportSuccessPanel({
   );
 }
 
+function announceLetterImportSuccess(result: LetterImportCommitResult) {
+  const text =
+    result.kind === 'document-only'
+      ? 'Document attached to claim'
+      : result.kind === 'decline'
+        ? 'ACC decline letter saved'
+        : 'ACC approval letter saved';
+  useStore.getState().showTopBarFlash(text, 'good');
+}
+
 export function LetterImportModal() {
   const letterImport = useStore((s) => s.letterImport);
   const closeLetterImport = useStore((s) => s.closeLetterImport);
@@ -496,6 +508,7 @@ export function LetterImportModal() {
               rows: r.parsed.serviceRows,
             });
             setCommitResult(commitRes);
+            announceLetterImportSuccess(commitRes);
           } catch (e) {
             setError(e instanceof Error ? e.message : 'Auto-commit failed');
           }
@@ -509,6 +522,7 @@ export function LetterImportModal() {
               claimId: r.match.claimId,
             });
             setCommitResult(commitRes);
+            announceLetterImportSuccess(commitRes);
           } catch (e) {
             setError(e instanceof Error ? e.message : 'Auto-commit failed');
           }
@@ -586,6 +600,7 @@ export function LetterImportModal() {
         letterKind: letterKind === 'approval' || letterKind === 'decline' ? letterKind : undefined,
       });
       setCommitResult(res);
+      announceLetterImportSuccess(res);
       letterImport.onImportComplete?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Attach failed');
@@ -631,6 +646,7 @@ export function LetterImportModal() {
           rows,
         });
         setCommitResult(commitRes);
+        announceLetterImportSuccess(commitRes);
         letterImport.onImportComplete?.();
       } else {
         const commitRes = await commitParsedDecline(parsed, letterImport.file, {
@@ -643,6 +659,7 @@ export function LetterImportModal() {
           claimId: selectedClaimId || undefined,
         });
         setCommitResult(commitRes);
+        announceLetterImportSuccess(commitRes);
         letterImport.onImportComplete?.();
       }
     } catch (e) {
@@ -712,6 +729,13 @@ export function LetterImportModal() {
         </Modal>
       );
     }
+    if (parsed && result?.autoCommit && !letterImport.prefillOnly) {
+      return (
+        <Modal open title="Saving import…" onClose={handleCloseRequest} size="lg">
+          <LetterImportLoading fileName={letterImport.file.name} progress={loadProgress} />
+        </Modal>
+      );
+    }
     return null;
   }
 
@@ -725,10 +749,17 @@ export function LetterImportModal() {
   const warningIssues = openIssues.filter((i) => !isBlockingIssue(i));
   const matchedPatient = result?.match.patient;
 
+  const confirmTitle =
+    blockingIssues.length > 0
+      ? `${parsed.kind === 'approval' ? 'Confirm approval letter' : 'Confirm decline letter'} — ${blockingIssues.length} item${blockingIssues.length === 1 ? '' : 's'} to fix`
+      : parsed.kind === 'approval'
+        ? 'Confirm approval letter'
+        : 'Confirm decline letter';
+
   return (
     <Modal
       open
-      title={parsed.kind === 'approval' ? 'Confirm approval letter' : 'Confirm decline letter'}
+      title={confirmTitle}
       onClose={handleCloseRequest}
       size="lg"
       footer={

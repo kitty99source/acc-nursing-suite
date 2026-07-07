@@ -13,6 +13,11 @@ console.log('external link href   :', /<link[^>]+href=["']https?:/.test(html));
 console.log('inline <style> tags  :', (html.match(/<style\b/g) || []).length);
 console.log('size KB              :', Math.round(html.length / 1024));
 console.log('tessdata in dist     :', fs.existsSync('dist/eng.traineddata'));
+console.log('pdf worker in dist   :', fs.existsSync('dist/pdf.worker.mjs'));
+if (!fs.existsSync('dist/pdf.worker.mjs')) {
+  console.error('FAIL: dist/pdf.worker.mjs missing — letter import will break');
+  process.exitCode = 1;
+}
 console.log('letter import class  :', html.includes('btn btn-outline btn-sm'));
 console.log('LETTER_IMPORT label  :', html.includes('Import ACC letter'));
 if (!html.includes('Import ACC letter (PDF)')) {

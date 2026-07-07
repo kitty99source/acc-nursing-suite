@@ -53,6 +53,8 @@ function useThemeColors() {
 
 export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }) {
   const data = useStore((s) => s.data);
+  const settings = data.settings;
+  const updateSettings = useStore((s) => s.updateSettings);
   const setFocus = useStore((s) => s.setFocus);
   const colors = useThemeColors();
   const indexes = useMemo(() => buildDataIndexes(data), [data]);
@@ -117,12 +119,24 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
     <div>
       <SectionTitle title="Dashboard" subtitle="Your action queue and billing analytics." />
 
-      <Card className="mb-4">
-        <p className="text-sm">
-          <strong>Received an ACC letter?</strong> Go to Patients → select a claim → Documents →{' '}
-          <span className="font-medium">Import ACC letter (PDF)</span> to file approvals and attach the PDF in one step.
-        </p>
-      </Card>
+      {!settings.dismissLetterDiscoverCard && (
+        <Card className="mb-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <p className="text-sm flex-1 min-w-0">
+              <strong>Received an ACC letter?</strong> Go to Patients → select a claim → Documents →{' '}
+              <span className="font-medium">Import ACC letter (PDF)</span> to file approvals and attach the PDF in one step.
+              See Settings → About for the full import routing guide.
+            </p>
+            <button
+              type="button"
+              className="btn btn-sm shrink-0"
+              onClick={() => updateSettings({ dismissLetterDiscoverCard: true })}
+            >
+              Dismiss
+            </button>
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
         <button className="clickable-card" onClick={() => onNavigate('compliance')}>
@@ -172,7 +186,14 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
                             : a.kind === 'decline'
                               ? 'declines'
                               : 'complex';
-                    if (a.patientId || a.claimId) {
+                    if (a.kind === 'compliance') {
+                      setFocus({
+                        module: 'patients',
+                        patientId: a.patientId,
+                        claimId: a.claimId,
+                        complianceFilter: { severity: a.severity === 'danger' ? 'violation' : 'warning' },
+                      });
+                    } else if (a.patientId || a.claimId) {
                       const focusModule =
                         a.kind === 'approval' || a.kind === 'coverage'
                           ? 'approvals'
@@ -246,7 +267,15 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
             {topFindings.map((f) => (
               <button
                 key={f.id}
-                onClick={() => onNavigate('compliance')}
+                onClick={() => {
+                  setFocus({
+                    module: 'patients',
+                    patientId: f.patientId,
+                    claimId: f.claimId,
+                    complianceFilter: { severity: f.severity, ruleId: f.ruleId },
+                  });
+                  onNavigate('compliance');
+                }}
                 className="action-row"
               >
                 <Badge tone={f.severity === 'violation' ? 'danger' : f.severity === 'warning' ? 'salmon' : 'accent'}>

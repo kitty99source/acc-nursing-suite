@@ -13,6 +13,11 @@ console.log('external link href   :', /<link[^>]+href=["']https?:/.test(html));
 console.log('inline <style> tags  :', (html.match(/<style\b/g) || []).length);
 console.log('size KB              :', Math.round(html.length / 1024));
 console.log('tessdata in dist     :', fs.existsSync('dist/eng.traineddata'));
+console.log('letter import class  :', html.includes('btn btn-outline btn-sm'));
+console.log('LETTER_IMPORT label  :', html.includes('Import ACC letter'));
+if (!html.includes('Import ACC letter (PDF)')) {
+  console.warn('WARN: expected Import ACC letter (PDF) label in bundle');
+}
 const launcherRequired = [
   'launch.ps1',
   'launcher-log.ps1',

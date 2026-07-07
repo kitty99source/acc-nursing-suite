@@ -6,6 +6,7 @@ export interface AuditEntry {
   entityType: string;
   entityId?: string;
   summary: string;
+  user?: string;
 }
 
 const MAX_ENTRIES = 10_000;

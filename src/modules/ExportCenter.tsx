@@ -4,6 +4,8 @@ import { SectionTitle, Card } from '../components/ui';
 import { Modal } from '../components/Modal';
 import { IconExport, IconBilling, IconFolder } from '../components/icons';
 import { buildWorkbookBlob } from '../lib/excel';
+import { appendAudit } from '../lib/auditLog';
+import { logInfo } from '../lib/logger';
 import { parseWorkbook, computeImportMergeDiff, type ImportMode, type ImportResult } from '../lib/excelImport';
 import { downloadBlob, readFileAsText, readFileAsArrayBuffer } from '../lib/storage';
 
@@ -41,6 +43,14 @@ export function ExportCenter() {
       });
       const stamp = new Date().toISOString().slice(0, 10);
       downloadBlob(`ACC-Nursing-Toolkit-${stamp}.xlsx`, blob);
+      const user = data.settings.userDisplayName?.trim();
+      void appendAudit({
+        action: 'export',
+        entityType: 'excel',
+        summary: `Excel export (${data.invoiceLines.length} invoice lines, ${data.patients.length} patients)`,
+        ...(user ? { user } : {}),
+      });
+      logInfo('Excel workbook exported', 'export');
       setMessage({ text: 'Excel workbook exported.', tone: 'good' });
     } catch (err) {
       setMessage({ text: `Excel export failed: ${(err as Error).message}`, tone: 'danger' });

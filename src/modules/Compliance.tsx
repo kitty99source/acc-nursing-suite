@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useStore } from '../state/store';
 import { SectionTitle, Card, Badge, Select, EmptyState, StatCard } from '../components/ui';
 import { IconShield } from '../components/icons';
@@ -22,10 +22,22 @@ const SEVERITY_META: Record<FindingSeverity, { label: string; tone: 'danger' | '
 export function Compliance() {
   const data = useStore((s) => s.data);
   const setFocus = useStore((s) => s.setFocus);
+  const focus = useStore((s) => s.focus);
+  const clearFocus = useStore((s) => s.clearFocus);
 
   const [severity, setSeverity] = useState<'all' | FindingSeverity>('all');
   const [ruleId, setRuleId] = useState<'all' | string>('all');
   const [groupLimit, setGroupLimit] = useState(COMPLIANCE_GROUP_DISPLAY_CAP);
+
+  useEffect(() => {
+    if (!focus?.complianceFilter) return;
+    const cf = focus.complianceFilter;
+    if (cf.severity && cf.severity !== 'all') {
+      setSeverity(cf.severity as FindingSeverity);
+    }
+    if (cf.ruleId) setRuleId(cf.ruleId);
+    clearFocus();
+  }, [focus?.nonce, focus?.complianceFilter, clearFocus]);
 
   const findings = useMemo(() => getComplianceFindings(data), [data]);
   const summary = useMemo(() => complianceSummary(findings), [findings]);

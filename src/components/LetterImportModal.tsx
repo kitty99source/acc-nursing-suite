@@ -46,6 +46,10 @@ const FIELD_LABELS: Record<LetterFormField, string> = {
 };
 
 const ENTRY_POINT_HINTS: Record<string, string> = {
+  global:
+    'Dropped on the app — full import: creates or updates patient, claim, approvals or declines, and attaches the PDF.',
+  prefill:
+    'Prefill only — copies letter fields into this form. Nothing is saved until you click Save on the form.',
   approvals:
     'Opened from Approvals — parses approval letters (NUR02), files NS04/NS05 periods, and stores the PDF.',
   declines:

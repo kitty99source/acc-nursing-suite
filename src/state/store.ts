@@ -106,6 +106,8 @@ export interface FocusRequest {
   claimId?: string;
   intent?: string; // matches FixIntent.action from lib/compliance
   prefill?: Record<string, unknown>;
+  /** When navigating from Dashboard → Compliance with filter context (P5-020). */
+  complianceFilter?: { severity?: string; ruleId?: string };
   nonce: number;
 }
 
@@ -383,7 +385,8 @@ async function persistAll(get: () => StoreState) {
 }
 
 function audit(action: string, entityType: string, entityId: string | undefined, summary: string) {
-  void appendAudit({ action, entityType, entityId, summary }).catch(() => {});
+  const user = useStore.getState().data.settings.userDisplayName?.trim();
+  void appendAudit({ action, entityType, entityId, summary, ...(user ? { user } : {}) }).catch(() => {});
 }
 
 async function enrichLoadedData(data: AppData): Promise<AppData> {

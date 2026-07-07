@@ -297,4 +297,17 @@ body {
     background: var(--good) !important;
     color: var(--good-fg);
   }
+
+  /* P2-006 / P2-007 — modal + mobile layout */
+  @media (max-width: 1280px) {
+    .card.max-h-\[calc\(100dvh-2rem\)\] {
+      max-height: calc(100dvh - 1rem);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .patients-layout-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
 }

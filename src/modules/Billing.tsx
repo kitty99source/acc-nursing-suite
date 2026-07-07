@@ -15,7 +15,6 @@ import {
   EmptyState,
 } from '../components/ui';
 import { IconPlus, IconEdit, IconTrash, IconBilling, IconSearch } from '../components/icons';
-import { LetterImportButton } from '../components/LetterImportButton';
 import { formatCurrency, visibleServiceCodes } from '../lib/serviceCodes';
 import { formatDate } from '../lib/format';
 import type { InvoiceLine, InvoiceStatus, ServiceCode } from '../types';
@@ -224,14 +223,11 @@ export function Billing() {
     <div>
       <SectionTitle
         title="Billing Log"
-        subtitle="The core ledger. Salmon = awaiting billing or remittance (follow up); green = billed."
+        subtitle="The core ledger. Salmon = awaiting billing or remittance (follow up); green = billed. Import ACC letters from Patients or Approvals — not from Billing."
         actions={
-          <div className="flex items-center gap-2">
-            <LetterImportButton />
-            <button className="btn btn-primary" onClick={openCreate}>
-              <IconPlus /> New invoice line
-            </button>
-          </div>
+          <button className="btn btn-primary" onClick={openCreate}>
+            <IconPlus /> New invoice line
+          </button>
         }
       />
 

@@ -167,7 +167,7 @@ export function Patients() {
           }
         />
       ) : (
-        <div className="grid lg:grid-cols-[20rem_1fr] gap-4 max-lg:grid-cols-1">
+        <div className="grid lg:grid-cols-[20rem_1fr] gap-4 max-lg:grid-cols-1 patients-layout-grid">
           <div className="card p-3 h-fit">
             <div className="relative mb-3">
               <span className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted)' }}>

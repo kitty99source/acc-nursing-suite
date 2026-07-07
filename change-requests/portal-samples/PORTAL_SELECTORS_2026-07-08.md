@@ -87,10 +87,16 @@ Paginated Report, Dataset, Mobile Report hrefs embed `FolderPath=%2FDHB-wide%2FA
 
 ## Still needed for P8-010 scrape config
 
-1. **Open one paginated report** from this folder (e.g. daily status report) — capture `View Report` link + parameter form fields.
-2. **Screenshot / second discover run** on report **results grid** with PO/claim/status columns marked (checklist D-09).
-3. **D-02 field table** — which columns map to suite claim/PO fields.
+1. **Report entry link** — href for the paginated report tile that opens this grid (second discover run on opened report, or manual copy).
+2. **Parameter form** — screenshot if filters appear before Run (user screenshot shows results only).
+3. **User column priority** — which 3–4 columns matter most for daily letter cross-check (see [`REPORT_COLUMNS_2026-07-08.md`](./REPORT_COLUMNS_2026-07-08.md) for full mapping).
 4. **D-05/D-06** — browser choice and session timeout (for CDP launch command).
+
+## D-09 result grid (2026-07-08)
+
+Screenshot: [`acc-district-nursing-visits-report-redacted.png`](./acc-district-nursing-visits-report-redacted.png)  
+Columns: NHI, Patient Name, Domicile, Service Item Code, ACCNumber, Activity Time (In Minutes), Total Visits, Total days, Most Recent Visit, Notes.  
+Portal Discover did not capture these rows — SSRS report viewer renders outside folder-link DOM.
 
 ---
 

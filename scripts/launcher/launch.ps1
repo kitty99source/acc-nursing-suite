@@ -1,13 +1,8 @@
-﻿# --- Bootstrap log (always works; never depends on launcher-log.ps1) -----------
-$script:BootstrapLogPath = Join-Path $env:USERPROFILE 'ACC-Suite\logs\bootstrap.log'
-function Write-BootstrapLog {
-    param([string]$Message)
-    try {
-        $logDir = Split-Path -Parent $script:BootstrapLogPath
-        if (-not (Test-Path -LiteralPath $logDir)) { [void][System.IO.Directory]::CreateDirectory($logDir) }
-        Add-Content -LiteralPath $script:BootstrapLogPath -Value "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $Message" -Encoding UTF8
-    } catch {}
-}
+﻿param()
+
+$bootstrapRoot = $PSScriptRoot
+if ([string]::IsNullOrEmpty($bootstrapRoot)) { $bootstrapRoot = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }
+. (Join-Path $bootstrapRoot 'bootstrap-log.ps1') -LogName 'acc'
 Write-BootstrapLog 'launch.ps1 started'
 
 # ACC District Nursing Admin Suite - local launcher

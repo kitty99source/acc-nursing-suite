@@ -19,10 +19,45 @@ function copyPs1WithBom(from, to) {
   writeFileSync(to, '\uFEFF' + text, 'utf8');
 }
 
+/** Hospital PCs use Windows PowerShell 5.1; keep launcher .ps1 ASCII-only (BOM still added). */
+function assertPs1AsciiOnly(from) {
+  let text = readFileSync(from, 'utf8');
+  if (text.charCodeAt(0) === 0xfeff) {
+    text = text.slice(1);
+  }
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code > 127) {
+      const line = text.slice(0, i).split('\n').length;
+      console.error(`Non-ASCII U+${code.toString(16).toUpperCase()} in ${from} near line ${line}`);
+      process.exit(1);
+    }
+  }
+}
+
+function assertDistPs1HasBom(path) {
+  const buf = readFileSync(path);
+  if (buf.length < 3 || buf[0] !== 0xef || buf[1] !== 0xbb || buf[2] !== 0xbf) {
+    console.error(`Build verification failed: ${path} missing UTF-8 BOM`);
+    process.exit(1);
+  }
+}
+
+function assertCmdNoPsRedirect(from) {
+  const text = readFileSync(from, 'utf8');
+  const bad = text.match(/^powershell[^\r\n]*>>[^\r\n]*$/im);
+  if (bad) {
+    console.error(`${from} must not redirect PowerShell output to bootstrap log (file lock with ps1 append)`);
+    console.error(`  ${bad[0].trim()}`);
+    process.exit(1);
+  }
+}
+
 mkdirSync(DIST, { recursive: true });
 mkdirSync(WFH_DIST, { recursive: true });
 
 const launcherFiles = [
+  'bootstrap-log.ps1',
   'launcher-log.ps1',
   'launch.ps1',
   'Start ACC Suite.cmd',
@@ -42,22 +77,29 @@ for (const name of launcherFiles) {
     process.exit(1);
   }
   if (name.endsWith('.ps1')) {
+    assertPs1AsciiOnly(from);
     copyPs1WithBom(from, to);
   } else {
     copyFileSync(from, to);
   }
+  if (name.endsWith('.cmd')) {
+    assertCmdNoPsRedirect(from);
+  }
   console.log(`Copied ${name} → dist/`);
 }
 
-const requiredInDist = ['launcher-log.ps1', 'launch.ps1', 'portal-discover.ps1'];
+const requiredInDist = ['bootstrap-log.ps1', 'launcher-log.ps1', 'launch.ps1', 'portal-discover.ps1'];
 for (const name of requiredInDist) {
   const p = join(DIST, name);
   if (!existsSync(p)) {
     console.error(`Build verification failed: ${p} missing from dist/`);
     process.exit(1);
   }
+  if (name.endsWith('.ps1')) {
+    assertDistPs1HasBom(p);
+  }
 }
-console.log('Verified launcher-log.ps1, launch.ps1, portal-discover.ps1 in dist/');
+console.log('Verified bootstrap-log.ps1, launcher-log.ps1, launch.ps1, portal-discover.ps1 in dist/ (UTF-8 BOM)');
 
 for (const name of readdirSync(WFH_SRC)) {
   if (!name.endsWith('.mjs')) continue;

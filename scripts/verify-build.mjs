@@ -19,6 +19,7 @@ if (!html.includes('Import ACC letter (PDF)')) {
   console.warn('WARN: expected Import ACC letter (PDF) label in bundle');
 }
 const launcherRequired = [
+  'bootstrap-log.ps1',
   'launch.ps1',
   'launcher-log.ps1',
   'portal-discover.ps1',

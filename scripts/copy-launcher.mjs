@@ -19,6 +19,7 @@ const launcherFiles = [
   'portal-discover.ps1',
   'Start Portal Discover.cmd',
   'Start Portal Discover.command',
+  'README.txt',
 ];
 
 for (const name of launcherFiles) {

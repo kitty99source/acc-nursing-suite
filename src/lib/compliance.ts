@@ -1,3 +1,4 @@
+import type { FocusTarget } from '../state/store';
 import type {
   AppData,
   Approval,
@@ -30,6 +31,22 @@ import { isBillingApproval, isApprovalCurrent } from './approvals';
 // against the BILLING LOG (invoice lines), flagging mismatches between what was
 // planned and what was billed.
 // ============================================================================
+
+/** Version tag for the encoded rule set (P6-001 / U-20). */
+export const COMPLIANCE_RULES_VERSION = '2025-03';
+
+/** Every fix intent action must route to a module with a handler (P6-002). */
+export const FIX_INTENT_ROUTES: Record<FixIntent['action'], FocusTarget> = {
+  'link-approval': 'patients',
+  'create-approval': 'approvals',
+  'request-po': 'patients',
+  'downgrade-package': 'patients',
+  'split-ns04': 'approvals',
+  'mark-discharged': 'patients',
+  'generate-invoices': 'billing',
+  'review-ns05': 'approvals',
+  'review-duplicate': 'billing',
+};
 
 export type FindingSeverity = 'violation' | 'warning' | 'predictive';
 
@@ -67,6 +84,8 @@ export interface ComplianceFinding {
   title: string;
   detail: string;
   clauseRef: string;
+  /** Rule-set version stamped at scan time (P6-001). */
+  rulesVersion: string;
   fix?: FixIntent;
 }
 
@@ -315,6 +334,7 @@ function push(
   out: ComplianceFinding[],
   ruleId: string,
   key: string,
+  rulesVersion: string,
   fields: Partial<ComplianceFinding> & { patientName: string; claimNumber: string; detail: string },
 ): void {
   const rule = COMPLIANCE_RULES[ruleId];
@@ -324,6 +344,7 @@ function push(
     severity: rule.severity,
     title: rule.title,
     clauseRef: rule.clauseRef,
+    rulesVersion,
     ...fields,
   });
 }
@@ -335,6 +356,7 @@ export function runComplianceForClaims(data: AppData, claimIds: Set<string>): Co
 
 export function runCompliance(data: AppData, claimFilter?: Set<string>): ComplianceFinding[] {
   const out: ComplianceFinding[] = [];
+  const rulesVersion = data.settings.complianceRulesVersion ?? COMPLIANCE_RULES_VERSION;
   const rates = data.settings.serviceRates as Settings['serviceRates'];
   const patientsById = new Map<string, Patient>(data.patients.map((p) => [p.id, p]));
   const index = buildClaimIndex(data.claims);
@@ -393,7 +415,7 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
 
     // NS04 without any approval on the claim.
     if (hasNs04Signal && ns04Approvals.length === 0) {
-      push(out, 'ns04-needs-approval', claim.id, {
+      push(out, 'ns04-needs-approval', claim.id, rulesVersion, {
         ...base,
         detail: `NS04 (Extended Nursing) is in use on ${claim.claimNumber || 'this claim'} but there is no NS04 approval on file.`,
         fix: {
@@ -422,7 +444,7 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
 
       // 25-consult cap without NS04.
       if (line.consultCount > MAX_PACKAGE_CONSULTS && !hasNs04Signal) {
-        push(out, 'exceeds-25-cap', line.id, {
+        push(out, 'exceeds-25-cap', line.id, rulesVersion, {
           ...base,
           detail: `${line.consultCount} consults logged on a ${effective} package (cap ${MAX_PACKAGE_CONSULTS}); consults beyond ${MAX_PACKAGE_CONSULTS} must bill as NS04.`,
           fix: {
@@ -439,7 +461,7 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
       // Package doesn't match duration/consults (and no override reason).
       const supported = det.primaryPackage;
       if (effective !== supported && PACKAGE_CODES.includes(effective) && !line.overrideReason) {
-        push(out, 'package-mismatch', line.id, {
+        push(out, 'package-mismatch', line.id, rulesVersion, {
           ...base,
           detail: `Recorded ${effective} but ${line.consultCount} consult(s) over ${det.durationDays} day(s) supports ${supported}.`,
           fix: {
@@ -455,7 +477,7 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
 
       // NS04 used before the threshold is reached.
       if (hasNs04Signal && !det.needsExtended && line.consultCount <= MAX_PACKAGE_CONSULTS) {
-        push(out, 'ns04-before-threshold', line.id, {
+        push(out, 'ns04-before-threshold', line.id, rulesVersion, {
           ...base,
           detail: `NS04 is present but ${effective} shows only ${line.consultCount} consult(s) / ${det.durationDays} day(s) — below the 26th-consult / day-106 threshold.`,
         });
@@ -464,7 +486,7 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
       // Predictive: nearing the caps (ongoing episodes only).
       if (!line.lastConsultDate) {
         if (line.consultCount >= 20 && line.consultCount <= MAX_PACKAGE_CONSULTS) {
-          push(out, 'near-25-consults', line.id, {
+          push(out, 'near-25-consults', line.id, rulesVersion, {
             ...base,
             severity: 'predictive',
             detail: `${line.consultCount}/${MAX_PACKAGE_CONSULTS} consults used — request NS04 approval before the cap.`,
@@ -472,7 +494,7 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
         }
         const daysSoFar = line.day1Date ? daysBetween(line.day1Date, todayISO()) : 0;
         if (daysSoFar >= 90 && daysSoFar <= 105) {
-          push(out, 'near-105-days', line.id, {
+          push(out, 'near-105-days', line.id, rulesVersion, {
             ...base,
             severity: 'predictive',
             detail: `${daysSoFar}/105 days elapsed — NS04 will be needed from day 106.`,
@@ -487,7 +509,7 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
       const supported = new Set(packageLines.map((l) => l.overridePackage ?? l.serviceCode));
       for (const billed of billedPackages) {
         if (!supported.has(billed)) {
-          push(out, 'plan-vs-bill-mismatch', `${claim.id}:${billed}`, {
+          push(out, 'plan-vs-bill-mismatch', `${claim.id}:${billed}`, rulesVersion, {
             ...base,
             detail: `Billed ${billed} but the service-line record supports ${[...supported].join(' / ')}.`,
             fix: {
@@ -504,7 +526,7 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
     // NS04 delivered beyond the approved number / period.
     for (const a of ns04Approvals) {
       if (a.consultsUsed != null && a.approvedHoursOrConsults > 0 && a.consultsUsed > a.approvedHoursOrConsults) {
-        push(out, 'ns04-beyond-approval', `${a.id}:used`, {
+        push(out, 'ns04-beyond-approval', `${a.id}:used`, rulesVersion, {
           ...base,
           detail: `${a.consultsUsed} NS04 consults used against ${a.approvedHoursOrConsults} approved (PO ${a.poNumber || '—'}).`,
           fix: {
@@ -521,7 +543,7 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
         (i) => i.serviceCode === 'NS04' && i.invoiceDate && a.approvalEndDate && daysBetween(a.approvalEndDate, i.invoiceDate) > 0,
       );
       if (lateNs04) {
-        push(out, 'ns04-beyond-approval', `${a.id}:late`, {
+        push(out, 'ns04-beyond-approval', `${a.id}:late`, rulesVersion, {
           ...base,
           detail: `An NS04 invoice dated ${lateNs04.invoiceDate} is after the approval end date ${a.approvalEndDate} (PO ${a.poNumber || '—'}).`,
         });
@@ -535,7 +557,7 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
         (i) => (i.serviceCode === 'NS20' || i.serviceCode === 'NS20T') && i.invoiceDate && daysBetween(i.invoiceDate, todayISO()) <= 365,
       );
       if (ageDays >= 365 && !a.accEmailedRenewalDate) {
-        push(out, 'ns05-annual-review', `${a.id}:review`, {
+        push(out, 'ns05-annual-review', `${a.id}:review`, rulesVersion, {
           ...base,
           detail: `Ongoing Nursing approved ${a.approvalStartDate} (${Math.floor(ageDays / 30)} months ago) — due for annual review${hasRecentCNA ? '' : ' and a Comprehensive Nursing Assessment'}.`,
           fix: {
@@ -547,7 +569,7 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
           },
         });
       } else if (ageDays >= 305 && ageDays < 365) {
-        push(out, 'ns05-annual-review', `${a.id}:soon`, {
+        push(out, 'ns05-annual-review', `${a.id}:soon`, rulesVersion, {
           ...base,
           severity: 'predictive',
           detail: `Ongoing Nursing reaches its 12-month review in ${365 - ageDays} day(s); prompt ACC for renewal.`,
@@ -559,7 +581,7 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
     if (claim.status === 'discharged') {
       const billingInfo = claimBillingState(claim, lines, approvals, invoices);
       if (billingInfo.state !== 'billed') {
-        push(out, 'discharged-awaiting-billing', claim.id, {
+        push(out, 'discharged-awaiting-billing', claim.id, rulesVersion, {
           ...base,
           detail:
             billingInfo.state === 'blocked-on-approval'
@@ -606,12 +628,12 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
     if (pkgLines.length > 1) {
       const distinctPOs = new Set(pkgLines.map((i) => norm(i.poNumber)).filter(Boolean));
       if (distinctPOs.size < pkgLines.length) {
-        push(out, 'one-package-per-claim', key, {
+        push(out, 'one-package-per-claim', key, rulesVersion, {
           ...base,
           detail: `${pkgLines.length} packages invoiced on this claim but only ${distinctPOs.size} distinct PO(s); a second package needs its own purchase order (ACC179).`,
           fix: {
             action: 'request-po',
-            module: 'approvals',
+            module: 'patients',
             label: 'Request a purchase order',
             claimId: claim?.id,
             patientId: claim?.patientId,
@@ -624,19 +646,19 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
     // NS06 > 50 (and predictive when approaching).
     const ns06Count = invoices.filter((i) => i.serviceCode === 'NS06').length;
     if (ns06Count > NS06_APPROVAL_THRESHOLD) {
-      push(out, 'ns06-over-50', key, {
+      push(out, 'ns06-over-50', key, rulesVersion, {
         ...base,
         detail: `${ns06Count} NS06 treatments on this claim — approval is required beyond ${NS06_APPROVAL_THRESHOLD}.`,
         fix: {
           action: 'request-po',
-          module: 'approvals',
+          module: 'patients',
           label: 'Request NS06 approval',
           claimId: claim?.id,
           patientId: claim?.patientId,
         },
       });
     } else if (ns06Count >= NS06_WATCH_THRESHOLD) {
-      push(out, 'near-50-ns06', key, {
+      push(out, 'near-50-ns06', key, rulesVersion, {
         ...base,
         severity: 'predictive',
         detail: `${ns06Count} NS06 treatments — approaching the ${NS06_APPROVAL_THRESHOLD}-treatment approval threshold.`,
@@ -646,12 +668,12 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
     // Oversight (NS07): first is free, 2nd+ need approval.
     const ns07Count = invoices.filter((i) => i.serviceCode === 'NS07').length;
     if (ns07Count >= 2) {
-      push(out, 'ns07-oversight-approval', key, {
+      push(out, 'ns07-oversight-approval', key, rulesVersion, {
         ...base,
         detail: `${ns07Count} Oversight Consultations (NS07) on this claim; the 2nd and later require prior approval.`,
       });
     } else if (ns07Count === 1) {
-      push(out, 'ns07-first-used', key, {
+      push(out, 'ns07-first-used', key, rulesVersion, {
         ...base,
         severity: 'predictive',
         detail: 'First Oversight Consultation used; any further NS07 on this claim needs prior approval.',
@@ -662,7 +684,7 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
     const hasTravel = invoices.some((i) => TRAVEL_CODES.includes(i.serviceCode));
     const hasEligible = invoices.some((i) => TRAVEL_ELIGIBLE_CODES.includes(i.serviceCode));
     if (hasTravel && !hasEligible) {
-      push(out, 'travel-needs-eligible', key, {
+      push(out, 'travel-needs-eligible', key, rulesVersion, {
         ...base,
         detail: 'A travel code is billed on this claim with no NS05 / NS07 / NS20 to justify it.',
         fix: {
@@ -683,7 +705,7 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
     for (const [dk, count] of seen) {
       if (count > 1) {
         const [code, date] = dk.split('|');
-        push(out, 'double-billing', `${key}:${dk}`, {
+        push(out, 'double-billing', `${key}:${dk}`, rulesVersion, {
           ...base,
           detail: `${count} ${code} lines share date ${date || '(none)'} on the same sheet — check for a duplicate.`,
           fix: {
@@ -699,4 +721,15 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
 
   const rank: Record<FindingSeverity, number> = { violation: 0, warning: 1, predictive: 2 };
   return out.sort((a, b) => rank[a.severity] - rank[b.severity]);
+}
+
+/** Returns orphan fix intents whose module does not match FIX_INTENT_ROUTES (P6-002). */
+export function orphanFixIntents(findings: ComplianceFinding[]): FixIntent[] {
+  const orphans: FixIntent[] = [];
+  for (const f of findings) {
+    if (!f.fix) continue;
+    const expected = FIX_INTENT_ROUTES[f.fix.action];
+    if (!expected || f.fix.module !== expected) orphans.push(f.fix);
+  }
+  return orphans;
 }

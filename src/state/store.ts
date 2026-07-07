@@ -46,6 +46,9 @@ import {
   saveImportHistory,
   loadComplianceSnapshot,
   saveComplianceSnapshot,
+  loadExcelImportSnapshot,
+  saveExcelImportSnapshot,
+  clearExcelImportSnapshot,
 } from '../lib/idb';
 import {
   invalidateComplianceCache,
@@ -58,6 +61,7 @@ import { validateReferentialIntegrity } from '../lib/integrity';
 import { resolveWorkingCopyLoad } from '../lib/recovery';
 import { uid, todayISO } from '../lib/format';
 import { mergeImportIntoData, type ImportMode, type ImportResult } from '../lib/excelImport';
+import { formatStorageError } from '../lib/storageQuota';
 import { determinePackage } from '../lib/calculator';
 import { claimBillingState } from '../lib/compliance';
 import { PACKAGE_CODES, MAX_PACKAGE_CONSULTS, getRate } from '../lib/serviceCodes';
@@ -147,6 +151,8 @@ interface StoreState {
   recovery?: RecoveryState;
   /** Non-fatal integrity warnings from last successful load (P0-007). */
   integrityWarnings: string[];
+  /** True when a pre-Excel-import snapshot is available for undo (P3-005). */
+  excelImportRollbackAvailable: boolean;
   letterImport?: {
     file: File;
     context?: LetterImportContext;
@@ -243,7 +249,8 @@ interface StoreState {
   clearSampleData: () => void;
   resetToEmpty: () => void;
   replaceData: (data: AppData) => void;
-  importFromExcel: (result: ImportResult, mode?: ImportMode) => void;
+  importFromExcel: (result: ImportResult, mode?: ImportMode) => Promise<void>;
+  rollbackExcelImport: () => Promise<void>;
 
   // settings
   updateSettings: (patch: Partial<Settings>) => void;
@@ -370,7 +377,7 @@ async function persistAll(get: () => StoreState) {
     }));
   } catch (err) {
     useStore.setState((s) => ({
-      status: { ...s.status, saveState: 'error', saveError: (err as Error).message },
+      status: { ...s.status, saveState: 'error', saveError: formatStorageError(err) },
     }));
   }
 }
@@ -478,6 +485,7 @@ export const useStore = create<StoreState>((set, get) => ({
   lastActivityAt: Date.now(),
   fileHandle: null,
   integrityWarnings: [],
+  excelImportRollbackAvailable: false,
 
   init: async () => {
     let handle: FileSystemFileHandle | null = null;
@@ -485,6 +493,12 @@ export const useStore = create<StoreState>((set, get) => ({
       handle = (await loadFileHandle()) ?? null;
     } catch {
       handle = null;
+    }
+    let excelImportRollbackAvailable = false;
+    try {
+      excelImportRollbackAvailable = !!(await loadExcelImportSnapshot());
+    } catch {
+      excelImportRollbackAvailable = false;
     }
     let workingText: string | undefined;
     try {
@@ -509,6 +523,7 @@ export const useStore = create<StoreState>((set, get) => ({
         needsPassphrase: false,
         fileHandle: handle,
         integrityWarnings: [],
+        excelImportRollbackAvailable,
         status: baseStatus,
       });
       scheduleSave(get);
@@ -523,6 +538,7 @@ export const useStore = create<StoreState>((set, get) => ({
         pendingEncryptedText: loadResult.text,
         fileHandle: handle,
         integrityWarnings: [],
+        excelImportRollbackAvailable,
         status: baseStatus,
       });
       return;
@@ -537,6 +553,7 @@ export const useStore = create<StoreState>((set, get) => ({
         needsPassphrase: false,
         fileHandle: handle,
         integrityWarnings: [],
+        excelImportRollbackAvailable,
         recovery: alreadyResolved
           ? { error: `${loadResult.error} (recovery was attempted before — choose again)` }
           : { error: loadResult.error },
@@ -551,6 +568,7 @@ export const useStore = create<StoreState>((set, get) => ({
       locked: false,
       needsPassphrase: false,
       fileHandle: handle,
+      excelImportRollbackAvailable,
       ...adoptLoadedData(enriched, { statusPatch: baseStatus }),
     });
   },
@@ -1084,14 +1102,47 @@ export const useStore = create<StoreState>((set, get) => ({
     scheduleSave(get);
   },
 
-  importFromExcel: (result: ImportResult, mode: ImportMode = 'merge') => {
+  importFromExcel: async (result: ImportResult, mode: ImportMode = 'merge') => {
     pauseAutosave();
+    const snapshot = get().data;
+    await saveExcelImportSnapshot({
+      savedAt: Date.now(),
+      dataJson: JSON.stringify(snapshot),
+    });
     set((s) => ({
       data: mergeImportIntoData(s.data, result, mode),
       status: { ...s.status, dirty: true },
+      excelImportRollbackAvailable: true,
     }));
     invalidateComplianceCache();
     getComplianceFindings(get().data, { forceFull: true });
+    audit('import', 'excel', undefined, `Excel import (${mode})`);
+    resumeAutosave(get);
+  },
+
+  rollbackExcelImport: async () => {
+    const snap = await loadExcelImportSnapshot();
+    if (!snap) {
+      set({ excelImportRollbackAvailable: false });
+      return;
+    }
+    let restored: AppData;
+    try {
+      restored = normalizeData(JSON.parse(snap.dataJson) as AppData);
+    } catch {
+      await clearExcelImportSnapshot();
+      set({ excelImportRollbackAvailable: false });
+      return;
+    }
+    pauseAutosave();
+    set({
+      ...adoptLoadedData(restored, { dirty: true }),
+      excelImportRollbackAvailable: false,
+    });
+    await clearExcelImportSnapshot();
+    invalidateComplianceCache();
+    getComplianceFindings(get().data, { forceFull: true });
+    audit('rollback', 'excel', undefined, 'Rolled back Excel import');
     resumeAutosave(get);
   },
 

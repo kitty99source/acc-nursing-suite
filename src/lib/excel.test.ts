@@ -18,7 +18,19 @@ describe('Excel export', () => {
       'NS04-NS05 Approvals',
       'Complex Cases',
       'Decline Tracker',
+      'Management Summary',
     ]);
+  });
+
+  it('includes Management Summary sheet with violation and funnel rows', async () => {
+    const buf = await buildWorkbookBuffer(sampleData());
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buf);
+    const ws = wb.getWorksheet('Management Summary')!;
+    const flat = ws.getSheetValues().flat().filter(Boolean).map(String);
+    expect(flat).toContain('Violations');
+    expect(flat).toContain('Billing funnel — Remittance (count)');
+    expect(flat).toContain('Open declines (total)');
   });
 
   it('writes the exact Billing Log column headers', async () => {

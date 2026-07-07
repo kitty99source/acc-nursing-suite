@@ -30,6 +30,7 @@ const EMPTY: Omit<Approval, 'id'> = {
   consultsUsed: undefined,
   accEmailedRenewalDate: undefined,
   poNumber: '',
+  renewalAssignee: undefined,
   notes: '',
 };
 
@@ -57,6 +58,20 @@ export function Approvals() {
   useEffect(() => {
     if (!focus || focus.module !== 'approvals') return;
     const claim = focus.claimId ? data.claims.find((c) => c.id === focus.claimId) : undefined;
+
+    if (focus.intent === 'review-ns05' && focus.claimId) {
+      const existing = data.approvals.find(
+        (a) => a.claimId === focus.claimId && a.serviceCode === 'NS05' && a.recordStatus !== 'historical',
+      );
+      if (existing) {
+        setForm({ ...existing });
+        setEditing(existing);
+        setCreating(false);
+        clearFocus();
+        return;
+      }
+    }
+
     const prefill = focus.prefill ?? {};
     const serviceCode = prefill.serviceCode === 'NS05' ? 'NS05' : 'NS04';
     setForm({
@@ -401,6 +416,12 @@ export function Approvals() {
               onChange={(e) =>
                 setForm({ ...form, accEmailedRenewalDate: e.target.value || undefined })
               }
+            />
+          </Field>
+          <Field label="Renewal assignee" hint="Local note — who is following up on renewal.">
+            <TextInput
+              value={form.renewalAssignee ?? ''}
+              onChange={(e) => setForm({ ...form, renewalAssignee: e.target.value || undefined })}
             />
           </Field>
           <div className="sm:col-span-2">

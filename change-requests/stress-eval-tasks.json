@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "completionPromise": "All stress-eval tasks marked done in this file; npm test && npm run stress:medium exit 0.",
+  "tasks": [
+    {
+      "id": "eval-001",
+      "title": "Unit test suite green",
+      "command": "npm test",
+      "acceptance": "vitest run exits 0"
+    },
+    {
+      "id": "eval-002",
+      "title": "Medium stress within 20% regression guard",
+      "command": "npm run stress:medium",
+      "acceptance": "stress script exits 0; timings within baseline"
+    },
+    {
+      "id": "eval-003",
+      "title": "Production build verifies",
+      "command": "npm run build && npm run verify-build",
+      "acceptance": "dist/ single-file bundle present; verify-build passes"
+    }
+  ]
+}

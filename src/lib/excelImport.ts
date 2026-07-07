@@ -934,3 +934,90 @@ function mergeCustomSheets(existing: CustomSheet[], incoming: CustomSheet[]): Cu
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// Merge preview diff (P3-005) — how many records add vs skip as duplicates.
+// ---------------------------------------------------------------------------
+
+export interface ImportMergeDiffCounts {
+  patients: number;
+  claims: number;
+  invoiceLines: number;
+  approvals: number;
+  complexCases: number;
+  declines: number;
+  customSheets: number;
+}
+
+export interface ImportMergeDiff {
+  mode: ImportMode;
+  wouldAdd: ImportMergeDiffCounts;
+  wouldSkip: ImportMergeDiffCounts;
+}
+
+function emptyDiffCounts(): ImportMergeDiffCounts {
+  return {
+    patients: 0,
+    claims: 0,
+    invoiceLines: 0,
+    approvals: 0,
+    complexCases: 0,
+    declines: 0,
+    customSheets: 0,
+  };
+}
+
+function sectionLengths(data: AppData): ImportMergeDiffCounts {
+  return {
+    patients: data.patients.length,
+    claims: data.claims.length,
+    invoiceLines: data.invoiceLines.length,
+    approvals: data.approvals.length,
+    complexCases: data.complexCases.length,
+    declines: data.declines.length,
+    customSheets: data.customSheets?.length ?? 0,
+  };
+}
+
+function diffAdded(before: ImportMergeDiffCounts, after: ImportMergeDiffCounts): ImportMergeDiffCounts {
+  return {
+    patients: after.patients - before.patients,
+    claims: after.claims - before.claims,
+    invoiceLines: after.invoiceLines - before.invoiceLines,
+    approvals: after.approvals - before.approvals,
+    complexCases: after.complexCases - before.complexCases,
+    declines: after.declines - before.declines,
+    customSheets: after.customSheets - before.customSheets,
+  };
+}
+
+/** Pure preview of merge/replace impact before applying an Excel import. */
+export function computeImportMergeDiff(data: AppData, result: ImportResult, mode: ImportMode): ImportMergeDiff {
+  const incoming = result.summary.counts;
+  if (mode === 'replace') {
+    return {
+      mode,
+      wouldAdd: { ...incoming },
+      wouldSkip: emptyDiffCounts(),
+    };
+  }
+
+  const before = sectionLengths(data);
+  const merged = mergeImportIntoData(data, result, 'merge');
+  const after = sectionLengths(merged);
+  const wouldAdd = diffAdded(before, after);
+
+  return {
+    mode,
+    wouldAdd,
+    wouldSkip: {
+      patients: Math.max(0, incoming.patients - wouldAdd.patients),
+      claims: Math.max(0, incoming.claims - wouldAdd.claims),
+      invoiceLines: Math.max(0, incoming.invoiceLines - wouldAdd.invoiceLines),
+      approvals: Math.max(0, incoming.approvals - wouldAdd.approvals),
+      complexCases: Math.max(0, incoming.complexCases - wouldAdd.complexCases),
+      declines: Math.max(0, incoming.declines - wouldAdd.declines),
+      customSheets: Math.max(0, incoming.customSheets - wouldAdd.customSheets),
+    },
+  };
+}

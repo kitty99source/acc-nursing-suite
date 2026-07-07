@@ -179,7 +179,12 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
                           : a.kind === 'billing'
                             ? 'billing'
                             : 'patients';
-                      setFocus({ module: focusModule, patientId: a.patientId, claimId: a.claimId });
+                      setFocus({
+                        module: focusModule,
+                        patientId: a.patientId,
+                        claimId: a.claimId,
+                        intent: a.kind === 'billing' && a.title.startsWith('Stale remittance') ? 'stale-remittance' : undefined,
+                      });
                     }
                     onNavigate(module);
                   }}

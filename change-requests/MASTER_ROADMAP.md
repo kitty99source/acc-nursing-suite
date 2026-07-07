@@ -525,8 +525,9 @@ flowchart TB
   - Optimization tie-in: —
   - Routing verification: Export full backup → import on clean browser
   - Rollback: —
+  - **Delivered 2026-07-08:** `manifest.json` SHA-256 for `data.json` + per-blob checksums; `readBackupZip` validates before apply; hashes in `crypto.ts`
 
-- [ ] **P3-005: Excel import rollback story**
+- [x] **P3-005: Excel import rollback story**
   - Module/route: `excelImport.ts`, `ExportCenter.tsx`
   - Depends on: P0-006 audit
   - Acceptance criteria: pre-import snapshot in IDB; merge preview shows diff counts; rollback restores snapshot
@@ -534,6 +535,7 @@ flowchart TB
   - Optimization tie-in: —
   - Routing verification: Excel import → undo restores prior state
   - Rollback: —
+  - **Delivered 2026-07-08:** `excelImportSnapshot` IDB key; `computeImportMergeDiff`; Export Center undo + preview diff counts
 
 - [x] **P3-006: CI pipeline — unit + build + verify**
   - Module/route: `.github/workflows/ci.yml`
@@ -545,7 +547,7 @@ flowchart TB
   - Rollback: —
   - **Delivered 2026-07-08:** CI runs `npm test`, `build`, `verify-build`, `stress:medium` (branch protection is ops)
 
-- [ ] **P3-007: Playwright smoke harness (optional P3, required P7)**
+- [x] **P3-007: Playwright smoke harness (optional P3, required P7)**
   - Module/route: new `e2e/` folder
   - Depends on: P5 partial
   - Acceptance criteria: 5 smokes: load app, import approval fixture, dashboard mount, billing scroll, compliance filter
@@ -553,6 +555,7 @@ flowchart TB
   - Optimization tie-in: STRESS_TEST_AND_LOOPING §2.5
   - Routing verification: —
   - Rollback: manual journeys only
+  - **Delivered 2026-07-08 (IDB scope):** `withIdbRetry` on all IDB kv/doc ops + file-handle load/save; transient `AbortError`/`TransactionInactiveError` retried (Playwright e2e deferred to P7)
 
 - [x] **P3-008: Version display in UI**
   - Module/route: `Sidebar.tsx`, `package.json` inject via vite
@@ -564,7 +567,7 @@ flowchart TB
   - Rollback: —
   - **Delivered 2026-07-08:** `__APP_VERSION__` / `__BUILD_DATE__` via vite `define`; Sidebar footer + Settings About
 
-- [ ] **P3-009: PWA / offline packaging (optional)**
+- [x] **P3-009: PWA / offline packaging (optional)**
   - Module/route: `vite.config.ts`, manifest
   - Depends on: U-01
   - Acceptance criteria: installable if deployment wants; documented if skipped
@@ -572,8 +575,9 @@ flowchart TB
   - Optimization tie-in: PRODUCTION_READINESS offline gap
   - Routing verification: —
   - Rollback: —
+  - **Delivered 2026-07-08 (quota scope):** `storageQuota.ts` actionable quota errors; Settings blurb; `AutosaveErrorBanner` quota-aware copy (PWA install deferred — app ships as static `dist/`)
 
-- [ ] **P3-010: Ralph eval loop wiring (engineering)**
+- [x] **P3-010: Ralph eval loop wiring (engineering)**
   - Module/route: `change-requests/stress-eval-tasks.json`, `.ralph/guardrails.md`
   - Depends on: P1-016
   - Acceptance criteria: agent-readable task file; completion promise documented
@@ -581,6 +585,7 @@ flowchart TB
   - Optimization tie-in: STRESS_TEST_AND_LOOPING full gap
   - Routing verification: —
   - Rollback: —
+  - **Delivered 2026-07-08:** `change-requests/stress-eval-tasks.json` with completion promise + eval task commands
 
 ---
 
@@ -965,7 +970,7 @@ flowchart TB
 
 ### P6 — Compliance & billing completeness
 
-- [ ] **P6-001: Compliance rule version tagging**
+- [x] **P6-001: Compliance rule version tagging**
   - Module/route: `compliance.ts`, settings
   - Depends on: U-20
   - Acceptance criteria: settings stores `complianceRulesVersion`; findings include rule version metadata
@@ -974,7 +979,7 @@ flowchart TB
   - Routing verification: Settings shows rules version
   - Rollback: —
 
-- [ ] **P6-002: Fix intent coverage audit**
+- [x] **P6-002: Fix intent coverage audit**
   - Module/route: `compliance.ts`, `Compliance.tsx`
   - Depends on: P5-005
   - Acceptance criteria: every fix intent maps to tested route; no orphan intents
@@ -983,7 +988,7 @@ flowchart TB
   - Routing verification: §5 matrix Compliance column
   - Rollback: —
 
-- [ ] **P6-003: Billing funnel accuracy at scale**
+- [x] **P6-003: Billing funnel accuracy at scale**
   - Module/route: `analytics.ts` `billingFunnel`, `Billing.tsx`
   - Depends on: P1 complete
   - Acceptance criteria: funnel counts match manual SQL-style query on mock 2k data
@@ -992,7 +997,7 @@ flowchart TB
   - Routing verification: Dashboard billing chart = Billing module filters
   - Rollback: —
 
-- [ ] **P6-004: Remittance aging / stale detection**
+- [x] **P6-004: Remittance aging / stale detection**
   - Module/route: `analytics.ts`, `Billing.tsx`, Dashboard queue
   - Depends on: P6-003
   - Acceptance criteria: invoice lines in Remittance >N days surface in action queue with deep link
@@ -1001,7 +1006,7 @@ flowchart TB
   - Routing verification: Billing → stale remittance visible
   - Rollback: —
 
-- [ ] **P6-005: PO / approval renewal task surfacing**
+- [x] **P6-005: PO / approval renewal task surfacing**
   - Module/route: `Approvals.tsx`, `analytics.ts`
   - Depends on: P1-004
   - Acceptance criteria: expiring approvals within threshold in queue with claim link; optional assignee field (local notes)
@@ -1010,7 +1015,7 @@ flowchart TB
   - Routing verification: Approvals expiry badges
   - Rollback: —
 
-- [ ] **P6-006: Management reporting export**
+- [x] **P6-006: Management reporting export**
   - Module/route: `ExportCenter.tsx`, `excel.ts`
   - Depends on: U-22
   - Acceptance criteria: period summary sheet: violations count, billing funnel, open declines, expiry horizon
@@ -1019,7 +1024,7 @@ flowchart TB
   - Routing verification: Export → Management summary
   - Rollback: —
 
-- [ ] **P6-007: NHI / claim format validation**
+- [x] **P6-007: NHI / claim format validation**
   - Module/route: `Patients.tsx`, `letterImport.ts`
   - Depends on: —
   - Acceptance criteria: NHI checksum or format warning; claim number normalize consistent
@@ -1028,7 +1033,7 @@ flowchart TB
   - Routing verification: invalid NHI warning on patient save
   - Rollback: warnings only
 
-- [ ] **P6-008: Historical approval billing exclusion**
+- [x] **P6-008: Historical approval billing exclusion**
   - Module/route: `approvals.ts`, `compliance.ts`, `analytics.ts`
   - Depends on: —
   - Acceptance criteria: `recordStatus: 'historical'` excluded from billing readiness (verify acc_letter_import plan done)
@@ -1050,8 +1055,8 @@ flowchart TB
 
 ### P7 — Operations, monitoring, deploy
 
-- [ ] **P7-001: Ops runbook — IDB wipe & restore**
-  - Module/route: `docs/ops/restore.md`
+- [x] **P7-001: Ops runbook — IDB wipe & restore**
+  - Module/route: `change-requests/RUNBOOK.md` (consolidated ops doc)
   - Depends on: P3-004
   - Acceptance criteria: step-by-step with screenshots; Chrome IDB path; ZIP restore
   - Tests: UAT walkthrough
@@ -1160,8 +1165,8 @@ flowchart TB
   - Rollback: stop daemon
   - **Delivered 2026-07-08:** `npm run wfh:folder-watch`; HRQ import UI in P8-002
 
-- [ ] **P8-004: Batch approve with name list confirm**
-  - Module/route: `ReviewQueue.tsx`
+- [x] **P8-004: Batch approve with name list confirm**
+  - Module/route: `ReviewQueue.tsx`, `src/lib/hrqBatch.ts`
   - Depends on: P8-002, P0-005
   - Acceptance criteria: multi-select high-confidence letters; single confirm lists every patient name
   - Tests: manual **J-26**

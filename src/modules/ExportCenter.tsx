@@ -4,7 +4,7 @@ import { SectionTitle, Card } from '../components/ui';
 import { Modal } from '../components/Modal';
 import { IconExport, IconBilling, IconFolder } from '../components/icons';
 import { buildWorkbookBlob } from '../lib/excel';
-import { parseWorkbook, type ImportMode, type ImportResult } from '../lib/excelImport';
+import { parseWorkbook, computeImportMergeDiff, type ImportMode, type ImportResult } from '../lib/excelImport';
 import { downloadBlob, readFileAsText, readFileAsArrayBuffer } from '../lib/storage';
 
 export function ExportCenter() {
@@ -12,12 +12,15 @@ export function ExportCenter() {
   const exportJsonDownload = useStore((s) => s.exportJsonDownload);
   const importJsonText = useStore((s) => s.importJsonText);
   const importFromExcel = useStore((s) => s.importFromExcel);
+  const rollbackExcelImport = useStore((s) => s.rollbackExcelImport);
+  const excelImportRollbackAvailable = useStore((s) => s.excelImportRollbackAvailable);
   const exportFullBackup = useStore((s) => s.exportFullBackup);
   const importFullBackup = useStore((s) => s.importFullBackup);
   const fileInput = useRef<HTMLInputElement>(null);
   const excelInput = useRef<HTMLInputElement>(null);
   const zipInput = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [exportProgress, setExportProgress] = useState<number | null>(null);
   const [message, setMessage] = useState<{ text: string; tone: 'good' | 'danger' } | null>(null);
 
   // Excel import preview state.
@@ -26,16 +29,25 @@ export function ExportCenter() {
 
   async function exportExcel() {
     setBusy(true);
+    setExportProgress(null);
     setMessage(null);
+    const started = Date.now();
+    const progressTimer = window.setTimeout(() => setExportProgress(0), 2000);
     try {
-      const blob = await buildWorkbookBlob(data);
+      const blob = await buildWorkbookBlob(data, {
+        onProgress: (p) => {
+          if (Date.now() - started > 2000) setExportProgress(p.pct);
+        },
+      });
       const stamp = new Date().toISOString().slice(0, 10);
       downloadBlob(`ACC-Nursing-Toolkit-${stamp}.xlsx`, blob);
       setMessage({ text: 'Excel workbook exported.', tone: 'good' });
     } catch (err) {
       setMessage({ text: `Excel export failed: ${(err as Error).message}`, tone: 'danger' });
     } finally {
+      window.clearTimeout(progressTimer);
       setBusy(false);
+      setExportProgress(null);
     }
   }
 
@@ -105,17 +117,31 @@ export function ExportCenter() {
     }
   }
 
-  function confirmImport() {
+  async function confirmImport() {
     if (!preview) return;
-    importFromExcel(preview, importMode);
+    const mode = importMode;
+    await importFromExcel(preview, mode);
     const c = preview.summary.counts;
     setPreview(null);
     setMessage({
       text: `Imported ${c.invoiceLines} invoice line(s), ${c.approvals} approval(s), ${c.complexCases} complex case(s), ${c.declines} decline(s)${
         c.customSheets ? `, ${c.customSheets} custom table(s)` : ''
-      } (${importMode}).`,
+      } (${mode}). Use Undo Excel import below if needed.`,
       tone: 'good',
     });
+  }
+
+  async function undoExcelImport() {
+    setBusy(true);
+    setMessage(null);
+    try {
+      await rollbackExcelImport();
+      setMessage({ text: 'Excel import rolled back to the pre-import snapshot.', tone: 'good' });
+    } catch (err) {
+      setMessage({ text: `Rollback failed: ${(err as Error).message}`, tone: 'danger' });
+    } finally {
+      setBusy(false);
+    }
   }
 
   const counts = {
@@ -141,10 +167,24 @@ export function ExportCenter() {
             <h3 className="font-semibold">Excel workbook (.xlsx)</h3>
           </div>
           <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>
-            Exports all six tabs (Start Here, Billing Log, Year Summary, NS04-NS05 Approvals, Complex
-            Cases, Decline Tracker) with dropdowns, conditional formatting and computed totals — opens
-            clean in Excel. Any custom fields/tables you imported are written back out too.
+            Exports all tabs (Start Here, Billing Log, Year Summary, NS04-NS05 Approvals, Complex
+            Cases, Decline Tracker, Management Summary) with dropdowns, conditional formatting and
+            computed totals — opens clean in Excel. Any custom fields/tables you imported are written
+            back out too.
           </p>
+          {exportProgress != null && (
+            <div className="mb-3">
+              <div className="text-xs mb-1" style={{ color: 'var(--muted)' }}>
+                Building workbook… {exportProgress}%
+              </div>
+              <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-2)' }}>
+                <div
+                  className="h-full transition-all"
+                  style={{ width: `${exportProgress}%`, background: 'var(--accent)' }}
+                />
+              </div>
+            </div>
+          )}
           <button className="btn btn-primary" onClick={() => void exportExcel()} disabled={busy}>
             <IconExport /> Export Excel workbook
           </button>
@@ -213,8 +253,9 @@ export function ExportCenter() {
             Your everyday <span className="font-mono">.accdata</span> file stays small because attached
             files (ACC approval letters, requests you sent) are stored separately on this machine. Use
             this to bundle <span className="font-medium">everything — data and every stored file</span> —
-            into one ZIP to move to another computer or keep as an archive. Restoring replaces current
-            data and re-imports the files.
+            into one ZIP to move to another computer or keep as an archive. Each ZIP includes a{' '}
+            <span className="font-mono">manifest.json</span> with SHA-256 checksums so corrupt archives
+            are rejected on restore. Restoring replaces current data and re-imports the files.
           </p>
           <div className="flex flex-wrap gap-2">
             <button className="btn" onClick={() => void exportZipBackup()} disabled={busy}>
@@ -246,6 +287,19 @@ export function ExportCenter() {
         </p>
       )}
 
+      {excelImportRollbackAvailable && (
+        <Card className="mt-4">
+          <h3 className="font-semibold mb-2">Undo Excel import</h3>
+          <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>
+            A snapshot from before your last Excel import is stored locally. Roll back to restore that
+            state (one level deep).
+          </p>
+          <button className="btn" onClick={() => void undoExcelImport()} disabled={busy}>
+            Undo last Excel import
+          </button>
+        </Card>
+      )}
+
       <Card className="mt-4">
         <h3 className="font-semibold mb-3">Current data</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
@@ -260,11 +314,12 @@ export function ExportCenter() {
 
       {preview && (
         <ImportPreview
+          data={data}
           result={preview}
           mode={importMode}
           onModeChange={setImportMode}
           onCancel={() => setPreview(null)}
-          onConfirm={confirmImport}
+          onConfirm={() => void confirmImport()}
         />
       )}
     </div>
@@ -272,12 +327,14 @@ export function ExportCenter() {
 }
 
 function ImportPreview({
+  data,
   result,
   mode,
   onModeChange,
   onCancel,
   onConfirm,
 }: {
+  data: import('../types').AppData;
   result: ImportResult;
   mode: ImportMode;
   onModeChange: (m: ImportMode) => void;
@@ -286,6 +343,9 @@ function ImportPreview({
 }) {
   const { summary } = result;
   const c = summary.counts;
+  const mergeDiff = computeImportMergeDiff(data, result, mode);
+  const add = mergeDiff.wouldAdd;
+  const skip = mergeDiff.wouldSkip;
   const newColEntries = Object.entries(summary.newColumnsBySheet).filter(([, cols]) => cols.length > 0);
   const nothing =
     c.invoiceLines + c.approvals + c.complexCases + c.declines + c.customSheets + c.patients === 0;
@@ -323,6 +383,30 @@ function ImportPreview({
               <PreviewStat label="Patients (derived)" value={c.patients} />
               <PreviewStat label="Claims (derived)" value={c.claims} />
             </div>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-sm mb-2">
+              {mode === 'replace' ? 'Will replace with' : 'Merge impact'}
+            </h4>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+              <PreviewStat label="New invoice lines" value={add.invoiceLines} />
+              <PreviewStat label="New approvals" value={add.approvals} />
+              <PreviewStat label="New complex cases" value={add.complexCases} />
+              <PreviewStat label="New declines" value={add.declines} />
+              {mode === 'merge' && skip.invoiceLines + skip.approvals + skip.declines > 0 && (
+                <PreviewStat
+                  label="Duplicates skipped"
+                  value={skip.invoiceLines + skip.approvals + skip.declines + skip.complexCases}
+                />
+              )}
+            </div>
+            {mode === 'merge' && (
+              <p className="text-xs mt-2" style={{ color: 'var(--muted)' }}>
+                Exact duplicate rows are skipped. A pre-import snapshot is saved so you can undo from
+                Export Center.
+              </p>
+            )}
           </div>
 
           {newColEntries.length > 0 && (

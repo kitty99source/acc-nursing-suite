@@ -85,6 +85,22 @@ Status legend: [ ] todo · [~] in progress · [x] done
 
 ---
 
+## P3 remainder — rollback, IDB retry, quota (2026-07-08) [x]
+
+| Task | Delivered |
+|------|-----------|
+| P3-004 | Checksums moved to `crypto.ts`; Export Center notes manifest validation |
+| P3-005 | `excelImportSnapshot` IDB; `computeImportMergeDiff`; Export Center undo card |
+| P3-007 | `withIdbRetry` on all IDB kv/doc transactions + file-handle persistence |
+| P3-009 | `storageQuota.ts` + Settings guidance + quota-aware autosave banner |
+| P3-010 | `change-requests/stress-eval-tasks.json` eval loop wiring |
+
+**Tests:** 123 passing (`+11` excel diff, IDB retry, storage quota).
+
+**Deferred to later phases:** Playwright e2e smokes (P7), PWA install manifest (U-01 deployment choice).
+
+---
+
 ## P2 Scale UI + P8-0 folder watch (2026-07-08) [~]
 
 **P2 delivered (partial):** Virtualized `DataTable` via `@tanstack/react-virtual` — windowed rows when count > 50 (Billing, Approvals, Declines). Compliance uses grouped cards (P1-007 cap) — P2-002 marked superseded.
@@ -110,6 +126,24 @@ Status legend: [ ] todo · [~] in progress · [x] done
 - **Docs:** `LETTER_IMPORT_UX.md` routing matrix updated; claim-level import in Documents tab unchanged.
 
 **Tests:** +2 (no-match warning for approval + Patients-context full commit for new patient approval; decline path already covered).
+
+---
+
+## P6 — Compliance & billing completeness (2026-07-08) [x]
+
+| Task | Delivered |
+|------|-----------|
+| P6-001 | `complianceRulesVersion` in settings; findings carry `rulesVersion`; Settings shows rules version |
+| P6-002 | `FIX_INTENT_ROUTES` + `orphanFixIntents()` audit; `review-ns05` opens edit modal; `request-po` routes to patients |
+| P6-003 | `billingFunnel` parity tests (synthetic + sample + 2k lines) |
+| P6-004 | `remittanceStaleDays` setting; stale remittance in action queue; Dashboard → Billing deep link |
+| P6-005 | `renewalAssignee` field on approvals; expiry queue unchanged (badges already in Approvals) |
+| P6-006 | **Management Summary** Excel sheet — violations, funnel, open declines, expiry horizon |
+| P6-007 | `validation.ts` — NHI mod-11 + claim normalize; warning on patient save |
+| P6-008 | Historical `recordStatus` excluded via `isBillingApproval` (tested) |
+| P6-009 | Export progress bar after 2s on large workbook build |
+
+**Tests:** 131 passing (+15 analytics, validation, compliance version/routing/historical, Management Summary excel). NS06/travel rules unchanged (no defer needed).
 
 ---
 

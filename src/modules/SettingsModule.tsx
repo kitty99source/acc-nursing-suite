@@ -7,6 +7,7 @@ import { ALL_SERVICE_CODES, SERVICE_CODES } from '../lib/serviceCodes';
 import { readRecentAudit, type AuditEntry } from '../lib/auditLog';
 import { compareDocumentBlobs } from '../lib/integrity';
 import { listDocumentIds } from '../lib/idb';
+import { STORAGE_QUOTA_GUIDANCE } from '../lib/storageQuota';
 import type { DensityMode, ServiceCode, ThemeName } from '../types';
 
 const THEMES: { value: ThemeName; label: string }[] = [
@@ -177,6 +178,9 @@ export function SettingsModule() {
           Letter import entry points: Approvals/Declines/Claim Documents for full save; Patients modals for prefill only.
           See <span className="font-mono">change-requests/LETTER_IMPORT_UX.md</span> in the project repo.
         </p>
+        <p className="text-xs mt-2" style={{ color: 'var(--muted)' }}>
+          {STORAGE_QUOTA_GUIDANCE}
+        </p>
       </Card>
 
       {(integrityWarnings.length > 0 || (blobHealth && (blobHealth.missingBlobIds.length > 0 || blobHealth.orphanBlobIds.length > 0))) && (
@@ -315,6 +319,16 @@ export function SettingsModule() {
                 value={settings.backupReminderDays}
                 onChange={(e) => updateSettings({ backupReminderDays: Math.max(1, Number(e.target.value)) })}
               />
+            </Field>
+            <Field label="Stale remittance threshold (days)" hint="Remittance lines older than this appear in the action queue.">
+              <NumberInput
+                min={1}
+                value={settings.remittanceStaleDays ?? 60}
+                onChange={(e) => updateSettings({ remittanceStaleDays: Math.max(1, Number(e.target.value)) })}
+              />
+            </Field>
+            <Field label="Compliance rules version" hint="ACC Schedule / OG edition encoded in Flagged checks.">
+              <TextInput value={settings.complianceRulesVersion ?? '2025-03'} readOnly />
             </Field>
             <label className="flex items-center justify-between gap-3 text-sm">
               <span>

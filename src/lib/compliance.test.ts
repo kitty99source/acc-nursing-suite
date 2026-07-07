@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import type { AppData, InvoiceLine } from '../types';
 import { DEFAULT_SETTINGS, SCHEMA_VERSION } from '../types';
-import { runCompliance, claimBillingState } from './compliance';
+import { runCompliance, claimBillingState, orphanFixIntents, COMPLIANCE_RULES_VERSION, FIX_INTENT_ROUTES } from './compliance';
+import { sampleData } from './sampleData';
 import { effectivePackageValue, determinePackage } from './calculator';
 import { todayISO } from './format';
 
@@ -115,14 +116,29 @@ describe('runCompliance — violations', () => {
     expect(ruleIds(d)).toContain('ns04-beyond-approval');
   });
 
-  it('flags possible double billing (same code/date/sheet)', () => {
+  it('stamps findings with the configured rules version', () => {
     const d = base();
+    d.settings.complianceRulesVersion = '2025-03';
     d.claims = [{ id: 'C1', patientId: 'p1', acc45Number: 'A1', claimNumber: 'C1', poNumber: 'PO1', injuryDescription: '', type: 'original', status: 'active', day1Date: shift(-90) }];
-    d.invoiceLines = [
-      invoice({ serviceCode: 'NS06', invoiceDate: shift(-10), invoiceSheet: 'S1' }),
-      invoice({ serviceCode: 'NS06', invoiceDate: shift(-10), invoiceSheet: 'S1' }),
-    ];
-    expect(ruleIds(d)).toContain('double-billing');
+    d.invoiceLines = [invoice({ serviceCode: 'NSTD10' })];
+    const findings = runCompliance(d);
+    expect(findings.length).toBeGreaterThan(0);
+    expect(findings.every((f) => f.rulesVersion === '2025-03')).toBe(true);
+  });
+
+  it('excludes historical approvals from billing readiness (P6-008)', () => {
+    const d = base();
+    d.claims = [{ id: 'C1', patientId: 'p1', acc45Number: 'A1', claimNumber: 'C1', poNumber: 'PO1', injuryDescription: '', type: 'original', status: 'active', day1Date: shift(-120) }];
+    d.serviceLines = [{ id: 's1', claimId: 'C1', serviceCode: 'NS04', day1Date: shift(-120), consultCount: 5, interruptions: [] }];
+    d.approvals = [{
+      id: 'a1', patientId: 'p1', claimId: 'C1', serviceCode: 'NS04',
+      approvalStartDate: shift(-30), approvalEndDate: shift(30),
+      approvedHoursOrConsults: 10, poNumber: 'PO1', notes: '',
+      recordStatus: 'historical',
+    }];
+    const state = claimBillingState(d.claims[0], d.serviceLines, d.approvals, []);
+    expect(state.state).toBe('blocked-on-approval');
+    expect(ruleIds(d)).toContain('ns04-needs-approval');
   });
 });
 
@@ -151,6 +167,37 @@ describe('runCompliance — predictive', () => {
     d.claims = [{ id: 'C1', patientId: 'p1', acc45Number: 'A1', claimNumber: 'C1', poNumber: 'PO1', injuryDescription: '', type: 'original', status: 'active', day1Date: shift(-60) }];
     d.serviceLines = [{ id: 's1', claimId: 'C1', serviceCode: 'NS03', day1Date: shift(-60), consultCount: 22, interruptions: [] }];
     expect(ruleIds(d)).toContain('near-25-consults');
+  });
+});
+
+describe('fix intent routing (P6-002)', () => {
+  it('has no orphan fix intents on sample data', () => {
+    const findings = runCompliance(sampleData());
+    expect(orphanFixIntents(findings)).toEqual([]);
+  });
+
+  it('covers every fix action used in findings', () => {
+    const findings = runCompliance(sampleData());
+    const actions = new Set(findings.filter((f) => f.fix).map((f) => f.fix!.action));
+    for (const action of actions) {
+      expect(FIX_INTENT_ROUTES[action]).toBeDefined();
+    }
+  });
+
+  it('flags possible double billing (same code/date/sheet)', () => {
+    const d = base();
+    d.claims = [{ id: 'C1', patientId: 'p1', acc45Number: 'A1', claimNumber: 'C1', poNumber: 'PO1', injuryDescription: '', type: 'original', status: 'active', day1Date: shift(-90) }];
+    d.invoiceLines = [
+      invoice({ serviceCode: 'NS06', invoiceDate: shift(-10), invoiceSheet: 'S1' }),
+      invoice({ serviceCode: 'NS06', invoiceDate: shift(-10), invoiceSheet: 'S1' }),
+    ];
+    expect(ruleIds(d)).toContain('double-billing');
+  });
+});
+
+describe('COMPLIANCE_RULES_VERSION', () => {
+  it('defaults to March 2025 schedule', () => {
+    expect(COMPLIANCE_RULES_VERSION).toBe('2025-03');
   });
 });
 

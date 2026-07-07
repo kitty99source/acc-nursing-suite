@@ -85,6 +85,8 @@ export interface Approval {
   consultsUsed?: number;
   accEmailedRenewalDate?: string; // ISO date
   poNumber: string;
+  /** Local assignee for renewal follow-up (P6-005). */
+  renewalAssignee?: string;
   notes: string;
   /** Latest period for billing/expiry; older imported rows are historical. */
   recordStatus?: 'current' | 'historical';
@@ -204,7 +206,10 @@ export interface Settings {
   letterImportAutoCommit: boolean;
   /** Days without a .accdata export before backup reminder modal (U-14 default 7). */
   backupReminderDays: number;
-  // Which service codes appear in pickers (service lines, billing, etc.).
+  /** Days in Remittance before surfacing in action queue (P6-004). */
+  remittanceStaleDays: number;
+  /** ACC contract-compliance rule set version tag (P6-001). */
+  complianceRulesVersion: string;
   // Defaults to every code; lets an office hide the ones they never use.
   enabledServiceCodes: ServiceCode[];
   // Editable per-contract rates (dollars excl GST) keyed by service code.
@@ -256,6 +261,8 @@ export const DEFAULT_SETTINGS: Settings = {
   productionMode: true,
   letterImportAutoCommit: false,
   backupReminderDays: 7,
+  remittanceStaleDays: 60,
+  complianceRulesVersion: '2025-03',
   enabledServiceCodes: [...ALL_SERVICE_CODES],
   serviceRates: { ...DEFAULT_RATES },
 };

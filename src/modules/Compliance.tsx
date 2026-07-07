@@ -174,6 +174,7 @@ export function Compliance() {
                         </div>
                         <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
                           {f.clauseRef}
+                          {f.rulesVersion ? ` · Rules ${f.rulesVersion}` : ''}
                         </div>
                       </div>
                       {f.fix && (

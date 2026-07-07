@@ -8,7 +8,7 @@
 
 import JSZip from 'jszip';
 import type { AppData } from '../types';
-import { hashBlob } from './letterImport';
+import { hashBlob, sha256Text } from './crypto';
 
 const MANIFEST_FORMAT = { format: 'accdata-backup', version: 1 } as const;
 
@@ -27,14 +27,6 @@ export interface BackupManifest {
   dataJsonSha256: string;
   /** Per-document blob checksums keyed by document id. */
   blobs: Record<string, BackupBlobChecksum>;
-}
-
-async function sha256Text(text: string): Promise<string> {
-  const buf = new TextEncoder().encode(text);
-  const hash = await crypto.subtle.digest('SHA-256', buf);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
 }
 
 export async function buildBackupZip(

@@ -10,7 +10,9 @@ If Start ACC Suite.cmd or Start Portal Discover.cmd closes immediately:
    %USERPROFILE%\ACC-Suite\logs\portal-discover-*.log
 
 4. If bootstrap.log says "CMD started" but nothing after "launch.ps1 started",
-   PowerShell may be blocked by group policy — contact IT.
+   PowerShell may be blocked by group policy - contact IT.
+   If you see a parse error in bootstrap.log, re-download the latest dist
+   (scripts must be UTF-8 with BOM for Windows PowerShell 5.1).
 
 5. If bootstrap.log is empty, the .cmd file may be from an old download.
    Re-download the latest dist from GitHub main and confirm launcher-log.ps1

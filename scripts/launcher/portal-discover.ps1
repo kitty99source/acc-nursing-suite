@@ -1,4 +1,4 @@
-# --- Bootstrap log (always works; never depends on launcher-log.ps1) -----------
+﻿# --- Bootstrap log (always works; never depends on launcher-log.ps1) -----------
 $script:BootstrapLogPath = Join-Path $env:USERPROFILE 'ACC-Suite\logs\bootstrap.log'
 function Write-BootstrapLog {
     param([string]$Message)
@@ -10,14 +10,12 @@ function Write-BootstrapLog {
 }
 Write-BootstrapLog 'portal-discover.ps1 started'
 
-# ACC Portal Discovery — double-click launcher (work laptop)
+# ACC Portal Discovery - double-click launcher (work laptop)
 #
-# Pure PowerShell — no Node.js required.
+# Pure PowerShell - no Node.js required.
 # 1. Opens Edge or Chrome with remote debugging on port 9222
 # 2. Prompts you to log into Citrix VPN + ACC portal, then click OK
 # 3. Attaches via Chrome DevTools Protocol (HTTP + WebSocket) and saves results
-
-$ErrorActionPreference = 'Stop'
 
 # --- Optional logging (must never block launch) --------------------------------
 $script:LauncherLogEnabled = $false
@@ -37,7 +35,7 @@ function Write-LauncherLogSafe {
 
 try {
     $logRoot = $PSScriptRoot
-    if ([string]::IsNullOrEmpty($logRoot)) { $logRoot = Split-Path -Parent $MyInvocation.MyCommand.Path }
+    if ([string]::IsNullOrEmpty($logRoot)) { $logRoot = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }
     $logHelper = Join-Path $logRoot 'launcher-log.ps1'
     if (Test-Path -LiteralPath $logHelper) {
         . $logHelper
@@ -90,22 +88,22 @@ function Try-OpenPortalBrowser {
         [string[]]$ArgumentList,
         [switch]$SkipPathCheck
     )
-    Write-LauncherLogSafe "Step: try browser — $Label"
+    Write-LauncherLogSafe "Step: try browser - $Label"
     if (-not $SkipPathCheck -and $FilePath -and -not (Test-Path -LiteralPath $FilePath)) {
-        Write-LauncherLogSafe "Step: skip browser — $Label (path not found: $FilePath)"
+        Write-LauncherLogSafe "Step: skip browser - $Label (path not found: $FilePath)"
         return $false
     }
     try {
-        Write-LauncherLogSafe "Step: Start-Process before — $Label"
+        Write-LauncherLogSafe "Step: Start-Process before - $Label"
         if ($ArgumentList -and $ArgumentList.Count -gt 0) {
             Start-Process -FilePath $FilePath -ArgumentList $ArgumentList -ErrorAction Stop | Out-Null
         } else {
             Start-Process -FilePath $FilePath -ErrorAction Stop | Out-Null
         }
-        Write-LauncherLogSafe "Step: Start-Process after — $Label (ok)"
+        Write-LauncherLogSafe "Step: Start-Process after - $Label (ok)"
         return $true
     } catch {
-        Write-LauncherLogSafe "Step: Start-Process after — $Label (failed: $($_.Exception.Message))"
+        Write-LauncherLogSafe "Step: Start-Process after - $Label (failed: $($_.Exception.Message))"
         return $false
     }
 }
@@ -156,9 +154,9 @@ function New-CdpSession {
     Add-Type -AssemblyName System.Net.WebSockets -ErrorAction Stop
     Add-Type -AssemblyName System.Threading -ErrorAction Stop
 
-    $ws = [System.Net.WebSockets.ClientWebSocket]::new()
+    $ws = New-Object System.Net.WebSockets.ClientWebSocket
     $uri = [Uri]$WsUrl
-    $cts = [System.Threading.CancellationTokenSource]::new()
+    $cts = New-Object System.Threading.CancellationTokenSource
 
     $connectTask = $ws.ConnectAsync($uri, $cts.Token)
     if (-not $connectTask.Wait(15000)) {
@@ -206,7 +204,7 @@ function Receive-CdpJson {
         if ($ws.State -ne [System.Net.WebSockets.WebSocketState]::Open) {
             throw 'WebSocket closed unexpectedly.'
         }
-        $segment = [ArraySegment[byte]]::new($buffer)
+        $segment = New-Object 'System.ArraySegment[byte]' -ArgumentList (,$buffer)
         $receiveTask = $ws.ReceiveAsync($segment, $cts.Token)
         $remaining = ($deadline - [DateTime]::UtcNow).TotalMilliseconds
         if ($remaining -lt 1) { break }
@@ -241,7 +239,7 @@ function Send-CdpCommand {
     $json = $payload | ConvertTo-Json -Compress -Depth 20
 
     $bytes = [Text.Encoding]::UTF8.GetBytes($json)
-    $segment = [ArraySegment[byte]]::new($bytes)
+    $segment = New-Object 'System.ArraySegment[byte]' -ArgumentList (,$bytes)
     $sendTask = $Session.WebSocket.SendAsync(
         $segment,
         [System.Net.WebSockets.WebSocketMessageType]::Text,
@@ -408,7 +406,7 @@ function Write-PortalSummaryHtml {
             $pageIndex++
             $linkCount = @($p.links).Count
             $headingLine = if (@($p.headings).Count) {
-                "<p><strong>Headings:</strong> $(Escape-Html (($p.headings -join ' · ')))</p>"
+                "<p><strong>Headings:</strong> $(Escape-Html (($p.headings -join ' | ')))</p>"
             } else { '' }
             $linksBlock = if ($linkCount -gt 0) {
                 $items = ($p.links | Select-Object -First 15 | ForEach-Object {
@@ -423,7 +421,7 @@ function Write-PortalSummaryHtml {
     <section class="page">
       <h2>$pageIndex. $(Escape-Html ($(if ($p.title) { $p.title } else { '(no title)' })))</h2>
       <p class="meta"><strong>URL:</strong> $(Escape-Html $p.url)</p>
-      <p class="meta"><strong>Depth:</strong> $($p.depth) · <strong>Links:</strong> $linkCount</p>
+      <p class="meta"><strong>Depth:</strong> $($p.depth) | <strong>Links:</strong> $linkCount</p>
       $headingLine
       $linksBlock
     </section>
@@ -436,7 +434,7 @@ function Write-PortalSummaryHtml {
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>ACC Portal Discovery — $($Map.pageCount) page(s)</title>
+  <title>ACC Portal Discovery - $($Map.pageCount) page(s)</title>
   <style>
     body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
     h1 { color: #0b5; }
@@ -449,7 +447,7 @@ function Write-PortalSummaryHtml {
 <body>
   <h1>ACC Portal Discovery</h1>
   <p class="note">Review and redact patient names or identifiers before sharing this file.</p>
-  <p><strong>Pages captured:</strong> $($Map.pageCount) · <strong>Crawl:</strong> $crawlLabel</p>
+  <p><strong>Pages captured:</strong> $($Map.pageCount) | <strong>Crawl:</strong> $crawlLabel</p>
   <p><strong>JSON:</strong> <code>$(Escape-Html $OutPath)</code></p>
   $rows
 </body>
@@ -467,27 +465,28 @@ function ConvertTo-JsonDeep {
 
 # --- Main ---
 
-$root = $PSScriptRoot
-if ([string]::IsNullOrEmpty($root)) { $root = Split-Path -Parent $MyInvocation.MyCommand.Path }
-
-$portalUrl = 'http://cl-biprddb02/Reports_MSREPORT/browse/DHB-wide/ACC'
-$cdpBase = 'http://127.0.0.1:9222'
-$outDir = Join-Path $env:USERPROFILE 'ACC-Suite'
-$outFile = Join-Path $outDir 'portal-map.json'
-$summaryFile = Join-Path $outDir 'portal-summary.html'
-
-Initialize-Ui
-
 try {
+    $ErrorActionPreference = 'Stop'
+
+    $root = $PSScriptRoot
+    if ([string]::IsNullOrEmpty($root)) { $root = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }
+
+    $portalUrl = 'http://cl-biprddb02/Reports_MSREPORT/browse/DHB-wide/ACC'
+    $cdpBase = 'http://127.0.0.1:9222'
+    $outDir = Join-Path $env:USERPROFILE 'ACC-Suite'
+    $outFile = Join-Path $outDir 'portal-map.json'
+    $summaryFile = Join-Path $outDir 'portal-summary.html'
+
+    Initialize-Ui
     Write-LauncherLogSafe 'Step: start portal discovery'
     Write-Host ''
     Write-Host '  ACC Portal Discovery' -ForegroundColor Cyan
     Write-Host '  --------------------' -ForegroundColor Cyan
-    Write-Host '  (PowerShell only — no extra software)' -ForegroundColor Gray
+    Write-Host '  (PowerShell only - no extra software)' -ForegroundColor Gray
     Write-Host ''
 
     Write-LauncherLogSafe "Step: ensure output directory $outDir"
-    New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+    New-Item -ItemType Directory -Force -LiteralPath $outDir | Out-Null
 
     Write-LauncherLogSafe 'Step: open browser with remote debugging on port 9222'
     $browserArgs = @(
@@ -550,7 +549,7 @@ try {
     Write-Host "  Browser: $browserName" -ForegroundColor Gray
     Write-Host "  Output:  $outFile" -ForegroundColor Gray
     Write-Host ''
-    Write-Host '  Opening browser with remote debugging on port 9222 …' -ForegroundColor Green
+    Write-Host '  Opening browser with remote debugging on port 9222 ...' -ForegroundColor Green
     Start-Sleep -Seconds 2
 
     Show-MessageBox -Message @"
@@ -562,7 +561,7 @@ Click OK when you are on the report page and ready to scan.
 "@ -Icon Information
 
     Write-LauncherLogSafe 'Step: scan portal via CDP'
-    Write-Host '  Scanning portal (this may take a minute) …' -ForegroundColor Green
+    Write-Host '  Scanning portal (this may take a minute) ...' -ForegroundColor Green
     Write-Host ''
 
     $allTargets = Get-CdpTargets -CdpBase $cdpBase
@@ -581,10 +580,10 @@ Click OK when you are on the report page and ready to scan.
             $snap = Get-PageSnapshot -Session $session -FallbackUrl $tab.url -FallbackTitle $tab.title -Depth 0 -IncludeLinks $true
             $pages += $snap
             $webSocketWorked = $true
-            Write-LauncherLogSafe "Step: snapshot captured — $($snap.title)"
-            Write-Host "  [snap] $($snap.title) — $($snap.url)" -ForegroundColor Green
+            Write-LauncherLogSafe "Step: snapshot captured - $($snap.title)"
+            Write-Host "  [snap] $($snap.title) - $($snap.url)" -ForegroundColor Green
         } catch {
-            Write-LauncherLogSafe "WARN: WebSocket snapshot failed — $($_.Exception.Message)"
+            Write-LauncherLogSafe "WARN: WebSocket snapshot failed - $($_.Exception.Message)"
             Write-Host "  [warn] WebSocket snapshot failed: $($_.Exception.Message)" -ForegroundColor Yellow
             Write-Host '  Falling back to tab list only (URLs and titles).' -ForegroundColor Yellow
         } finally {
@@ -644,7 +643,7 @@ Then double-click Start Portal Discover.cmd again.
                 }
             })
         notes         = @(
-            'Review portal-map.json before commit — redact any patient names or identifiers.'
+            'Review portal-map.json before commit - redact any patient names or identifiers.'
             'Do not store portal credentials in this file.'
         )
     }
@@ -687,7 +686,10 @@ Review portal-map.json and redact any patient details before sharing.
 "@ -Icon Information
 
     Read-Host 'Press Enter to close'
+    exit 0
 } catch {
+    Write-BootstrapLog "FATAL: $($_.Exception.Message)"
+    if ($_.ScriptStackTrace) { Write-BootstrapLog $_.ScriptStackTrace }
     try {
         if ($script:LauncherLogEnabled) {
             Write-LauncherLogException $_
@@ -696,9 +698,9 @@ Review portal-map.json and redact any patient details before sharing.
             Show-MessageBox -Message @"
 Portal Discovery stopped unexpectedly.
 
-• Connect Citrix VPN first
-• Stay on the ACC portal page in the browser
-• Close other Chrome/Edge windows if port 9222 is busy
+- Connect Citrix VPN first
+- Stay on the ACC portal page in the browser
+- Close other Chrome/Edge windows if port 9222 is busy
 
 Check this window for details, then try again.
 "@ -Icon Error
@@ -706,5 +708,6 @@ Check this window for details, then try again.
     } catch {}
     Write-LauncherLogSafe "FATAL: $($_.Exception.Message)"
     Write-Host $_.Exception.Message -ForegroundColor Red
+    Read-Host 'Press Enter to close'
     exit 1
 }

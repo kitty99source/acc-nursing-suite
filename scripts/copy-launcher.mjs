@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** Copy Windows/Mac launcher scripts and WFH tools into dist/ after build. */
-import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -9,6 +9,15 @@ const LAUNCHER_SRC = join(ROOT, 'scripts/launcher');
 const WFH_SRC = join(ROOT, 'scripts/wfh');
 const DIST = join(ROOT, 'dist');
 const WFH_DIST = join(DIST, 'wfh');
+
+/** PowerShell 5.1 requires UTF-8 BOM to parse non-ASCII; ensure BOM on every .ps1 copy. */
+function copyPs1WithBom(from, to) {
+  let text = readFileSync(from, 'utf8');
+  if (text.charCodeAt(0) === 0xfeff) {
+    text = text.slice(1);
+  }
+  writeFileSync(to, '\uFEFF' + text, 'utf8');
+}
 
 mkdirSync(DIST, { recursive: true });
 mkdirSync(WFH_DIST, { recursive: true });
@@ -32,7 +41,11 @@ for (const name of launcherFiles) {
     console.error(`Missing launcher source: ${from}`);
     process.exit(1);
   }
-  copyFileSync(from, to);
+  if (name.endsWith('.ps1')) {
+    copyPs1WithBom(from, to);
+  } else {
+    copyFileSync(from, to);
+  }
   console.log(`Copied ${name} → dist/`);
 }
 

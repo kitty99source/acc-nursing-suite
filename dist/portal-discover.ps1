@@ -5,8 +5,44 @@
 # 2. Prompts you to log into Citrix VPN + ACC portal, then click OK
 # 3. Attaches via Chrome DevTools Protocol (HTTP + WebSocket) and saves results
 
+try { [void][System.IO.Directory]::CreateDirectory((Join-Path $env:USERPROFILE 'ACC-Suite\logs')) } catch {}
+
+$script:LauncherDir = $env:ACC_LAUNCHER_DIR
+if ([string]::IsNullOrWhiteSpace($script:LauncherDir)) { $script:LauncherDir = $PSScriptRoot }
+if ([string]::IsNullOrWhiteSpace($script:LauncherDir)) { $script:LauncherDir = Split-Path -Parent $MyInvocation.MyCommand.Path }
+$script:LauncherDir = $script:LauncherDir.TrimEnd('\', '/')
+try { Set-Location -LiteralPath $script:LauncherDir -ErrorAction Stop } catch {}
+
 $script:UseWinForms = $false
 $script:CdpNextId = 0
+
+function Initialize-InlineLauncherLog {
+    param([string]$Prefix)
+    $logDir = Join-Path $env:USERPROFILE 'ACC-Suite\logs'
+    try { [void][System.IO.Directory]::CreateDirectory($logDir) } catch {
+        $logDir = Join-Path $env:TEMP 'ACC-Suite-logs'
+        [void][System.IO.Directory]::CreateDirectory($logDir)
+    }
+    $script:LauncherLogPath = Join-Path $logDir "$Prefix-$(Get-Date -Format 'yyyy-MM-dd-HHmmss').log"
+    $script:LauncherLocalLogPath = Join-Path $script:LauncherDir 'launch-error.log'
+}
+
+function Write-InlineLauncherLog {
+    param([string]$Message)
+    $line = "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $Message"
+    foreach ($path in @($script:LauncherLogPath, $script:LauncherLocalLogPath)) {
+        if ($path) { try { Add-Content -LiteralPath $path -Value $line -Encoding UTF8 } catch {} }
+    }
+    try { Write-Host $line } catch {}
+}
+
+function Show-InlineLauncherError {
+    param([string]$Message, [string]$Title = 'ACC Portal Discovery')
+    Write-InlineLauncherLog "ERROR: $Message"
+    $flat = ($Message -replace '\s+', ' ').Trim()
+    if ($flat.Length -gt 240) { $flat = $flat.Substring(0, 237) + '...' }
+    try { & msg.exe $env:USERNAME /time:120 $flat 2>$null | Out-Null } catch {}
+}
 
 function Initialize-Ui {
     try {
@@ -24,6 +60,9 @@ function Show-MessageBox {
         [ValidateSet('Error', 'Information', 'Warning')]
         [string]$Icon = 'Information'
     )
+    $flat = ($Message -replace '\s+', ' ').Trim()
+    if ($flat.Length -gt 240) { $flat = $flat.Substring(0, 237) + '...' }
+    try { & msg.exe $env:USERNAME /time:120 $flat 2>$null | Out-Null; return } catch {}
     if ($script:UseWinForms) {
         $iconEnum = [System.Windows.Forms.MessageBoxIcon]::$Icon
         [System.Windows.Forms.MessageBox]::Show(
@@ -32,13 +71,7 @@ function Show-MessageBox {
             [System.Windows.Forms.MessageBoxButtons]::OK,
             $iconEnum
         ) | Out-Null
-        return
     }
-    $flat = ($Message -replace '\s+', ' ').Trim()
-    if ($flat.Length -gt 240) { $flat = $flat.Substring(0, 237) + '...' }
-    try {
-        & msg.exe $env:USERNAME /time:60 $flat 2>$null | Out-Null
-    } catch {}
 }
 
 function Find-BrowserExe {
@@ -51,6 +84,8 @@ function Find-BrowserExe {
     foreach ($p in $candidates) {
         if ($p -and (Test-Path -LiteralPath $p)) { return $p }
     }
+    $searched = ($candidates | Where-Object { $_ }) -join '; '
+    Write-LauncherLog "ERROR: browser not found. Searched: $searched"
     return $null
 }
 
@@ -415,18 +450,34 @@ $script:LauncherHadError = $false
 $script:LauncherLogPath = $null
 
 try {
-    $logHelper = Join-Path $PSScriptRoot 'launcher-log.ps1'
+    $logHelper = Join-Path $script:LauncherDir 'launcher-log.ps1'
     if (-not (Test-Path -LiteralPath $logHelper)) {
-        $logHelper = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'launcher-log.ps1'
+        Initialize-InlineLauncherLog -Prefix 'portal-discover'
+        Write-InlineLauncherLog "WARN: launcher-log.ps1 missing at $logHelper — using inline logging"
+        function Write-LauncherLog { param([string]$Message) Write-InlineLauncherLog $Message }
+        function Write-LauncherLogException {
+            param($ErrorRecord)
+            $script:LauncherHadError = $true
+            $msg = if ($ErrorRecord.Exception) { $ErrorRecord.Exception.Message } else { [string]$ErrorRecord }
+            Write-InlineLauncherLog "ERROR: $msg"
+        }
+        function Complete-LauncherLog {
+            param([string]$Title = 'ACC Portal Discovery')
+            if ($script:LauncherHadError -and $script:LauncherLogPath) {
+                $logHint = $script:LauncherLogPath
+                if ($script:LauncherLocalLogPath) { $logHint += " / $($script:LauncherLocalLogPath)" }
+                Show-InlineLauncherError -Title $Title -Message "Portal discovery failed. Log: $logHint"
+            }
+        }
+    } else {
+        . $logHelper
+        Initialize-LauncherLog -Prefix 'portal-discover' | Out-Null
     }
-    . $logHelper
-    Initialize-LauncherLog -Prefix 'portal-discover' | Out-Null
 
     Initialize-Ui
     $ErrorActionPreference = 'Stop'
 
-    $root = $PSScriptRoot
-    if ([string]::IsNullOrEmpty($root)) { $root = Split-Path -Parent $MyInvocation.MyCommand.Path }
+    $root = $script:LauncherDir
 
     $portalUrl = 'http://cl-biprddb02/Reports_MSREPORT/browse/DHB-wide/ACC'
     $cdpBase = 'http://127.0.0.1:9222'
@@ -444,7 +495,7 @@ try {
     Write-LauncherLog 'Step: find browser executable'
     $browser = Find-BrowserExe
     if (-not $browser) {
-        throw 'Could not find Microsoft Edge or Google Chrome. Install Edge or Chrome, then try again.'
+        throw 'Could not find Microsoft Edge or Google Chrome. Install Edge or Chrome, then try again. See launch-error.log for paths searched.'
     }
 
     $browserName = Split-Path -Leaf $browser
@@ -590,37 +641,17 @@ Connect Citrix VPN first, stay on the ACC report page, and close other Chrome/Ed
     if (Get-Command Write-LauncherLogException -ErrorAction SilentlyContinue) {
         Write-LauncherLogException $_
     } else {
-        try {
-            $fallbackDir = Join-Path $env:USERPROFILE 'ACC-Suite\logs'
-            [void][System.IO.Directory]::CreateDirectory($fallbackDir)
-            $fallbackLog = Join-Path $fallbackDir "portal-discover-$(Get-Date -Format 'yyyy-MM-dd-HHmmss').log"
-            Add-Content -LiteralPath $fallbackLog -Value "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] FATAL: $($_.Exception.Message)"
-            $script:LauncherLogPath = $fallbackLog
-        } catch {}
+        if (-not $script:LauncherLogPath) { Initialize-InlineLauncherLog -Prefix 'portal-discover' }
+        Write-InlineLauncherLog "FATAL: $($_.Exception.Message)"
         Write-Host $_.Exception.Message -ForegroundColor Red
     }
 } finally {
     if (Get-Command Complete-LauncherLog -ErrorAction SilentlyContinue) {
         Complete-LauncherLog -Title 'ACC Portal Discovery'
-    } elseif ($script:LauncherLogPath) {
-        try {
-            Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
-            $icon = if ($script:LauncherHadError) {
-                [System.Windows.Forms.MessageBoxIcon]::Error
-            } else {
-                [System.Windows.Forms.MessageBoxIcon]::Information
-            }
-            $prefix = if ($script:LauncherHadError) { 'Error' } else { 'Done' }
-            $suffix = if ($script:LauncherHadError) { "`n`nSend this file to support." } else { '' }
-            [System.Windows.Forms.MessageBox]::Show(
-                "$prefix — log saved to:`n$($script:LauncherLogPath)$suffix",
-                'ACC Portal Discovery',
-                [System.Windows.Forms.MessageBoxButtons]::OK,
-                $icon
-            ) | Out-Null
-        } catch {
-            Read-Host 'Press Enter to close'
-        }
+    } elseif ($script:LauncherHadError -and $script:LauncherLogPath) {
+        $logHint = $script:LauncherLogPath
+        if ($script:LauncherLocalLogPath) { $logHint += " / $($script:LauncherLocalLogPath)" }
+        Show-InlineLauncherError -Title 'ACC Portal Discovery' -Message "Portal discovery failed. Log: $logHint"
     }
     if ($script:LauncherHadError) { exit 1 }
 }

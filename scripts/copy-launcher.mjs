@@ -22,6 +22,7 @@ const launcherFiles = [
   'Start Portal Discover.cmd',
   'Start Portal Discover.command',
   'README.txt',
+  'TROUBLESHOOT.txt',
 ];
 
 for (const name of launcherFiles) {

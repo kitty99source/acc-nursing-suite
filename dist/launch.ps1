@@ -10,22 +10,71 @@
 #
 # Nothing is ever exposed to the network - the socket binds to 127.0.0.1 only.
 
+try { [void][System.IO.Directory]::CreateDirectory((Join-Path $env:USERPROFILE 'ACC-Suite\logs')) } catch {}
+
+$script:LauncherDir = $env:ACC_LAUNCHER_DIR
+if ([string]::IsNullOrWhiteSpace($script:LauncherDir)) { $script:LauncherDir = $PSScriptRoot }
+if ([string]::IsNullOrWhiteSpace($script:LauncherDir)) { $script:LauncherDir = Split-Path -Parent $MyInvocation.MyCommand.Path }
+$script:LauncherDir = $script:LauncherDir.TrimEnd('\', '/')
+try { Set-Location -LiteralPath $script:LauncherDir -ErrorAction Stop } catch {}
+
 $script:LauncherHadError = $false
 $script:LauncherLogPath = $null
 
-try {
-    $logHelper = Join-Path $PSScriptRoot 'launcher-log.ps1'
-    if (-not (Test-Path -LiteralPath $logHelper)) {
-        $logHelper = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'launcher-log.ps1'
+function Initialize-InlineLauncherLog {
+    param([string]$Prefix)
+    $logDir = Join-Path $env:USERPROFILE 'ACC-Suite\logs'
+    try { [void][System.IO.Directory]::CreateDirectory($logDir) } catch {
+        $logDir = Join-Path $env:TEMP 'ACC-Suite-logs'
+        [void][System.IO.Directory]::CreateDirectory($logDir)
     }
-    . $logHelper
-    Initialize-LauncherLog -Prefix 'acc-suite' -ShowSuccessOnExit:$false | Out-Null
+    $script:LauncherLogPath = Join-Path $logDir "$Prefix-$(Get-Date -Format 'yyyy-MM-dd-HHmmss').log"
+    $script:LauncherLocalLogPath = Join-Path $script:LauncherDir 'launch-error.log'
+}
+
+function Write-InlineLauncherLog {
+    param([string]$Message)
+    $line = "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $Message"
+    foreach ($path in @($script:LauncherLogPath, $script:LauncherLocalLogPath)) {
+        if ($path) { try { Add-Content -LiteralPath $path -Value $line -Encoding UTF8 } catch {} }
+    }
+    try { Write-Host $line } catch {}
+}
+
+function Show-InlineLauncherError {
+    param([string]$Message, [string]$Title = 'ACC Suite')
+    Write-InlineLauncherLog "ERROR: $Message"
+    $flat = ($Message -replace '\s+', ' ').Trim()
+    if ($flat.Length -gt 240) { $flat = $flat.Substring(0, 237) + '...' }
+    try { & msg.exe $env:USERNAME /time:120 $flat 2>$null | Out-Null } catch {}
+}
+
+try {
+    $logHelper = Join-Path $script:LauncherDir 'launcher-log.ps1'
+    if (-not (Test-Path -LiteralPath $logHelper)) {
+        Initialize-InlineLauncherLog -Prefix 'acc-suite'
+        Write-InlineLauncherLog "WARN: launcher-log.ps1 missing at $logHelper — using inline logging"
+        function Write-LauncherLog { param([string]$Message) Write-InlineLauncherLog $Message }
+        function Write-LauncherLogException {
+            param($ErrorRecord)
+            $script:LauncherHadError = $true
+            $msg = if ($ErrorRecord.Exception) { $ErrorRecord.Exception.Message } else { [string]$ErrorRecord }
+            Write-InlineLauncherLog "ERROR: $msg"
+        }
+        function Show-LauncherStartupSuccess {
+            param([string]$Title = 'ACC Suite')
+            $logHint = $script:LauncherLogPath
+            Show-InlineLauncherError -Title $Title -Message "ACC Suite is running. Log: $logHint"
+        }
+    } else {
+        . $logHelper
+        Initialize-LauncherLog -Prefix 'acc-suite' -ShowSuccessOnExit:$false | Out-Null
+    }
 
     $ErrorActionPreference = 'Stop'
     Write-LauncherLog 'Step: resolve index.html path'
 
-    $root = $PSScriptRoot
-    if ([string]::IsNullOrEmpty($root)) { $root = Split-Path -Parent $MyInvocation.MyCommand.Path }
+    $root = $script:LauncherDir
     $indexPath = Join-Path $root 'index.html'
 
     if (-not (Test-Path -LiteralPath $indexPath)) {
@@ -80,13 +129,28 @@ try {
     Write-Host ""
 
     Write-LauncherLog 'Step: open browser'
-    try {
-        Start-Process "msedge.exe" $url -ErrorAction Stop | Out-Null
-        Write-LauncherLog 'Step: opened Microsoft Edge'
-    } catch {
+    $edgePaths = @(
+        (Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\msedge.exe'),
+        (Join-Path $env:ProgramFiles 'Microsoft\Edge\Application\msedge.exe')
+    )
+    $edgeExe = $edgePaths | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
+    $browserOpened = $false
+    if ($edgeExe) {
+        try {
+            Start-Process -FilePath $edgeExe -ArgumentList $url -ErrorAction Stop | Out-Null
+            Write-LauncherLog "Step: opened Microsoft Edge ($edgeExe)"
+            $browserOpened = $true
+        } catch {
+            Write-LauncherLog "WARN: Edge launch failed — $($_.Exception.Message)"
+        }
+    } else {
+        Write-LauncherLog 'WARN: msedge.exe not found in Program Files — trying default browser'
+    }
+    if (-not $browserOpened) {
         try {
             Start-Process $url -ErrorAction Stop | Out-Null
             Write-LauncherLog 'Step: opened default browser'
+            $browserOpened = $true
         } catch {
             Write-LauncherLog "WARN: could not auto-open browser — open manually: $url"
             Write-Host "  Could not auto-open a browser. Open this URL manually: $url" -ForegroundColor Yellow
@@ -181,31 +245,19 @@ try {
     if (Get-Command Write-LauncherLogException -ErrorAction SilentlyContinue) {
         Write-LauncherLogException $_
     } else {
-        try {
-            $fallbackDir = Join-Path $env:USERPROFILE 'ACC-Suite\logs'
-            [void][System.IO.Directory]::CreateDirectory($fallbackDir)
-            $fallbackLog = Join-Path $fallbackDir "acc-suite-$(Get-Date -Format 'yyyy-MM-dd-HHmmss').log"
-            Add-Content -LiteralPath $fallbackLog -Value "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] FATAL: $($_.Exception.Message)"
-            $script:LauncherLogPath = $fallbackLog
-        } catch {}
+        if (-not $script:LauncherLogPath) { Initialize-InlineLauncherLog -Prefix 'acc-suite' }
+        Write-InlineLauncherLog "FATAL: $($_.Exception.Message)"
         Write-Host $_.Exception.Message -ForegroundColor Red
     }
+    exit 1
 } finally {
-    if (Get-Command Complete-LauncherLog -ErrorAction SilentlyContinue) {
-        if ($script:LauncherHadError) {
+    if ($script:LauncherHadError) {
+        if (Get-Command Complete-LauncherLog -ErrorAction SilentlyContinue) {
             Complete-LauncherLog -Title 'ACC Suite'
-        }
-    } elseif ($script:LauncherHadError -and $script:LauncherLogPath) {
-        try {
-            Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
-            [System.Windows.Forms.MessageBox]::Show(
-                "Error — log saved to:`n$($script:LauncherLogPath)`n`nSend this file to support.",
-                'ACC Suite',
-                [System.Windows.Forms.MessageBoxButtons]::OK,
-                [System.Windows.Forms.MessageBoxIcon]::Error
-            ) | Out-Null
-        } catch {
-            Read-Host 'Press Enter to close'
+        } elseif ($script:LauncherLogPath) {
+            $logHint = "$($script:LauncherLogPath)"
+            if ($script:LauncherLocalLogPath) { $logHint += " / $($script:LauncherLocalLogPath)" }
+            Show-InlineLauncherError -Title 'ACC Suite' -Message "ACC Suite failed. Log: $logHint"
         }
     }
 }

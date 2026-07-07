@@ -43,6 +43,16 @@
 
 **Verdict (D-05/D-06 + mapper start):** The 3 screenshots are **sufficient to start** portal mapper scaffolding (nav path: tile → ACC → report folder; SSRS Browse UI; target report name). **Not sufficient** for field-level scrape config — still need: (1) which report(s) you open daily, (2) screenshot of **report parameters** + **result grid** with fields highlighted, (3) D-05 browser choice, D-06 session timeout, D-02 field table filled in. Use `npm run wfh:portal-discover` on work PC after manual login to produce `portal-map.json` (see `scripts/wfh/README.md`).
 
+**2026-07-08 — Portal Discover full capture (work PC → Mac):**
+
+| Artifact | Path | Notes |
+|----------|------|-------|
+| portal-map (full) | `change-requests/portal-samples/portal-map-2026-07-08-full.json` | `webSocketUsed: true`, **45 links**, folder browse chrome |
+| portal-summary | `change-requests/portal-samples/portal-summary-2026-07-08-full.html` | Human-readable index |
+| selector notes | `change-requests/portal-samples/PORTAL_SELECTORS_2026-07-08.md` | P8-010 / P8-019 engineering handoff |
+
+**Captured page:** `ACC District Nursing Visits` folder (`.../report/DHB-wide/ACC/ACC%20District%20Nursing%20Visits`). Breadcrumb links: Home → DHB-wide → ACC. Aria-label selectors: `View`, `Search`, `Manage folder`, `New`, `Show hidden items`. **No report rows, parameters, or result grid** — chrome only. Prior partial sample (`portal-map-2026-07-08-partial.json`) had `webSocketUsed: false` and 0 links.
+
 **2026-07-08 — Word approval fixture (P8-020):** `approval-template.docx` added (same ACC sample template as PDF — George Bellingham / claim 10000000149). `mammoth` + `extractWordText()` wired; parse/classify matches PDF fixture in tests. No redaction needed (template sample data only).
 
 ---
@@ -199,11 +209,11 @@ List each **page + fields** you look up manually today:
 - [~] **D-07** Screenshot: login page → `change-requests/images/` → link: _not provided_
   - Have post-login tile grid: `acc-email-screenshot-1.png` (fixtures path above)
 
-- [~] **D-08** Screenshot: search / claim lookup page → link: `acc-email-screenshot-2.png`, `acc-email-screenshot-3.png`
-  - SSRS Browse + ACC folder + report list captured; **no opened report / parameter screen**
+- [x] **D-08** Screenshot: search / claim lookup page → link: `acc-email-screenshot-2.png`, `acc-email-screenshot-3.png` + `portal-map-2026-07-08-full.json`
+  - SSRS Browse + ACC folder + **ACC District Nursing Visits** folder chrome captured (45 links, WebSocket). **Still need:** opened report + parameter screen.
 
 - [~] **D-09** Screenshot: result row with fields you need highlighted → link: _still needed_
-  - Open **ACC District Nursing Visit** (or your daily report) and mark PO/claim/status columns
+  - Portal Discover reached folder view only. Open a **paginated report** inside Visits folder and capture parameter form + result grid (or second discover run on that page).
 
 ### D.3 IT constraints for portal automation
 

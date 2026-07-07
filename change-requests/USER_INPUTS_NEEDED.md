@@ -42,6 +42,7 @@
 | ID | Input needed | Default if silent | Phase |
 |----|--------------|-------------------|-------|
 | U-09 | ACC portal URLs used today (status check, PO, remittance) | Manual-only; no browser automation | P8-2 |
+| | **2026-07-08 — mostly complete:** Full `portal-map-2026-07-08-full.json` — base `http://cl-biprddb02/Reports_MSREPORT/`, nav `browse/DHB-wide/ACC`, target folder `ACC District Nursing Visits` (plural in URL/title). 45 SSRS chrome links + aria-label selectors. **Gap:** daily report name, parameter fields, result columns (D-09). See `change-requests/portal-samples/PORTAL_SELECTORS_2026-07-08.md`. | 🟡 Mostly complete |
 | U-10 | Email system — O365 Graph vs generic IMAP, shared mailbox vs personal | Folder-watch only in P8-0 | P8-1 |
 | U-11 | Portal credentials storage — OS keychain vs suite passphrase vault | Suite passphrase vault | P8-2 |
 | U-12 | Role model — admin / clerk / read-only / export-only | Admin + read-only | P4 |

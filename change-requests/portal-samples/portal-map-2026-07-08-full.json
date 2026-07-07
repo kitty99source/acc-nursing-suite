@@ -1,0 +1,322 @@
+{
+    "crawlEnabled": false,
+    "allTargets": [
+        {
+            "title": "ACC District Nursing Visits - SQL Server Reporting Services",
+            "url": "http://cl-biprddb02/Reports_MSREPORT/report/DHB-wide/ACC/ACC%20District%20Nursing%20Visits",
+            "id": "7E47ED7DE21E2B88CAD51C1E61D9E243",
+            "type": "page"
+        },
+        {
+            "title": "New tab",
+            "url": "edge://newtab/",
+            "id": "3CFF45602A1C0C91AD0D125E1C534C21",
+            "type": "other"
+        },
+        {
+            "title": "Service Worker https://ntp.msn.com/edge/ntp/service-worker.js?bundles=latest&amp;enableOfficeRoutes=true&amp;riverAgeMinutes=2880&amp;navAgeMinutes=2880&amp;networkTimeoutSeconds=5&amp;bgTaskNetworkTimeoutSeconds=8&amp;enableNetworkFirst=true&amp;enableEmptySectionRoute=true&amp;enableNavPreload=true&amp;enableFallbackVerticalsFeed=true&amp;enableEnterprisePrecache=true&amp;noCacheLayoutTemplates=true&amp;enableStaticAdsRouting=true&amp;enableWidgetsRegion=true",
+            "url": "https://ntp.msn.com/edge/ntp/service-worker.js?bundles=latest&enableOfficeRoutes=true&riverAgeMinutes=2880&navAgeMinutes=2880&networkTimeoutSeconds=5&bgTaskNetworkTimeoutSeconds=8&enableNetworkFirst=true&enableEmptySectionRoute=true&enableNavPreload=true&enableFallbackVerticalsFeed=true&enableEnterprisePrecache=true&noCacheLayoutTemplates=true&enableStaticAdsRouting=true&enableWidgetsRegion=true",
+            "id": "0C39EA31E6C3469C94A5BDE91AE7741E",
+            "type": "service_worker"
+        },
+        {
+            "title": "",
+            "url": "",
+            "id": "4E9972ECF637ADBD6DD4BE34FD8D0320",
+            "type": "worker"
+        }
+    ],
+    "webSocketError": null,
+    "version": 1,
+    "notes": [
+        "Review portal-map.json before commit - redact any patient names or identifiers.",
+        "Do not store portal credentials in this file."
+    ],
+    "webSocketUsed": true,
+    "cdpUrl": "http://127.0.0.1:9222",
+    "generator": "portal-discover.ps1",
+    "pageCount": 1,
+    "pages": [
+        {
+            "depth": 0,
+            "url": "http://cl-biprddb02/Reports_MSREPORT/report/DHB-wide/ACC/ACC%20District%20Nursing%20Visits",
+            "title": "ACC District Nursing Visits - SQL Server Reporting Services",
+            "headings": [],
+            "breadcrumbs": [],
+            "links": [
+                {
+                    "text": "Skip to content",
+                    "href": "javascript:void(0);",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Toggle navigation",
+                    "href": "javascript:void(0);",
+                    "role": "button",
+                    "selector": ""
+                },
+                {
+                    "text": "Health and Business Intelligence Reports (Health Analytics)",
+                    "href": "browse/",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "",
+                    "href": "javascript:void(0);",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "My subscriptions",
+                    "href": "manage/subscriptions/browse",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "",
+                    "href": "javascript:void(0);",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Mobile Report Publisher",
+                    "href": "https://go.microsoft.com/fwlink/?LinkID=734969",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Report Builder",
+                    "href": "https://go.microsoft.com/fwlink/?LinkId=734968",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Power BI Desktop",
+                    "href": "https://go.microsoft.com/fwlink/?LinkId=734766",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Power BI Mobile",
+                    "href": "https://go.microsoft.com/fwlink/?LinkId=717195",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "0",
+                    "href": "javascript:void(0);",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "",
+                    "href": "javascript:void(0);",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Getting started",
+                    "href": "https://go.microsoft.com/fwlink/?LinkId=718201",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Community",
+                    "href": "https://go.microsoft.com/fwlink/?LinkId=718204",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "About SQL Server Reporting Services",
+                    "href": "javascript:void(0);",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Download",
+                    "href": "javascript:void(0);",
+                    "role": "button",
+                    "selector": ""
+                },
+                {
+                    "text": "Help",
+                    "href": "javascript:void(0);",
+                    "role": "button",
+                    "selector": ""
+                },
+                {
+                    "text": "Back",
+                    "href": "javascript:void(0);",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Report Builder",
+                    "href": "https://go.microsoft.com/fwlink/?LinkId=734968",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Mobile Report Publisher",
+                    "href": "https://go.microsoft.com/fwlink/?LinkID=734969",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Power BI Desktop",
+                    "href": "https://go.microsoft.com/fwlink/?LinkId=734766",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Power BI Mobile",
+                    "href": "https://go.microsoft.com/fwlink/?LinkId=717195",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Back",
+                    "href": "javascript:void(0);",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Getting started",
+                    "href": "https://go.microsoft.com/fwlink/?LinkId=718201",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Community",
+                    "href": "https://go.microsoft.com/fwlink/?LinkId=718204",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "About SQL Server Reporting Services",
+                    "href": "javascript:void(0);",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Favorites",
+                    "href": "favorites",
+                    "role": "button",
+                    "selector": ""
+                },
+                {
+                    "text": "Browse",
+                    "href": "browse/",
+                    "role": "button",
+                    "selector": ""
+                },
+                {
+                    "text": "New",
+                    "href": "javascript:void(0);",
+                    "role": "a",
+                    "selector": "[aria-label=\"New\"]"
+                },
+                {
+                    "text": "Folder",
+                    "href": "javascript:void(0);",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "KPI",
+                    "href": "javascript:void(0);",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Mobile Report",
+                    "href": "MobileReportPublisher:Action=New&FolderPath=%2FDHB-wide%2FACC%2FACC%20District%20Nursing%20Visits&ItemType=MobileReport&Endpoint=http%3A%2F%2Fcl-biprddb02%3A80%2FReports_MSREPORT",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Paginated Report",
+                    "href": "ReportBuilder:Action=New&FolderPath=%2FDHB-wide%2FACC%2FACC%20District%20Nursing%20Visits&ItemType=report&Endpoint=http%3A%2F%2Fcl-biprddb02%3A80%2FReportServer_MSREPORT",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Dataset",
+                    "href": "ReportBuilder:Action=New&FolderPath=%2FDHB-wide%2FACC%2FACC%20District%20Nursing%20Visits&ItemType=dataset&Endpoint=http%3A%2F%2Fcl-biprddb02%3A80%2FReportServer_MSREPORT",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Data Source",
+                    "href": "javascript:void(0);",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Upload",
+                    "href": "",
+                    "role": "button",
+                    "selector": ""
+                },
+                {
+                    "text": "Manage folder",
+                    "href": "javascript:void(0);",
+                    "role": "a",
+                    "selector": "[aria-label=\"Manage folder\"]"
+                },
+                {
+                    "text": "View",
+                    "href": "javascript:void(0);",
+                    "role": "a",
+                    "selector": "[aria-label=\"View\"]"
+                },
+                {
+                    "text": "Tiles",
+                    "href": "javascript:void(0);",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "List",
+                    "href": "javascript:void(0);",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "Show hidden items",
+                    "href": "javascript:void(0);",
+                    "role": "checkbox",
+                    "selector": "[aria-label=\"Show hidden items\"]"
+                },
+                {
+                    "text": "Search",
+                    "href": "javascript:void(0);",
+                    "role": "a",
+                    "selector": "[aria-label=\"Search\"]"
+                },
+                {
+                    "text": "Home",
+                    "href": "browse/",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "DHB-wide",
+                    "href": "browse/DHB-wide",
+                    "role": "a",
+                    "selector": ""
+                },
+                {
+                    "text": "ACC",
+                    "href": "browse/DHB-wide/ACC",
+                    "role": "a",
+                    "selector": ""
+                }
+            ],
+            "accessibility": null,
+            "capturedAt": "2026-07-07T23:15:09.5607281Z"
+        }
+    ]
+}

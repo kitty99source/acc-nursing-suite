@@ -60,7 +60,21 @@ Status legend: [ ] todo · [~] in progress · [x] done
 
 **Tests:** 95 passing (`+10` migrations, ErrorBoundary, staging SLA, storage migrate).
 
-**Next:** P3-005 Excel rollback, P5-001 corpus, P5-002 entry audit, P8-004 batch approve, P2-006 modal layout.
+**Next:** P3-005 Excel rollback, P5-001 corpus, P5-002 entry audit, P2-006 modal layout.
+
+---
+
+## P7 ops runbook + P8-004 batch approve (2026-07-08) [x]
+
+**P7 delivered (partial):**
+
+| Task | Delivered |
+|------|-----------|
+| P7-001 | `change-requests/RUNBOOK.md` — backup routine, corrupt load recovery, I: drive `dist/` update, portal discover for non-tech users, P7-003 diagnostics blurb (planned) |
+
+**P8-004 delivered:** `src/lib/hrqBatch.ts` + Review Queue **Approve selected** — multi-select high-confidence `letter-import-pending` items with `parsedPreview`; confirm dialog lists every patient name; commits via store without LetterImportModal. **Batch ready** badge on eligible rows.
+
+**Tests:** 134 passing (`+11` hrqBatch eligibility + J-26 three-commit routing).
 
 ---
 

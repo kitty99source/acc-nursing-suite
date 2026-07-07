@@ -2,7 +2,6 @@
 # Dot-source from launch.ps1 / portal-discover.ps1 / folder-watch.ps1.
 
 $script:LauncherLogPath = $null
-$script:LauncherLocalLogPath = $null
 $script:LauncherLogPrefix = 'launcher'
 $script:LauncherHadError = $false
 $script:LauncherShowSuccessOnExit = $true
@@ -70,7 +69,6 @@ function Initialize-LauncherLog {
     Initialize-LauncherUi
 
     $launcherDir = Get-LauncherScriptDir
-    $script:LauncherLocalLogPath = Join-Path $launcherDir 'launch-error.log'
 
     $logDir = Join-Path $env:USERPROFILE 'ACC-Suite\logs'
     try {
@@ -100,11 +98,6 @@ function Write-LauncherLog {
             Add-Content -LiteralPath $script:LauncherLogPath -Value $line -Encoding UTF8
         }
     } catch {}
-    try {
-        if ($script:LauncherLocalLogPath) {
-            Add-Content -LiteralPath $script:LauncherLocalLogPath -Value $line -Encoding UTF8
-        }
-    } catch {}
     try { Write-Host $line } catch {}
 }
 
@@ -128,13 +121,11 @@ function Complete-LauncherLog {
     )
     if (-not $script:LauncherLogPath) { return }
 
-    $localHint = if ($script:LauncherLocalLogPath) { "`nAlso: $($script:LauncherLocalLogPath)" } else { '' }
-
     if ($script:LauncherHadError) {
         Write-LauncherLog "=== finished with errors ==="
         Show-LauncherMessageBox -Title $Title -Icon Error -Message @"
 Error — log saved to:
-$($script:LauncherLogPath)$localHint
+$($script:LauncherLogPath)
 
 Send this file to support.
 "@
@@ -142,7 +133,7 @@ Send this file to support.
         Write-LauncherLog "=== finished successfully ==="
         Show-LauncherMessageBox -Title $Title -Icon Information -Message @"
 Done — log saved to:
-$($script:LauncherLogPath)$localHint
+$($script:LauncherLogPath)
 "@
     } else {
         Write-LauncherLog "=== finished successfully (server still running or success message suppressed) ==="
@@ -152,13 +143,12 @@ $($script:LauncherLogPath)$localHint
 function Show-LauncherStartupSuccess {
     param([string]$Title = 'ACC Suite')
     if (-not $script:LauncherLogPath) { return }
-    $localHint = if ($script:LauncherLocalLogPath) { "`nAlso: $($script:LauncherLocalLogPath)" } else { '' }
     Write-LauncherLog "Startup completed successfully"
     Show-LauncherMessageBox -Title $Title -Icon Information -Message @"
 Done — ACC Suite is running.
 
 Log saved to:
-$($script:LauncherLogPath)$localHint
+$($script:LauncherLogPath)
 
 Keep this window open while you use the app.
 "@

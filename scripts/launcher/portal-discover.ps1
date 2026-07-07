@@ -27,6 +27,7 @@ try {
         . $logHelper
         Initialize-LauncherLog -Prefix 'portal-discover' -ShowSuccessOnExit:$false | Out-Null
         $script:LauncherLogEnabled = $true
+        if (Get-Command Show-LauncherLogPath -ErrorAction SilentlyContinue) { Show-LauncherLogPath }
     }
 } catch {}
 

@@ -32,6 +32,7 @@ try {
         . $logHelper
         Initialize-LauncherLog -Prefix 'acc-suite' -ShowSuccessOnExit:$false | Out-Null
         $script:LauncherLogEnabled = $true
+        if (Get-Command Show-LauncherLogPath -ErrorAction SilentlyContinue) { Show-LauncherLogPath }
     }
 } catch {}
 

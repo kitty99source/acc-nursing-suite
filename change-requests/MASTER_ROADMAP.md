@@ -1063,6 +1063,7 @@ flowchart TB
   - Optimization tie-in: PRODUCTION_READINESS §5
   - Routing verification: —
   - Rollback: —
+  - **Delivered 2026-07-08:** `RUNBOOK.md` — backup, corrupt load, I: drive deploy, portal discover (text steps; screenshots UAT)
 
 - [ ] **P7-002: Ops runbook — OCR failure & scanned letters**
   - Module/route: `docs/ops/letter-import.md`
@@ -1173,6 +1174,7 @@ flowchart TB
   - Optimization tie-in: SUPER_WFH §B
   - Routing verification: batch 3 letters → 3 commits
   - Rollback: —
+  - **Delivered 2026-07-08:** `hrqBatch.ts`; Review Queue batch approve with mandatory patient name list; J-26 unit tests
 
 - [ ] **P8-005: Orchestrator pause switch**
   - Module/route: Settings, daemon

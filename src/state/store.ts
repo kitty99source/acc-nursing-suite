@@ -125,6 +125,14 @@ export interface RecoveryState {
   integrityWarnings?: string[];
 }
 
+export type TopBarFlashTone = 'good' | 'danger' | 'warn';
+
+export interface TopBarFlashMessage {
+  text: string;
+  tone: TopBarFlashTone;
+  nonce: number;
+}
+
 interface StoreState {
   ready: boolean;
   data: AppData;
@@ -149,6 +157,8 @@ interface StoreState {
     stagingItemId?: string;
     onImportComplete?: () => void;
   };
+  /** Cross-component TopBar flash (e.g. post letter import). */
+  topBarFlash?: TopBarFlashMessage;
 
   // lifecycle
   init: () => Promise<void>;
@@ -163,6 +173,9 @@ interface StoreState {
   // cross-module navigation intent
   setFocus: (req: Omit<FocusRequest, 'nonce'>) => void;
   clearFocus: () => void;
+
+  showTopBarFlash: (text: string, tone?: TopBarFlashTone) => void;
+  clearTopBarFlash: () => void;
 
   // ACC letter import (approval / decline PDFs)
   openLetterImport: (file: File, opts?: { context?: LetterImportContext; prefillOnly?: boolean; onPrefill?: (patches: ReturnType<typeof prefillFromParsed>) => void; entryPoint?: import('../components/LetterImportButton').LetterImportEntryPoint; stagingItemId?: string; onImportComplete?: () => void }) => void;
@@ -605,6 +618,10 @@ export const useStore = create<StoreState>((set, get) => ({
 
   setFocus: (req) => set({ focus: { ...req, nonce: Date.now() } }),
   clearFocus: () => set({ focus: undefined }),
+
+  showTopBarFlash: (text, tone = 'good') =>
+    set({ topBarFlash: { text, tone, nonce: Date.now() } }),
+  clearTopBarFlash: () => set({ topBarFlash: undefined }),
 
   openLetterImport: (file, opts) =>
     set({

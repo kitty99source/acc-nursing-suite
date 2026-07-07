@@ -60,7 +60,28 @@ Status legend: [ ] todo · [~] in progress · [x] done
 
 **Tests:** 95 passing (`+10` migrations, ErrorBoundary, staging SLA, storage migrate).
 
-**Next:** P3-004 backup manifest, P3-005 Excel rollback, P5 letter UX critical path, P8-004 batch approve, P2-006 modal layout.
+**Next:** P3-005 Excel rollback, P5-001 corpus, P5-002 entry audit, P8-004 batch approve, P2-006 modal layout.
+
+---
+
+## P5 Letter import critical UX + P3-004 backup (2026-07-08) [x]
+
+**P5 critical path delivered:**
+
+| Task | Delivered |
+|------|-----------|
+| P5-003 | Parse-fail error modal — Try another / Attach doc only; no blank modal during auto-commit |
+| P5-004 | Success panel (Open claim / View approvals) + `setFocus`; TopBar flash via `showTopBarFlash` store hook |
+| P5-005 | Compliance `create-approval` → Approvals module; **Import ACC letter** button with `entryPoint: 'compliance'` |
+| P5-006 | Save everything disabled when blocking issues; modal title shows "N items to fix" |
+| P5-007 | Prefill vs full-save labels + hints; **Import & save now** on claim prefill path |
+| P5-008 | Matched patient + body name mismatch = warning not blocker; stored name used |
+| P5-009 | "Matched {name} (NHI …)" banner; dropdowns pre-selected |
+| P5-010 | Duplicate guard: hash + size + claim scope; confirm before commit |
+
+**P3-004 delivered:** `backup.ts` manifest now includes `dataJsonSha256` + per-blob SHA-256; `readBackupZip` validates before apply.
+
+**Tests:** 98 passing (`+3` backup checksums). Build + verify-build OK.
 
 ---
 

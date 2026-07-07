@@ -15,7 +15,12 @@ export type LetterImportEntryPoint =
   | 'claim-documents'
   | 'prefill'
   | 'global'
+  | 'compliance'
   | 'review-queue';
+
+/** Hint shown under prefill-only buttons (new patient / claim forms). */
+export const PREFILL_BUTTON_HINT =
+  'Prefill from letter copies fields into this form only — nothing is saved until you click Save here.';
 
 /** Tooltip for full-save entry points (Patients list, Approvals, Declines). */
 export const LETTER_IMPORT_FULL_TOOLTIP =

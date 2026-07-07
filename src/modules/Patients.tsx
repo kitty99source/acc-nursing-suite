@@ -29,6 +29,7 @@ import {
   LetterImportButton,
   LETTER_IMPORT_FULL_TOOLTIP,
   PREFILL_FROM_LETTER_LABEL,
+  PREFILL_BUTTON_HINT,
 } from '../components/LetterImportButton';
 import type {
   ApprovalServiceCode,
@@ -284,6 +285,7 @@ export function Patients() {
           </>
         }
       >
+        <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>{PREFILL_BUTTON_HINT}</p>
         <div className="grid sm:grid-cols-2 gap-3">
           <Field label="Full name" required>
             <TextInput value={patientForm.name} onChange={(e) => setPatientForm({ ...patientForm, name: e.target.value })} />
@@ -442,6 +444,7 @@ function PatientDetail({
           </>
         }
       >
+        <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>{PREFILL_BUTTON_HINT}</p>
         <div className="grid sm:grid-cols-2 gap-3">
           <Field label="Claim number" required>
             <TextInput value={claimForm.claimNumber} onChange={(e) => setClaimForm({ ...claimForm, claimNumber: e.target.value })} />

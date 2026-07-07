@@ -8,8 +8,14 @@
 
 import JSZip from 'jszip';
 import type { AppData } from '../types';
+import { hashBlob } from './letterImport';
 
 const MANIFEST_FORMAT = { format: 'accdata-backup', version: 1 } as const;
+
+export interface BackupBlobChecksum {
+  sizeBytes: number;
+  sha256: string;
+}
 
 export interface BackupManifest {
   format: 'accdata-backup';
@@ -17,6 +23,18 @@ export interface BackupManifest {
   documentMetadataCount: number;
   documentBlobCount: number;
   dataJsonBytes: number;
+  /** SHA-256 of data.json UTF-8 bytes (P3-004). */
+  dataJsonSha256: string;
+  /** Per-document blob checksums keyed by document id. */
+  blobs: Record<string, BackupBlobChecksum>;
+}
+
+async function sha256Text(text: string): Promise<string> {
+  const buf = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 export async function buildBackupZip(
@@ -26,6 +44,7 @@ export async function buildBackupZip(
   const zip = new JSZip();
   const dataJson = JSON.stringify(data, null, 2);
   let blobCount = 0;
+  const blobChecksums: Record<string, BackupBlobChecksum> = {};
   const folder = zip.folder('documents');
   if (folder) {
     for (const doc of data.documents) {
@@ -33,6 +52,10 @@ export async function buildBackupZip(
       if (blob) {
         folder.file(doc.id, blob);
         blobCount++;
+        blobChecksums[doc.id] = {
+          sizeBytes: blob.size,
+          sha256: await hashBlob(blob),
+        };
       }
     }
   }
@@ -41,6 +64,8 @@ export async function buildBackupZip(
     documentMetadataCount: data.documents.length,
     documentBlobCount: blobCount,
     dataJsonBytes: dataJson.length,
+    dataJsonSha256: await sha256Text(dataJson),
+    blobs: blobChecksums,
   };
   zip.file('manifest.json', JSON.stringify(manifest, null, 2));
   zip.file('data.json', dataJson);
@@ -52,12 +77,48 @@ export interface BackupContents {
   blobs: Map<string, Blob>;
 }
 
+async function validateBackupManifest(
+  zip: JSZip,
+  manifest: Partial<BackupManifest>,
+  dataJsonText: string,
+): Promise<void> {
+  if (manifest.dataJsonSha256) {
+    const actual = await sha256Text(dataJsonText);
+    if (actual !== manifest.dataJsonSha256) {
+      throw new Error('Full backup failed checksum validation (data.json was modified or corrupt).');
+    }
+  }
+
+  if (!manifest.blobs || Object.keys(manifest.blobs).length === 0) return;
+
+  const folder = zip.folder('documents');
+  if (!folder) {
+    throw new Error('Full backup failed checksum validation (document blobs missing).');
+  }
+
+  for (const [docId, expected] of Object.entries(manifest.blobs)) {
+    const entry = folder.file(docId);
+    if (!entry) {
+      throw new Error(`Full backup failed checksum validation (missing document blob ${docId}).`);
+    }
+    const blob = await entry.async('blob');
+    if (blob.size !== expected.sizeBytes) {
+      throw new Error(`Full backup failed checksum validation (size mismatch for ${docId}).`);
+    }
+    const sha256 = await hashBlob(blob);
+    if (sha256 !== expected.sha256) {
+      throw new Error(`Full backup failed checksum validation (hash mismatch for ${docId}).`);
+    }
+  }
+}
+
 export async function readBackupZip(input: Blob): Promise<BackupContents> {
   const zip = await JSZip.loadAsync(input);
   const manifestFile = zip.file('manifest.json');
+  let manifest: Partial<BackupManifest> | undefined;
   if (manifestFile) {
     try {
-      const manifest = JSON.parse(await manifestFile.async('string')) as Partial<BackupManifest>;
+      manifest = JSON.parse(await manifestFile.async('string')) as Partial<BackupManifest>;
       if (manifest.format !== MANIFEST_FORMAT.format) {
         throw new Error('This ZIP is not a valid ACC full backup (unrecognised manifest).');
       }
@@ -72,14 +133,19 @@ export async function readBackupZip(input: Blob): Promise<BackupContents> {
   if (!dataFile) {
     throw new Error('This ZIP is not a valid full backup (data.json is missing).');
   }
+  const dataJsonText = await dataFile.async('string');
   let data: AppData;
   try {
-    data = JSON.parse(await dataFile.async('string')) as AppData;
+    data = JSON.parse(dataJsonText) as AppData;
   } catch {
     throw new Error('This ZIP is not a valid full backup (data.json is corrupt).');
   }
   if (!Array.isArray(data.patients)) {
     throw new Error('This ZIP is not a valid full backup (data.json is missing patients).');
+  }
+
+  if (manifest) {
+    await validateBackupManifest(zip, manifest, dataJsonText);
   }
 
   const blobs = new Map<string, Blob>();

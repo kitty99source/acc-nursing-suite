@@ -517,7 +517,7 @@ flowchart TB
   - Rollback: migration revert script
   - **Delivered 2026-07-08:** `FILE_VERSION` 2; v1→v2 migration; `DowngradeBlockedError`
 
-- [ ] **P3-004: Backup verification manifest**
+- [x] **P3-004: Backup verification manifest**
   - Module/route: `backup.ts`, `ExportCenter.tsx`
   - Depends on: P0-008
   - Acceptance criteria: ZIP includes checksums per blob + data.json hash; import validates before apply
@@ -682,7 +682,7 @@ flowchart TB
   - Routing verification: §5 matrix all green
   - Rollback: —
 
-- [ ] **P5-003: Error modal — never blank (#2)**
+- [x] **P5-003: Error modal — never blank (#2)**
   - Module/route: `LetterImportModal.tsx`
   - Depends on: —
   - Acceptance criteria: `!parsed` after load → Error state with Try another | Attach doc only; never `return null` while `letterImport` set
@@ -691,7 +691,7 @@ flowchart TB
   - Routing verification: all entry points
   - Rollback: —
 
-- [ ] **P5-004: Post-save success + navigation (#1)**
+- [x] **P5-004: Post-save success + navigation (#1)**
   - Module/route: `LetterImportModal.tsx`, `store.ts` commits, `TopBar.tsx` or `useFlash`
   - Depends on: —
   - Acceptance criteria: success view with Open claim / View approvals; `setFocus` fired; **TopBar flash** wired via shared hook
@@ -700,7 +700,7 @@ flowchart TB
   - Routing verification: Approvals import → success → Approvals list
   - Rollback: —
 
-- [ ] **P5-005: Compliance fix routing complete (#8)**
+- [x] **P5-005: Compliance fix routing complete (#8)**
   - Module/route: `Compliance.tsx`
   - Depends on: —
   - Acceptance criteria: `create-approval` → `setFocus({ module: 'approvals' })` not file picker; `request-po` → patients claim; separate **"Import approval letter"** button with `entryPoint: 'compliance'`
@@ -709,7 +709,7 @@ flowchart TB
   - Routing verification: Compliance fix buttons per LETTER_IMPORT_UX.md
   - Rollback: —
 
-- [ ] **P5-006: Save gating on blockers (#9)**
+- [x] **P5-006: Save gating on blockers (#9)**
   - Module/route: `LetterImportModal.tsx`
   - Depends on: —
   - Acceptance criteria: Save everything disabled when `blockers.length > 0`; header shows "N items to fix"
@@ -718,7 +718,7 @@ flowchart TB
   - Routing verification: missing PO → save disabled
   - Rollback: —
 
-- [ ] **P5-007: Prefill vs full save labeling (#3)**
+- [x] **P5-007: Prefill vs full save labeling (#3)**
   - Module/route: `Patients.tsx`, `LetterImportButton.tsx`
   - Depends on: P5-002
   - Acceptance criteria: modals use **"Prefill from letter"**; full save uses **"Import ACC letter (PDF)"**; hint text under button; optional **"Import & save now"** on claim modal
@@ -727,7 +727,7 @@ flowchart TB
   - Routing verification: Patients new patient → prefill only
   - Rollback: —
 
-- [ ] **P5-008: Name mismatch warning when matched (#4)**
+- [x] **P5-008: Name mismatch warning when matched (#4)**
   - Module/route: `letterImport.ts` `scoreApproval`, `scoreDecline`
   - Depends on: —
   - Acceptance criteria: NHI+claim match + !ambiguous → body name mismatch = warning not blocker; auto-commit off (P0-005) uses stored name
@@ -736,7 +736,7 @@ flowchart TB
   - Routing verification: matched patient → save allowed with warning
   - Rollback: —
 
-- [ ] **P5-009: Smart match banner (#5)**
+- [x] **P5-009: Smart match banner (#5)**
   - Module/route: `LetterImportModal.tsx`
   - Depends on: P5-008
   - Acceptance criteria: "Matched {name} (NHI {nhi})" banner; dropdowns pre-selected; name syncs to stored patient
@@ -745,7 +745,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: —
 
-- [ ] **P5-010: Duplicate import guard — hash + size (#6)**
+- [x] **P5-010: Duplicate import guard — hash + size (#6)**
   - Module/route: `letterImport.ts` `isDuplicateLetterImport`, `LetterImportModal.tsx`
   - Depends on: —
   - Acceptance criteria: duplicate = hash + size + claim scope; filename-only insufficient; confirm dialog before commit

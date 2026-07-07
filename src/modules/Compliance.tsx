@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useStore } from '../state/store';
 import { SectionTitle, Card, Badge, Select, EmptyState, StatCard } from '../components/ui';
 import { IconShield } from '../components/icons';
+import { LetterImportButton, LETTER_IMPORT_FULL_TOOLTIP } from '../components/LetterImportButton';
 import {
   complianceSummary,
   COMPLIANCE_RULES,
@@ -99,6 +100,12 @@ export function Compliance() {
       <SectionTitle
         title="Flagged — Contract Compliance"
         subtitle="Live checks of your claims and Billing Log against the ACC Nursing Service Schedule & Operational Guidelines. Fix issues in one click."
+        actions={
+          <LetterImportButton
+            opts={{ entryPoint: 'compliance' }}
+            title={LETTER_IMPORT_FULL_TOOLTIP}
+          />
+        }
       />
 
       <div className="grid sm:grid-cols-3 gap-3 mb-4">

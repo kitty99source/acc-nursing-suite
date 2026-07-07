@@ -7,8 +7,9 @@ import {
   ns06Watch,
   type PackageInput,
 } from '../lib/calculator';
-import type { Interruption } from '../types';
-import { formatCurrency, serviceCodeLabel } from '../lib/serviceCodes';
+import type { Interruption, ServiceCode } from '../types';
+import { useStore } from '../state/store';
+import { formatCurrency, serviceCodeLabel, getRate, SERVICE_CODES } from '../lib/serviceCodes';
 
 export function PackageCalculatorPanel({
   initial,
@@ -17,6 +18,7 @@ export function PackageCalculatorPanel({
   initial?: Partial<PackageInput>;
   onApply?: (recommended: string, value: number) => void;
 }) {
+  const rates = useStore((s) => s.data.settings.serviceRates);
   const [day1, setDay1] = useState(initial?.day1 ?? '');
   const [ongoing, setOngoing] = useState(false);
   const [lastConsult, setLastConsult] = useState(initial?.lastConsult ?? '');
@@ -25,13 +27,16 @@ export function PackageCalculatorPanel({
 
   const determination = useMemo(() => {
     if (!day1) return null;
-    return determinePackage({
-      day1,
-      lastConsult: ongoing ? undefined : lastConsult || undefined,
-      consultCount,
-      interruptions,
-    });
-  }, [day1, ongoing, lastConsult, consultCount, interruptions]);
+    return determinePackage(
+      {
+        day1,
+        lastConsult: ongoing ? undefined : lastConsult || undefined,
+        consultCount,
+        interruptions,
+      },
+      rates,
+    );
+  }, [day1, ongoing, lastConsult, consultCount, interruptions, rates]);
 
   function addInterruption() {
     setInterruptions((prev) => [...prev, { start: '', end: '' }]);
@@ -78,7 +83,7 @@ export function PackageCalculatorPanel({
           <div>
             <div className="flex items-center justify-between mb-1">
               <span className="label mb-0">Interruptions (days still counted in span)</span>
-              <button className="btn btn-ghost text-xs py-1 px-2" onClick={addInterruption}>
+              <button className="btn btn-sm" onClick={addInterruption}>
                 <IconPlus width={14} height={14} /> Add
               </button>
             </div>
@@ -102,7 +107,7 @@ export function PackageCalculatorPanel({
                     onChange={(e) => updateInterruption(idx, { end: e.target.value })}
                   />
                   <button
-                    className="btn btn-ghost p-1.5"
+                    className="btn btn-icon btn-icon-danger"
                     onClick={() => removeInterruption(idx)}
                     aria-label="Remove interruption"
                   >
@@ -184,18 +189,22 @@ export function PackageCalculatorPanel({
 }
 
 function SubsequentInjuryTool() {
+  const rates = useStore((s) => s.data.settings.serviceRates);
   const [reassessmentDate, setReassessmentDate] = useState('');
   const [lastConsult, setLastConsult] = useState('');
   const [consultCount, setConsultCount] = useState(0);
 
   const result = useMemo(() => {
     if (!reassessmentDate) return null;
-    return reclassifySubsequentInjury({
-      reassessmentDate,
-      lastConsult: lastConsult || undefined,
-      consultCount,
-    });
-  }, [reassessmentDate, lastConsult, consultCount]);
+    return reclassifySubsequentInjury(
+      {
+        reassessmentDate,
+        lastConsult: lastConsult || undefined,
+        consultCount,
+      },
+      rates,
+    );
+  }, [reassessmentDate, lastConsult, consultCount, rates]);
 
   return (
     <Card>
@@ -272,30 +281,43 @@ function NS06WatchTool() {
   );
 }
 
+const RATE_REFERENCE_BASIS: Partial<Record<ServiceCode, string>> = {
+  NS01: 'package · 1–13 days · min 1 consult',
+  NS02: 'package · 14–42 days · min 6 consults',
+  NS03: 'package · 43–105 days · min 12 consults',
+  NS04: 'per consult · approval required',
+  NS05: 'per HOUR · approval required',
+  NS06: 'per consult · notify (ACC179)',
+  NS07: 'per consult · first per claim no approval',
+  NS20: 'comprehensive assessment',
+};
+
 function RateReference() {
-  const codes: { code: string; rate: string; basis: string }[] = [
-    { code: serviceCodeLabel('NS01'), rate: '$516.11', basis: 'package · 1–13 days · min 1 consult' },
-    { code: serviceCodeLabel('NS02'), rate: '$1,173.13', basis: 'package · 14–42 days · min 6 consults' },
-    { code: serviceCodeLabel('NS03'), rate: '$2,275.42', basis: 'package · 43–105 days · min 12 consults' },
-    { code: serviceCodeLabel('NS04'), rate: '$109.69', basis: 'per consult · approval required' },
-    { code: serviceCodeLabel('NS05'), rate: '$98.58', basis: 'per HOUR · approval required' },
-    { code: serviceCodeLabel('NS06'), rate: '$37.16', basis: 'per consult · notify (ACC179)' },
-    { code: serviceCodeLabel('NS07'), rate: '$106.86', basis: 'per consult · first per claim no approval' },
-    { code: serviceCodeLabel('NS20'), rate: '$591.78', basis: 'comprehensive assessment' },
-  ];
+  const settings = useStore((s) => s.data.settings);
+  const codes = Object.keys(RATE_REFERENCE_BASIS) as ServiceCode[];
   return (
     <Card>
       <h3 className="font-semibold mb-3">Rate reference (excl GST)</h3>
       <div className="space-y-1.5 text-sm">
-        {codes.map((c) => (
-          <div key={c.code} className="flex items-center justify-between gap-3">
-            <span className="truncate">{c.code}</span>
-            <span className="shrink-0 font-semibold">{c.rate}</span>
+        {codes.map((code) => (
+          <div key={code} className="flex items-center justify-between gap-3">
+            <span className="truncate">
+              {serviceCodeLabel(code)}
+              <span className="block text-xs" style={{ color: 'var(--muted)' }}>
+                {RATE_REFERENCE_BASIS[code]}
+              </span>
+            </span>
+            <span className="shrink-0 font-semibold">
+              {SERVICE_CODES[code].basis === 'actual'
+                ? 'actual cost'
+                : formatCurrency(getRate(code, settings))}
+            </span>
           </div>
         ))}
         <p className="text-xs pt-2" style={{ color: 'var(--muted)' }}>
-          All packages cap at 25 consults — consults 26+ bill as NS04. Travel (NSTD10/NSTT1/NSTT1D/NSAC)
-          only with NS05/NS07/NS20.
+          Rates come from your editable contract pricing (Settings → Contract pricing). All packages
+          cap at 25 consults — consults 26+ bill as NS04. Travel (NSTD10/NSTT1/NSTT1D/NSAC) only with
+          NS05/NS07/NS20.
         </p>
       </div>
     </Card>

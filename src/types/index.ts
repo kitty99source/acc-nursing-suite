@@ -3,6 +3,11 @@
 // All dates are stored as ISO date strings ("YYYY-MM-DD") unless noted.
 // ============================================================================
 
+// Value import used only to seed DEFAULT_SETTINGS below. serviceCodes.ts imports
+// this module with `import type` only, so this is a one-way runtime dependency
+// (no import cycle at runtime).
+import { ALL_SERVICE_CODES, DEFAULT_RATES } from '../lib/serviceCodes';
+
 export type ServiceCode =
   | 'NS01'
   | 'NS02'
@@ -61,6 +66,9 @@ export interface ServiceLine {
   recommendedPackage?: string;
   overridePackage?: ServiceCode;
   overrideReason?: string;
+  // For approval-based codes (NS04/NS05) the line links to an Approval record
+  // instead of being driven by the package date fields above.
+  approvalId?: string;
 }
 
 export type ApprovalServiceCode = 'NS04' | 'NS05';
@@ -78,6 +86,10 @@ export interface Approval {
   accEmailedRenewalDate?: string; // ISO date
   poNumber: string;
   notes: string;
+  /** Latest period for billing/expiry; older imported rows are historical. */
+  recordStatus?: 'current' | 'historical';
+  /** IndexedDB document id when imported from a letter PDF. */
+  sourceDocumentId?: string;
   // Unrecognised columns absorbed during Excel import, preserved for round-trip.
   customFields?: Record<string, string>;
 }
@@ -130,6 +142,8 @@ export type DeclineStatus =
 
 export interface Decline {
   id: string;
+  patientId?: string;
+  claimId?: string;
   patientName: string;
   claimNumber: string;
   declineReceivedDate: string; // ISO date
@@ -141,6 +155,7 @@ export interface Decline {
   dateOutcomeReceived?: string; // ISO date
   status: DeclineStatus;
   notes: string;
+  sourceDocumentId?: string;
   // Unrecognised columns absorbed during Excel import, preserved for round-trip.
   customFields?: Record<string, string>;
 }
@@ -151,6 +166,24 @@ export interface CustomSheet {
   name: string;
   headers: string[];
   rows: Record<string, string>[];
+}
+
+// What a stored document represents.
+export type DocumentKind = 'acc-approval-letter' | 'acc-decline-letter' | 'approval-request' | 'other';
+
+// Metadata for a file attached to a claim. The actual file bytes are NOT stored
+// here — they live in a separate IndexedDB object store keyed by `id`, so the
+// main data blob (and every autosave) stays small regardless of how many files
+// are attached. See src/lib/idb.ts.
+export interface ClaimDocument {
+  id: string; // also the IndexedDB blob key
+  claimId: string;
+  kind: DocumentKind;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  addedDate: string; // ISO date
+  notes?: string;
 }
 
 export type ThemeName = 'clinical-light' | 'warm-light' | 'dark' | 'high-contrast';
@@ -165,6 +198,30 @@ export interface Settings {
   idleLockMinutes: number; // default 15
   encryptionEnabled: boolean;
   quickPasteInEnabled: boolean; // default true
+  /** Production config — disables letter auto-commit and dev-only recovery paths. */
+  productionMode: boolean;
+  /** Dev-only: allow 100% confidence letters to auto-file (requires productionMode false). */
+  letterImportAutoCommit: boolean;
+  /** Days without a .accdata export before backup reminder modal (U-14 default 7). */
+  backupReminderDays: number;
+  // Which service codes appear in pickers (service lines, billing, etc.).
+  // Defaults to every code; lets an office hide the ones they never use.
+  enabledServiceCodes: ServiceCode[];
+  // Editable per-contract rates (dollars excl GST) keyed by service code.
+  // Seeded from the current ACC schedule but fully editable — ACC updates
+  // its prices, so there is no fixed "default" to reset to.
+  serviceRates: Record<ServiceCode, number>;
+}
+
+/** Local-only log of recent ACC letter imports (not exported separately). */
+export interface ImportHistoryEntry {
+  id: string;
+  fileName: string;
+  kind: 'approval' | 'decline' | 'document-only';
+  patientId?: string;
+  claimId?: string;
+  importedAt: number;
+  sizeBytes?: number;
 }
 
 export interface AppData {
@@ -179,6 +236,10 @@ export interface AppData {
   settings: Settings;
   // Generic tables absorbed from Excel sheets that aren't part of the schema.
   customSheets?: CustomSheet[];
+  // Metadata for files attached to claims (ACC approval letters, requests we
+  // sent, etc.). File bytes live in IndexedDB, not here.
+  documents: ClaimDocument[];
+  importHistory?: ImportHistoryEntry[];
 }
 
 export const SCHEMA_VERSION = 1;
@@ -192,4 +253,9 @@ export const DEFAULT_SETTINGS: Settings = {
   idleLockMinutes: 15,
   encryptionEnabled: false,
   quickPasteInEnabled: true,
+  productionMode: true,
+  letterImportAutoCommit: false,
+  backupReminderDays: 7,
+  enabledServiceCodes: [...ALL_SERVICE_CODES],
+  serviceRates: { ...DEFAULT_RATES },
 };

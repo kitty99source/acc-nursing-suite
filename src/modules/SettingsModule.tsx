@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore, isSampleData, wipeAllLocalStorage, hasSessionPassphrase } from '../state/store';
 import { SectionTitle, Card, Field, NumberInput, Select, TextInput } from '../components/ui';
 import { useConfirm } from '../components/useConfirm';
 import { ACCENT_PRESETS } from '../lib/theme';
-import type { DensityMode, ThemeName } from '../types';
+import { ALL_SERVICE_CODES, SERVICE_CODES } from '../lib/serviceCodes';
+import { readRecentAudit, type AuditEntry } from '../lib/auditLog';
+import { compareDocumentBlobs } from '../lib/integrity';
+import { listDocumentIds } from '../lib/idb';
+import type { DensityMode, ServiceCode, ThemeName } from '../types';
 
 const THEMES: { value: ThemeName; label: string }[] = [
   { value: 'clinical-light', label: 'Clinical Light' },
@@ -12,15 +16,43 @@ const THEMES: { value: ThemeName; label: string }[] = [
   { value: 'high-contrast', label: 'High Contrast' },
 ];
 
+function rateBasisLabel(code: ServiceCode): string {
+  switch (SERVICE_CODES[code].basis) {
+    case 'package':
+      return 'per package';
+    case 'consult':
+      return 'per consult';
+    case 'hour':
+      return 'per hour';
+    case 'km':
+      return 'per km';
+    case 'night':
+      return 'per night';
+    case 'actual':
+      return 'actual cost';
+    default:
+      return '';
+  }
+}
+
 export function SettingsModule() {
   const data = useStore((s) => s.data);
   const settings = data.settings;
+  const status = useStore((s) => s.status);
+  const integrityWarnings = useStore((s) => s.integrityWarnings);
   const updateSettings = useStore((s) => s.updateSettings);
   const setPassphrase = useStore((s) => s.setPassphrase);
   const saveNow = useStore((s) => s.saveNow);
   const clearSampleData = useStore((s) => s.clearSampleData);
   const resetToEmpty = useStore((s) => s.resetToEmpty);
   const [confirm, confirmDialog] = useConfirm();
+  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
+  const [blobHealth, setBlobHealth] = useState<ReturnType<typeof compareDocumentBlobs> | null>(null);
+
+  useEffect(() => {
+    void readRecentAudit(50).then(setAuditEntries);
+    void listDocumentIds().then((ids) => setBlobHealth(compareDocumentBlobs(data, ids)));
+  }, [data]);
 
   const [pass1, setPass1] = useState('');
   const [pass2, setPass2] = useState('');
@@ -84,6 +116,18 @@ export function SettingsModule() {
     if (ok) resetToEmpty();
   }
 
+  function toggleServiceCode(code: ServiceCode, enabled: boolean) {
+    const current = new Set(settings.enabledServiceCodes);
+    if (enabled) current.add(code);
+    else current.delete(code);
+    // Preserve canonical ordering.
+    updateSettings({ enabledServiceCodes: ALL_SERVICE_CODES.filter((c) => current.has(c)) });
+  }
+
+  function setRate(code: ServiceCode, value: number) {
+    updateSettings({ serviceRates: { ...settings.serviceRates, [code]: Math.max(0, value) } });
+  }
+
   async function handleWipe() {
     const ok = await confirm({
       title: 'Wipe local storage?',
@@ -101,6 +145,83 @@ export function SettingsModule() {
   return (
     <div>
       <SectionTitle title="Settings" subtitle="Appearance, thresholds, security and data — all stored locally." />
+
+      <Card className="mb-4">
+        <h3 className="font-semibold mb-2">How saving works</h3>
+        <p className="text-sm mb-2" style={{ color: 'var(--text)' }}>
+          <strong>IndexedDB autosave</strong> keeps a working copy in this browser after every edit (crash-safe).
+          It does <strong>not</strong> clear the &quot;unsaved&quot; warning — that only clears when you{' '}
+          <strong>Save my data</strong> to a <span className="font-mono">.accdata</span> file you control.
+        </p>
+        <p className="text-xs" style={{ color: 'var(--muted)' }}>
+          Last export:{' '}
+          {status.lastExportAt ? new Date(status.lastExportAt).toLocaleString('en-NZ') : 'never — export soon'}
+          {' · '}
+          Last IDB autosave:{' '}
+          {status.lastSavedAt ? new Date(status.lastSavedAt).toLocaleString('en-NZ') : '—'}
+        </p>
+        <p className="text-xs mt-2" style={{ color: 'var(--muted)' }}>
+          <strong>How to launch:</strong> copy the built <span className="font-mono">dist/</span> folder to your shared drive, then double-click{' '}
+          <span className="font-mono">Start ACC Suite.cmd</span> (Windows) — a small local server opens the app in your browser. Your{' '}
+          <span className="font-mono">.accdata</span> file is separate; load it via TopBar after launch.
+        </p>
+        <p className="text-xs mt-2" style={{ color: 'var(--muted)' }}>
+          Letter import entry points: Approvals/Declines/Claim Documents for full save; Patients modals for prefill only.
+          See <span className="font-mono">change-requests/LETTER_IMPORT_UX.md</span> in the project repo.
+        </p>
+      </Card>
+
+      {(integrityWarnings.length > 0 || (blobHealth && (blobHealth.missingBlobIds.length > 0 || blobHealth.orphanBlobIds.length > 0))) && (
+        <Card className="mb-4">
+          <h3 className="font-semibold mb-2">Data health</h3>
+          {integrityWarnings.length > 0 && (
+            <ul className="text-xs list-disc pl-4 mb-2 max-h-32 overflow-y-auto" style={{ color: 'var(--warn-fg)' }}>
+              {integrityWarnings.map((w) => (
+                <li key={w}>{w}</li>
+              ))}
+            </ul>
+          )}
+          {blobHealth && (
+            <p className="text-xs" style={{ color: 'var(--muted)' }}>
+              Documents: {blobHealth.metadataCount} metadata · {blobHealth.blobCount} blobs in IDB
+              {blobHealth.missingBlobIds.length > 0 && ` · ${blobHealth.missingBlobIds.length} missing blob(s)`}
+              {blobHealth.orphanBlobIds.length > 0 && ` · ${blobHealth.orphanBlobIds.length} orphan blob(s)`}
+            </p>
+          )}
+        </Card>
+      )}
+
+      {auditEntries.length > 0 && (
+        <Card className="mb-4">
+          <h3 className="font-semibold mb-2">Recent activity</h3>
+          <div className="space-y-1 text-sm max-h-48 overflow-y-auto">
+            {auditEntries.map((e) => (
+              <div key={e.ts} className="flex justify-between gap-2 py-1 text-xs" style={{ borderBottom: '1px solid var(--border)' }}>
+                <span className="truncate">{e.summary}</span>
+                <span className="shrink-0" style={{ color: 'var(--muted)' }}>
+                  {new Date(e.ts).toLocaleString('en-NZ')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {(data.importHistory?.length ?? 0) > 0 && (
+        <Card className="mb-4">
+          <h3 className="font-semibold mb-2">Recent ACC letter imports</h3>
+          <div className="space-y-1 text-sm max-h-40 overflow-y-auto">
+            {data.importHistory!.map((h) => (
+              <div key={h.id} className="flex justify-between gap-2 py-1" style={{ borderBottom: '1px solid var(--border)' }}>
+                <span className="truncate">{h.fileName}</span>
+                <span className="text-xs shrink-0" style={{ color: 'var(--muted)' }}>
+                  {h.kind} · {new Date(h.importedAt).toLocaleString('en-NZ')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>
@@ -180,6 +301,13 @@ export function SettingsModule() {
                 onChange={(e) => updateSettings({ idleLockMinutes: Math.max(0, Number(e.target.value)) })}
               />
             </Field>
+            <Field label="Backup reminder (days without export)" hint="Default 7 (U-14).">
+              <NumberInput
+                min={1}
+                value={settings.backupReminderDays}
+                onChange={(e) => updateSettings({ backupReminderDays: Math.max(1, Number(e.target.value)) })}
+              />
+            </Field>
             <label className="flex items-center justify-between gap-3 text-sm">
               <span>
                 <span className="font-medium">Quick Paste-In</span>
@@ -195,6 +323,37 @@ export function SettingsModule() {
               />
             </label>
           </div>
+        </Card>
+
+        <Card>
+          <h3 className="font-semibold mb-3">Developer / testing</h3>
+          <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>
+            Production mode disables letter auto-commit and sample-data recovery. Turn off only for fixture testing.
+          </p>
+          <label className="flex items-center justify-between gap-3 text-sm mb-2">
+            <span className="font-medium">Production mode</span>
+            <input
+              type="checkbox"
+              checked={settings.productionMode !== false}
+              onChange={(e) => updateSettings({ productionMode: e.target.checked })}
+              className="w-5 h-5"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-3 text-sm">
+            <span>
+              <span className="font-medium">Letter import auto-commit</span>
+              <span className="block text-xs" style={{ color: 'var(--muted)' }}>
+                Requires production mode off. 100% confidence still needs dev flag.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={settings.letterImportAutoCommit === true}
+              disabled={settings.productionMode !== false}
+              onChange={(e) => updateSettings({ letterImportAutoCommit: e.target.checked })}
+              className="w-5 h-5"
+            />
+          </label>
         </Card>
 
         <Card>
@@ -267,6 +426,60 @@ export function SettingsModule() {
               Wiping only clears this browser’s working copy and the remembered file handle — any
               <span className="font-mono"> .accdata</span> file you saved to disk is untouched.
             </p>
+          </div>
+        </Card>
+
+        <Card>
+          <h3 className="font-semibold mb-1">Service codes shown</h3>
+          <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>
+            Untick codes your office never uses to hide them from the code pickers (service lines,
+            billing, filters). Existing records keep their code even if it is hidden here.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
+            {ALL_SERVICE_CODES.map((code) => (
+              <label key={code} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={settings.enabledServiceCodes.includes(code)}
+                  onChange={(e) => toggleServiceCode(code, e.target.checked)}
+                  className="w-4 h-4 shrink-0"
+                />
+                <span className="truncate">
+                  <span className="font-medium">{code}</span>
+                  <span style={{ color: 'var(--muted)' }}> — {SERVICE_CODES[code].name}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <h3 className="font-semibold mb-1">Contract pricing (excl GST)</h3>
+          <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>
+            Edit any rate to match your contract. These feed the Package Calculator and the rate
+            reference. Invoice amounts in the Billing Log are still entered manually and are not
+            changed by these rates.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-x-4 gap-y-2">
+            {ALL_SERVICE_CODES.map((code) => (
+              <div key={code} className="flex items-center gap-2">
+                <span className="text-sm flex-1 min-w-0 truncate">
+                  <span className="font-medium">{code}</span>
+                  <span style={{ color: 'var(--muted)' }}> — {SERVICE_CODES[code].name}</span>
+                  <span className="block text-xs" style={{ color: 'var(--muted)' }}>
+                    {rateBasisLabel(code)}
+                  </span>
+                </span>
+                <div className="w-28 shrink-0">
+                  <NumberInput
+                    min={0}
+                    step={0.01}
+                    value={settings.serviceRates[code] ?? 0}
+                    onChange={(e) => setRate(code, Number(e.target.value))}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         </Card>
       </div>

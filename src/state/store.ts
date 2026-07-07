@@ -3,8 +3,10 @@ import type {
   AppData,
   Approval,
   Claim,
+  ClaimDocument,
   ComplexCase,
   Decline,
+  ImportHistoryEntry,
   InvoiceLine,
   Patient,
   ServiceLine,
@@ -22,9 +24,11 @@ import {
   writeToHandle,
   readFromHandle,
   downloadText,
+  normalizeData,
   PassphraseRequiredError,
   WrongPassphraseError,
 } from '../lib/storage';
+import { buildBackupZip, readBackupZip } from '../lib/backup';
 import {
   loadWorkingCopy,
   saveWorkingCopy,
@@ -32,16 +36,74 @@ import {
   saveFileHandle,
   loadFileHandle,
   clearFileHandle,
+  saveDocumentBlob,
+  loadDocumentBlob,
+  deleteDocumentBlob,
+  listDocumentIds,
+  isRecoveryResolved,
+  setRecoveryResolved,
+  loadImportHistory,
+  saveImportHistory,
+  loadComplianceSnapshot,
+  saveComplianceSnapshot,
 } from '../lib/idb';
-import { uid } from '../lib/format';
+import {
+  invalidateComplianceCache,
+  dataFingerprint,
+  setComplianceSnapshot,
+  getComplianceFindings,
+} from '../lib/complianceCache';
+import { appendAudit } from '../lib/auditLog';
+import { validateReferentialIntegrity } from '../lib/integrity';
+import { resolveWorkingCopyLoad } from '../lib/recovery';
+import { uid, todayISO } from '../lib/format';
 import { mergeImportIntoData, type ImportMode, type ImportResult } from '../lib/excelImport';
+import { determinePackage } from '../lib/calculator';
+import { claimBillingState } from '../lib/compliance';
+import { PACKAGE_CODES, MAX_PACKAGE_CONSULTS, getRate } from '../lib/serviceCodes';
+import {
+  parseLetterFile as parseLetterFileLib,
+  type LetterImportContext,
+  type LetterParseResult,
+  type ParsedApprovalLetter,
+  type ParsedDeclineLetter,
+  type ParsedServiceRow,
+  prefillFromParsed,
+  letterKindToDocumentKind,
+  sniffDocumentKindFromFileName,
+  isDuplicateLetterImport,
+  type DuplicateLetterImportOpts,
+} from '../lib/letterImport';
+
+export interface LetterImportCommitResult {
+  patientId: string;
+  claimId: string;
+  kind: 'approval' | 'decline' | 'document-only';
+  billingHint?: string;
+}
 
 // In-memory only. Never persisted, never logged, cleared on lock.
 let sessionPassphrase: string | undefined;
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
-const AUTOSAVE_DEBOUNCE_MS = 1000;
+const AUTOSAVE_DEBOUNCE_MS = 3000;
+let autosavePaused = false;
+let pendingSaveAfterPause = false;
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+
+// Cross-module navigation intent: lets one screen (e.g. the Flagged page) send
+// the user to another with enough context to auto-open the right, pre-filled
+// modal. `nonce` guarantees each request re-triggers even if the target repeats.
+export type FocusTarget = 'patients' | 'approvals' | 'billing';
+
+export interface FocusRequest {
+  module: FocusTarget;
+  patientId?: string;
+  claimId?: string;
+  intent?: string; // matches FixIntent.action from lib/compliance
+  prefill?: Record<string, unknown>;
+  nonce: number;
+}
 
 export interface AppStatus {
   fileName?: string;
@@ -58,6 +120,11 @@ export interface AppStatus {
   lastExportAt?: number;
 }
 
+export interface RecoveryState {
+  error: string;
+  integrityWarnings?: string[];
+}
+
 interface StoreState {
   ready: boolean;
   data: AppData;
@@ -67,12 +134,81 @@ interface StoreState {
   lastActivityAt: number;
   fileHandle: FileSystemFileHandle | null;
   pendingEncryptedText?: string; // encrypted working copy awaiting passphrase
+  focus?: FocusRequest; // pending cross-module navigation intent
+  /** Blocks main UI until user picks a recovery path (P0-001). */
+  recovery?: RecoveryState;
+  /** Non-fatal integrity warnings from last successful load (P0-007). */
+  integrityWarnings: string[];
+  letterImport?: {
+    file: File;
+    context?: LetterImportContext;
+    prefillOnly?: boolean;
+    onPrefill?: (patches: ReturnType<typeof prefillFromParsed>) => void;
+    entryPoint?: import('../components/LetterImportButton').LetterImportEntryPoint;
+  };
 
   // lifecycle
   init: () => Promise<void>;
+  resolveRecoveryEmpty: () => Promise<void>;
+  resolveRecoverySample: () => Promise<void>;
+  resolveRecoveryFromAccdata: (text: string, passphrase?: string) => Promise<void>;
+  resolveRecoveryFromZip: (zip: Blob) => Promise<void>;
   recordActivity: () => void;
   lock: () => void;
   unlock: (passphrase?: string) => Promise<boolean>;
+
+  // cross-module navigation intent
+  setFocus: (req: Omit<FocusRequest, 'nonce'>) => void;
+  clearFocus: () => void;
+
+  // ACC letter import (approval / decline PDFs)
+  openLetterImport: (file: File, opts?: { context?: LetterImportContext; prefillOnly?: boolean; onPrefill?: (patches: ReturnType<typeof prefillFromParsed>) => void; entryPoint?: import('../components/LetterImportButton').LetterImportEntryPoint }) => void;
+  closeLetterImport: () => void;
+  parseLetterFile: (
+    file: File,
+    context?: LetterImportContext,
+    onProgress?: import('../lib/letterImport').LetterImportProgressHandler,
+  ) => Promise<LetterParseResult>;
+  commitParsedApproval: (
+    parsed: ParsedApprovalLetter,
+    file: File,
+    opts: {
+      patientId?: string;
+      claimId?: string;
+      patientPatch?: Partial<Patient>;
+      claimPatch?: Partial<Claim>;
+      rows: ParsedServiceRow[];
+    },
+  ) => Promise<LetterImportCommitResult>;
+  commitParsedDecline: (
+    parsed: ParsedDeclineLetter,
+    file: File,
+    opts: {
+      patientName?: string;
+      claimNumber?: string;
+      reason?: string;
+      servicePeriodDeclined?: string;
+      declineReceivedDate?: string;
+      patientId?: string;
+      claimId?: string;
+    },
+  ) => Promise<LetterImportCommitResult>;
+  attachDocumentOnly: (
+    file: File,
+    opts?: {
+      claimId?: string;
+      patientId?: string;
+      kind?: ClaimDocument['kind'];
+      /** Parsed letter type — maps to acc-approval-letter / acc-decline-letter. */
+      letterKind?: 'approval' | 'decline';
+    },
+  ) => Promise<LetterImportCommitResult>;
+  reparseDocument: (documentId: string) => Promise<void>;
+  findDuplicateLetterImport: (
+    claimId: string,
+    file: Blob,
+    opts?: DuplicateLetterImportOpts,
+  ) => Promise<boolean>;
 
   // manual persistence (primary; works on file://)
   saveMyData: (filename?: string) => Promise<void>;
@@ -82,7 +218,7 @@ interface StoreState {
   connectNewFile: () => Promise<void>;
   openExistingFile: () => Promise<void>;
   exportJsonDownload: () => void;
-  importJsonText: (text: string) => Promise<boolean>;
+  importJsonText: (text: string) => Promise<void>;
   saveNow: () => Promise<void>;
   disconnectFile: () => Promise<void>;
 
@@ -122,6 +258,10 @@ interface StoreState {
   addInvoiceLines: (rows: Omit<InvoiceLine, 'id'>[]) => void;
   updateInvoiceLine: (id: string, patch: Partial<InvoiceLine>) => void;
   removeInvoiceLine: (id: string) => void;
+  // Guided billing: create the correct invoice lines for a claim from its
+  // service-line records, with rates and patient/claim/PO/NHI auto-carried.
+  // Returns the number of lines created (0 if already billed / nothing to do).
+  generateInvoiceLinesForClaim: (claimId: string) => number;
 
   // complex case CRUD
   addComplexCase: (c: Omit<ComplexCase, 'id'>) => string;
@@ -132,13 +272,44 @@ interface StoreState {
   addDecline: (d: Omit<Decline, 'id'>) => string;
   updateDecline: (id: string, patch: Partial<Decline>) => void;
   removeDecline: (id: string) => void;
+
+  // document attachments (metadata in `data.documents`, bytes in IndexedDB)
+  addDocument: (meta: Omit<ClaimDocument, 'id' | 'addedDate'>, blob: Blob) => Promise<string>;
+  removeDocument: (id: string) => Promise<void>;
+  getDocumentBlob: (id: string) => Promise<Blob | undefined>;
+
+  // full backup bundle (data + document bytes) as a portable .zip
+  exportFullBackup: () => Promise<Blob>;
+  importFullBackup: (zip: Blob) => Promise<void>;
 }
 
 function scheduleSave(get: () => StoreState) {
+  if (autosavePaused) {
+    pendingSaveAfterPause = true;
+    return;
+  }
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     void persistAll(get);
   }, AUTOSAVE_DEBOUNCE_MS);
+}
+
+export function pauseAutosave(): void {
+  autosavePaused = true;
+}
+
+export function resumeAutosave(get: () => StoreState): void {
+  autosavePaused = false;
+  if (pendingSaveAfterPause) {
+    pendingSaveAfterPause = false;
+    scheduleSave(get);
+  }
+}
+
+/** Strip importHistory from IDB working copy to shrink autosave payload (P1-009). */
+function dataForWorkingCopy(data: AppData): AppData {
+  const { importHistory: _history, ...rest } = data;
+  return rest as AppData;
 }
 
 async function persistAll(get: () => StoreState) {
@@ -152,8 +323,15 @@ async function persistAll(get: () => StoreState) {
 
   useStore.setState((s) => ({ status: { ...s.status, saveState: 'saving' } }));
   try {
-    const text = await serialize(data, usePass);
+    const text = await serialize(dataForWorkingCopy(data), usePass);
     await saveWorkingCopy(text);
+    if (data.importHistory?.length) {
+      await saveImportHistory(data.importHistory);
+    }
+    const hash = dataFingerprint(data);
+    const findings = getComplianceFindings(data);
+    await saveComplianceSnapshot({ hash, findings, savedAt: Date.now() });
+    setComplianceSnapshot(findings, hash);
     const handle = get().fileHandle;
     let wroteToFile = false;
     if (handle) {
@@ -181,12 +359,93 @@ async function persistAll(get: () => StoreState) {
   }
 }
 
-function mutate(get: () => StoreState, updater: (data: AppData) => AppData) {
+function audit(action: string, entityType: string, entityId: string | undefined, summary: string) {
+  void appendAudit({ action, entityType, entityId, summary }).catch(() => {});
+}
+
+async function enrichLoadedData(data: AppData): Promise<AppData> {
+  let enriched = data;
+  try {
+    const history = await loadImportHistory();
+    if (history?.length) enriched = { ...enriched, importHistory: history };
+  } catch {
+    // non-fatal
+  }
+  try {
+    const snap = await loadComplianceSnapshot();
+    if (snap?.findings?.length && snap.hash === dataFingerprint(enriched)) {
+      setComplianceSnapshot(snap.findings, snap.hash);
+    }
+  } catch {
+    // non-fatal
+  }
+  return enriched;
+}
+
+function adoptLoadedData(
+  data: AppData,
+  opts: { markExported?: boolean; dirty?: boolean; statusPatch?: Partial<AppStatus> } = {},
+): Pick<StoreState, 'data' | 'integrityWarnings' | 'status'> {
+  const warnings = validateReferentialIntegrity(data);
+  const now = Date.now();
+  return {
+    data,
+    integrityWarnings: warnings,
+    status: {
+      ...useStore.getState().status,
+      saveState: 'saved',
+      lastSavedAt: now,
+      saveError: undefined,
+      dirty: opts.dirty ?? false,
+      ...(opts.markExported ? { lastExportAt: now, dirty: false } : {}),
+      ...opts.statusPatch,
+    },
+  };
+}
+
+function mutate(
+  get: () => StoreState,
+  updater: (data: AppData) => AppData,
+  scope?: { claimIds?: string[] },
+) {
   useStore.setState((s) => ({
     data: updater(s.data),
     status: s.status.dirty ? s.status : { ...s.status, dirty: true },
   }));
+  const next = get().data;
+  if (scope?.claimIds?.length) {
+    getComplianceFindings(next, { dirtyClaimIds: scope.claimIds });
+  } else {
+    invalidateComplianceCache();
+    getComplianceFindings(next, { forceFull: true });
+  }
   scheduleSave(get);
+}
+
+function pushImportHistory(get: () => StoreState, entry: Omit<ImportHistoryEntry, 'id' | 'importedAt'>) {
+  mutate(get, (data) => {
+    const row: ImportHistoryEntry = { ...entry, id: uid('imp'), importedAt: Date.now() };
+    const history = [row, ...(data.importHistory ?? [])].slice(0, 20);
+    return { ...data, importHistory: history };
+  });
+  void saveImportHistory(get().data.importHistory ?? []).catch(() => {});
+}
+
+function billingHintForClaim(data: AppData, claimId: string): string | undefined {
+  const claim = data.claims.find((c) => c.id === claimId);
+  if (!claim) return undefined;
+  const lines = data.serviceLines.filter((l) => l.claimId === claimId);
+  const approvals = data.approvals.filter((a) => a.claimId === claimId);
+  const key = (claim.claimNumber || '').trim().toUpperCase();
+  const acc = (claim.acc45Number || '').trim().toUpperCase();
+  const claimInvoices = data.invoiceLines.filter(
+    (i) =>
+      (key && (i.claimNumber || '').trim().toUpperCase() === key) ||
+      (acc && (i.acc45Number || '').trim().toUpperCase() === acc),
+  );
+  const state = claimBillingState(claim, lines, approvals, claimInvoices);
+  if (state.state === 'ready') return 'Safe to bill';
+  return `Still blocked: ${state.reason}`;
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -202,6 +461,7 @@ export const useStore = create<StoreState>((set, get) => ({
   needsPassphrase: false,
   lastActivityAt: Date.now(),
   fileHandle: null,
+  integrityWarnings: [],
 
   init: async () => {
     let handle: FileSystemFileHandle | null = null;
@@ -217,57 +477,390 @@ export const useStore = create<StoreState>((set, get) => ({
       workingText = undefined;
     }
 
-    if (!workingText) {
-      // First run: seed sample data.
+    const baseStatus = {
+      ...get().status,
+      hasFileHandle: !!handle,
+      fileName: handle?.name,
+    };
+
+    const loadResult = await resolveWorkingCopyLoad(workingText);
+
+    if (loadResult.type === 'empty') {
       set({
         ready: true,
         data: sampleData(),
         locked: false,
         needsPassphrase: false,
         fileHandle: handle,
-        status: {
-          ...get().status,
-          hasFileHandle: !!handle,
-          fileName: handle?.name,
-        },
+        integrityWarnings: [],
+        status: baseStatus,
       });
-      // Persist the seeded sample so the working copy exists.
       scheduleSave(get);
       return;
     }
 
-    if (isEncryptedFile(workingText)) {
+    if (loadResult.type === 'encrypted') {
       set({
         ready: true,
         locked: true,
         needsPassphrase: true,
-        pendingEncryptedText: workingText,
+        pendingEncryptedText: loadResult.text,
         fileHandle: handle,
-        status: { ...get().status, hasFileHandle: !!handle, fileName: handle?.name },
+        integrityWarnings: [],
+        status: baseStatus,
       });
       return;
     }
 
-    try {
-      const data = await deserialize(workingText);
+    if (loadResult.type === 'corrupt') {
+      const alreadyResolved = await isRecoveryResolved();
       set({
         ready: true,
-        data,
+        data: emptyData(),
         locked: false,
         needsPassphrase: false,
         fileHandle: handle,
-        status: { ...get().status, hasFileHandle: !!handle, fileName: handle?.name },
+        integrityWarnings: [],
+        recovery: alreadyResolved
+          ? { error: `${loadResult.error} (recovery was attempted before — choose again)` }
+          : { error: loadResult.error },
+        status: baseStatus,
       });
-    } catch {
-      set({
-        ready: true,
-        data: sampleData(),
-        status: { ...get().status, hasFileHandle: !!handle, fileName: handle?.name },
-      });
+      return;
     }
+
+    const enriched = await enrichLoadedData(loadResult.data);
+    set({
+      ready: true,
+      locked: false,
+      needsPassphrase: false,
+      fileHandle: handle,
+      ...adoptLoadedData(enriched, { statusPatch: baseStatus }),
+    });
+  },
+
+  resolveRecoveryEmpty: async () => {
+    await clearWorkingCopy();
+    await setRecoveryResolved(true);
+    const settings = get().data.settings;
+    set({
+      data: { ...emptyData(), settings: { ...settings } },
+      recovery: undefined,
+      integrityWarnings: [],
+      status: { ...get().status, dirty: true },
+    });
+    audit('recovery', 'system', undefined, 'Started empty after corrupt working copy');
+    scheduleSave(get);
+  },
+
+  resolveRecoverySample: async () => {
+    if (get().data.settings.productionMode !== false) {
+      throw new Error('Sample data recovery is only available in dev mode.');
+    }
+    await clearWorkingCopy();
+    await setRecoveryResolved(true);
+    set({
+      data: sampleData(),
+      recovery: undefined,
+      integrityWarnings: [],
+      status: { ...get().status, dirty: true },
+    });
+    audit('recovery', 'system', undefined, 'Loaded sample data after corrupt working copy');
+    scheduleSave(get);
+  },
+
+  resolveRecoveryFromAccdata: async (text: string, passphrase?: string) => {
+    const encrypted = isEncryptedFile(text);
+    const pass = passphrase ?? sessionPassphrase;
+    if (encrypted && !pass) throw new PassphraseRequiredError();
+    const data = await deserialize(text, pass);
+    if (encrypted && pass) sessionPassphrase = pass;
+    await clearWorkingCopy();
+    await setRecoveryResolved(true);
+    set({
+      recovery: undefined,
+      ...adoptLoadedData(data, { markExported: true }),
+    });
+    audit('recovery', 'system', undefined, 'Restored from .accdata after corrupt working copy');
+    scheduleSave(get);
+  },
+
+  resolveRecoveryFromZip: async (zip: Blob) => {
+    const { data, blobs } = await readBackupZip(zip);
+    for (const [id, blob] of blobs) await saveDocumentBlob(id, blob);
+    await clearWorkingCopy();
+    await setRecoveryResolved(true);
+    set({
+      recovery: undefined,
+      ...adoptLoadedData(normalizeData(data), { dirty: true }),
+    });
+    audit('recovery', 'system', undefined, `Restored ZIP backup (${blobs.size} document blobs)`);
+    scheduleSave(get);
   },
 
   recordActivity: () => set({ lastActivityAt: Date.now() }),
+
+  setFocus: (req) => set({ focus: { ...req, nonce: Date.now() } }),
+  clearFocus: () => set({ focus: undefined }),
+
+  openLetterImport: (file, opts) =>
+    set({
+      letterImport: {
+        file,
+        context: opts?.context,
+        prefillOnly: opts?.prefillOnly,
+        onPrefill: opts?.onPrefill,
+        entryPoint: opts?.entryPoint ?? (opts?.prefillOnly ? 'prefill' : opts?.context?.claimId ? 'claim-documents' : 'global'),
+      },
+    }),
+  closeLetterImport: () => set({ letterImport: undefined }),
+
+  parseLetterFile: async (file, context, onProgress) => {
+    const data = get().data;
+    return parseLetterFileLib(file, data, context, onProgress);
+  },
+
+  commitParsedApproval: async (parsed, file, opts) => {
+    const state = get();
+    let patientId = opts.patientId;
+    let claimId = opts.claimId;
+
+    if (!patientId && opts.patientPatch?.name) {
+      patientId = state.addPatient({
+        name: opts.patientPatch.name,
+        nhi: opts.patientPatch.nhi ?? parsed.patient.nhi ?? '',
+        dob: opts.patientPatch.dob ?? parsed.patient.dob ?? '',
+        notes: '',
+      });
+    } else if (patientId && opts.patientPatch) {
+      state.updatePatient(patientId, opts.patientPatch);
+    }
+
+    if (!patientId) throw new Error('Patient is required to file an approval letter.');
+
+    if (!claimId) {
+      claimId = state.addClaim({
+        patientId,
+        claimNumber: opts.claimPatch?.claimNumber ?? parsed.claim.claimNumber ?? '',
+        acc45Number: opts.claimPatch?.acc45Number ?? parsed.claim.acc45Number ?? '',
+        poNumber: opts.claimPatch?.poNumber ?? parsed.claim.poNumber ?? '',
+        injuryDescription: opts.claimPatch?.injuryDescription ?? parsed.claim.injuryDescription ?? '',
+        type: 'original',
+        status: 'active',
+        day1Date: opts.claimPatch?.day1Date ?? parsed.claim.dateOfInjury ?? todayISO(),
+      });
+    } else if (opts.claimPatch) {
+      const patch = { ...opts.claimPatch };
+      const claim = state.data.claims.find((c) => c.id === claimId);
+      if (claim && !claim.poNumber && parsed.claim.poNumber) {
+        patch.poNumber = patch.poNumber ?? parsed.claim.poNumber;
+      }
+      state.updateClaim(claimId, patch);
+    }
+
+    const docId = await state.addDocument(
+      {
+        claimId,
+        kind: 'acc-approval-letter',
+        fileName: file instanceof File ? file.name : 'approval-letter.pdf',
+        mimeType: file.type || 'application/pdf',
+        sizeBytes: file.size,
+        notes: parsed.letterDate ? `Letter dated ${parsed.letterDate}` : undefined,
+      },
+      file,
+    );
+
+    // Demote any existing current approvals for codes we're importing.
+    const codes = new Set(opts.rows.map((r) => r.serviceCode));
+    for (const a of state.data.approvals) {
+      if (a.claimId === claimId && codes.has(a.serviceCode) && a.recordStatus !== 'historical') {
+        state.updateApproval(a.id, { recordStatus: 'historical' });
+      }
+    }
+
+    let currentApprovalId: string | undefined;
+    for (const row of opts.rows) {
+      const id = state.addApproval({
+        patientId,
+        claimId,
+        serviceCode: row.serviceCode,
+        approvalStartDate: row.approvalStartDate,
+        approvalEndDate: row.approvalEndDate,
+        approvedHoursOrConsults: row.approvedHoursOrConsults,
+        consultsUsed: undefined,
+        accEmailedRenewalDate: undefined,
+        poNumber: parsed.claim.poNumber ?? '',
+        notes: `Imported from ACC letter (${parsed.formCode ?? 'NUR02'})`,
+        recordStatus: row.recordStatus ?? 'historical',
+        sourceDocumentId: docId,
+      });
+      if (row.recordStatus === 'current') currentApprovalId = id;
+    }
+
+    // Link the current NS04/NS05 service line to the latest approval.
+    if (currentApprovalId) {
+      const currentRow = opts.rows.find((r) => r.recordStatus === 'current');
+      if (currentRow) {
+        const line = state.data.serviceLines.find(
+          (l) => l.claimId === claimId && l.serviceCode === currentRow.serviceCode,
+        );
+        if (line) {
+          state.updateServiceLine(line.id, { approvalId: currentApprovalId });
+        } else {
+          state.addServiceLine({
+            claimId,
+            serviceCode: currentRow.serviceCode,
+            day1Date: currentRow.approvalStartDate,
+            lastConsultDate: undefined,
+            consultCount: 0,
+            interruptions: [],
+            approvalId: currentApprovalId,
+          });
+        }
+      }
+    }
+
+    pushImportHistory(get, {
+      fileName: file instanceof File ? file.name : 'approval-letter.pdf',
+      kind: 'approval',
+      patientId,
+      claimId,
+      sizeBytes: file.size,
+    });
+    const billingHint = billingHintForClaim(get().data, claimId);
+    return { patientId, claimId, kind: 'approval', billingHint };
+  },
+
+  commitParsedDecline: async (parsed, file, opts) => {
+    const state = get();
+    const claimNumber = opts.claimNumber ?? parsed.claim.claimNumber ?? '';
+    let patientId = opts.patientId;
+    let claimId = opts.claimId ?? state.data.claims.find((c) => c.claimNumber.replace(/\s/g, '') === claimNumber.replace(/\s/g, ''))?.id;
+
+    if (!patientId && claimId) {
+      patientId = state.data.claims.find((c) => c.id === claimId)?.patientId;
+    }
+    if (!patientId && parsed.patient.nhi) {
+      patientId = state.data.patients.find(
+        (p) => p.nhi && parsed.patient.nhi && p.nhi.toUpperCase() === parsed.patient.nhi.toUpperCase(),
+      )?.id;
+    }
+    if (!patientId) {
+      const name = (opts.patientName ?? parsed.patient.name ?? '').trim();
+      if (name) {
+        patientId = state.addPatient({
+          name,
+          nhi: parsed.patient.nhi ?? '',
+          dob: parsed.patient.dob ?? '',
+          notes: '',
+        });
+      }
+    }
+
+    if (!claimId && claimNumber && patientId) {
+      claimId = state.addClaim({
+        patientId,
+        claimNumber,
+        acc45Number: parsed.claim.acc45Number ?? '',
+        poNumber: '',
+        injuryDescription: parsed.claim.injuryDescription ?? '',
+        type: 'original',
+        status: 'active',
+        day1Date: parsed.claim.dateOfInjury ?? todayISO(),
+      });
+    }
+
+    let docId: string | undefined;
+    if (claimId) {
+      docId = await state.addDocument(
+        {
+          claimId,
+          kind: 'acc-decline-letter',
+          fileName: file instanceof File ? file.name : 'decline-letter.pdf',
+          mimeType: file.type || 'application/pdf',
+          sizeBytes: file.size,
+        },
+        file,
+      );
+    }
+
+    state.addDecline({
+      patientId,
+      claimId,
+      patientName: opts.patientName ?? parsed.patient.name ?? '',
+      claimNumber,
+      declineReceivedDate: opts.declineReceivedDate ?? parsed.letterDate ?? todayISO(),
+      servicePeriodDeclined: opts.servicePeriodDeclined ?? parsed.serviceRequested ?? 'Extended Nursing',
+      reason: opts.reason ?? parsed.reason ?? '',
+      status: 'Awaiting nursing docs for resubmission',
+      notes: parsed.formCode ? `Imported from ${parsed.formCode}` : '',
+      sourceDocumentId: docId,
+    });
+
+    pushImportHistory(get, {
+      fileName: file instanceof File ? file.name : 'decline-letter.pdf',
+      kind: 'decline',
+      patientId,
+      claimId,
+      sizeBytes: file.size,
+    });
+    if (!patientId || !claimId) {
+      return { patientId: patientId ?? '', claimId: claimId ?? '', kind: 'decline' };
+    }
+    return { patientId, claimId, kind: 'decline' };
+  },
+
+  attachDocumentOnly: async (file, opts) => {
+    const state = get();
+    let patientId = opts?.patientId;
+    let claimId = opts?.claimId;
+
+    if (!claimId && patientId) {
+      const claims = state.data.claims.filter((c) => c.patientId === patientId);
+      if (claims.length === 1) claimId = claims[0].id;
+    }
+    if (!claimId) throw new Error('Select or create a claim before attaching a document.');
+
+    if (!patientId) patientId = state.data.claims.find((c) => c.id === claimId)?.patientId;
+    if (!patientId) throw new Error('Could not resolve patient for this claim.');
+
+    const docKind =
+      opts?.kind ??
+      letterKindToDocumentKind(opts?.letterKind) ??
+      sniffDocumentKindFromFileName(file.name) ??
+      'other';
+
+    await state.addDocument(
+      {
+        claimId,
+        kind: docKind,
+        fileName: file.name,
+        mimeType: file.type || 'application/pdf',
+        sizeBytes: file.size,
+        notes: docKind === 'other' ? 'Attached without parsing' : 'Attached from letter import',
+      },
+      file,
+    );
+
+    pushImportHistory(get, { fileName: file.name, kind: 'document-only', patientId, claimId, sizeBytes: file.size });
+    return { patientId, claimId, kind: 'document-only' };
+  },
+
+  reparseDocument: async (documentId) => {
+    const state = get();
+    const doc = state.data.documents.find((d) => d.id === documentId);
+    if (!doc) throw new Error('Document not found');
+    const blob = await state.getDocumentBlob(documentId);
+    if (!blob) throw new Error('Document file missing from storage');
+    const claim = state.data.claims.find((c) => c.id === doc.claimId);
+    const file = new File([blob], doc.fileName, { type: doc.mimeType || 'application/pdf' });
+    state.openLetterImport(file, {
+      context: { claimId: doc.claimId, patientId: claim?.patientId },
+    });
+  },
+
+  findDuplicateLetterImport: async (claimId, file, opts) =>
+    isDuplicateLetterImport(get().data, claimId, file, (id) => loadDocumentBlob(id), opts),
 
   lock: () => {
     if (get().data.settings.encryptionEnabled) {
@@ -320,8 +913,6 @@ export const useStore = create<StoreState>((set, get) => ({
 
   saveMyData: async (filename = 'acc-nursing-data.accdata') => {
     const { data } = get();
-    // Mirror the file-save path: encrypt with the session passphrase when
-    // encryption is enabled in settings, otherwise write readable JSON.
     const usePass = data.settings.encryptionEnabled ? sessionPassphrase : undefined;
     const text = await serialize(data, usePass);
     downloadText(filename, text);
@@ -335,29 +926,22 @@ export const useStore = create<StoreState>((set, get) => ({
         saveError: undefined,
       },
     });
+    audit(
+      'export',
+      'accdata',
+      undefined,
+      `Exported .accdata (${data.patients.length} patients, ${data.claims.length} claims)`,
+    );
   },
 
   loadMyData: async (text: string, passphrase?: string) => {
     const encrypted = isEncryptedFile(text);
-    // Use the explicitly-provided passphrase, falling back to the session one.
     const pass = passphrase ?? sessionPassphrase;
     if (encrypted && !pass) throw new PassphraseRequiredError();
-    // deserialize throws PassphraseRequiredError / WrongPassphraseError as needed.
     const data = await deserialize(text, pass);
-    // Adopt the working passphrase so subsequent silent saves stay encrypted.
     if (encrypted && pass) sessionPassphrase = pass;
-    set({
-      data,
-      status: {
-        ...get().status,
-        dirty: false,
-        lastExportAt: Date.now(),
-        saveState: 'saved',
-        lastSavedAt: Date.now(),
-        saveError: undefined,
-      },
-    });
-    // Persist the freshly-loaded data into the IndexedDB working copy.
+    set(adoptLoadedData(data, { markExported: true }));
+    audit('import', 'accdata', undefined, `Loaded .accdata (${data.patients.length} patients)`);
     scheduleSave(get);
   },
 
@@ -428,14 +1012,10 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   importJsonText: async (text: string) => {
-    try {
-      const data = await deserialize(text, sessionPassphrase);
-      set({ data });
-      scheduleSave(get);
-      return true;
-    } catch {
-      return false;
-    }
+    const data = await deserialize(text, sessionPassphrase);
+    set({ ...adoptLoadedData(data), status: { ...get().status, dirty: true } });
+    audit('import', 'json', undefined, `Imported JSON backup (${data.patients.length} patients)`);
+    scheduleSave(get);
   },
 
   saveNow: async () => {
@@ -483,11 +1063,14 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   importFromExcel: (result: ImportResult, mode: ImportMode = 'merge') => {
+    pauseAutosave();
     set((s) => ({
       data: mergeImportIntoData(s.data, result, mode),
       status: { ...s.status, dirty: true },
     }));
-    scheduleSave(get);
+    invalidateComplianceCache();
+    getComplianceFindings(get().data, { forceFull: true });
+    resumeAutosave(get);
   },
 
   updateSettings: (patch) => {
@@ -502,6 +1085,7 @@ export const useStore = create<StoreState>((set, get) => ({
   addPatient: (p) => {
     const id = uid('p');
     mutate(get, (data) => ({ ...data, patients: [...data.patients, { ...p, id }] }));
+    audit('create', 'patient', id, `Added patient ${p.name}`);
     return id;
   },
   updatePatient: (id, patch) =>
@@ -509,17 +1093,24 @@ export const useStore = create<StoreState>((set, get) => ({
       ...data,
       patients: data.patients.map((x) => (x.id === id ? { ...x, ...patch } : x)),
     })),
-  removePatient: (id) =>
+  removePatient: (id) => {
+    const name = get().data.patients.find((p) => p.id === id)?.name ?? id;
     mutate(get, (data) => {
       const claimIds = new Set(data.claims.filter((c) => c.patientId === id).map((c) => c.id));
+      data.documents
+        .filter((d) => claimIds.has(d.claimId))
+        .forEach((d) => void deleteDocumentBlob(d.id).catch(() => {}));
       return {
         ...data,
         patients: data.patients.filter((x) => x.id !== id),
         claims: data.claims.filter((c) => c.patientId !== id),
         serviceLines: data.serviceLines.filter((s) => !claimIds.has(s.claimId)),
         approvals: data.approvals.filter((a) => a.patientId !== id),
+        documents: data.documents.filter((d) => !claimIds.has(d.claimId)),
       };
-    }),
+    });
+    audit('delete', 'patient', id, `Removed patient ${name}`);
+  },
 
   addClaim: (c) => {
     const id = uid('c');
@@ -527,28 +1118,47 @@ export const useStore = create<StoreState>((set, get) => ({
     return id;
   },
   updateClaim: (id, patch) =>
-    mutate(get, (data) => ({
-      ...data,
-      claims: data.claims.map((x) => (x.id === id ? { ...x, ...patch } : x)),
-    })),
-  removeClaim: (id) =>
-    mutate(get, (data) => ({
-      ...data,
-      claims: data.claims.filter((x) => x.id !== id),
-      serviceLines: data.serviceLines.filter((s) => s.claimId !== id),
-      approvals: data.approvals.filter((a) => a.claimId !== id),
-    })),
+    mutate(
+      get,
+      (data) => ({
+        ...data,
+        claims: data.claims.map((x) => (x.id === id ? { ...x, ...patch } : x)),
+      }),
+      { claimIds: [id] },
+    ),
+  removeClaim: (id) => {
+    const claimNo = get().data.claims.find((c) => c.id === id)?.claimNumber ?? id;
+    mutate(get, (data) => {
+      data.documents
+        .filter((d) => d.claimId === id)
+        .forEach((d) => void deleteDocumentBlob(d.id).catch(() => {}));
+      return {
+        ...data,
+        claims: data.claims.filter((x) => x.id !== id),
+        serviceLines: data.serviceLines.filter((s) => s.claimId !== id),
+        approvals: data.approvals.filter((a) => a.claimId !== id),
+        documents: data.documents.filter((d) => d.claimId !== id),
+      };
+    });
+    audit('delete', 'claim', id, `Removed claim ${claimNo}`);
+  },
 
   addServiceLine: (s) => {
     const id = uid('sl');
     mutate(get, (data) => ({ ...data, serviceLines: [...data.serviceLines, { ...s, id }] }));
     return id;
   },
-  updateServiceLine: (id, patch) =>
-    mutate(get, (data) => ({
-      ...data,
-      serviceLines: data.serviceLines.map((x) => (x.id === id ? { ...x, ...patch } : x)),
-    })),
+  updateServiceLine: (id, patch) => {
+    const claimId = get().data.serviceLines.find((x) => x.id === id)?.claimId;
+    mutate(
+      get,
+      (data) => ({
+        ...data,
+        serviceLines: data.serviceLines.map((x) => (x.id === id ? { ...x, ...patch } : x)),
+      }),
+      claimId ? { claimIds: [claimId] } : undefined,
+    );
+  },
   removeServiceLine: (id) =>
     mutate(get, (data) => ({
       ...data,
@@ -560,11 +1170,17 @@ export const useStore = create<StoreState>((set, get) => ({
     mutate(get, (data) => ({ ...data, approvals: [...data.approvals, { ...a, id }] }));
     return id;
   },
-  updateApproval: (id, patch) =>
-    mutate(get, (data) => ({
-      ...data,
-      approvals: data.approvals.map((x) => (x.id === id ? { ...x, ...patch } : x)),
-    })),
+  updateApproval: (id, patch) => {
+    const claimId = get().data.approvals.find((x) => x.id === id)?.claimId;
+    mutate(
+      get,
+      (data) => ({
+        ...data,
+        approvals: data.approvals.map((x) => (x.id === id ? { ...x, ...patch } : x)),
+      }),
+      claimId ? { claimIds: [claimId] } : undefined,
+    );
+  },
   removeApproval: (id) =>
     mutate(get, (data) => ({ ...data, approvals: data.approvals.filter((x) => x.id !== id) })),
 
@@ -585,6 +1201,70 @@ export const useStore = create<StoreState>((set, get) => ({
     })),
   removeInvoiceLine: (id) =>
     mutate(get, (data) => ({ ...data, invoiceLines: data.invoiceLines.filter((x) => x.id !== id) })),
+
+  generateInvoiceLinesForClaim: (claimId) => {
+    const data = get().data;
+    const claim = data.claims.find((c) => c.id === claimId);
+    if (!claim) return 0;
+    const patient = data.patients.find((p) => p.id === claim.patientId);
+    const lines = data.serviceLines.filter((l) => l.claimId === claimId);
+    const rates = { serviceRates: data.settings.serviceRates };
+    const claimKey = (claim.claimNumber || '').trim().toUpperCase();
+
+    // Don't duplicate: skip if a package/NS04/NS05 line already exists for this claim.
+    const alreadyBilled = data.invoiceLines.some(
+      (i) =>
+        (i.claimNumber || '').trim().toUpperCase() === claimKey &&
+        (PACKAGE_CODES.includes(i.serviceCode) || i.serviceCode === 'NS04' || i.serviceCode === 'NS05'),
+    );
+    if (alreadyBilled) return 0;
+
+    const carry = {
+      patientName: patient?.name ?? '',
+      nhi: patient?.nhi ?? '',
+      claimNumber: claim.claimNumber,
+      poNumber: claim.poNumber,
+      acc45Number: claim.acc45Number,
+      invoiceSheet: '',
+      invoiceDate: todayISO(),
+      datePaid: undefined,
+      amountPaid: undefined,
+      status: 'Awaiting Billing' as const,
+    };
+    const makeLine = (serviceCode: InvoiceLine['serviceCode'], amount: number, notes: string): Omit<InvoiceLine, 'id'> => ({
+      ...carry,
+      serviceCode,
+      amountInvoiced: Math.round(amount * 100) / 100,
+      notes,
+    });
+
+    const rows: Omit<InvoiceLine, 'id'>[] = [];
+    for (const line of lines) {
+      if (PACKAGE_CODES.includes(line.serviceCode)) {
+        const det = determinePackage(
+          {
+            day1: line.day1Date,
+            lastConsult: line.lastConsultDate || undefined,
+            consultCount: line.consultCount,
+            interruptions: line.interruptions,
+          },
+          data.settings.serviceRates,
+        );
+        const code = line.overridePackage ?? det.primaryPackage;
+        rows.push(makeLine(code, getRate(code, rates), 'Auto-generated from service line'));
+        if (line.consultCount > MAX_PACKAGE_CONSULTS) {
+          const extra = line.consultCount - MAX_PACKAGE_CONSULTS;
+          rows.push(makeLine('NS04', getRate('NS04', rates) * extra, `Auto-generated: ${extra} consult(s) beyond the 25 cap`));
+        }
+      } else if (line.serviceCode === 'NS04' || line.serviceCode === 'NS05') {
+        const qty = Math.max(1, line.consultCount || 1);
+        rows.push(makeLine(line.serviceCode, getRate(line.serviceCode, rates) * qty, `Auto-generated (${qty} ${line.serviceCode === 'NS05' ? 'hour(s)' : 'consult(s)'})`));
+      }
+    }
+    if (rows.length === 0) return 0;
+    get().addInvoiceLines(rows);
+    return rows.length;
+  },
 
   addComplexCase: (c) => {
     const id = uid('cx');
@@ -611,6 +1291,51 @@ export const useStore = create<StoreState>((set, get) => ({
     })),
   removeDecline: (id) =>
     mutate(get, (data) => ({ ...data, declines: data.declines.filter((x) => x.id !== id) })),
+
+  addDocument: async (meta, blob) => {
+    const id = uid('doc');
+    // Write the bytes first; only record the metadata if that succeeds.
+    await saveDocumentBlob(id, blob);
+    const doc: ClaimDocument = { ...meta, id, addedDate: new Date().toISOString() };
+    mutate(get, (data) => ({ ...data, documents: [...data.documents, doc] }));
+    return id;
+  },
+  removeDocument: async (id) => {
+    const doc = get().data.documents.find((d) => d.id === id);
+    try {
+      await deleteDocumentBlob(id);
+    } catch (err) {
+      throw new Error(`Could not delete document file from storage: ${(err as Error).message}`);
+    }
+    mutate(get, (data) => ({ ...data, documents: data.documents.filter((d) => d.id !== id) }));
+    audit('delete', 'document', id, `Removed document ${doc?.fileName ?? id}`);
+  },
+  getDocumentBlob: async (id) => loadDocumentBlob(id),
+
+  exportFullBackup: async () => {
+    const blob = await buildBackupZip(get().data, (id) => loadDocumentBlob(id));
+    const ids = await listDocumentIds();
+    audit(
+      'export',
+      'zip',
+      undefined,
+      `Full ZIP backup (${get().data.documents.length} docs metadata, ${ids.length} blobs in IDB)`,
+    );
+    return blob;
+  },
+  importFullBackup: async (zip) => {
+    const prior = get().data;
+    try {
+      const { data, blobs } = await readBackupZip(zip);
+      for (const [id, blob] of blobs) await saveDocumentBlob(id, blob);
+      set({ ...adoptLoadedData(normalizeData(data)), status: { ...get().status, dirty: true } });
+      audit('import', 'zip', undefined, `Restored ZIP (${blobs.size} document blobs)`);
+      scheduleSave(get);
+    } catch (err) {
+      set({ data: prior });
+      throw err;
+    }
+  },
 }));
 
 export function hasSessionPassphrase(): boolean {

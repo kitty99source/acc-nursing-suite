@@ -12,8 +12,11 @@ export function ExportCenter() {
   const exportJsonDownload = useStore((s) => s.exportJsonDownload);
   const importJsonText = useStore((s) => s.importJsonText);
   const importFromExcel = useStore((s) => s.importFromExcel);
+  const exportFullBackup = useStore((s) => s.exportFullBackup);
+  const importFullBackup = useStore((s) => s.importFullBackup);
   const fileInput = useRef<HTMLInputElement>(null);
   const excelInput = useRef<HTMLInputElement>(null);
+  const zipInput = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; tone: 'good' | 'danger' } | null>(null);
 
@@ -41,17 +44,45 @@ export function ExportCenter() {
     setMessage(null);
     try {
       const text = await readFileAsText(file);
-      const ok = await importJsonText(text);
-      setMessage(
-        ok
-          ? { text: 'Backup restored successfully.', tone: 'good' }
-          : { text: 'Could not read that file. If it is encrypted, open it from the top bar instead.', tone: 'danger' },
-      );
+      await importJsonText(text);
+      setMessage({ text: 'Backup restored successfully.', tone: 'good' });
     } catch (err) {
-      setMessage({ text: `Import failed: ${(err as Error).message}`, tone: 'danger' });
+      setMessage({
+        text: `Could not read that file: ${(err as Error).message}. If it is encrypted, open it from the top bar instead.`,
+        tone: 'danger',
+      });
     } finally {
       setBusy(false);
       if (fileInput.current) fileInput.current.value = '';
+    }
+  }
+
+  async function exportZipBackup() {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const blob = await exportFullBackup();
+      const stamp = new Date().toISOString().slice(0, 10);
+      downloadBlob(`ACC-full-backup-${stamp}.zip`, blob);
+      setMessage({ text: 'Full backup (data + documents) exported.', tone: 'good' });
+    } catch (err) {
+      setMessage({ text: `Full backup failed: ${(err as Error).message}`, tone: 'danger' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleZipFile(file: File) {
+    setBusy(true);
+    setMessage(null);
+    try {
+      await importFullBackup(file);
+      setMessage({ text: 'Full backup restored (data + documents).', tone: 'good' });
+    } catch (err) {
+      setMessage({ text: `Full backup restore failed: ${(err as Error).message}`, tone: 'danger' });
+    } finally {
+      setBusy(false);
+      if (zipInput.current) zipInput.current.value = '';
     }
   }
 
@@ -168,6 +199,38 @@ export function ExportCenter() {
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) void handleImportFile(f);
+              }}
+            />
+          </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center gap-2 mb-2">
+            <IconFolder />
+            <h3 className="font-semibold">Full backup with documents (.zip)</h3>
+          </div>
+          <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>
+            Your everyday <span className="font-mono">.accdata</span> file stays small because attached
+            files (ACC approval letters, requests you sent) are stored separately on this machine. Use
+            this to bundle <span className="font-medium">everything — data and every stored file</span> —
+            into one ZIP to move to another computer or keep as an archive. Restoring replaces current
+            data and re-imports the files.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn" onClick={() => void exportZipBackup()} disabled={busy}>
+              <IconExport /> Export full backup (.zip)
+            </button>
+            <button className="btn" onClick={() => zipInput.current?.click()} disabled={busy}>
+              <IconFolder /> Restore full backup…
+            </button>
+            <input
+              ref={zipInput}
+              type="file"
+              accept=".zip,application/zip"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void handleZipFile(f);
               }}
             />
           </div>

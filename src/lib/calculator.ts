@@ -4,7 +4,11 @@ import {
   NS06_WATCH_THRESHOLD,
   NS06_APPROVAL_THRESHOLD,
   SERVICE_CODES,
+  DEFAULT_RATES,
 } from './serviceCodes';
+
+/** Optional map of code -> rate (dollars excl GST). Defaults to the built-in schedule. */
+export type RateMap = Record<ServiceCode, number>;
 
 // ============================================================================
 // Pure package-calculator engine for ACC District Nursing packages of care.
@@ -82,7 +86,7 @@ export const PACKAGE_COMPLETION_REMINDER =
  * interruptions, applying the downgrade rule, the 25-consult cap and the
  * 105-day / NS04 extension rule.
  */
-export function determinePackage(input: PackageInput): PackageDetermination {
+export function determinePackage(input: PackageInput, rates: RateMap = DEFAULT_RATES): PackageDetermination {
   const consultCount = Math.max(0, Math.floor(input.consultCount || 0));
   const ongoing = !input.lastConsult;
   const durationDays = input.lastConsult ? Math.max(0, daysBetween(input.day1, input.lastConsult)) : 0;
@@ -113,9 +117,10 @@ export function determinePackage(input: PackageInput): PackageDetermination {
     extendedConsults = consultCount - MAX_PACKAGE_CONSULTS;
   }
 
-  const packageValue = SERVICE_CODES[primaryPackage].rate;
+  const packageValue = rates[primaryPackage] ?? SERVICE_CODES[primaryPackage].rate;
+  const ns04Rate = rates.NS04 ?? SERVICE_CODES.NS04.rate;
   const extendedValue =
-    extendedConsults !== undefined ? extendedConsults * SERVICE_CODES.NS04.rate : undefined;
+    extendedConsults !== undefined ? extendedConsults * ns04Rate : undefined;
   const totalValue = packageValue + (extendedValue ?? 0);
 
   const recommendedCodes: ServiceCode[] = [primaryPackage];
@@ -169,6 +174,27 @@ export function determinePackage(input: PackageInput): PackageDetermination {
   };
 }
 
+/**
+ * Dollar value to display for a service line, honouring a manual override.
+ * When no override is set this is simply the calculator's `det.totalValue`.
+ * With an override, flat-priced packages use the override rate directly, while
+ * per-consult / per-hour codes (NS04/NS05/NS06...) scale by the count.
+ */
+export function effectivePackageValue(
+  det: PackageDetermination,
+  override: ServiceCode | undefined,
+  consultCount: number,
+  rates: RateMap = DEFAULT_RATES,
+): number {
+  if (!override) return det.totalValue;
+  const info = SERVICE_CODES[override];
+  const rate = rates[override] ?? info?.rate ?? 0;
+  if (info && (info.basis === 'consult' || info.basis === 'hour')) {
+    return rate * Math.max(0, Math.floor(consultCount || 0));
+  }
+  return rate;
+}
+
 export interface SubsequentReclassification extends PackageDetermination {
   newDay1: string;
   note: string;
@@ -179,18 +205,24 @@ export interface SubsequentReclassification extends PackageDetermination {
  * primary injury, the NEW day 1 is the reassessment date (NOT backdated).
  * Produces a fresh determination from that date.
  */
-export function reclassifySubsequentInjury(input: {
-  reassessmentDate: string;
-  lastConsult?: string;
-  consultCount: number;
-  interruptions?: Interruption[];
-}): SubsequentReclassification {
-  const determination = determinePackage({
-    day1: input.reassessmentDate,
-    lastConsult: input.lastConsult,
-    consultCount: input.consultCount,
-    interruptions: input.interruptions,
-  });
+export function reclassifySubsequentInjury(
+  input: {
+    reassessmentDate: string;
+    lastConsult?: string;
+    consultCount: number;
+    interruptions?: Interruption[];
+  },
+  rates: RateMap = DEFAULT_RATES,
+): SubsequentReclassification {
+  const determination = determinePackage(
+    {
+      day1: input.reassessmentDate,
+      lastConsult: input.lastConsult,
+      consultCount: input.consultCount,
+      interruptions: input.interruptions,
+    },
+    rates,
+  );
   return {
     ...determination,
     newDay1: input.reassessmentDate,

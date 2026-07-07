@@ -1,4 +1,5 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 export interface Column<T> {
   key: string;
@@ -9,6 +10,10 @@ export interface Column<T> {
   align?: 'left' | 'right' | 'center';
   width?: number;
 }
+
+/** Rows above this count use windowed rendering (~30 DOM nodes regardless of total). */
+export const VIRTUAL_ROW_THRESHOLD = 50;
+const ESTIMATED_ROW_HEIGHT = 44;
 
 /**
  * Build dynamic table columns for the union of `customFields` keys present
@@ -38,6 +43,28 @@ export function customColumns<T>(
   }));
 }
 
+function TableRow<T>({
+  row,
+  columns,
+  rowKey,
+  rowClassName,
+}: {
+  row: T;
+  columns: Column<T>[];
+  rowKey: (row: T) => string;
+  rowClassName?: (row: T) => string;
+}) {
+  return (
+    <tr key={rowKey(row)} className={rowClassName?.(row) ?? ''}>
+      {columns.map((col) => (
+        <td key={col.key} style={{ textAlign: col.align ?? 'left' }}>
+          {col.render(row)}
+        </td>
+      ))}
+    </tr>
+  );
+}
+
 export function DataTable<T>({
   columns,
   rows,
@@ -46,6 +73,7 @@ export function DataTable<T>({
   emptyState,
   initialSort,
   maxHeight = '65vh',
+  virtualize = true,
 }: {
   columns: Column<T>[];
   rows: T[];
@@ -54,7 +82,10 @@ export function DataTable<T>({
   emptyState?: ReactNode;
   initialSort?: { key: string; dir: 'asc' | 'desc' };
   maxHeight?: string;
+  /** Window rows when count exceeds VIRTUAL_ROW_THRESHOLD (default true). */
+  virtualize?: boolean;
 }) {
+  const parentRef = useRef<HTMLDivElement>(null);
   const [sortKey, setSortKey] = useState<string | undefined>(initialSort?.key);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>(initialSort?.dir ?? 'asc');
 
@@ -75,6 +106,17 @@ export function DataTable<T>({
     return copy;
   }, [rows, columns, sortKey, sortDir]);
 
+  const shouldVirtualize = virtualize && sortedRows.length > VIRTUAL_ROW_THRESHOLD;
+
+  const rowVirtualizer = useVirtualizer({
+    count: shouldVirtualize ? sortedRows.length : 0,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ESTIMATED_ROW_HEIGHT,
+    overscan: 12,
+  });
+
+  const virtualRows = shouldVirtualize ? rowVirtualizer.getVirtualItems() : [];
+
   function toggleSort(key: string) {
     const col = columns.find((c) => c.key === key);
     if (!col?.sortable) return;
@@ -91,7 +133,7 @@ export function DataTable<T>({
   }
 
   return (
-    <div className="card overflow-auto" style={{ maxHeight }}>
+    <div ref={parentRef} className="card overflow-auto" style={{ maxHeight }}>
       <table className="data-table">
         <thead>
           <tr>
@@ -116,15 +158,52 @@ export function DataTable<T>({
           </tr>
         </thead>
         <tbody>
-          {sortedRows.map((row) => (
-            <tr key={rowKey(row)} className={rowClassName?.(row) ?? ''}>
-              {columns.map((col) => (
-                <td key={col.key} style={{ textAlign: col.align ?? 'left' }}>
-                  {col.render(row)}
-                </td>
-              ))}
-            </tr>
-          ))}
+          {shouldVirtualize ? (
+            <>
+              {virtualRows.length > 0 && virtualRows[0].start > 0 && (
+                <tr aria-hidden="true">
+                  <td
+                    colSpan={columns.length}
+                    style={{ height: virtualRows[0].start, padding: 0, border: 'none' }}
+                  />
+                </tr>
+              )}
+              {virtualRows.map((vi) => {
+                const row = sortedRows[vi.index];
+                return (
+                  <TableRow
+                    key={rowKey(row)}
+                    row={row}
+                    columns={columns}
+                    rowKey={rowKey}
+                    rowClassName={rowClassName}
+                  />
+                );
+              })}
+              {virtualRows.length > 0 && (
+                <tr aria-hidden="true">
+                  <td
+                    colSpan={columns.length}
+                    style={{
+                      height: rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end,
+                      padding: 0,
+                      border: 'none',
+                    }}
+                  />
+                </tr>
+              )}
+            </>
+          ) : (
+            sortedRows.map((row) => (
+              <TableRow
+                key={rowKey(row)}
+                row={row}
+                columns={columns}
+                rowKey={rowKey}
+                rowClassName={rowClassName}
+              />
+            ))
+          )}
         </tbody>
       </table>
     </div>

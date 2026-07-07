@@ -4,10 +4,13 @@ import { applyTheme } from './lib/theme';
 import { Sidebar, type ModuleId } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { LockScreen } from './components/LockScreen';
-import { buildActionQueue, computeApproval } from './lib/analytics';
+import { buildActionQueue, computeApproval, isBillingApproval } from './lib/analytics';
+import { complianceSummary } from './lib/compliance';
+import { getComplianceFindings } from './lib/complianceCache';
 import { daysUntil } from './lib/format';
 
 import { Dashboard } from './modules/Dashboard';
+import { Compliance } from './modules/Compliance';
 import { Patients } from './modules/Patients';
 import { CalculatorModule } from './modules/CalculatorModule';
 import { Approvals } from './modules/Approvals';
@@ -18,18 +21,35 @@ import { QuickPaste } from './modules/QuickPaste';
 import { ExportCenter } from './modules/ExportCenter';
 import { ImportedTables } from './modules/ImportedTables';
 import { SettingsModule } from './modules/SettingsModule';
+import { LetterImportModal } from './components/LetterImportModal';
+import { RecoveryModal } from './components/RecoveryModal';
+import { BackupReminderModal } from './components/BackupReminderModal';
+import { loadBackupSnoozeUntil } from './lib/idb';
 
 export default function App() {
   const ready = useStore((s) => s.ready);
   const locked = useStore((s) => s.locked);
+  const recovery = useStore((s) => s.recovery);
   const init = useStore((s) => s.init);
   const settings = useStore((s) => s.data.settings);
+  const status = useStore((s) => s.status);
   const data = useStore((s) => s.data);
   const recordActivity = useStore((s) => s.recordActivity);
   const lock = useStore((s) => s.lock);
   const lastActivityAt = useStore((s) => s.lastActivityAt);
+  const focus = useStore((s) => s.focus);
+  const openLetterImport = useStore((s) => s.openLetterImport);
 
   const [module, setModule] = useState<ModuleId>('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [backupReminderOpen, setBackupReminderOpen] = useState(false);
+
+  // A cross-module focus request (e.g. from the Flagged page) switches the
+  // active module; the target module then consumes the request on mount.
+  useEffect(() => {
+    if (focus) setModule(focus.module as ModuleId);
+  }, [focus]);
 
   // Initialise persistence on mount.
   useEffect(() => {
@@ -83,14 +103,61 @@ export default function App() {
     return () => clearInterval(interval);
   }, [locked, settings.idleLockMinutes, lastActivityAt, lock]);
 
-  // Sidebar attention badges.
+  // Global PDF drag-drop → letter import.
+  useEffect(() => {
+    if (locked) return;
+    function onDragOver(e: DragEvent) {
+      if (e.dataTransfer?.types.includes('Files')) {
+        e.preventDefault();
+        setDragOver(true);
+      }
+    }
+    function onDragLeave() {
+      setDragOver(false);
+    }
+    function onDrop(e: DragEvent) {
+      e.preventDefault();
+      setDragOver(false);
+      const file = [...(e.dataTransfer?.files ?? [])].find((f) => f.type === 'application/pdf' || f.name.endsWith('.pdf'));
+      if (file) openLetterImport(file);
+    }
+    window.addEventListener('dragover', onDragOver);
+    window.addEventListener('dragleave', onDragLeave);
+    window.addEventListener('drop', onDrop);
+    return () => {
+      window.removeEventListener('dragover', onDragOver);
+      window.removeEventListener('dragleave', onDragLeave);
+      window.removeEventListener('drop', onDrop);
+    };
+  }, [locked, openLetterImport]);
+
+  // Weekly backup reminder when last export is older than configured days (P0-004).
+  useEffect(() => {
+    if (!ready || locked || recovery) return;
+    const days = settings.backupReminderDays ?? 7;
+    const last = status.lastExportAt;
+    if (!last) {
+      void loadBackupSnoozeUntil().then((snooze) => {
+        if (!snooze || Date.now() > snooze) setBackupReminderOpen(true);
+      });
+      return;
+    }
+    const daysSince = Math.floor((Date.now() - last) / (24 * 60 * 60 * 1000));
+    if (daysSince < days) return;
+    void loadBackupSnoozeUntil().then((snooze) => {
+      if (!snooze || Date.now() > snooze) setBackupReminderOpen(true);
+    });
+  }, [ready, locked, recovery, settings.backupReminderDays, status.lastExportAt]);
+
+  // Sidebar attention badges — cheap counters + cached compliance (P1-004).
   const badges = useMemo(() => {
     const result: Partial<Record<ModuleId, number>> = {};
-    const actions = buildActionQueue(data);
+    const findings = getComplianceFindings(data);
+    const actions = buildActionQueue(data, findings);
     if (actions.length) result.dashboard = actions.length;
 
     const approvalsAttention = data.approvals.filter(
-      (a) => computeApproval(a, settings.expiryThresholdDays).status !== 'Active',
+      (a) => isBillingApproval(a) && computeApproval(a, settings.expiryThresholdDays).status !== 'Active',
     ).length;
     if (approvalsAttention) result.approvals = approvalsAttention;
 
@@ -109,6 +176,10 @@ export default function App() {
     ).length;
     if (complexAttention) result.complex = complexAttention;
 
+    const compliance = complianceSummary(findings);
+    const complianceAttention = compliance.violations + compliance.warnings;
+    if (complianceAttention) result.compliance = complianceAttention;
+
     return result;
   }, [data, settings.expiryThresholdDays]);
 
@@ -122,13 +193,33 @@ export default function App() {
 
   if (locked) return <LockScreen />;
 
+  if (recovery) {
+    return (
+      <div className="h-full flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+        <RecoveryModal />
+      </div>
+    );
+  }
+
   return (
-    <div className="h-full flex" style={{ background: 'var(--bg)' }}>
-      <Sidebar current={module} onNavigate={setModule} badges={badges} />
+    <div className="h-full flex relative" style={{ background: 'var(--bg)' }}>
+      {dragOver && (
+        <div className="fixed inset-0 z-[60] pointer-events-none flex items-center justify-center" style={{ background: 'rgba(47,143,131,0.15)', border: '3px dashed var(--accent)' }}>
+          <p className="text-lg font-semibold" style={{ color: 'var(--accent)' }}>Drop ACC letter PDF to import</p>
+        </div>
+      )}
+      <Sidebar
+        current={module}
+        onNavigate={(id) => { setModule(id); setSidebarOpen(false); }}
+        badges={badges}
+        open={sidebarOpen}
+        onToggle={() => setSidebarOpen((v) => !v)}
+      />
       <div className="flex-1 flex flex-col min-w-0">
-        <TopBar />
+        <TopBar onMenuToggle={() => setSidebarOpen((v) => !v)} />
         <main className="flex-1 overflow-y-auto p-5">
           {module === 'dashboard' && <Dashboard onNavigate={setModule} />}
+          {module === 'compliance' && <Compliance />}
           {module === 'patients' && <Patients />}
           {module === 'calculator' && <CalculatorModule />}
           {module === 'approvals' && <Approvals />}
@@ -141,6 +232,20 @@ export default function App() {
           {module === 'settings' && <SettingsModule />}
         </main>
       </div>
+      <LetterImportModal />
+      <BackupReminderModal
+        open={backupReminderOpen}
+        daysSinceExport={
+          status.lastExportAt
+            ? Math.floor((Date.now() - status.lastExportAt) / (24 * 60 * 60 * 1000))
+            : settings.backupReminderDays ?? 7
+        }
+        onGoToExport={() => {
+          setBackupReminderOpen(false);
+          setModule('export');
+        }}
+        onDismiss={() => setBackupReminderOpen(false)}
+      />
     </div>
   );
 }

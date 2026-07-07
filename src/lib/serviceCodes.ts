@@ -1,4 +1,4 @@
-import type { ServiceCode } from '../types';
+import type { ServiceCode, Settings } from '../types';
 
 // ============================================================================
 // ACC Nursing Services contract reference data (March 2025 Service Schedule).
@@ -165,6 +165,42 @@ export const SERVICE_CODES: Record<ServiceCode, ServiceCodeInfo> = {
 };
 
 export const ALL_SERVICE_CODES = Object.keys(SERVICE_CODES) as ServiceCode[];
+
+/**
+ * Seed rates (dollars excl GST) derived from the built-in ACC schedule above.
+ * Used to initialise the editable `settings.serviceRates` and as the fallback
+ * when a rates map is not supplied (e.g. in the pure calculator / unit tests).
+ */
+export const DEFAULT_RATES: Record<ServiceCode, number> = ALL_SERVICE_CODES.reduce(
+  (acc, code) => {
+    acc[code] = SERVICE_CODES[code].rate;
+    return acc;
+  },
+  {} as Record<ServiceCode, number>,
+);
+
+/** Current rate for a code, preferring the file's editable rates over defaults. */
+export function getRate(code: ServiceCode, settings?: Pick<Settings, 'serviceRates'>): number {
+  const custom = settings?.serviceRates?.[code];
+  return typeof custom === 'number' ? custom : DEFAULT_RATES[code];
+}
+
+/**
+ * Codes that should appear in a picker: the enabled set from settings, plus
+ * `current` (even if disabled) so editing an existing record never hides its
+ * own value. Falls back to all codes when settings are absent.
+ */
+export function visibleServiceCodes(
+  settings?: Pick<Settings, 'enabledServiceCodes'>,
+  current?: ServiceCode,
+): ServiceCode[] {
+  const enabled = settings?.enabledServiceCodes;
+  const base = enabled && enabled.length > 0 ? enabled : ALL_SERVICE_CODES;
+  const set = new Set<ServiceCode>(base);
+  if (current) set.add(current);
+  // Preserve the canonical ordering from ALL_SERVICE_CODES.
+  return ALL_SERVICE_CODES.filter((c) => set.has(c));
+}
 
 /** Service codes that travel (NSTD10/NSTT1/NSTT1D/NSAC) may be billed alongside. */
 export const TRAVEL_ELIGIBLE_CODES: ServiceCode[] = ['NS05', 'NS07', 'NS20', 'NS20T'];

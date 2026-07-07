@@ -6,16 +6,29 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "build": "tsc -p tsconfig.json --noEmit && vite build && node scripts/copy-launcher.mjs",
+    "postinstall": "node scripts/copy-tessdata.mjs",
     "preview": "vite preview",
+    "launch": "node scripts/launch-built.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "stress": "node scripts/stress/run-stress.mjs",
+    "stress:medium": "node scripts/stress/run-stress.mjs --scale=medium",
+    "stress:large": "node scripts/stress/run-stress.mjs --scale=large",
+    "verify-build": "node scripts/verify-build.mjs",
+    "wfh:folder-watch": "node scripts/wfh/folder-watch.mjs",
+    "wfh:portal-discover": "node scripts/wfh/portal-discover.mjs"
   },
   "dependencies": {
+    "@tanstack/react-virtual": "^3.14.5",
     "exceljs": "^4.4.0",
+    "jszip": "^3.10.1",
+    "mammoth": "^1.12.0",
+    "pdfjs-dist": "^6.1.200",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.13.3",
+    "tesseract.js": "^7.0.0",
     "zustand": "^4.5.5"
   },
   "devDependencies": {
@@ -24,6 +37,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "jsdom": "^25.0.1",
+    "playwright": "^1.61.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.15",
     "typescript": "^5.6.3",

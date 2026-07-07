@@ -1,0 +1,203 @@
+{
+  "generatedAt": "2026-07-07T17:42:47.473Z",
+  "fixture": {
+    "generatedAt": "2026-07-07T17:42:44.967Z",
+    "scale": "medium",
+    "outFile": "generated-medium.json",
+    "counts": {
+      "patients": 500,
+      "claims": 750,
+      "serviceLines": 2000,
+      "approvals": 224,
+      "invoiceLines": 3000,
+      "declines": 80,
+      "complexCases": 40,
+      "documents": 100,
+      "importHistory": 200
+    },
+    "bytes": 1593794
+  },
+  "results": [
+    {
+      "name": "runCompliance",
+      "ms": 11.721707999999921,
+      "notes": "violations=463 warnings=721",
+      "count": 1208,
+      "passed": true,
+      "thresholdMs": 3000
+    },
+    {
+      "name": "dashboardMetrics",
+      "ms": 13.241166999999905,
+      "passed": true,
+      "thresholdMs": 2000
+    },
+    {
+      "name": "buildActionQueue",
+      "ms": 90.97829100000001,
+      "count": 2581,
+      "passed": true,
+      "thresholdMs": 2500
+    },
+    {
+      "name": "billingFunnel",
+      "ms": 4.016124999999988,
+      "passed": true,
+      "thresholdMs": 500
+    },
+    {
+      "name": "coverageGapClaims",
+      "ms": 10.571874999999977,
+      "count": 185,
+      "passed": true,
+      "thresholdMs": 1000
+    },
+    {
+      "name": "patientsPage1",
+      "ms": 0.5239579999999933,
+      "passed": true,
+      "thresholdMs": 50
+    },
+    {
+      "name": "patientsPageMid",
+      "ms": 0.04041700000016135,
+      "passed": true,
+      "thresholdMs": 50
+    },
+    {
+      "name": "patientsSearch",
+      "ms": 0.39695800000004056,
+      "passed": true,
+      "thresholdMs": 200
+    },
+    {
+      "name": "patientsLastPage",
+      "ms": 0.03858300000001691,
+      "passed": true,
+      "thresholdMs": 50
+    },
+    {
+      "name": "determinePackage×500",
+      "ms": 2.78320900000017,
+      "count": 500,
+      "passed": true,
+      "thresholdMs": 500
+    },
+    {
+      "name": "serialize",
+      "ms": 24.218416999999818,
+      "passed": true,
+      "thresholdMs": 1500,
+      "notes": "2.26 MB"
+    },
+    {
+      "name": "deserialize",
+      "ms": 9.788999999999987,
+      "passed": true,
+      "thresholdMs": 2000
+    },
+    {
+      "name": "buildWorkbookBuffer",
+      "ms": 520.7517909999999,
+      "passed": true,
+      "thresholdMs": 15000,
+      "notes": "0.19 MB"
+    },
+    {
+      "name": "buildBackupZip",
+      "ms": 67.4549169999998,
+      "passed": true,
+      "thresholdMs": 15000
+    },
+    {
+      "name": "readBackupZip",
+      "ms": 38.650750000000016,
+      "passed": true,
+      "thresholdMs": 10000,
+      "notes": "0.15 MB zip"
+    },
+    {
+      "name": "importHistorySort",
+      "ms": 0.03399999999987813,
+      "count": 200,
+      "passed": true,
+      "thresholdMs": 100
+    },
+    {
+      "name": "extractPdfText(approval)",
+      "ms": 100.78241600000001,
+      "passed": true,
+      "thresholdMs": 3000
+    },
+    {
+      "name": "parseApprovalLetter",
+      "ms": 0.9188339999998334,
+      "passed": true,
+      "thresholdMs": 500
+    },
+    {
+      "name": "extractPdfText(decline)",
+      "ms": 34.01566599999978,
+      "passed": true,
+      "thresholdMs": 3000
+    },
+    {
+      "name": "parseLetterFromText(decline)",
+      "ms": 1.5966660000001411,
+      "passed": true,
+      "thresholdMs": 1000
+    },
+    {
+      "name": "isDuplicateLetterImport×100",
+      "ms": 10.300874999999905,
+      "passed": true,
+      "thresholdMs": 3000
+    },
+    {
+      "name": "prefillFromParsed",
+      "ms": 0.06741600000009385,
+      "passed": true,
+      "thresholdMs": 50
+    }
+  ],
+  "summary": {
+    "total": 22,
+    "passed": 22,
+    "failed": 0,
+    "slowest": [
+      {
+        "name": "buildWorkbookBuffer",
+        "ms": 520.7517909999999,
+        "passed": true,
+        "thresholdMs": 15000,
+        "notes": "0.19 MB"
+      },
+      {
+        "name": "extractPdfText(approval)",
+        "ms": 100.78241600000001,
+        "passed": true,
+        "thresholdMs": 3000
+      },
+      {
+        "name": "buildActionQueue",
+        "ms": 90.97829100000001,
+        "count": 2581,
+        "passed": true,
+        "thresholdMs": 2500
+      },
+      {
+        "name": "buildBackupZip",
+        "ms": 67.4549169999998,
+        "passed": true,
+        "thresholdMs": 15000
+      },
+      {
+        "name": "readBackupZip",
+        "ms": 38.650750000000016,
+        "passed": true,
+        "thresholdMs": 10000,
+        "notes": "0.15 MB zip"
+      }
+    ]
+  }
+}

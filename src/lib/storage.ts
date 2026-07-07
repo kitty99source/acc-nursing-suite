@@ -1,4 +1,6 @@
 import type { AppData } from '../types';
+import { DEFAULT_SETTINGS } from '../types';
+import { DEFAULT_RATES } from './serviceCodes';
 import { encryptString, decryptString, type EncryptedPayload } from './crypto';
 
 // ============================================================================
@@ -70,6 +72,29 @@ export function isEncryptedFile(text: string): boolean {
   }
 }
 
+/**
+ * Backfill any settings fields missing from an older file so newly-added
+ * options (enabled service codes, editable rates) never arrive as `undefined`.
+ * Safe to run on every load; existing values are preserved.
+ */
+export function normalizeData(data: AppData): AppData {
+  const settings = { ...DEFAULT_SETTINGS, ...data.settings };
+  // Merge per-code so codes added in later versions always have a rate.
+  settings.serviceRates = { ...DEFAULT_RATES, ...(data.settings?.serviceRates ?? {}) };
+  const enabled = data.settings?.enabledServiceCodes;
+  settings.enabledServiceCodes =
+    Array.isArray(enabled) && enabled.length > 0 ? enabled : [...DEFAULT_SETTINGS.enabledServiceCodes];
+  // Older files predate document attachments — ensure the array always exists.
+  const documents = Array.isArray(data.documents) ? data.documents : [];
+  const approvals = (data.approvals ?? []).map((a) => ({
+    ...a,
+    recordStatus: a.recordStatus ?? 'current',
+  }));
+  return { ...data, settings, documents, approvals };
+}
+
+export { validateReferentialIntegrity } from './integrity';
+
 /** Parse file text into AppData. Throws PassphraseRequiredError / WrongPassphraseError. */
 export async function deserialize(text: string, passphrase?: string): Promise<AppData> {
   let env: Envelope;
@@ -81,19 +106,19 @@ export async function deserialize(text: string, passphrase?: string): Promise<Ap
   if (env.format !== FILE_FORMAT) {
     // Be lenient: allow a bare AppData JSON (e.g. older manual export).
     const maybe = JSON.parse(text) as AppData;
-    if (maybe && Array.isArray(maybe.patients)) return maybe;
+    if (maybe && Array.isArray(maybe.patients)) return normalizeData(maybe);
     throw new Error('Unrecognised file format.');
   }
   if (env.encrypted) {
     if (!passphrase) throw new PassphraseRequiredError();
     try {
       const json = await decryptString(env.payload, passphrase);
-      return JSON.parse(json) as AppData;
+      return normalizeData(JSON.parse(json) as AppData);
     } catch {
       throw new WrongPassphraseError();
     }
   }
-  return env.data;
+  return normalizeData(env.data);
 }
 
 // ---------------------------------------------------------------------------

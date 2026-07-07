@@ -24,6 +24,7 @@ import { claimBillingState, type ComplianceFinding, type BillingState } from '..
 import { getComplianceFindings, filterFindingsForPatient } from '../lib/complianceCache';
 import { formatCurrency, serviceCodeLabel, visibleServiceCodes } from '../lib/serviceCodes';
 import { formatDate, todayISO } from '../lib/format';
+import { validateNhi } from '../lib/validation';
 import { downloadBlob } from '../lib/storage';
 import {
   LetterImportButton,
@@ -102,6 +103,7 @@ export function Patients() {
   // patient modal
   const [patientModal, setPatientModal] = useState<{ mode: 'create' | 'edit'; patient?: Patient } | null>(null);
   const [patientForm, setPatientForm] = useState<Omit<Patient, 'id'>>({ name: '', nhi: '', dob: '', notes: '' });
+  const nhiCheck = useMemo(() => validateNhi(patientForm.nhi), [patientForm.nhi]);
 
   const selected = data.patients.find((p) => p.id === selectedId) ?? filtered[0] ?? null;
 
@@ -114,13 +116,14 @@ export function Patients() {
     setPatientModal({ mode: 'edit', patient: p });
   }
   function savePatient() {
+    const payload = { ...patientForm, nhi: nhiCheck.normalized };
     if (patientModal?.mode === 'create') {
-      const id = addPatient(patientForm);
+      const id = addPatient(payload);
       setSelectedId(id);
       const idx = useStore.getState().data.patients.findIndex((p) => p.id === id);
       if (idx >= 0) setPage(Math.floor(idx / PATIENTS_PAGE_SIZE) + 1);
     } else if (patientModal?.patient) {
-      updatePatient(patientModal.patient.id, patientForm);
+      updatePatient(patientModal.patient.id, payload);
     }
     setPatientModal(null);
   }
@@ -290,7 +293,7 @@ export function Patients() {
           <Field label="Full name" required>
             <TextInput value={patientForm.name} onChange={(e) => setPatientForm({ ...patientForm, name: e.target.value })} />
           </Field>
-          <Field label="NHI">
+          <Field label="NHI" error={patientForm.nhi && !nhiCheck.ok ? nhiCheck.warning : undefined}>
             <TextInput value={patientForm.nhi} onChange={(e) => setPatientForm({ ...patientForm, nhi: e.target.value })} />
           </Field>
           <Field label="Date of birth">

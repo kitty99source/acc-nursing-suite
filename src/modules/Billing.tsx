@@ -74,6 +74,9 @@ export function Billing() {
     if (focus.intent === 'generate-invoices' && focus.claimId) {
       generateInvoiceLinesForClaim(focus.claimId);
     }
+    if (focus.intent === 'stale-remittance' || focus.intent === 'review-duplicate') {
+      setStatusFilter('Remittance');
+    }
     const q = (focus.prefill?.claimNumber as string) || claim?.claimNumber || '';
     if (q) {
       setStatusFilter('all');

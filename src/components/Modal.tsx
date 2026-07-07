@@ -117,7 +117,7 @@ export function ConfirmDialog({
         <button className={destructive ? 'btn btn-danger' : 'btn btn-primary'} onClick={onConfirm}>{confirmLabel}</button>
       </>
     }>
-      <p className="text-sm" style={{ color: 'var(--text)' }}>{message}</p>
+      <div className="text-sm" style={{ color: 'var(--text)' }}>{message}</div>
     </Modal>
   );
 }

@@ -1,7 +1,8 @@
 import ExcelJS from 'exceljs';
 import type { AppData } from '../types';
-import { computeApproval, yearSummary } from './analytics';
+import { computeApproval, yearSummary, managementSummaryMetrics } from './analytics';
 import { MONTH_NAMES } from './format';
+import { COMPLIANCE_RULES_VERSION } from './compliance';
 
 // Union of customFields keys across a set of records, in first-seen order.
 function collectCustomKeys(items: { customFields?: Record<string, string> }[]): string[] {
@@ -119,6 +120,7 @@ function buildStartHere(wb: ExcelJS.Workbook) {
     ['NS04-NS05 Approvals', 'Approval tracking with days until expiry and status; salmon highlight when expiring/expired.'],
     ['Complex Cases', 'Structured log of unusual cases, decisions and review dates.'],
     ['Decline Tracker', 'Decline receipt → resubmission → outcome workflow.'],
+    ['Management Summary', 'Period-close snapshot: violations, billing funnel, open declines, approval expiry horizon.'],
   ];
   for (const [tab, desc] of index) {
     const r = ws.addRow([tab, desc]);
@@ -526,6 +528,55 @@ function buildDeclines(wb: ExcelJS.Workbook, data: AppData) {
 }
 
 // ---------------------------------------------------------------------------
+// Management Summary (P6-006)
+// ---------------------------------------------------------------------------
+function buildManagementSummary(wb: ExcelJS.Workbook, data: AppData) {
+  const ws = wb.addWorksheet('Management Summary', { properties: { tabColor: { argb: 'FF5C6BC0' } } });
+  ws.columns = [{ width: 34 }, { width: 22 }];
+  const m = managementSummaryMetrics(data);
+  const rulesVersion = data.settings.complianceRulesVersion ?? COMPLIANCE_RULES_VERSION;
+
+  ws.mergeCells('A1:B1');
+  const title = ws.getCell('A1');
+  title.value = 'Management Summary';
+  title.font = { bold: true, size: 16, color: { argb: 'FF2F4858' } };
+  ws.getRow(1).height = 28;
+
+  const rows: [string, string | number][] = [
+    ['Generated', m.generatedAt],
+    ['Compliance rules version', rulesVersion],
+    ['Violations', m.violations],
+    ['Warnings', m.warnings],
+    ['Heads-ups (predictive)', m.predictive],
+    ['', ''],
+    ['Billing funnel — Awaiting Billing (count)', m.funnel.awaitingBilling.count],
+    ['Billing funnel — Awaiting Billing ($)', m.funnel.awaitingBilling.amount],
+    ['Billing funnel — Billed (count)', m.funnel.billed.count],
+    ['Billing funnel — Billed ($)', m.funnel.billed.amount],
+    ['Billing funnel — Remittance (count)', m.funnel.remittance.count],
+    ['Billing funnel — Remittance ($)', m.funnel.remittance.amount],
+    ['', ''],
+    ['Open declines (total)', m.openDeclines],
+    ['Approvals expiring soon', m.expiringApprovals],
+    ['Approvals expired', m.expiredApprovals],
+  ];
+
+  for (const [stage, count] of Object.entries(m.openDeclinesByStage)) {
+    rows.push([`Open decline — ${stage}`, count]);
+  }
+
+  const headerRow = ws.addRow(['Metric', 'Value']);
+  styleHeaderRow(headerRow);
+  for (const [label, value] of rows) {
+    const r = ws.addRow([label, value]);
+    if (typeof value === 'number' && label.includes('$')) {
+      setMoneyCell(r.getCell(2), value);
+    }
+  }
+  ws.views = [{ state: 'frozen', ySplit: 2 }];
+}
+
+// ---------------------------------------------------------------------------
 // Imported custom sheets (round-trip of AppData.customSheets)
 // ---------------------------------------------------------------------------
 function sanitizeSheetName(name: string, used: Set<string>): string {
@@ -557,25 +608,61 @@ function buildCustomSheets(wb: ExcelJS.Workbook, data: AppData) {
   }
 }
 
-export async function buildWorkbookBuffer(data: AppData): Promise<ExcelJS.Buffer> {
+export interface WorkbookBuildProgress {
+  stage: string;
+  pct: number;
+}
+
+export interface BuildWorkbookOptions {
+  onProgress?: (p: WorkbookBuildProgress) => void;
+}
+
+async function yieldToUi(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => resolve());
+    else setTimeout(resolve, 0);
+  });
+}
+
+export async function buildWorkbookBuffer(
+  data: AppData,
+  opts?: BuildWorkbookOptions,
+): Promise<ExcelJS.Buffer> {
+  const report = async (stage: string, pct: number) => {
+    opts?.onProgress?.({ stage, pct });
+    await yieldToUi();
+  };
+
   const wb = new ExcelJS.Workbook();
   wb.creator = 'ACC District Nursing Admin Suite';
   wb.created = new Date();
   wb.modified = new Date();
 
+  await report('Start Here', 5);
   buildStartHere(wb);
+  await report('Billing Log', 20);
   buildBillingLog(wb, data);
+  await report('Year Summary', 35);
   buildYearSummary(wb, data);
+  await report('Approvals', 50);
   buildApprovals(wb, data);
+  await report('Complex Cases', 65);
   buildComplexCases(wb, data);
+  await report('Decline Tracker', 78);
   buildDeclines(wb, data);
+  await report('Management Summary', 88);
+  buildManagementSummary(wb, data);
+  await report('Custom sheets', 95);
   buildCustomSheets(wb, data);
-
+  await report('Writing file', 100);
   return wb.xlsx.writeBuffer();
 }
 
-export async function buildWorkbookBlob(data: AppData): Promise<Blob> {
-  const buffer = await buildWorkbookBuffer(data);
+export async function buildWorkbookBlob(
+  data: AppData,
+  opts?: BuildWorkbookOptions,
+): Promise<Blob> {
+  const buffer = await buildWorkbookBuffer(data, opts);
   return new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });

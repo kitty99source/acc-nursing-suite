@@ -10,6 +10,12 @@ import {
   stagingAgeLabel,
   type StagingItem,
 } from '../lib/staging';
+import {
+  allSelectedBatchApprovable,
+  commitBatchStagingItems,
+  isBatchApprovable,
+  stagingPatientNames,
+} from '../lib/hrqBatch';
 import { appendAudit } from '../lib/auditLog';
 
 function slaTone(level: ReturnType<typeof stagingSlaLevel>): 'good' | 'warn' | 'danger' {
@@ -37,6 +43,8 @@ function typeLabel(type: StagingItem['type']): string {
 
 export function ReviewQueue() {
   const openLetterImport = useStore((s) => s.openLetterImport);
+  const commitParsedApproval = useStore((s) => s.commitParsedApproval);
+  const commitParsedDecline = useStore((s) => s.commitParsedDecline);
   const [items, setItems] = useState<StagingItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -56,6 +64,13 @@ export function ReviewQueue() {
   }, [refresh]);
 
   const sorted = useMemo(() => items, [items]);
+
+  const selectedItems = useMemo(() => sorted.filter((i) => selected.has(i.id)), [sorted, selected]);
+  const canBatchApprove = useMemo(() => allSelectedBatchApprovable(selectedItems), [selectedItems]);
+  const batchApprovableCount = useMemo(
+    () => selectedItems.filter(isBatchApprovable).length,
+    [selectedItems],
+  );
 
   async function importSidecars(files: FileList | null) {
     if (!files?.length) return;
@@ -161,6 +176,58 @@ export function ReviewQueue() {
     await refresh();
   }
 
+  async function approveSelected() {
+    if (!canBatchApprove) return;
+    const names = stagingPatientNames(selectedItems);
+    const ok = await confirm({
+      title: `Approve ${selectedItems.length} letter(s)?`,
+      message: (
+        <div>
+          <p className="mb-2">
+            You are about to file <strong>{selectedItems.length}</strong> high-confidence letter
+            {selectedItems.length === 1 ? '' : 's'} to live patient data. Confirm every patient name:
+          </p>
+          <ul className="list-disc pl-5 space-y-1">
+            {names.map((name) => (
+              <li key={name}>
+                <strong>{name}</strong>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ),
+      confirmLabel: `Approve ${selectedItems.length}`,
+    });
+    if (!ok) return;
+
+    setBusy(true);
+    try {
+      const results = await commitBatchStagingItems(selectedItems, {
+        commitParsedApproval,
+        commitParsedDecline,
+      });
+      for (const result of results) {
+        await updateStagingItem(result.stagingId, { status: 'approved' });
+        const item = selectedItems.find((i) => i.id === result.stagingId);
+        await appendAudit({
+          action: 'hrq-batch-sign-off',
+          entityType: 'staging',
+          entityId: result.stagingId,
+          summary: `HRQ batch approved ${result.kind} for staging item: ${item?.title ?? result.stagingId}`,
+        });
+      }
+      await refresh();
+    } catch (err) {
+      await confirm({
+        title: 'Batch approve failed',
+        message: (err as Error).message,
+        confirmLabel: 'OK',
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div>
       <SectionTitle
@@ -171,6 +238,9 @@ export function ReviewQueue() {
       <div className="flex flex-wrap gap-2 mb-4">
         <button type="button" className="btn btn-primary" disabled={busy} onClick={() => sidecarInput.current?.click()}>
           Import folder-watch sidecars
+        </button>
+        <button type="button" className="btn btn-primary" disabled={busy || !canBatchApprove} onClick={() => void approveSelected()}>
+          Approve selected ({batchApprovableCount})
         </button>
         <button type="button" className="btn" disabled={busy || !selected.size} onClick={() => void rejectSelected()}>
           Reject selected ({selected.size})
@@ -220,6 +290,9 @@ export function ReviewQueue() {
                         {typeLabel(item.type)}
                       </Badge>
                       <Badge tone={slaTone(sla)}>{stagingAgeLabel(item.createdAt)}</Badge>
+                      {isBatchApprovable(item) && (
+                        <Badge tone="good">Batch ready</Badge>
+                      )}
                       <span className="text-xs" style={{ color: 'var(--muted)' }}>
                         via {item.source}
                       </span>

@@ -68,6 +68,27 @@ export async function encryptString(plaintext: string, passphrase: string): Prom
   };
 }
 
+/** SHA-256 hex digest of UTF-8 text (backup manifests, integrity checks). */
+export async function sha256Text(text: string): Promise<string> {
+  const buf = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/** SHA-256 hex digest of a Blob (document checksums). */
+export async function hashBlob(blob: Blob): Promise<string> {
+  const buf =
+    typeof blob.arrayBuffer === 'function'
+      ? await blob.arrayBuffer()
+      : await new Response(blob).arrayBuffer();
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 export async function decryptString(payload: EncryptedPayload, passphrase: string): Promise<string> {
   const salt = fromBase64(payload.salt);
   const iv = fromBase64(payload.iv);

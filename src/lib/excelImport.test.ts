@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import ExcelJS from 'exceljs';
-import { parseWorkbook, mergeImportIntoData, type ImportResult } from './excelImport';
+import { parseWorkbook, mergeImportIntoData, computeImportMergeDiff, type ImportResult } from './excelImport';
 import { emptyData } from './sampleData';
 import type { InvoiceLine } from '../types';
 
@@ -269,5 +269,108 @@ describe('Excel import merge', () => {
     const merged = mergeImportIntoData(base, result, 'merge');
     expect(merged.customSheets).toHaveLength(1);
     expect(merged.customSheets![0].rows).toHaveLength(2);
+  });
+});
+
+describe('Excel import merge diff (P3-005)', () => {
+  it('reports added vs skipped duplicate invoice lines in merge mode', () => {
+    const base = emptyData();
+    base.invoiceLines = [
+      {
+        id: 'existing',
+        patientName: 'Jane Doe',
+        nhi: 'ABC1234',
+        claimNumber: 'CLM1',
+        poNumber: 'PO1',
+        acc45Number: 'A1',
+        serviceCode: 'NS03',
+        invoiceSheet: 'EXTMAR26',
+        invoiceDate: '2026-03-15',
+        amountInvoiced: 100,
+        status: 'Billed',
+        notes: '',
+      },
+    ];
+
+    const result: ImportResult = {
+      patients: [],
+      claims: [],
+      invoiceLines: [
+        {
+          id: 'dup',
+          patientName: 'Jane Doe',
+          nhi: 'ABC1234',
+          claimNumber: 'CLM1',
+          poNumber: 'PO1',
+          acc45Number: 'A1',
+          serviceCode: 'NS03',
+          invoiceSheet: 'EXTMAR26',
+          invoiceDate: '2026-03-15',
+          amountInvoiced: 100,
+          status: 'Billed',
+          notes: '',
+        },
+        {
+          id: 'new',
+          patientName: 'Jane Doe',
+          nhi: 'ABC1234',
+          claimNumber: 'CLM1',
+          poNumber: 'PO1',
+          acc45Number: 'A1',
+          serviceCode: 'NS03',
+          invoiceSheet: 'EXTAPR26',
+          invoiceDate: '2026-04-15',
+          amountInvoiced: 120,
+          status: 'Billed',
+          notes: '',
+        },
+      ],
+      approvals: [],
+      complexCases: [],
+      declines: [],
+      customSheets: [],
+      summary: {
+        counts: {
+          patients: 0,
+          claims: 0,
+          invoiceLines: 2,
+          approvals: 0,
+          complexCases: 0,
+          declines: 0,
+          customSheets: 0,
+        },
+        sheets: [],
+        unrecognizedSheets: [],
+        newColumnsBySheet: {},
+        warnings: [],
+      },
+    };
+
+    const diff = computeImportMergeDiff(base, result, 'merge');
+    expect(diff.wouldAdd.invoiceLines).toBe(1);
+    expect(diff.wouldSkip.invoiceLines).toBe(1);
+  });
+
+  it('replace mode marks all incoming rows as would-add', () => {
+    const base = emptyData();
+    const result: ImportResult = {
+      patients: [],
+      claims: [],
+      invoiceLines: [{ id: 'x', patientName: 'A', nhi: '', claimNumber: '1', poNumber: '', acc45Number: '', serviceCode: 'NS03', invoiceSheet: 'S', invoiceDate: '2026-01-01', amountInvoiced: 1, status: 'Billed', notes: '' }],
+      approvals: [],
+      complexCases: [],
+      declines: [],
+      customSheets: [],
+      summary: {
+        counts: { patients: 0, claims: 0, invoiceLines: 1, approvals: 0, complexCases: 0, declines: 0, customSheets: 0 },
+        sheets: [],
+        unrecognizedSheets: [],
+        newColumnsBySheet: {},
+        warnings: [],
+      },
+    };
+    const diff = computeImportMergeDiff(base, result, 'replace');
+    expect(diff.wouldAdd.invoiceLines).toBe(1);
+    expect(diff.wouldSkip.invoiceLines).toBe(0);
   });
 });

@@ -22,6 +22,35 @@ const COMPLIANCE_SNAPSHOT_KEY = 'complianceSnapshot';
 const STAGING_QUEUE_KEY = 'stagingQueue';
 const RECOVERY_RESOLVED_KEY = 'recoveryResolved';
 const BACKUP_SNOOZE_KEY = 'backupReminderSnoozedUntil';
+const EXCEL_IMPORT_SNAPSHOT_KEY = 'excelImportSnapshot';
+
+const IDB_MAX_RETRIES = 3;
+const IDB_RETRY_BASE_MS = 25;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Transient IDB transaction errors that are safe to retry (P3-007). */
+export function isRetryableIdbError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const name = (err as DOMException).name;
+  return name === 'AbortError' || name === 'TransactionInactiveError' || name === 'InvalidStateError';
+}
+
+export async function withIdbRetry<T>(fn: () => Promise<T>): Promise<T> {
+  let last: unknown;
+  for (let attempt = 0; attempt < IDB_MAX_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      last = err;
+      if (!isRetryableIdbError(err) || attempt === IDB_MAX_RETRIES - 1) throw err;
+      await sleep(IDB_RETRY_BASE_MS * (attempt + 1));
+    }
+  }
+  throw last;
+}
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -37,32 +66,44 @@ function openDB(): Promise<IDBDatabase> {
 }
 
 async function idbGet<T>(key: string): Promise<T | undefined> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readonly');
-    const req = tx.objectStore(STORE).get(key);
-    req.onsuccess = () => resolve(req.result as T | undefined);
-    req.onerror = () => reject(req.error);
+  return withIdbRetry(() => {
+    return openDB().then(
+      (db) =>
+        new Promise<T | undefined>((resolve, reject) => {
+          const tx = db.transaction(STORE, 'readonly');
+          const req = tx.objectStore(STORE).get(key);
+          req.onsuccess = () => resolve(req.result as T | undefined);
+          req.onerror = () => reject(req.error);
+        }),
+    );
   });
 }
 
 async function idbSet(key: string, value: unknown): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).put(value, key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+  return withIdbRetry(() => {
+    return openDB().then(
+      (db) =>
+        new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(STORE, 'readwrite');
+          tx.objectStore(STORE).put(value, key);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        }),
+    );
   });
 }
 
 async function idbDelete(key: string): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).delete(key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+  return withIdbRetry(() => {
+    return openDB().then(
+      (db) =>
+        new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(STORE, 'readwrite');
+          tx.objectStore(STORE).delete(key);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        }),
+    );
   });
 }
 
@@ -98,42 +139,58 @@ export async function clearFileHandle(): Promise<void> {
 // ----------------------------------------------------------------------------
 
 export async function saveDocumentBlob(id: string, blob: Blob): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(DOC_STORE, 'readwrite');
-    tx.objectStore(DOC_STORE).put(blob, id);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+  return withIdbRetry(() => {
+    return openDB().then(
+      (db) =>
+        new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(DOC_STORE, 'readwrite');
+          tx.objectStore(DOC_STORE).put(blob, id);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        }),
+    );
   });
 }
 
 export async function loadDocumentBlob(id: string): Promise<Blob | undefined> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(DOC_STORE, 'readonly');
-    const req = tx.objectStore(DOC_STORE).get(id);
-    req.onsuccess = () => resolve(req.result as Blob | undefined);
-    req.onerror = () => reject(req.error);
+  return withIdbRetry(() => {
+    return openDB().then(
+      (db) =>
+        new Promise<Blob | undefined>((resolve, reject) => {
+          const tx = db.transaction(DOC_STORE, 'readonly');
+          const req = tx.objectStore(DOC_STORE).get(id);
+          req.onsuccess = () => resolve(req.result as Blob | undefined);
+          req.onerror = () => reject(req.error);
+        }),
+    );
   });
 }
 
 export async function deleteDocumentBlob(id: string): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(DOC_STORE, 'readwrite');
-    tx.objectStore(DOC_STORE).delete(id);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+  return withIdbRetry(() => {
+    return openDB().then(
+      (db) =>
+        new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(DOC_STORE, 'readwrite');
+          tx.objectStore(DOC_STORE).delete(id);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        }),
+    );
   });
 }
 
 export async function listDocumentIds(): Promise<string[]> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(DOC_STORE, 'readonly');
-    const req = tx.objectStore(DOC_STORE).getAllKeys();
-    req.onsuccess = () => resolve((req.result as IDBValidKey[]).map((k) => String(k)));
-    req.onerror = () => reject(req.error);
+  return withIdbRetry(() => {
+    return openDB().then(
+      (db) =>
+        new Promise<string[]>((resolve, reject) => {
+          const tx = db.transaction(DOC_STORE, 'readonly');
+          const req = tx.objectStore(DOC_STORE).getAllKeys();
+          req.onsuccess = () => resolve((req.result as IDBValidKey[]).map((k) => String(k)));
+          req.onerror = () => reject(req.error);
+        }),
+    );
   });
 }
 
@@ -193,4 +250,25 @@ export async function loadStagingQueue(): Promise<import('./staging').StagingIte
 
 export async function saveStagingQueue(items: import('./staging').StagingItem[]): Promise<void> {
   return idbSet(STAGING_QUEUE_KEY, items);
+}
+
+// ----------------------------------------------------------------------------
+// Excel import rollback snapshot (P3-005) — one pre-import copy for undo.
+// ----------------------------------------------------------------------------
+
+export interface ExcelImportSnapshot {
+  savedAt: number;
+  dataJson: string;
+}
+
+export async function loadExcelImportSnapshot(): Promise<ExcelImportSnapshot | undefined> {
+  return idbGet<ExcelImportSnapshot>(EXCEL_IMPORT_SNAPSHOT_KEY);
+}
+
+export async function saveExcelImportSnapshot(snapshot: ExcelImportSnapshot): Promise<void> {
+  return idbSet(EXCEL_IMPORT_SNAPSHOT_KEY, snapshot);
+}
+
+export async function clearExcelImportSnapshot(): Promise<void> {
+  return idbDelete(EXCEL_IMPORT_SNAPSHOT_KEY);
 }

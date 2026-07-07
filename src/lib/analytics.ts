@@ -3,6 +3,7 @@ import { daysUntil, daysBetween, todayISO, monthIndex, yearOf, MONTH_NAMES } fro
 import { revenueGroupForCode, type RevenueGroup } from './serviceCodes';
 import type { ComplianceFinding } from './compliance';
 import { getComplianceFindings } from './complianceCache';
+import { complianceSummary } from './compliance';
 import { isBillingApproval, isApprovalCurrent } from './approvals';
 import { buildDataIndexes, type DataIndexes } from './indexes';
 
@@ -81,6 +82,58 @@ export function billingFunnel(data: AppData): BillingFunnel {
     }
   }
   return f;
+}
+
+/** Remittance lines older than the configured stale threshold (P6-004). */
+export function staleRemittanceLines(data: AppData): InvoiceLine[] {
+  const threshold = data.settings.remittanceStaleDays ?? 60;
+  const today = todayISO();
+  return data.invoiceLines.filter((inv) => {
+    if (inv.status !== 'Remittance') return false;
+    const age = daysBetween(inv.invoiceDate || today, today);
+    return age > threshold;
+  });
+}
+
+export interface ManagementSummaryMetrics {
+  generatedAt: string;
+  violations: number;
+  warnings: number;
+  predictive: number;
+  funnel: BillingFunnel;
+  openDeclines: number;
+  openDeclinesByStage: Record<string, number>;
+  expiringApprovals: number;
+  expiredApprovals: number;
+}
+
+/** Period-close metrics for management export (P6-006 / U-22). */
+export function managementSummaryMetrics(data: AppData): ManagementSummaryMetrics {
+  const findings = getComplianceFindings(data);
+  const summary = complianceSummary(findings);
+  const funnel = billingFunnel(data);
+  const threshold = data.settings.expiryThresholdDays;
+  let expiringApprovals = 0;
+  let expiredApprovals = 0;
+  for (const a of data.approvals) {
+    if (!isBillingApproval(a)) continue;
+    const { status } = computeApproval(a, threshold);
+    if (status === 'EXPIRED') expiredApprovals += 1;
+    else if (status === 'Expiring Soon (<30 days)') expiringApprovals += 1;
+  }
+  const dash = dashboardMetrics(data);
+  const openDeclines = Object.values(dash.openDeclinesByStage).reduce((s, n) => s + n, 0);
+  return {
+    generatedAt: todayISO(),
+    violations: summary.violations,
+    warnings: summary.warnings,
+    predictive: summary.predictive,
+    funnel,
+    openDeclines,
+    openDeclinesByStage: dash.openDeclinesByStage,
+    expiringApprovals,
+    expiredApprovals,
+  };
 }
 
 /** Outstanding = invoiced but not (fully) paid. */
@@ -248,6 +301,7 @@ export function buildActionQueue(
   const indexes = buildDataIndexes(data);
   const items: ActionItem[] = [];
   const threshold = data.settings.expiryThresholdDays;
+  const remittanceStaleDays = data.settings.remittanceStaleDays ?? 60;
 
   for (const a of data.approvals) {
     if (!isBillingApproval(a)) continue;
@@ -294,12 +348,13 @@ export function buildActionQueue(
         });
       } else if (inv.status === 'Remittance') {
         const age = daysBetween(inv.invoiceDate || todayISO(), todayISO());
+        if (age <= remittanceStaleDays) continue;
         items.push({
           id: `bill-${inv.id}`,
           kind: 'billing',
-          severity: age > 60 ? 'danger' : 'warn',
-          title: `Remittance outstanding — ${inv.patientName}`,
-          detail: `${inv.serviceCode}, ${age} day(s) since invoice.`,
+          severity: age > remittanceStaleDays + 30 ? 'danger' : 'warn',
+          title: `Stale remittance — ${inv.patientName}`,
+          detail: `${inv.serviceCode}, ${age} day(s) in Remittance (>${remittanceStaleDays}d).`,
           patientId: claim?.patientId,
           claimId: claim?.id,
         });

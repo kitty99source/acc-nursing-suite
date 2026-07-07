@@ -3,14 +3,20 @@ import type { AppData, ApprovalServiceCode, Claim, DocumentKind, Patient } from 
 import { SERVICE_CODES } from './serviceCodes';
 
 // pdf.js v6 requires an explicit worker (disableWorker was removed in v6).
+// Worker is copied to public/pdf.worker.mjs → dist/ beside index.html so the
+// single-file build can load it from a stable relative URL (no dynamic import).
 let pdfWorkerReady = false;
 async function ensurePdfWorker(): Promise<void> {
   if (pdfWorkerReady || pdfjs.GlobalWorkerOptions.workerSrc) {
     pdfWorkerReady = true;
     return;
   }
-  const { default: workerUrl } = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url');
-  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+  if (typeof window !== 'undefined') {
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdf.worker.mjs', window.location.href).href;
+  } else {
+    const { default: workerUrl } = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url');
+    pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+  }
   pdfWorkerReady = true;
 }
 

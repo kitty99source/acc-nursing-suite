@@ -491,7 +491,7 @@ try {
     }
 
     Write-LauncherLogSafe "Step: ensure output directory $outDir"
-    New-Item -ItemType Directory -Force -LiteralPath $outDir | Out-Null
+    [void][System.IO.Directory]::CreateDirectory($outDir)
 
     Write-LauncherLogSafe 'Step: open browser with remote debugging on port 9222'
     $browserArgs = @(

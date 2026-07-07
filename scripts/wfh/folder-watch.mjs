@@ -29,6 +29,12 @@ function resolveInboxDir(arg) {
   return path.resolve(arg ?? process.env.ACC_INBOX ?? DEFAULT_INBOX);
 }
 
+function isAutomationPaused(inbox) {
+  if (process.env.ACC_AUTOMATION_PAUSED === '1') return true;
+  const flag = path.join(inbox, '.automation-paused');
+  return fs.existsSync(flag);
+}
+
 function ensureDirs(inbox) {
   fs.mkdirSync(inbox, { recursive: true });
   fs.mkdirSync(path.join(inbox, PROCESSED_DIR), { recursive: true });
@@ -72,6 +78,10 @@ function createSidecar({ filePath, hash, inbox }) {
 }
 
 function processPdf(inbox, filePath) {
+  if (isAutomationPaused(inbox)) {
+    console.log('[paused] automation hold — skipping', path.basename(filePath));
+    return;
+  }
   if (!fs.existsSync(filePath)) return;
   const ext = path.extname(filePath).toLowerCase();
   if (!SUPPORTED_EXT.has(ext)) return;
@@ -118,6 +128,9 @@ function scanExisting(inbox) {
 
 function watch(inbox) {
   ensureDirs(inbox);
+  if (isAutomationPaused(inbox)) {
+    console.log(`[paused] ${inbox} — create .automation-paused or unset ACC_AUTOMATION_PAUSED to resume`);
+  }
   console.log(`Watching ${inbox} for PDF drops (Ctrl+C to stop)`);
   scanExisting(inbox);
 

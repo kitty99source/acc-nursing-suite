@@ -210,6 +210,12 @@ export interface Settings {
   remittanceStaleDays: number;
   /** ACC contract-compliance rule set version tag (P6-001). */
   complianceRulesVersion: string;
+  /** Local display name for audit trail (P4-002). */
+  userDisplayName: string;
+  /** Hold folder watch / inbox automation (P8-005). */
+  automationPaused: boolean;
+  /** Dismiss dashboard letter-import discoverability card (P5-014). */
+  dismissLetterDiscoverCard: boolean;
   // Defaults to every code; lets an office hide the ones they never use.
   enabledServiceCodes: ServiceCode[];
   // Editable per-contract rates (dollars excl GST) keyed by service code.
@@ -263,6 +269,9 @@ export const DEFAULT_SETTINGS: Settings = {
   backupReminderDays: 7,
   remittanceStaleDays: 60,
   complianceRulesVersion: '2025-03',
+  userDisplayName: '',
+  automationPaused: false,
+  dismissLetterDiscoverCard: false,
   enabledServiceCodes: [...ALL_SERVICE_CODES],
   serviceRates: { ...DEFAULT_RATES },
 };

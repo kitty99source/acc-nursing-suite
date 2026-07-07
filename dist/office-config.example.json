@@ -1,0 +1,18 @@
+{
+  "$schema": "acc-office-config-v1",
+  "officeName": "Example District Nursing — North",
+  "notes": "Forkable baseline for U-26. Import via Settings → Office config. Does not include patient PHI.",
+  "settings": {
+    "theme": "clinical-light",
+    "accentColor": "#2f8f83",
+    "expiryThresholdDays": 30,
+    "idleLockMinutes": 15,
+    "backupReminderDays": 7,
+    "remittanceStaleDays": 60,
+    "complianceRulesVersion": "2025-03",
+    "quickPasteInEnabled": true,
+    "productionMode": true,
+    "enabledServiceCodes": ["NS01", "NS02", "NS03", "NS04", "NS05", "NS06", "NS07", "NS10", "NS20", "NS20T", "NSTD10", "NSTT1", "NSTT1D", "NSAC"],
+    "userDisplayName": "District Nurse — North"
+  }
+}

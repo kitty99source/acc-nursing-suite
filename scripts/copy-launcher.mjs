@@ -43,3 +43,10 @@ for (const name of readdirSync(WFH_SRC)) {
   copyFileSync(from, to);
   console.log(`Copied wfh/${name} → dist/wfh/`);
 }
+
+const templateSrc = join(ROOT, 'docs/templates/office-config.example.json');
+const templateDist = join(DIST, 'office-config.example.json');
+if (existsSync(templateSrc)) {
+  copyFileSync(templateSrc, templateDist);
+  console.log('Copied office-config.example.json → dist/');
+}

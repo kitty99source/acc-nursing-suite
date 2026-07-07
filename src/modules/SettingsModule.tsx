@@ -5,6 +5,9 @@ import { useConfirm } from '../components/useConfirm';
 import { ACCENT_PRESETS } from '../lib/theme';
 import { ALL_SERVICE_CODES, SERVICE_CODES } from '../lib/serviceCodes';
 import { readRecentAudit, type AuditEntry } from '../lib/auditLog';
+import { exportDiagnosticsJson, logInfo } from '../lib/logger';
+import { downloadText, readFileAsText } from '../lib/storage';
+import type { Settings } from '../types';
 import { compareDocumentBlobs } from '../lib/integrity';
 import { listDocumentIds } from '../lib/idb';
 import { STORAGE_QUOTA_GUIDANCE } from '../lib/storageQuota';
@@ -42,6 +45,7 @@ export function SettingsModule() {
   const status = useStore((s) => s.status);
   const integrityWarnings = useStore((s) => s.integrityWarnings);
   const updateSettings = useStore((s) => s.updateSettings);
+  const setFocus = useStore((s) => s.setFocus);
   const setPassphrase = useStore((s) => s.setPassphrase);
   const saveNow = useStore((s) => s.saveNow);
   const clearSampleData = useStore((s) => s.clearSampleData);
@@ -129,6 +133,56 @@ export function SettingsModule() {
     updateSettings({ serviceRates: { ...settings.serviceRates, [code]: Math.max(0, value) } });
   }
 
+  function downloadDiagnostics() {
+    const json = exportDiagnosticsJson({
+      appVersion: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.0',
+      productionMode: settings.productionMode,
+      patientCount: data.patients.length,
+    });
+    downloadText(`acc-suite-diagnostics-${new Date().toISOString().slice(0, 10)}.json`, json);
+    logInfo('Diagnostics exported', 'settings');
+  }
+
+  function exportOfficeConfig() {
+    const payload = {
+      $schema: 'acc-office-config-v1',
+      officeName: settings.userDisplayName || 'Unnamed office',
+      exportedAt: new Date().toISOString(),
+      settings: {
+        theme: settings.theme,
+        accentColor: settings.accentColor,
+        densityMode: settings.densityMode,
+        fontScale: settings.fontScale,
+        expiryThresholdDays: settings.expiryThresholdDays,
+        idleLockMinutes: settings.idleLockMinutes,
+        backupReminderDays: settings.backupReminderDays,
+        remittanceStaleDays: settings.remittanceStaleDays,
+        complianceRulesVersion: settings.complianceRulesVersion,
+        quickPasteInEnabled: settings.quickPasteInEnabled,
+        productionMode: settings.productionMode,
+        enabledServiceCodes: settings.enabledServiceCodes,
+        serviceRates: settings.serviceRates,
+        userDisplayName: settings.userDisplayName,
+      },
+    };
+    downloadText('acc-office-config.json', JSON.stringify(payload, null, 2));
+    logInfo('Office config exported', 'settings');
+  }
+
+  async function importOfficeConfig(file: File) {
+    try {
+      const text = await readFileAsText(file);
+      const parsed = JSON.parse(text) as { settings?: Partial<Settings> };
+      if (!parsed.settings || typeof parsed.settings !== 'object') {
+        throw new Error('Invalid office config — missing settings block.');
+      }
+      updateSettings(parsed.settings);
+      logInfo('Office config imported', 'settings');
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Could not import office config.');
+    }
+  }
+
   async function handleWipe() {
     const ok = await confirm({
       title: 'Wipe local storage?',
@@ -209,7 +263,9 @@ export function SettingsModule() {
           <div className="space-y-1 text-sm max-h-48 overflow-y-auto">
             {auditEntries.map((e) => (
               <div key={e.ts} className="flex justify-between gap-2 py-1 text-xs" style={{ borderBottom: '1px solid var(--border)' }}>
-                <span className="truncate">{e.summary}</span>
+                <span className="truncate">
+                  {e.user ? `[${e.user}] ` : ''}{e.summary}
+                </span>
                 <span className="shrink-0" style={{ color: 'var(--muted)' }}>
                   {new Date(e.ts).toLocaleString('en-NZ')}
                 </span>
@@ -223,14 +279,27 @@ export function SettingsModule() {
         <Card className="mb-4">
           <h3 className="font-semibold mb-2">Recent ACC letter imports</h3>
           <div className="space-y-1 text-sm max-h-40 overflow-y-auto">
-            {data.importHistory!.map((h) => (
-              <div key={h.id} className="flex justify-between gap-2 py-1" style={{ borderBottom: '1px solid var(--border)' }}>
+            {data.importHistory!.map((h) => {
+              const patient = h.patientId ? data.patients.find((p) => p.id === h.patientId) : undefined;
+              return (
+              <div key={h.id} className="flex justify-between gap-2 py-1 items-center" style={{ borderBottom: '1px solid var(--border)' }}>
                 <span className="truncate">{h.fileName}</span>
-                <span className="text-xs shrink-0" style={{ color: 'var(--muted)' }}>
+                <span className="text-xs shrink-0 flex items-center gap-2" style={{ color: 'var(--muted)' }}>
                   {h.kind} · {new Date(h.importedAt).toLocaleString('en-NZ')}
+                  {h.claimId && (
+                    <button
+                      type="button"
+                      className="underline"
+                      onClick={() => setFocus({ module: 'patients', patientId: h.patientId, claimId: h.claimId })}
+                    >
+                      Open claim
+                    </button>
+                  )}
+                  {patient && !h.claimId && <span>({patient.name})</span>}
                 </span>
               </div>
-            ))}
+            );
+            })}
           </div>
         </Card>
       )}
@@ -299,6 +368,13 @@ export function SettingsModule() {
         <Card>
           <h3 className="font-semibold mb-3">Workflow thresholds</h3>
           <div className="space-y-3">
+            <Field label="Your display name" hint="Shown in audit log entries on this device (P4-002).">
+              <TextInput
+                value={settings.userDisplayName ?? ''}
+                onChange={(e) => updateSettings({ userDisplayName: e.target.value })}
+                placeholder="e.g. Jane Smith — District Nurse"
+              />
+            </Field>
             <Field label="Approval expiry warning (days)" hint="Approvals within this many days are flagged salmon.">
               <NumberInput
                 min={1}
@@ -341,6 +417,20 @@ export function SettingsModule() {
                 type="checkbox"
                 checked={settings.quickPasteInEnabled}
                 onChange={(e) => updateSettings({ quickPasteInEnabled: e.target.checked })}
+                className="w-5 h-5"
+              />
+            </label>
+            <label className="flex items-center justify-between gap-3 text-sm">
+              <span>
+                <span className="font-medium">Hold all automation (SUPER WFH)</span>
+                <span className="block text-xs" style={{ color: 'var(--muted)' }}>
+                  Pauses folder-watch ingress and ACC Inbox parse-to-staging (P8-005).
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                checked={settings.automationPaused === true}
+                onChange={(e) => updateSettings({ automationPaused: e.target.checked })}
                 className="w-5 h-5"
               />
             </label>
@@ -428,6 +518,37 @@ export function SettingsModule() {
               {passMsg.text}
             </p>
           )}
+        </Card>
+
+        <Card>
+          <h3 className="font-semibold mb-3">Office config &amp; diagnostics (U-26 / P7-003)</h3>
+          <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>
+            Export settings-only config for another site (no patient data). Download local diagnostics for IT support — no network.
+          </p>
+          <div className="flex flex-wrap gap-2 mb-3">
+            <button type="button" className="btn btn-sm" onClick={exportOfficeConfig}>
+              Export office config
+            </button>
+            <label className="btn btn-sm cursor-pointer">
+              Import office config
+              <input
+                type="file"
+                accept=".json,application/json"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void importOfficeConfig(f);
+                  e.target.value = '';
+                }}
+              />
+            </label>
+            <button type="button" className="btn btn-sm" onClick={downloadDiagnostics}>
+              Download diagnostics
+            </button>
+          </div>
+          <p className="text-xs" style={{ color: 'var(--muted)' }}>
+            Template: <span className="font-mono">docs/templates/office-config.example.json</span>
+          </p>
         </Card>
 
         <Card>

@@ -1,6 +1,6 @@
 # MASTER ROADMAP — ACC Admin Suite (Production + SUPER WFH)
 
-**Status:** Planning only — **no implementation until this document is reviewed and P0 gates are agreed.**  
+**Status:** Engineering wrap-up 2026-07-08 — see `WRAP_UP_STATUS.md` for done/blocked split.  
 **Audience:** Engineering, product, hospital UAT, parent orchestration agents.  
 **Sources merged:** `OPTIMIZATION_PLAN.md`, `PRODUCTION_READINESS.md`, `SUPER_WFH_MODE.md`, `STRESS_TEST_REPORT.md`, `STRESS_TEST_AND_LOOPING.md`, `LETTER_IMPORT_UX.md`, `holistic_ux_remediation_a4e78f3c.plan.md`, `acc_letter_import_21ebe7fd.plan.md`, codebase wiring (`App.tsx`, `store.ts`, `Sidebar.tsx`, `Dashboard.tsx`, letter import flow), graphify subgraphs for store/compliance/import/routing.
 
@@ -446,7 +446,7 @@ flowchart TB
   - Rollback: —
   - **Delivered 2026-07-08:** shared virtualized `DataTable`
 
-- [ ] **P2-005: Virtualize patient list (if needed)**
+- [ ] **P2-005: Virtualize patient list (if needed)** — BLOCKED: U-06 volume — no jank at 2k; skip until hospital reports >5k patient jank BLOCKED: U-06 volume — no jank at 2k; skip until hospital reports >5k patient jank Virtualize patient list (if needed)**
   - Module/route: `Patients.tsx`
   - Depends on: U-06 volume
   - Acceptance criteria: only if >5k patients on reference hardware shows jank; else skip with sign-off
@@ -456,7 +456,7 @@ flowchart TB
   - Rollback: —
   - **Deferred 2026-07-08:** stress benchmarks <1 ms at 2k — skip until U-06 shows jank
 
-- [ ] **P2-006: Modal layout / grid alignment**
+- [x] **P2-006: Modal layout / grid alignment**
   - Module/route: `Modal.tsx`, `LetterImportModal.tsx`, `index.css`
   - Depends on: —
   - Acceptance criteria: confirm modal not clipped at 1280×720 and mobile; grid columns align; no overflow hidden on footer buttons
@@ -465,7 +465,7 @@ flowchart TB
   - Routing verification: open letter confirm → all buttons visible
   - Rollback: revert CSS
 
-- [ ] **P2-007: Mobile layout — sidebar + Patients grid**
+- [x] **P2-007: Mobile layout — sidebar + Patients grid**
   - Module/route: `Sidebar.tsx`, `Patients.tsx`, `LetterImportModal.tsx`
   - Depends on: P2-006
   - Acceptance criteria: collapsible sidebar (exists); Patients grid stacks; full-width confirm on `<lg`
@@ -474,7 +474,7 @@ flowchart TB
   - Routing verification: hamburger menu navigates all modules
   - Rollback: —
 
-- [ ] **P2-008: Letter import Web Worker OCR**
+- [ ] **P2-008: Letter import Web Worker OCR** — BLOCKED: P5-001 corpus + OCR worker scope — defer Web Worker OCR BLOCKED: P5-001 corpus + OCR worker scope — defer Web Worker OCR Letter import Web Worker OCR**
   - Module/route: `letterImport.ts`, new worker bundle, `vite.config.ts`
   - Depends on: P5-001 corpus available
   - Acceptance criteria: OCR runs off main thread; progress events on main; CSP still passes verify-build
@@ -591,7 +591,7 @@ flowchart TB
 
 ### P4 — Security & multi-user
 
-- [ ] **P4-001: Multi-user architecture decision record**
+- [ ] **P4-001: Multi-user architecture decision record** — BLOCKED: U-07 multi-user architecture decision BLOCKED: U-07 multi-user architecture decision Multi-user architecture decision record**
   - Module/route: `change-requests/ADR-multi-user.md`
   - Depends on: U-07
   - Acceptance criteria: chosen model documented: (A) shared network file + OS lock, (B) per-user IDB + nightly merge, or (C) lightweight server; impacts P8
@@ -600,7 +600,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: —
 
-- [ ] **P4-002: Local user identity (display name)**
+- [x] **P4-002: Local user identity (display name)**
   - Module/route: `SettingsModule.tsx`, `store.ts` settings
   - Depends on: P4-001
   - Acceptance criteria: settings stores `userDisplayName`; audit log uses it
@@ -609,7 +609,7 @@ flowchart TB
   - Routing verification: Settings shows current user
   - Rollback: "Unknown user"
 
-- [ ] **P4-003: RBAC roles — phase 1**
+- [ ] **P4-003: RBAC roles — phase 1** — BLOCKED: U-07 + U-12 RBAC roles — skip full RBAC until ADR BLOCKED: U-07 + U-12 RBAC roles — skip full RBAC until ADR RBAC roles — phase 1**
   - Module/route: `store.ts`, module guards, `SettingsModule.tsx`
   - Depends on: P4-001, U-12
   - Acceptance criteria: roles `admin` | `clerk` | `readonly`; readonly cannot delete/export/settings; clerk cannot settings/encryption
@@ -618,7 +618,7 @@ flowchart TB
   - Routing verification: readonly login → export disabled
   - Rollback: all admin
 
-- [ ] **P4-004: Encryption policy enforcement**
+- [ ] **P4-004: Encryption policy enforcement** — BLOCKED: U-03 encryption policy mandatory/optional BLOCKED: U-03 encryption policy mandatory/optional Encryption policy enforcement**
   - Module/route: `SettingsModule.tsx`, first-run wizard
   - Depends on: U-03
   - Acceptance criteria: if policy mandatory, block usage until encryption enabled; warning if off
@@ -627,7 +627,7 @@ flowchart TB
   - Routing verification: Lock screen on encrypted copy
   - Rollback: optional encryption
 
-- [ ] **P4-005: Session timeout warning**
+- [x] **P4-005: Session timeout warning**
   - Module/route: `App.tsx` idle timer
   - Depends on: —
   - Acceptance criteria: 60s before lock, modal "Stay signed in"
@@ -636,7 +636,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: abrupt lock only
 
-- [ ] **P4-006: Export / clipboard audit**
+- [x] **P4-006: Export / clipboard audit**
   - Module/route: `auditLog.ts`, export actions in `ExportCenter.tsx`, `store.ts` `saveMyData`
   - Depends on: P0-006
   - Acceptance criteria: every export/save logs event with row counts
@@ -645,7 +645,7 @@ flowchart TB
   - Routing verification: audit shows "Excel export billing"
   - Rollback: —
 
-- [ ] **P4-007: Concurrent tab detection**
+- [x] **P4-007: Concurrent tab detection**
   - Module/route: `store.ts`, BroadcastChannel or localStorage heartbeat
   - Depends on: P4-001
   - Acceptance criteria: second tab shows warning "Another tab has this suite open — last write wins"
@@ -654,7 +654,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: disable detection
 
-- [ ] **P4-008: Passphrase reset runbook**
+- [ ] **P4-008: Passphrase reset runbook** — BLOCKED: U-03 — IT passphrase reset runbook sign-off BLOCKED: U-03 — IT passphrase reset runbook sign-off Passphrase reset runbook**
   - Module/route: `docs/ops/passphrase-reset.md`
   - Depends on: U-03
   - Acceptance criteria: documents data loss; steps for IT
@@ -669,7 +669,7 @@ flowchart TB
 
 **Includes all holistic UX remediation items #1–#30, deduplicated.**
 
-- [ ] **P5-001: Real letter corpus + CI regression**
+- [ ] **P5-001: Real letter corpus + CI regression** — BLOCKED: U-05 anonymised real letter corpus (10–30 PDFs) BLOCKED: U-05 anonymised real letter corpus (10–30 PDFs) Real letter corpus + CI regression**
   - Module/route: `src/lib/fixtures/letters/`, `letterImport.test.ts`
   - Depends on: U-05
   - Acceptance criteria: ≥10 anonymised PDFs; each has expected parse snapshot; OCR cases marked `@slow`
@@ -678,7 +678,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: remove fixture from CI
 
-- [ ] **P5-002: LetterImportButton — single entry component audit**
+- [x] **P5-002: LetterImportButton — single entry component audit**
   - Module/route: all modules; `LetterImportButton.tsx`
   - Depends on: P0-010
   - Acceptance criteria: exactly one hidden file input per button instance; `LETTER_IMPORT_BTN_CLASS` on all entry points; stale bundle check in verify-build
@@ -759,7 +759,7 @@ flowchart TB
   - Routing verification: re-import same PDF → confirm
   - Rollback: filename-only fallback (not recommended)
 
-- [ ] **P5-011: Document kind — not "Other" for approvals**
+- [x] **P5-011: Document kind — not "Other" for approvals**
   - Module/route: `letterImport.ts` `letterKindToDocumentKind`, `store.ts` `addDocument`
   - Depends on: —
   - Acceptance criteria: approval → `acc-approval-letter`; decline → `acc-decline-letter`; never generic Other for ACC letters
@@ -768,7 +768,7 @@ flowchart TB
   - Routing verification: Claim documents tab shows correct kind
   - Rollback: —
 
-- [ ] **P5-012: Decline confirm fields (#10)**
+- [x] **P5-012: Decline confirm fields (#10)**
   - Module/route: `LetterImportModal.tsx`, `commitParsedDecline`
   - Depends on: —
   - Acceptance criteria: service requested + letter date editable; passed to commit
@@ -777,7 +777,7 @@ flowchart TB
   - Routing verification: Declines import → fields saved
   - Rollback: —
 
-- [ ] **P5-013: View letter links (#11)**
+- [x] **P5-013: View letter links (#11)**
   - Module/route: `Approvals.tsx`, `Patients.tsx` ClaimCard
   - Depends on: P5-011
   - Acceptance criteria: "View letter" when `sourceDocumentId` set; opens blob download/view
@@ -786,7 +786,7 @@ flowchart TB
   - Routing verification: Approvals row → view PDF
   - Rollback: —
 
-- [ ] **P5-014: Discoverability card (#12)**
+- [x] **P5-014: Discoverability card (#12)**
   - Module/route: `Dashboard.tsx` or `SettingsModule.tsx`
   - Depends on: P5-007
   - Acceptance criteria: first-run card "Received ACC letter? …" dismissible; link to LETTER_IMPORT_UX.md in Settings
@@ -795,7 +795,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: —
 
-- [ ] **P5-015: Per-field confidence breakdown (#13)**
+- [x] **P5-015: Per-field confidence breakdown (#13)**
   - Module/route: `LetterImportModal.tsx`
   - Depends on: —
   - Acceptance criteria: collapsible "Extraction details" from `fieldConfidences`
@@ -804,7 +804,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: —
 
-- [ ] **P5-016: Pick current NS04 row (#14)**
+- [x] **P5-016: Pick current NS04 row (#14)**
   - Module/route: `LetterImportModal.tsx`, `commitParsedApproval`
   - Depends on: —
   - Acceptance criteria: radio "Current for billing" per row; overrides `assignRecordStatus` default if user picks
@@ -813,7 +813,7 @@ flowchart TB
   - Routing verification: 8-row approval → one current
   - Rollback: auto latest end date
 
-- [ ] **P5-017: OCR loading callout (#20)**
+- [x] **P5-017: OCR loading callout (#20)**
   - Module/route: `LetterImportModal.tsx` loading state
   - Depends on: P2-008 or main-thread OCR
   - Acceptance criteria: when `usedOcr`, show "Scanning… first run may take a minute"
@@ -822,7 +822,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: —
 
-- [ ] **P5-018: Post-import billing nudge (#15)**
+- [x] **P5-018: Post-import billing nudge (#15)**
   - Module/route: `LetterImportModal.tsx` success, `store.ts` `billingHintForClaim`
   - Depends on: P5-004
   - Acceptance criteria: success shows "Safe to bill" or "Still blocked: …" from `claimBillingState`
@@ -831,7 +831,7 @@ flowchart TB
   - Routing verification: import approval → billing hint visible
   - Rollback: —
 
-- [ ] **P5-019: Declines patient linkage (#16)**
+- [x] **P5-019: Declines patient linkage (#16)**
   - Module/route: `types/index.ts` Decline, `commitParsedDecline`, `Declines.tsx`
   - Depends on: —
   - Acceptance criteria: `patientId`/`claimId` on Decline; "Open patient" in table
@@ -840,7 +840,7 @@ flowchart TB
   - Routing verification: Declines → Open patient
   - Rollback: —
 
-- [ ] **P5-020: Dashboard deep links (#17)**
+- [x] **P5-020: Dashboard deep links (#17)**
   - Module/route: `Dashboard.tsx`
   - Depends on: —
   - Acceptance criteria: action queue passes patientId/claimId to setFocus (partially done); compliance items open Compliance with filter context
@@ -849,7 +849,7 @@ flowchart TB
   - Routing verification: queue click → correct claim
   - Rollback: —
 
-- [ ] **P5-021: Attach document only (#18)**
+- [x] **P5-021: Attach document only (#18)**
   - Module/route: `LetterImportModal.tsx`, `store.ts` `attachDocumentOnly`
   - Depends on: P5-003
   - Acceptance criteria: error + confirm footer path stores PDF without parse; correct `DocumentKind` sniffed
@@ -858,7 +858,7 @@ flowchart TB
   - Routing verification: Claim documents attach only
   - Rollback: —
 
-- [ ] **P5-022: ClaimCard prominent import (#19)**
+- [x] **P5-022: ClaimCard prominent import (#19)**
   - Module/route: `Patients.tsx` ClaimCard
   - Depends on: P5-002
   - Acceptance criteria: when no current NS04/NS05, header shows Import ACC letter button
@@ -867,7 +867,7 @@ flowchart TB
   - Routing verification: Patients claim card entry
   - Rollback: —
 
-- [ ] **P5-023: Global drag-drop PDF (#23)**
+- [x] **P5-023: Global drag-drop PDF (#23)**
   - Module/route: `App.tsx` (exists — verify)
   - Depends on: P5-003
   - Acceptance criteria: drop overlay; routes to full save modal; `entryPoint: 'global'`
@@ -876,7 +876,7 @@ flowchart TB
   - Routing verification: drag to App → modal
   - Rollback: disable drop handler
 
-- [ ] **P5-024: Re-parse stored document (#24)**
+- [x] **P5-024: Re-parse stored document (#24)**
   - Module/route: `Patients.tsx` documents list, `store.ts`
   - Depends on: P5-011
   - Acceptance criteria: document row action "Re-extract" opens confirm with stored blob
@@ -885,7 +885,7 @@ flowchart TB
   - Routing verification: Claim documents → re-parse
   - Rollback: —
 
-- [ ] **P5-025: Package row → service line offer (#25)**
+- [x] **P5-025: Package row → service line offer (#25)**
   - Module/route: `LetterImportModal.tsx`, `Patients.tsx`
   - Depends on: P5-004
   - Acceptance criteria: post-import offer create NS03 line from package rows when present
@@ -894,7 +894,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: —
 
-- [ ] **P5-026: Searchable patient link combobox (#26)**
+- [x] **P5-026: Searchable patient link combobox (#26)**
   - Module/route: `LetterImportModal.tsx`
   - Depends on: U-06 if >500 patients
   - Acceptance criteria: patient picker searchable when unmatched; keyboard accessible
@@ -903,7 +903,7 @@ flowchart TB
   - Routing verification: unmatched letter → pick patient
   - Rollback: plain select
 
-- [ ] **P5-027: Modal UX — focus trap + dismiss confirm (#27)**
+- [x] **P5-027: Modal UX — focus trap + dismiss confirm (#27)**
   - Module/route: `Modal.tsx`, `LetterImportModal.tsx`
   - Depends on: P2-006
   - Acceptance criteria: focus trap; backdrop dismiss asks confirm when blockers edited
@@ -912,7 +912,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: —
 
-- [ ] **P5-028: Sample George demo patient (#28)**
+- [x] **P5-028: Sample George demo patient (#28)**
   - Module/route: `sampleData.ts`
   - Depends on: U-21
   - Acceptance criteria: George patient matches approval fixture NHI for safe demo
@@ -921,7 +921,7 @@ flowchart TB
   - Routing verification: demo import George
   - Rollback: —
 
-- [ ] **P5-029: Billing import entry (#29)**
+- [x] **P5-029: Billing import entry (#29)**
   - Module/route: `Billing.tsx` — **currently has LetterImportButton**
   - Depends on: P5-007
   - Acceptance criteria: either remove misleading entry or document as "attach correspondence" with `prefillOnly`/doc-only; align with LETTER_IMPORT_UX.md
@@ -930,7 +930,7 @@ flowchart TB
   - Routing verification: Billing → appropriate outcome or button removed
   - Rollback: remove button
 
-- [ ] **P5-030: Import history UI (#30)**
+- [x] **P5-030: Import history UI (#30)**
   - Module/route: `SettingsModule.tsx`, `store.ts` `importHistory`
   - Depends on: P1-009
   - Acceptance criteria: last 20 imports with timestamp, kind, patient, link to claim; matches pushImportHistory
@@ -939,7 +939,7 @@ flowchart TB
   - Routing verification: Settings → Recent imports
   - Rollback: —
 
-- [ ] **P5-031: Integration test — full commit journey**
+- [x] **P5-031: Integration test — full commit journey**
   - Module/route: `letterImportCommit.test.ts` expand
   - Depends on: P5-004
   - Acceptance criteria: parse → commitParsedApproval → claim + approvals + document exist; decline path; prefill no persist
@@ -948,7 +948,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: —
 
-- [ ] **P5-032: verify-build — letter import bundle guards**
+- [x] **P5-032: verify-build — letter import bundle guards**
   - Module/route: `scripts/verify-build.mjs`
   - Depends on: P5-002
   - Acceptance criteria: asserts CSP; no external URLs; tessdata present; single bundle letter routes
@@ -957,7 +957,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: —
 
-- [ ] **P5-033: ENTRY_POINT_HINTS complete**
+- [x] **P5-033: ENTRY_POINT_HINTS complete**
   - Module/route: `LetterImportModal.tsx` `ENTRY_POINT_HINTS`
   - Depends on: P5-005
   - Acceptance criteria: hints for approvals, declines, claim-documents, prefill, global, **compliance**
@@ -1042,7 +1042,7 @@ flowchart TB
   - Routing verification: historical toggle → not in billing queue
   - Rollback: —
 
-- [ ] **P6-009: Export progress for large workbook**
+- [x] **P6-009: Export progress for large workbook**
   - Module/route: `ExportCenter.tsx`
   - Depends on: —
   - Acceptance criteria: progress bar for `buildWorkbookBuffer` >2s; cancel not required
@@ -1065,7 +1065,7 @@ flowchart TB
   - Rollback: —
   - **Delivered 2026-07-08:** `RUNBOOK.md` — backup, corrupt load, I: drive deploy, portal discover (text steps; screenshots UAT)
 
-- [ ] **P7-002: Ops runbook — OCR failure & scanned letters**
+- [x] **P7-002: Ops runbook — OCR failure & scanned letters**
   - Module/route: `docs/ops/letter-import.md`
   - Depends on: P5-001
   - Acceptance criteria: when OCR fails; attach doc only; manual entry path
@@ -1074,7 +1074,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: —
 
-- [ ] **P7-003: Structured client logging (local file export)**
+- [x] **P7-003: Structured client logging (local file export)**
   - Module/route: new `src/lib/logger.ts`
   - Depends on: P3-001
   - Acceptance criteria: errors + key actions buffered; Export diagnostics in Settings (no network)
@@ -1083,7 +1083,7 @@ flowchart TB
   - Routing verification: Settings → Download diagnostics
   - Rollback: —
 
-- [ ] **P7-004: Deploy pipeline per U-01**
+- [x] **P7-004: Deploy pipeline per U-01**
   - Module/route: `docs/ops/deploy.md`, CI release job
   - Depends on: U-01, P3-006
   - Acceptance criteria: documented copy-to-share / MDM / Citrix; versioned artifacts; checksum file
@@ -1092,7 +1092,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: —
 
-- [ ] **P7-005: UAT checklist package**
+- [x] **P7-005: UAT checklist package**
   - Module/route: `change-requests/UAT_CHECKLIST.md`
   - Depends on: §4 journeys
   - Acceptance criteria: 20 journeys with sign-off columns; role variants
@@ -1101,7 +1101,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: —
 
-- [ ] **P7-006: Release notes discipline**
+- [x] **P7-006: Release notes discipline**
   - Module/route: `CHANGELOG.md`
   - Depends on: P3-008
   - Acceptance criteria: semver; hospital-facing notes per release
@@ -1110,7 +1110,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: —
 
-- [ ] **P7-007: Hospital hardware perf sign-off**
+- [ ] **P7-007: Hospital hardware perf sign-off** — BLOCKED: U-18 hospital hardware perf sign-off BLOCKED: U-18 hospital hardware perf sign-off Hospital hardware perf sign-off**
   - Module/route: UAT on U-18 device
   - Depends on: P1-015, P2 complete
   - Acceptance criteria: dashboard <2s; billing scroll smooth; sign-off recorded
@@ -1119,7 +1119,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: —
 
-- [ ] **P7-008: Playwright CI required**
+- [ ] **P7-008: Playwright CI required** — BLOCKED: Playwright e2e CI — deferred; manual journeys only BLOCKED: Playwright e2e CI — deferred; manual journeys only Playwright CI required**
   - Module/route: `e2e/`, CI
   - Depends on: P3-007
   - Acceptance criteria: 5 smokes green on PR to main
@@ -1176,7 +1176,7 @@ flowchart TB
   - Rollback: —
   - **Delivered 2026-07-08:** `hrqBatch.ts`; Review Queue batch approve with mandatory patient name list; J-26 unit tests
 
-- [ ] **P8-005: Orchestrator pause switch**
+- [x] **P8-005: Orchestrator pause switch**
   - Module/route: Settings, daemon
   - Depends on: P8-003
   - Acceptance criteria: "Hold all automation" prevents commits and ingress processing
@@ -1189,7 +1189,7 @@ flowchart TB
 
 **Not a full mail client** — filtered ACC letters only with parse/review actions. See `EMAIL_PORTAL_ARCHITECTURE.md`.
 
-- [ ] **P8-016: ACC Inbox panel UI**
+- [x] **P8-016: ACC Inbox panel UI**
   - Module/route: new `src/modules/AccInbox.tsx`, `Sidebar.tsx` nav entry
   - Depends on: P8-001, P8-002 (or staging import bridge)
   - Acceptance criteria: shows filtered ACC letter rows (sender/subject/date/attachment); actions: Parse → staging, Open import, Ignore; never auto-commit
@@ -1198,7 +1198,7 @@ flowchart TB
   - Routing verification: ACC Inbox → Parse → HRQ item
   - Rollback: hide nav entry
 
-- [ ] **P8-017: Outlook COM bridge (Windows)**
+- [ ] **P8-017: Outlook COM bridge (Windows)** — BLOCKED: Windows work PC + Outlook COM checklist B-01 BLOCKED: Windows work PC + Outlook COM checklist B-01 Outlook COM bridge (Windows)**
   - Module/route: `scripts/wfh/outlook-com.ps1` or Node winax adapter
   - Depends on: P8-016, checklist B-01/B-11
   - Acceptance criteria: reads filtered inbox from open Outlook session; saves PDF attachments to `ACC-Inbox/`; no stored mailbox password
@@ -1207,7 +1207,7 @@ flowchart TB
   - Routing verification: COM poll → folder watch → staging
   - Rollback: disable COM config
 
-- [ ] **P8-018: ACC letter filter rules config**
+- [ ] **P8-018: ACC letter filter rules config** — BLOCKED: hospital sender/subject inputs B-04–B-07 — defaults only in code BLOCKED: hospital sender/subject inputs B-04–B-07 — defaults only in code ACC letter filter rules config**
   - Module/route: `SettingsModule.tsx`, `src/lib/accInboxFilters.ts`
   - Depends on: checklist B-04–B-07
   - Acceptance criteria: sender allowlist + subject patterns editable; defaults from hospital inputs
@@ -1228,7 +1228,7 @@ flowchart TB
 
 #### P8.1 — Email connector + digest
 
-- [ ] **P8-006: IMAP / Graph connector (read-only)**
+- [ ] **P8-006: IMAP / Graph connector (read-only)** — BLOCKED: U-08 + U-10 — email API until work PC / policy BLOCKED: U-08 + U-10 — email API until work PC / policy IMAP / Graph connector (read-only)**
   - Module/route: `scripts/wfh/email-ingress.mjs`
   - Depends on: U-08, U-10, P8-001
   - Acceptance criteria: poll attachments; triage rules; move to processed folder; auth failure → HRQ `automation-failure`
@@ -1237,7 +1237,7 @@ flowchart TB
   - Routing verification: email PDF → HRQ item
   - Rollback: disable connector config
 
-- [ ] **P8-007: Morning digest (in-app)**
+- [ ] **P8-007: Morning digest (in-app)** — BLOCKED: SUPER WFH digest — after P8-006 BLOCKED: SUPER WFH digest — after P8-006 Morning digest (in-app)**
   - Module/route: `Dashboard.tsx` or `ReviewQueue.tsx`
   - Depends on: P8-002
   - Acceptance criteria: summary counts ready/failures/overdue SLA; no PHI in email subject if email digest added
@@ -1246,7 +1246,7 @@ flowchart TB
   - Routing verification: open app → digest banner
   - Rollback: —
 
-- [ ] **P8-008: Audit log on sign-off (complete)**
+- [ ] **P8-008: Audit log on sign-off (complete)** — BLOCKED: HRQ audit complete — partial via ReviewQueue stub BLOCKED: HRQ audit complete — partial via ReviewQueue stub Audit log on sign-off (complete)**
   - Module/route: `auditLog.ts`, `ReviewQueue.tsx`
   - Depends on: P0-006, P4-002
   - Acceptance criteria: HRQ resolution logs who/when/before/after/runId
@@ -1257,7 +1257,7 @@ flowchart TB
 
 #### P8.2 — Browser tasks
 
-- [ ] **P8-009: Credential vault**
+- [ ] **P8-009: Credential vault** — BLOCKED: U-11 credential vault BLOCKED: U-11 credential vault Credential vault**
   - Module/route: `src/lib/vault.ts`, OS keychain adapter
   - Depends on: U-11, P4-004
   - Acceptance criteria: portal creds encrypted; never in repo or HRQ payloads
@@ -1266,7 +1266,7 @@ flowchart TB
   - Routing verification: Settings → vault test login
   - Rollback: manual cred entry only
 
-- [ ] **P8-010: Playwright portal read task (one portal)**
+- [ ] **P8-010: Playwright portal read task (one portal)** — BLOCKED: U-09 portal-map.json + U-08 automation policy BLOCKED: U-09 portal-map.json + U-08 automation policy Playwright portal read task (one portal)**
   - Module/route: `scripts/wfh/portal-tasks/`
   - Depends on: U-09, P8-009, U-08
   - Acceptance criteria: read-only status check; result → HRQ; no form submit
@@ -1275,7 +1275,7 @@ flowchart TB
   - Routing verification: HRQ `portal-fetch-complete` item
   - Rollback: disable task
 
-- [ ] **P8-019: Portal selector discovery tool**
+- [ ] **P8-019: Portal selector discovery tool** — BLOCKED: U-09 portal-map.json for selector discovery BLOCKED: U-09 portal-map.json for selector discovery Portal selector discovery tool**
   - Module/route: `scripts/wfh/portal-discover.mjs`
   - Depends on: U-09, checklist D-07–D-09
   - Acceptance criteria: human navigates logged-in portal; tool records stable selectors + field map JSON; no auto-submit
@@ -1284,7 +1284,7 @@ flowchart TB
   - Routing verification: discover session → config usable by P8-010
   - Rollback: manual selector entry
 
-- [ ] **P8-020: Playwright CDP attach adapter**
+- [ ] **P8-020: Playwright CDP attach adapter** — BLOCKED: portal-map.json + checklist D-10 CDP attach BLOCKED: portal-map.json + checklist D-10 CDP attach Playwright CDP attach adapter**
   - Module/route: `scripts/wfh/portal-tasks/cdp-attach.mjs`
   - Depends on: P8-019, checklist D-10
   - Acceptance criteria: connects to existing browser session (port 9222); reuses login; read-only navigation
@@ -1293,7 +1293,7 @@ flowchart TB
   - Routing verification: attach → read field → HRQ staging item
   - Rollback: launch fresh browser context
 
-- [ ] **P8-011: Portal UI change break detection**
+- [ ] **P8-011: Portal UI change break detection** — BLOCKED: P8-010 portal task BLOCKED: P8-010 portal task Portal UI change break detection**
   - Module/route: portal task screenshots + health check
   - Depends on: P8-010
   - Acceptance criteria: selector miss → `automation-failure` not silent wrong data
@@ -1304,7 +1304,7 @@ flowchart TB
 
 #### P8.3 — Overnight orchestrator
 
-- [ ] **P8-012: Local daemon orchestrator**
+- [ ] **P8-012: Local daemon orchestrator** — BLOCKED: P8-006 email connector + overnight policy U-08 BLOCKED: P8-006 email connector + overnight policy U-08 Local daemon orchestrator**
   - Module/route: `scripts/wfh/orchestrator.mjs`
   - Depends on: P8-003, P8-006, P1 complete
   - Acceptance criteria: schedule 02:00 email+folder+compliance snapshot; ordering; 3× retry backoff
@@ -1313,7 +1313,7 @@ flowchart TB
   - Routing verification: morning → items staged
   - Rollback: stop service
 
-- [ ] **P8-013: SLA escalation on HRQ items**
+- [ ] **P8-013: SLA escalation on HRQ items** — BLOCKED: orchestrator not shipped BLOCKED: orchestrator not shipped SLA escalation on HRQ items**
   - Module/route: `ReviewQueue.tsx`, orchestrator
   - Depends on: P8-002
   - Acceptance criteria: unreviewed >18h warn→danger; visible in digest
@@ -1322,7 +1322,7 @@ flowchart TB
   - Routing verification: old item escalates
   - Rollback: —
 
-- [ ] **P8-014: Idempotency — attachment hash dedup**
+- [ ] **P8-014: Idempotency — attachment hash dedup** — BLOCKED: orchestrator not shipped BLOCKED: orchestrator not shipped Idempotency — attachment hash dedup**
   - Module/route: orchestrator, `isDuplicateLetterImport`
   - Depends on: P5-010
   - Acceptance criteria: same email attachment twice → one HRQ or duplicate flag
@@ -1331,7 +1331,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: —
 
-- [ ] **P8-015: SUPER WFH UAT & policy sign-off**
+- [ ] **P8-015: SUPER WFH UAT & policy sign-off** — BLOCKED: DHB privacy + all P8 UAT BLOCKED: DHB privacy + all P8 UAT SUPER WFH UAT & policy sign-off**
   - Module/route: UAT package
   - Depends on: all P8.*
   - Acceptance criteria: DHB privacy + IT approve overnight automation; documented PHI boundaries
@@ -1342,7 +1342,7 @@ flowchart TB
 
 #### P8 optional — Phase 2 architecture (only if P1 insufficient)
 
-- [ ] **P8-OPT-001: Web Worker analytics engine**
+- [ ] **P8-OPT-001: Web Worker analytics engine** — BLOCKED: profiling — dashboard already <800ms at 2k BLOCKED: profiling — dashboard already <800ms at 2k Web Worker analytics engine**
   - Module/route: `analytics.ts` worker
   - Depends on: P1 complete; profiling shows dashboard still >1s
   - Acceptance criteria: `buildActionQueue` off main thread
@@ -1351,7 +1351,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: main thread
 
-- [ ] **P8-OPT-002: Chunked normalized IDB schema**
+- [ ] **P8-OPT-002: Chunked normalized IDB schema** — BLOCKED: autosave size OK post P1-009 BLOCKED: autosave size OK post P1-009 Chunked normalized IDB schema**
   - Module/route: `idb.ts` entity stores
   - Depends on: autosave >200ms or >20MB
   - Acceptance criteria: per-entity stores + migrations

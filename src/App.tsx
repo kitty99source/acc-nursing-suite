@@ -24,10 +24,13 @@ import { ExportCenter } from './modules/ExportCenter';
 import { ImportedTables } from './modules/ImportedTables';
 import { SettingsModule } from './modules/SettingsModule';
 import { ReviewQueue } from './modules/ReviewQueue';
+import { AccInbox } from './modules/AccInbox';
 import { LetterImportModal } from './components/LetterImportModal';
 import { RecoveryModal } from './components/RecoveryModal';
 import { BackupReminderModal } from './components/BackupReminderModal';
+import { ConfirmDialog } from './components/Modal';
 import { loadBackupSnoozeUntil } from './lib/idb';
+import { logInfo } from './lib/logger';
 
 export default function App() {
   const ready = useStore((s) => s.ready);
@@ -48,6 +51,10 @@ export default function App() {
   const [dragOver, setDragOver] = useState(false);
   const [backupReminderOpen, setBackupReminderOpen] = useState(false);
   const [reviewBadge, setReviewBadge] = useState(0);
+  const [idleWarningOpen, setIdleWarningOpen] = useState(false);
+  const [concurrentTabWarning, setConcurrentTabWarning] = useState(false);
+  const idleWarnedRef = useRef(false);
+  const tabIdRef = useRef(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
 
   // A cross-module focus request (e.g. from the Flagged page) switches the
   // active module; the target module then consumes the request on mount.
@@ -57,7 +64,7 @@ export default function App() {
 
   // Initialise persistence on mount.
   useEffect(() => {
-    void init();
+    void init().then(() => logInfo('App initialized', 'init'));
   }, [init]);
 
   // Apply theme tokens whenever settings change.
@@ -95,17 +102,57 @@ export default function App() {
     return () => events.forEach((e) => window.removeEventListener(e, handler));
   }, [locked, recordActivity]);
 
-  // Idle timer: lock after configured minutes of inactivity.
+  // Idle timer: warn 60s before lock, then lock after configured minutes (P4-005).
   useEffect(() => {
     if (locked) return;
     const minutes = settings.idleLockMinutes;
     if (!minutes || minutes <= 0) return;
     const interval = setInterval(() => {
       const idleMs = Date.now() - lastActivityAt;
-      if (idleMs >= minutes * 60_000) lock();
+      const lockMs = minutes * 60_000;
+      const warnMs = Math.max(lockMs - 60_000, lockMs * 0.8);
+      if (idleMs >= lockMs) {
+        setIdleWarningOpen(false);
+        idleWarnedRef.current = false;
+        lock();
+        return;
+      }
+      if (idleMs >= warnMs && !idleWarnedRef.current) {
+        idleWarnedRef.current = true;
+        setIdleWarningOpen(true);
+      }
     }, 5000);
     return () => clearInterval(interval);
   }, [locked, settings.idleLockMinutes, lastActivityAt, lock]);
+
+  // Reset idle warning when user is active again.
+  useEffect(() => {
+    if (idleWarningOpen && Date.now() - lastActivityAt < 5000) {
+      setIdleWarningOpen(false);
+      idleWarnedRef.current = false;
+    }
+  }, [lastActivityAt, idleWarningOpen]);
+
+  // Concurrent tab detection — last write wins (P4-007).
+  useEffect(() => {
+    if (typeof BroadcastChannel === 'undefined') return;
+    const channel = new BroadcastChannel('acc-suite-tab');
+    const tabId = tabIdRef.current;
+    channel.postMessage({ type: 'hello', tabId, at: Date.now() });
+    const interval = window.setInterval(() => {
+      channel.postMessage({ type: 'heartbeat', tabId, at: Date.now() });
+    }, 3000);
+    channel.onmessage = (ev) => {
+      const msg = ev.data as { type?: string; tabId?: string };
+      if (msg?.type === 'hello' || msg?.type === 'heartbeat') {
+        if (msg.tabId && msg.tabId !== tabId) setConcurrentTabWarning(true);
+      }
+    };
+    return () => {
+      window.clearInterval(interval);
+      channel.close();
+    };
+  }, []);
 
   // Global PDF drag-drop → letter import.
   useEffect(() => {
@@ -123,7 +170,7 @@ export default function App() {
       e.preventDefault();
       setDragOver(false);
       const file = [...(e.dataTransfer?.files ?? [])].find((f) => f.type === 'application/pdf' || f.name.endsWith('.pdf'));
-      if (file) openLetterImport(file);
+      if (file) openLetterImport(file, { entryPoint: 'global' });
     }
     window.addEventListener('dragover', onDragOver);
     window.addEventListener('dragleave', onDragLeave);
@@ -216,8 +263,13 @@ export default function App() {
   return (
     <div className="h-full flex relative" style={{ background: 'var(--bg)' }}>
       {dragOver && (
-        <div className="fixed inset-0 z-[60] pointer-events-none flex items-center justify-center" style={{ background: 'rgba(47,143,131,0.15)', border: '3px dashed var(--accent)' }}>
-          <p className="text-lg font-semibold" style={{ color: 'var(--accent)' }}>Drop ACC letter PDF to import</p>
+        <div className="fixed inset-0 z-[60] pointer-events-none flex items-center justify-center p-4" style={{ background: 'rgba(47,143,131,0.15)', border: '3px dashed var(--accent)' }}>
+          <p className="text-lg font-semibold text-center" style={{ color: 'var(--accent)' }}>Drop ACC letter PDF to import</p>
+        </div>
+      )}
+      {concurrentTabWarning && (
+        <div className="shrink-0 px-4 py-2 text-sm text-center" style={{ background: 'var(--warn)', color: 'var(--warn-fg)' }}>
+          Another tab has this suite open — last write wins. Close the other tab to avoid conflicting saves.
         </div>
       )}
       <Sidebar
@@ -241,12 +293,29 @@ export default function App() {
           {module === 'declines' && <Declines />}
           {module === 'quickpaste' && <QuickPaste onNavigate={setModule} />}
           {module === 'review' && <ReviewQueue />}
+          {module === 'accinbox' && <AccInbox />}
           {module === 'export' && <ExportCenter />}
           {module === 'imported' && <ImportedTables />}
           {module === 'settings' && <SettingsModule />}
         </main>
       </div>
       <LetterImportModal />
+      <ConfirmDialog
+        open={idleWarningOpen}
+        title="Session expiring"
+        message="You will be locked out soon due to inactivity. Stay signed in?"
+        confirmLabel="Stay signed in"
+        cancelLabel="Lock now"
+        onConfirm={() => {
+          recordActivity();
+          setIdleWarningOpen(false);
+          idleWarnedRef.current = false;
+        }}
+        onCancel={() => {
+          setIdleWarningOpen(false);
+          lock();
+        }}
+      />
       <BackupReminderModal
         open={backupReminderOpen}
         daysSinceExport={

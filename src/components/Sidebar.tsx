@@ -13,6 +13,7 @@ import {
   IconFolder,
   IconShield,
   IconReview,
+  IconInbox,
 } from './icons';
 import { useStore } from '../state/store';
 
@@ -27,6 +28,7 @@ export type ModuleId =
   | 'declines'
   | 'quickpaste'
   | 'review'
+  | 'accinbox'
   | 'export'
   | 'imported'
   | 'settings';
@@ -56,6 +58,7 @@ export function Sidebar({
   const entries: NavEntry[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <IconDashboard /> },
     { id: 'review', label: 'Review Queue', icon: <IconReview /> },
+    { id: 'accinbox', label: 'ACC Inbox', icon: <IconInbox /> },
     { id: 'compliance', label: 'Flagged (Compliance)', icon: <IconShield /> },
     { id: 'patients', label: 'Patients & Cases', icon: <IconPatients /> },
     { id: 'calculator', label: 'Package Calculator', icon: <IconCalculator /> },

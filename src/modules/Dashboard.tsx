@@ -15,7 +15,10 @@ import { useStore } from '../state/store';
 import { SectionTitle, Card, StatCard, Badge, EmptyState } from '../components/ui';
 import { IconWarning, IconDashboard } from '../components/icons';
 import type { ModuleId } from '../components/Sidebar';
-import { dashboardMetrics, buildActionQueue, computeApproval } from '../lib/analytics';
+import { dashboardMetrics, buildActionQueue, computeApproval, capActionQueueForDisplay, ACTION_QUEUE_DISPLAY_CAP } from '../lib/analytics';
+import { complianceSummary } from '../lib/compliance';
+import { getComplianceFindings } from '../lib/complianceCache';
+import { buildDataIndexes } from '../lib/indexes';
 import { formatCurrency } from '../lib/serviceCodes';
 import { formatDate } from '../lib/format';
 
@@ -50,9 +53,20 @@ function useThemeColors() {
 
 export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }) {
   const data = useStore((s) => s.data);
+  const setFocus = useStore((s) => s.setFocus);
   const colors = useThemeColors();
-  const m = useMemo(() => dashboardMetrics(data), [data]);
-  const actions = useMemo(() => buildActionQueue(data), [data]);
+  const indexes = useMemo(() => buildDataIndexes(data), [data]);
+  const m = useMemo(() => dashboardMetrics(data, indexes), [data, indexes]);
+  const findings = useMemo(() => getComplianceFindings(data), [data]);
+  const allActions = useMemo(() => buildActionQueue(data, findings), [data, findings]);
+  const [includeBillingInQueue, setIncludeBillingInQueue] = useState(false);
+  const actions = useMemo(
+    () => (includeBillingInQueue ? allActions : buildActionQueue(data, findings, { includeBilling: false })),
+    [includeBillingInQueue, allActions, data, findings],
+  );
+  const displayActions = useMemo(() => capActionQueueForDisplay(actions), [actions]);
+  const compliance = useMemo(() => complianceSummary(findings), [findings]);
+  const topFindings = useMemo(() => findings.slice(0, 6), [findings]);
 
   const isEmpty =
     data.patients.length === 0 &&
@@ -103,7 +117,22 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
     <div>
       <SectionTitle title="Dashboard" subtitle="Your action queue and billing analytics." />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      <Card className="mb-4">
+        <p className="text-sm">
+          <strong>Received an ACC letter?</strong> Go to Patients → select a claim → Documents →{' '}
+          <span className="font-medium">Import ACC letter (PDF)</span> to file approvals and attach the PDF in one step.
+        </p>
+      </Card>
+
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+        <button className="clickable-card" onClick={() => onNavigate('compliance')}>
+          <StatCard
+            label="Contract flags"
+            value={compliance.violations}
+            tone={compliance.violations ? 'danger' : compliance.warnings ? 'salmon' : 'good'}
+            hint={`${compliance.warnings} warning(s) · ${compliance.predictive} heads-up`}
+          />
+        </button>
         <StatCard
           label="Approvals expiring ≤30d"
           value={m.expiringApprovals.filter((x) => x.computed.status === 'Expiring Soon (<30 days)').length}
@@ -120,42 +149,112 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
         <div className="flex items-center gap-2 mb-3">
           <IconWarning />
           <h3 className="font-semibold">Action queue</h3>
-          <Badge tone={actions.length ? 'salmon' : 'good'}>{actions.length}</Badge>
+          <Badge tone={allActions.length ? 'salmon' : 'good'}>{allActions.length}</Badge>
         </div>
-        {actions.length === 0 ? (
+        {displayActions.length === 0 ? (
           <p className="text-sm" style={{ color: 'var(--muted)' }}>
             Nothing needs attention right now. 🎉
           </p>
         ) : (
-          <div className="space-y-1.5 max-h-72 overflow-y-auto">
-            {actions.map((a) => (
+          <>
+            <div className="space-y-1.5 max-h-72 overflow-y-auto">
+              {displayActions.map((a) => (
+                <button
+                  key={a.id}
+                  onClick={() => {
+                    const module =
+                      a.kind === 'compliance'
+                        ? 'compliance'
+                        : a.kind === 'approval' || a.kind === 'coverage'
+                          ? 'approvals'
+                          : a.kind === 'billing'
+                            ? 'billing'
+                            : a.kind === 'decline'
+                              ? 'declines'
+                              : 'complex';
+                    if (a.patientId || a.claimId) {
+                      const focusModule =
+                        a.kind === 'approval' || a.kind === 'coverage'
+                          ? 'approvals'
+                          : a.kind === 'billing'
+                            ? 'billing'
+                            : 'patients';
+                      setFocus({ module: focusModule, patientId: a.patientId, claimId: a.claimId });
+                    }
+                    onNavigate(module);
+                  }}
+                  className="action-row"
+                >
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ background: a.severity === 'danger' ? 'var(--danger-fg)' : 'var(--warn-fg)' }}
+                  />
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-medium truncate">{a.title}</span>
+                    <span className="block text-xs truncate" style={{ color: 'var(--muted)' }}>
+                      {a.detail}
+                    </span>
+                  </span>
+                  <Badge tone={a.severity === 'danger' ? 'danger' : 'warn'}>{a.kind}</Badge>
+                </button>
+              ))}
+            </div>
+            {allActions.length > ACTION_QUEUE_DISPLAY_CAP && (
+              <p className="text-xs mt-2" style={{ color: 'var(--muted)' }}>
+                Showing top {ACTION_QUEUE_DISPLAY_CAP} of {allActions.length}.{' '}
+                <button type="button" className="underline" onClick={() => onNavigate('compliance')}>
+                  View all in Flagged
+                </button>
+                {!includeBillingInQueue && (
+                  <>
+                    {' · '}
+                    <button type="button" className="underline" onClick={() => setIncludeBillingInQueue(true)}>
+                      Include billing items
+                    </button>
+                  </>
+                )}
+              </p>
+            )}
+          </>
+        )}
+      </Card>
+
+      {/* Contract compliance */}
+      <Card className="mb-4">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold">Contract compliance</h3>
+            <Badge tone={compliance.violations ? 'danger' : compliance.warnings ? 'salmon' : 'good'}>
+              {compliance.total}
+            </Badge>
+          </div>
+          <button className="btn btn-sm" onClick={() => onNavigate('compliance')}>
+            Open Flagged page
+          </button>
+        </div>
+        {topFindings.length === 0 ? (
+          <p className="text-sm" style={{ color: 'var(--muted)' }}>
+            No contract-compliance issues detected. 🎉
+          </p>
+        ) : (
+          <div className="space-y-1.5">
+            {topFindings.map((f) => (
               <button
-                key={a.id}
-                onClick={() =>
-                  onNavigate(
-                    a.kind === 'approval' || a.kind === 'coverage'
-                      ? 'approvals'
-                      : a.kind === 'billing'
-                        ? 'billing'
-                        : a.kind === 'decline'
-                          ? 'declines'
-                          : 'complex',
-                  )
-                }
-                className="w-full text-left rounded-lg p-2.5 flex items-center gap-3 transition-colors"
-                style={{ background: 'var(--surface-2)' }}
+                key={f.id}
+                onClick={() => onNavigate('compliance')}
+                className="action-row"
               >
-                <span
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ background: a.severity === 'danger' ? 'var(--danger-fg)' : 'var(--warn-fg)' }}
-                />
+                <Badge tone={f.severity === 'violation' ? 'danger' : f.severity === 'warning' ? 'salmon' : 'accent'}>
+                  {f.severity === 'violation' ? 'Violation' : f.severity === 'warning' ? 'Warning' : 'Heads-up'}
+                </Badge>
                 <span className="flex-1 min-w-0">
-                  <span className="block text-sm font-medium truncate">{a.title}</span>
+                  <span className="block text-sm font-medium truncate">
+                    {f.title} — {f.patientName}
+                  </span>
                   <span className="block text-xs truncate" style={{ color: 'var(--muted)' }}>
-                    {a.detail}
+                    {f.detail}
                   </span>
                 </span>
-                <Badge tone={a.severity === 'danger' ? 'danger' : 'warn'}>{a.kind}</Badge>
               </button>
             ))}
           </div>

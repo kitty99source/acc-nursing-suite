@@ -4,30 +4,43 @@ import { IconSave, IconFolder, IconLock } from './icons';
 import { formatDate } from '../lib/format';
 import { readFileAsText, PassphraseRequiredError, WrongPassphraseError } from '../lib/storage';
 import { Modal } from './Modal';
+import { useFlash } from '../hooks/useFlash';
 
 const SAVE_FILENAME = 'acc-nursing-data.accdata';
 
-/** Manual-save status line: centres the message on the explicit Save my data flow. */
+/** Manual-save status line: distinguishes IndexedDB autosave vs exported file. */
 function SaveStatus() {
   const status = useStore((s) => s.status);
   if (status.dirty) {
     return (
       <span className="text-xs flex items-center gap-1.5" style={{ color: 'var(--warn-fg)' }}>
         <span className="w-2 h-2 rounded-full inline-block" style={{ background: 'var(--warn-fg)' }} />
-        Unsaved changes — click Save my data
+        Unsaved changes — export to .accdata recommended
       </span>
     );
   }
-  const when = status.lastExportAt ? new Date(status.lastExportAt).toLocaleTimeString('en-NZ') : '';
+  if (status.lastExportAt) {
+    const when = new Date(status.lastExportAt).toLocaleString('en-NZ');
+    return (
+      <span className="text-xs flex items-center gap-1.5" style={{ color: 'var(--good-fg)' }}>
+        <span className="w-2 h-2 rounded-full inline-block" style={{ background: 'var(--good-fg)' }} />
+        Exported to .accdata · {when}
+      </span>
+    );
+  }
+  const autosaved =
+    status.lastSavedAt != null
+      ? new Date(status.lastSavedAt).toLocaleTimeString('en-NZ')
+      : '';
   return (
-    <span className="text-xs flex items-center gap-1.5" style={{ color: 'var(--good-fg)' }}>
-      <span className="w-2 h-2 rounded-full inline-block" style={{ background: 'var(--good-fg)' }} />
-      {when ? `Saved · ${when}` : 'Up to date'}
+    <span className="text-xs flex items-center gap-1.5" style={{ color: 'var(--muted)' }}>
+      <span className="w-2 h-2 rounded-full inline-block" style={{ background: 'var(--accent)' }} />
+      Auto-saved locally (IndexedDB){autosaved ? ` · ${autosaved}` : ''}
     </span>
   );
 }
 
-export function TopBar() {
+export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const status = useStore((s) => s.status);
   const saveMyData = useStore((s) => s.saveMyData);
   const loadMyData = useStore((s) => s.loadMyData);
@@ -37,27 +50,16 @@ export function TopBar() {
 
   const fileInput = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
-  const [feedback, setFeedback] = useState<{ text: string; tone: 'good' | 'danger' } | null>(null);
-
-  // Passphrase prompt state for loading an encrypted file.
-  const [pendingText, setPendingText] = useState<string | null>(null);
-  const [passphrase, setPassphrase] = useState('');
-  const [passError, setPassError] = useState('');
-  const [passBusy, setPassBusy] = useState(false);
-
-  function flash(text: string, tone: 'good' | 'danger') {
-    setFeedback({ text, tone });
-    if (tone === 'good') window.setTimeout(() => setFeedback(null), 3000);
-  }
+  const { flash, showFlash, clearFlash } = useFlash();
 
   async function handleSave() {
     setBusy(true);
-    setFeedback(null);
+    clearFlash();
     try {
       await saveMyData(SAVE_FILENAME);
-      flash(`Downloaded ${SAVE_FILENAME}`, 'good');
+      showFlash(`Downloaded ${SAVE_FILENAME}`, 'good');
     } catch (err) {
-      flash(`Save failed: ${(err as Error).message}`, 'danger');
+      showFlash(`Save failed: ${(err as Error).message}`, 'danger');
     } finally {
       setBusy(false);
     }
@@ -70,7 +72,7 @@ export function TopBar() {
       setPendingText(null);
       setPassphrase('');
       setPassError('');
-      flash('Your data was loaded.', 'good');
+      showFlash('Your data was loaded.', 'good');
     } catch (err) {
       if (err instanceof PassphraseRequiredError) {
         setPendingText(text);
@@ -84,18 +86,20 @@ export function TopBar() {
         return;
       }
       setPendingText(null);
-      flash(`Load failed: ${(err as Error).message}`, 'danger');
+      setLoadErrorText((err as Error).message);
+      setLoadErrorOpen(true);
+      showFlash(`Load failed: ${(err as Error).message}`, 'danger');
     }
   }
 
   async function handleLoadFile(file: File) {
     setBusy(true);
-    setFeedback(null);
+    clearFlash();
     try {
       const text = await readFileAsText(file);
       await attemptLoad(text);
     } catch (err) {
-      flash(`Load failed: ${(err as Error).message}`, 'danger');
+      showFlash(`Load failed: ${(err as Error).message}`, 'danger');
     } finally {
       setBusy(false);
       if (fileInput.current) fileInput.current.value = '';
@@ -111,16 +115,23 @@ export function TopBar() {
 
   async function runFsa(fn: () => Promise<void>, label: string) {
     setBusy(true);
-    setFeedback(null);
+    clearFlash();
     try {
       await fn();
     } catch (err) {
       const e = err as Error;
-      if (e.name !== 'AbortError') flash(`${label}: ${e.message}`, 'danger');
+      if (e.name !== 'AbortError') showFlash(`${label}: ${e.message}`, 'danger');
     } finally {
       setBusy(false);
     }
   }
+
+  const [pendingText, setPendingText] = useState<string | null>(null);
+  const [passphrase, setPassphrase] = useState('');
+  const [passError, setPassError] = useState('');
+  const [passBusy, setPassBusy] = useState(false);
+  const [loadErrorOpen, setLoadErrorOpen] = useState(false);
+  const [loadErrorText, setLoadErrorText] = useState('');
 
   return (
     <header
@@ -128,6 +139,11 @@ export function TopBar() {
       style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
     >
       <div className="flex items-center gap-3 min-w-0">
+        {onMenuToggle && (
+          <button className="btn btn-icon lg:hidden" onClick={onMenuToggle} aria-label="Open menu">
+            ☰
+          </button>
+        )}
         <div className="min-w-0">
           <div className="text-sm font-semibold truncate">
             {status.hasFileHandle && status.fileName ? status.fileName : 'ACC District Nursing Admin Suite'}
@@ -139,13 +155,13 @@ export function TopBar() {
       </div>
 
       <div className="flex items-center gap-2">
-        {feedback && (
+        {flash && (
           <span
             className="text-xs max-w-[14rem] truncate"
-            style={{ color: feedback.tone === 'good' ? 'var(--good-fg)' : 'var(--danger-fg)' }}
-            title={feedback.text}
+            style={{ color: flash.tone === 'good' ? 'var(--good-fg)' : flash.tone === 'danger' ? 'var(--danger-fg)' : 'var(--warn-fg)' }}
+            title={flash.text}
           >
-            {feedback.text}
+            {flash.text}
           </span>
         )}
 
@@ -185,7 +201,7 @@ export function TopBar() {
             title="Advanced: silent autosave to a file you choose (requires the localhost launcher)"
           >
             <button
-              className="btn btn-ghost text-xs"
+              className="btn text-xs"
               disabled={busy}
               onClick={() => void runFsa(openExistingFile, 'Open')}
               title="Advanced: open an existing .accdata file with autosave"
@@ -193,7 +209,7 @@ export function TopBar() {
               Open
             </button>
             <button
-              className="btn btn-ghost text-xs"
+              className="btn text-xs"
               disabled={busy}
               onClick={() => void runFsa(connectNewFile, 'Save to file')}
               title="Advanced: choose a file to autosave into"
@@ -203,7 +219,7 @@ export function TopBar() {
           </div>
         )}
 
-        <button className="btn btn-ghost" onClick={lock} title="Lock the app">
+        <button className="btn btn-icon" onClick={lock} title="Lock the app">
           <IconLock />
         </button>
       </div>
@@ -258,6 +274,25 @@ export function TopBar() {
             {passError}
           </p>
         )}
+      </Modal>
+
+      <Modal
+        open={loadErrorOpen}
+        title="Could not load file"
+        onClose={() => setLoadErrorOpen(false)}
+        size="sm"
+        footer={
+          <button className="btn btn-primary" onClick={() => setLoadErrorOpen(false)}>
+            OK
+          </button>
+        }
+      >
+        <p className="text-sm mb-2" style={{ color: 'var(--danger-fg)' }}>
+          {loadErrorText}
+        </p>
+        <p className="text-xs" style={{ color: 'var(--muted)' }}>
+          Your current working data was not changed.
+        </p>
       </Modal>
     </header>
   );

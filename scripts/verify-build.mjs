@@ -12,6 +12,9 @@ console.log('external script src  :', /<script[^>]+src=["']https?:/.test(html));
 console.log('external link href   :', /<link[^>]+href=["']https?:/.test(html));
 console.log('inline <style> tags  :', (html.match(/<style\b/g) || []).length);
 console.log('size KB              :', Math.round(html.length / 1024));
+console.log('tessdata in dist     :', fs.existsSync('dist/eng.traineddata'));
+console.log('launch.ps1 in dist   :', fs.existsSync('dist/launch.ps1'));
+console.log('Start cmd in dist    :', fs.existsSync('dist/Start ACC Suite.cmd'));
 
 // Validate the Excel export round-trips (proves the workbook is structurally valid).
 const wb = new ExcelJS.Workbook();

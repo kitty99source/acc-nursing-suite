@@ -11,3 +11,6 @@ node_modules/
 
 # Release bundle (uploaded as GitHub Release asset, not committed)
 acc-nursing-suite-dist.zip
+
+# Local knowledge graph (graphify)
+graphify-out/

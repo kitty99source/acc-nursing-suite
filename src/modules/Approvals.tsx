@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { DataTable, customColumns, type Column } from '../components/DataTable';
 import { Modal } from '../components/Modal';
@@ -15,6 +15,7 @@ import {
   EmptyState,
 } from '../components/ui';
 import { IconPlus, IconEdit, IconTrash, IconApprovals } from '../components/icons';
+import { LetterImportButton } from '../components/LetterImportButton';
 import { computeApproval } from '../lib/analytics';
 import { formatDate, daysUntil } from '../lib/format';
 import type { Approval, ApprovalServiceCode } from '../types';
@@ -37,22 +38,48 @@ export function Approvals() {
   const addApproval = useStore((s) => s.addApproval);
   const updateApproval = useStore((s) => s.updateApproval);
   const removeApproval = useStore((s) => s.removeApproval);
+  const getDocumentBlob = useStore((s) => s.getDocumentBlob);
   const [confirm, confirmDialog] = useConfirm();
+  const letterContext = useRef<{ claimId?: string; patientId?: string }>({});
 
   const [editing, setEditing] = useState<Approval | null>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<Omit<Approval, 'id'>>(EMPTY);
   const [statusFilter, setStatusFilter] = useState<'all' | 'attention'>('all');
   const [codeFilter, setCodeFilter] = useState<'all' | 'NS04' | 'NS05'>('all');
+  const [showHistorical, setShowHistorical] = useState(false);
+
+  const focus = useStore((s) => s.focus);
+  const clearFocus = useStore((s) => s.clearFocus);
+
+  // Consume a cross-module fix intent: open the New-approval modal pre-filled
+  // with the patient, claim, service code and PO carried over from the flag.
+  useEffect(() => {
+    if (!focus || focus.module !== 'approvals') return;
+    const claim = focus.claimId ? data.claims.find((c) => c.id === focus.claimId) : undefined;
+    const prefill = focus.prefill ?? {};
+    const serviceCode = prefill.serviceCode === 'NS05' ? 'NS05' : 'NS04';
+    setForm({
+      ...EMPTY,
+      patientId: focus.patientId || claim?.patientId || data.patients[0]?.id || '',
+      claimId: focus.claimId ?? '',
+      serviceCode: serviceCode as ApprovalServiceCode,
+      poNumber: (prefill.poNumber as string) || claim?.poNumber || '',
+    });
+    setEditing(null);
+    setCreating(true);
+    clearFocus();
+  }, [focus, data.claims, data.patients, clearFocus]);
 
   const threshold = data.settings.expiryThresholdDays;
 
   const rows = useMemo(() => {
     return data.approvals
       .map((a) => ({ approval: a, computed: computeApproval(a, threshold) }))
+      .filter((r) => (showHistorical ? true : r.approval.recordStatus !== 'historical'))
       .filter((r) => (codeFilter === 'all' ? true : r.approval.serviceCode === codeFilter))
       .filter((r) => (statusFilter === 'all' ? true : r.computed.status !== 'Active'));
-  }, [data.approvals, threshold, codeFilter, statusFilter]);
+  }, [data.approvals, threshold, codeFilter, statusFilter, showHistorical]);
 
   function openCreate() {
     setForm({ ...EMPTY, patientId: data.patients[0]?.id ?? '' });
@@ -82,6 +109,15 @@ export function Approvals() {
       confirmLabel: 'Delete',
     });
     if (ok) removeApproval(a.id);
+  }
+
+  async function viewLetter(approval: Approval) {
+    if (!approval.sourceDocumentId) return;
+    const blob = await getDocumentBlob(approval.sourceDocumentId);
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 
   type Row = (typeof rows)[number];
@@ -166,6 +202,7 @@ export function Approvals() {
       sortable: true,
       sortValue: (r) => r.computed.status,
       render: (r) => {
+        if (r.approval.recordStatus === 'historical') return <Badge tone="neutral">Historical</Badge>;
         if (r.computed.status === 'EXPIRED') return <Badge tone="danger">EXPIRED</Badge>;
         if (r.computed.status === 'Expiring Soon (<30 days)')
           return <Badge tone="salmon">Expiring Soon</Badge>;
@@ -182,10 +219,15 @@ export function Approvals() {
       header: '',
       render: (r) => (
         <div className="flex items-center gap-1 justify-end">
-          <button className="btn btn-ghost p-1.5" onClick={() => openEdit(r.approval)} aria-label="Edit">
+          {r.approval.sourceDocumentId && (
+            <button className="btn btn-sm" onClick={() => void viewLetter(r.approval)}>
+              View letter
+            </button>
+          )}
+          <button className="btn btn-icon" onClick={() => openEdit(r.approval)} aria-label="Edit">
             <IconEdit width={15} height={15} />
           </button>
-          <button className="btn btn-ghost p-1.5" onClick={() => void del(r.approval)} aria-label="Delete">
+          <button className="btn btn-icon btn-icon-danger" onClick={() => void del(r.approval)} aria-label="Delete">
             <IconTrash width={15} height={15} />
           </button>
         </div>
@@ -201,11 +243,14 @@ export function Approvals() {
     <div>
       <SectionTitle
         title="Approvals (NS04 / NS05)"
-        subtitle="Track approval periods and PO expiry. Rows turn salmon when expiring soon or expired."
+        subtitle="Track approval periods and PO expiry. Import approval PDFs here to file NS04/NS05 and attach the letter."
         actions={
-          <button className="btn btn-primary" onClick={openCreate} disabled={data.patients.length === 0}>
-            <IconPlus /> New approval
-          </button>
+          <div className="flex items-center gap-2">
+            <LetterImportButton opts={{ context: letterContext.current, entryPoint: 'approvals' }} />
+            <button className="btn btn-primary" onClick={openCreate} disabled={data.patients.length === 0}>
+              <IconPlus /> New approval
+            </button>
+          </div>
         }
       />
 
@@ -223,6 +268,14 @@ export function Approvals() {
           <option value="all">All statuses</option>
           <option value="attention">Needs attention (expiring/expired)</option>
         </Select>
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showHistorical}
+            onChange={(e) => setShowHistorical(e.target.checked)}
+          />
+          Show historical records
+        </label>
       </div>
 
       <DataTable
@@ -285,7 +338,15 @@ export function Approvals() {
             </Select>
           </Field>
           <Field label="Claim">
-            <Select value={form.claimId} onChange={(e) => setForm({ ...form, claimId: e.target.value })}>
+            <Select
+              value={form.claimId}
+              onChange={(e) => {
+                const claim = data.claims.find((c) => c.id === e.target.value);
+                // Carry the claim's PO number across so it doesn't have to be
+                // re-typed; keep any existing value if the claim has none.
+                setForm({ ...form, claimId: e.target.value, poNumber: claim?.poNumber || form.poNumber });
+              }}
+            >
               <option value="">Select claim…</option>
               {claimsForPatient.map((c) => (
                 <option key={c.id} value={c.id}>

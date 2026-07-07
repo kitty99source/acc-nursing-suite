@@ -1,11 +1,21 @@
-import type { AppData, Approval, ApprovalStatus, InvoiceLine } from '../types';
+import type { AppData, Approval, ApprovalStatus, Claim, InvoiceLine } from '../types';
 import { daysUntil, daysBetween, todayISO, monthIndex, yearOf, MONTH_NAMES } from './format';
 import { revenueGroupForCode, type RevenueGroup } from './serviceCodes';
+import type { ComplianceFinding } from './compliance';
+import { getComplianceFindings } from './complianceCache';
+import { isBillingApproval, isApprovalCurrent } from './approvals';
+import { buildDataIndexes, type DataIndexes } from './indexes';
 
 // ============================================================================
 // Derived analytics. Pure functions over AppData (+ today's date) so the
 // dashboard, status columns and Excel export all share one source of truth.
 // ============================================================================
+
+/** Max rows rendered in Dashboard action queue (P1-005 / U-15). */
+export const ACTION_QUEUE_DISPLAY_CAP = 50;
+
+/** Max patient/claim groups on Compliance page before "Load more" (P1-007 / U-16). */
+export const COMPLIANCE_GROUP_DISPLAY_CAP = 50;
 
 export interface ApprovalComputed {
   daysUntilExpiry: number;
@@ -21,8 +31,28 @@ export function computeApproval(approval: Approval, thresholdDays: number): Appr
   return { daysUntilExpiry: days, status };
 }
 
-export function isApprovalCurrent(approval: Approval): boolean {
-  return daysUntil(approval.approvalEndDate) >= 0;
+export { isBillingApproval, isApprovalCurrent } from './approvals';
+
+/**
+ * Active claims that require an NS04/NS05 approval but have no current one.
+ * Shared by the dashboard count and the action queue so the definition of a
+ * "coverage gap" lives in exactly one place. Discharged claims awaiting a late
+ * approval/PO are intentionally NOT counted here — those surface as compliance
+ * findings ("Discharged — not yet billed") instead.
+ */
+export function coverageGapClaims(data: AppData, idx?: DataIndexes): Claim[] {
+  const indexes = idx ?? buildDataIndexes(data);
+  const result: Claim[] = [];
+  for (const claim of data.claims) {
+    if (claim.status !== 'active') continue;
+    const lines = indexes.linesByClaimId.get(claim.id) ?? [];
+    const needsApproval = lines.some((s) => s.serviceCode === 'NS04' || s.serviceCode === 'NS05');
+    if (!needsApproval) continue;
+    const approvals = indexes.approvalsByClaimId.get(claim.id) ?? [];
+    const current = approvals.some((a) => isBillingApproval(a) && isApprovalCurrent(a));
+    if (!current) result.push(claim);
+  }
+  return result;
 }
 
 export interface BillingFunnel {
@@ -186,19 +216,43 @@ export function yearSummary(data: AppData, year?: number): YearSummaryRow[] {
 
 export interface ActionItem {
   id: string;
-  kind: 'approval' | 'billing' | 'decline' | 'complex' | 'coverage';
+  kind: 'approval' | 'billing' | 'decline' | 'complex' | 'coverage' | 'compliance';
   severity: 'danger' | 'warn';
   title: string;
   detail: string;
+  patientId?: string;
+  claimId?: string;
 }
 
-export function buildActionQueue(data: AppData): ActionItem[] {
+export interface BuildActionQueueOptions {
+  /** Pre-computed compliance findings (P1-002). */
+  findings?: ComplianceFinding[];
+  /** Defer billing-line scan for faster dashboard mount (P1-014). */
+  includeBilling?: boolean;
+}
+
+export function buildActionQueue(
+  data: AppData,
+  findingsOrOpts?: ComplianceFinding[] | BuildActionQueueOptions,
+  maybeOpts?: BuildActionQueueOptions,
+): ActionItem[] {
+  let findings: ComplianceFinding[] | undefined;
+  let opts: BuildActionQueueOptions = {};
+  if (Array.isArray(findingsOrOpts)) {
+    findings = findingsOrOpts;
+    opts = maybeOpts ?? {};
+  } else if (findingsOrOpts) {
+    opts = findingsOrOpts;
+  }
+  const includeBilling = opts.includeBilling !== false;
+  const indexes = buildDataIndexes(data);
   const items: ActionItem[] = [];
   const threshold = data.settings.expiryThresholdDays;
 
   for (const a of data.approvals) {
+    if (!isBillingApproval(a)) continue;
     const { daysUntilExpiry, status } = computeApproval(a, threshold);
-    const patient = data.patients.find((p) => p.id === a.patientId);
+    const patient = indexes.patientsById.get(a.patientId);
     const name = patient?.name ?? a.patientId;
     if (status === 'EXPIRED') {
       items.push({
@@ -207,6 +261,8 @@ export function buildActionQueue(data: AppData): ActionItem[] {
         severity: 'danger',
         title: `${a.serviceCode} approval EXPIRED — ${name}`,
         detail: `Expired ${Math.abs(daysUntilExpiry)} day(s) ago (PO ${a.poNumber}).`,
+        patientId: a.patientId,
+        claimId: a.claimId,
       });
     } else if (status === 'Expiring Soon (<30 days)') {
       items.push({
@@ -215,28 +271,39 @@ export function buildActionQueue(data: AppData): ActionItem[] {
         severity: 'warn',
         title: `${a.serviceCode} approval expiring — ${name}`,
         detail: `${daysUntilExpiry} day(s) until expiry (PO ${a.poNumber}).`,
+        patientId: a.patientId,
+        claimId: a.claimId,
       });
     }
   }
 
-  for (const inv of data.invoiceLines) {
-    if (inv.status === 'Awaiting Billing') {
-      items.push({
-        id: `bill-${inv.id}`,
-        kind: 'billing',
-        severity: 'warn',
-        title: `Awaiting billing — ${inv.patientName}`,
-        detail: `${inv.serviceCode} on ${inv.invoiceSheet || '(no sheet)'}.`,
-      });
-    } else if (inv.status === 'Remittance') {
-      const age = daysBetween(inv.invoiceDate || todayISO(), todayISO());
-      items.push({
-        id: `bill-${inv.id}`,
-        kind: 'billing',
-        severity: age > 60 ? 'danger' : 'warn',
-        title: `Remittance outstanding — ${inv.patientName}`,
-        detail: `${inv.serviceCode}, ${age} day(s) since invoice.`,
-      });
+  if (includeBilling) {
+    for (const inv of data.invoiceLines) {
+      const claim =
+        indexes.claimsByNumber.get((inv.claimNumber || '').trim().toUpperCase()) ||
+        indexes.claimsByAcc45.get((inv.acc45Number || '').trim().toUpperCase());
+      if (inv.status === 'Awaiting Billing') {
+        items.push({
+          id: `bill-${inv.id}`,
+          kind: 'billing',
+          severity: 'warn',
+          title: `Awaiting billing — ${inv.patientName}`,
+          detail: `${inv.serviceCode} on ${inv.invoiceSheet || '(no sheet)'}.`,
+          patientId: claim?.patientId,
+          claimId: claim?.id,
+        });
+      } else if (inv.status === 'Remittance') {
+        const age = daysBetween(inv.invoiceDate || todayISO(), todayISO());
+        items.push({
+          id: `bill-${inv.id}`,
+          kind: 'billing',
+          severity: age > 60 ? 'danger' : 'warn',
+          title: `Remittance outstanding — ${inv.patientName}`,
+          detail: `${inv.serviceCode}, ${age} day(s) since invoice.`,
+          patientId: claim?.patientId,
+          claimId: claim?.id,
+        });
+      }
     }
   }
 
@@ -249,6 +316,8 @@ export function buildActionQueue(data: AppData): ActionItem[] {
         severity: age > 30 ? 'danger' : 'warn',
         title: `Open decline — ${d.patientName}`,
         detail: `${d.status} (${age} day(s) since received).`,
+        patientId: d.patientId,
+        claimId: d.claimId,
       });
     }
   }
@@ -257,37 +326,54 @@ export function buildActionQueue(data: AppData): ActionItem[] {
     if (c.status === 'Resolved') continue;
     const due = daysUntil(c.nextReviewDate);
     if (c.nextReviewDate && due <= 0) {
+      const patient = data.patients.find((p) => p.name === c.patientName);
       items.push({
         id: `cx-${c.id}`,
         kind: 'complex',
         severity: 'warn',
         title: `Complex case review due — ${c.patientName}`,
         detail: `Review date ${due === 0 ? 'is today' : `passed ${Math.abs(due)} day(s) ago`}.`,
+        patientId: patient?.id,
       });
     }
   }
 
-  // Coverage gaps: active claims whose service line requires approval but lacks a current one.
-  for (const claim of data.claims) {
-    if (claim.status !== 'active') continue;
-    const lines = data.serviceLines.filter((s) => s.claimId === claim.id);
-    const needsApproval = lines.some((s) => s.serviceCode === 'NS04' || s.serviceCode === 'NS05');
-    if (!needsApproval) continue;
-    const current = data.approvals.some((a) => a.claimId === claim.id && isApprovalCurrent(a));
-    if (!current) {
-      const patient = data.patients.find((p) => p.id === claim.patientId);
-      items.push({
-        id: `cov-${claim.id}`,
-        kind: 'coverage',
-        severity: 'danger',
-        title: `Coverage gap — ${patient?.name ?? claim.claimNumber}`,
-        detail: `Active NS04/NS05 service with no current approval/PO (claim ${claim.claimNumber}).`,
-      });
-    }
+  for (const claim of coverageGapClaims(data, indexes)) {
+    const patient = indexes.patientsById.get(claim.patientId);
+    items.push({
+      id: `cov-${claim.id}`,
+      kind: 'coverage',
+      severity: 'danger',
+      title: `Coverage gap — ${patient?.name ?? claim.claimNumber}`,
+      detail: `Active NS04/NS05 service with no current approval/PO (claim ${claim.claimNumber}).`,
+      patientId: claim.patientId,
+      claimId: claim.id,
+    });
+  }
+
+  const complianceFindings = findings ?? getComplianceFindings(data);
+  for (const f of complianceFindings) {
+    if (f.ruleId === 'ns04-needs-approval') continue;
+    const include = f.severity === 'violation' || f.ruleId === 'discharged-awaiting-billing';
+    if (!include) continue;
+    items.push({
+      id: `comp-${f.id}`,
+      kind: 'compliance',
+      severity: f.severity === 'violation' ? 'danger' : 'warn',
+      title: `${f.title} — ${f.patientName}`,
+      detail: f.detail,
+      patientId: f.patientId,
+      claimId: f.claimId,
+    });
   }
 
   const rank: Record<ActionItem['severity'], number> = { danger: 0, warn: 1 };
   return items.sort((a, b) => rank[a.severity] - rank[b.severity]);
+}
+
+/** Top N action items for display; full count remains on the sorted array length. */
+export function capActionQueueForDisplay(items: ActionItem[], cap = ACTION_QUEUE_DISPLAY_CAP): ActionItem[] {
+  return items.slice(0, cap);
 }
 
 export interface DashboardMetrics {
@@ -306,27 +392,21 @@ export interface DashboardMetrics {
   outstandingTotal: number;
 }
 
-export function dashboardMetrics(data: AppData): DashboardMetrics {
+export function dashboardMetrics(data: AppData, idx?: DataIndexes): DashboardMetrics {
+  const indexes = idx ?? buildDataIndexes(data);
   const threshold = data.settings.expiryThresholdDays;
 
   const expiringApprovals = data.approvals
+    .filter(isBillingApproval)
     .map((approval) => ({ approval, computed: computeApproval(approval, threshold) }))
     .filter((x) => x.computed.status !== 'Active')
     .sort((a, b) => a.computed.daysUntilExpiry - b.computed.daysUntilExpiry);
 
   // Coverage gaps count (distinct active claims with NS04/NS05 and no current approval).
-  let coverageGaps = 0;
-  for (const claim of data.claims) {
-    if (claim.status !== 'active') continue;
-    const lines = data.serviceLines.filter((s) => s.claimId === claim.id);
-    const needsApproval = lines.some((s) => s.serviceCode === 'NS04' || s.serviceCode === 'NS05');
-    if (!needsApproval) continue;
-    const current = data.approvals.some((a) => a.claimId === claim.id && isApprovalCurrent(a));
-    if (!current) coverageGaps += 1;
-  }
+  const coverageGaps = coverageGapClaims(data, indexes).length;
 
   const ns04NearLimit = data.approvals
-    .filter((a) => a.serviceCode === 'NS04' && a.approvedHoursOrConsults > 0 && a.consultsUsed != null)
+    .filter((a) => isBillingApproval(a) && a.serviceCode === 'NS04' && a.approvedHoursOrConsults > 0 && a.consultsUsed != null)
     .map((approval) => ({
       approval,
       pct: (approval.consultsUsed! / approval.approvedHoursOrConsults) * 100,
@@ -335,7 +415,7 @@ export function dashboardMetrics(data: AppData): DashboardMetrics {
     .sort((a, b) => b.pct - a.pct);
 
   const ns05AnnualReview = data.approvals
-    .filter((a) => a.serviceCode === 'NS05')
+    .filter((a) => isBillingApproval(a) && a.serviceCode === 'NS05')
     .map((approval) => ({ approval, computed: computeApproval(approval, threshold) }))
     .filter((x) => x.computed.status !== 'Active')
     .sort((a, b) => a.computed.daysUntilExpiry - b.computed.daysUntilExpiry);

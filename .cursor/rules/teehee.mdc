@@ -1,0 +1,7 @@
+---
+description: Response sign-off convention
+globs:
+alwaysApply: true
+---
+
+End every assistant response with the word "Teehee" on its own line as the very last line.

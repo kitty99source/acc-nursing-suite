@@ -14,6 +14,7 @@ import {
   EmptyState,
 } from '../components/ui';
 import { IconPlus, IconEdit, IconTrash, IconDecline } from '../components/icons';
+import { LetterImportButton } from '../components/LetterImportButton';
 import { formatDate, daysBetween, todayISO } from '../lib/format';
 import type { Decline, DeclineStatus } from '../types';
 
@@ -56,6 +57,7 @@ export function Declines() {
   const addDecline = useStore((s) => s.addDecline);
   const updateDecline = useStore((s) => s.updateDecline);
   const removeDecline = useStore((s) => s.removeDecline);
+  const setFocus = useStore((s) => s.setFocus);
   const [confirm, confirmDialog] = useConfirm();
 
   const [creating, setCreating] = useState(false);
@@ -117,10 +119,18 @@ export function Declines() {
       header: '',
       render: (r) => (
         <div className="flex items-center gap-1 justify-end">
-          <button className="btn btn-ghost p-1.5" onClick={() => openEdit(r)} aria-label="Edit">
+          {(r.patientId || r.claimId) && (
+            <button
+              className="btn btn-sm"
+              onClick={() => setFocus({ module: 'patients', patientId: r.patientId, claimId: r.claimId })}
+            >
+              Open patient
+            </button>
+          )}
+          <button className="btn btn-icon" onClick={() => openEdit(r)} aria-label="Edit">
             <IconEdit width={15} height={15} />
           </button>
-          <button className="btn btn-ghost p-1.5" onClick={() => void del(r)} aria-label="Delete">
+          <button className="btn btn-icon btn-icon-danger" onClick={() => void del(r)} aria-label="Delete">
             <IconTrash width={15} height={15} />
           </button>
         </div>
@@ -136,11 +146,14 @@ export function Declines() {
     <div>
       <SectionTitle
         title="Decline Tracker"
-        subtitle="Decline received → nurse emailed → resubmission → outcome."
+        subtitle="Decline received → nurse emailed → resubmission → outcome. Import decline PDFs here to track and attach the letter."
         actions={
-          <button className="btn btn-primary" onClick={openCreate}>
-            <IconPlus /> New decline
-          </button>
+          <div className="flex items-center gap-2">
+            <LetterImportButton opts={{ entryPoint: 'declines' }} />
+            <button className="btn btn-primary" onClick={openCreate}>
+              <IconPlus /> New decline
+            </button>
+          </div>
         }
       />
 

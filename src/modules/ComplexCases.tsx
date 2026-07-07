@@ -135,10 +135,10 @@ export function ComplexCases() {
       header: '',
       render: (r) => (
         <div className="flex items-center gap-1 justify-end">
-          <button className="btn btn-ghost p-1.5" onClick={() => openEdit(r)} aria-label="Edit">
+          <button className="btn btn-icon" onClick={() => openEdit(r)} aria-label="Edit">
             <IconEdit width={15} height={15} />
           </button>
-          <button className="btn btn-ghost p-1.5" onClick={() => void del(r)} aria-label="Delete">
+          <button className="btn btn-icon btn-icon-danger" onClick={() => void del(r)} aria-label="Delete">
             <IconTrash width={15} height={15} />
           </button>
         </div>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../state/store';
 import { DataTable, customColumns, type Column } from '../components/DataTable';
 import { Modal } from '../components/Modal';
@@ -15,7 +15,8 @@ import {
   EmptyState,
 } from '../components/ui';
 import { IconPlus, IconEdit, IconTrash, IconBilling, IconSearch } from '../components/icons';
-import { ALL_SERVICE_CODES, formatCurrency } from '../lib/serviceCodes';
+import { LetterImportButton } from '../components/LetterImportButton';
+import { formatCurrency, visibleServiceCodes } from '../lib/serviceCodes';
 import { formatDate } from '../lib/format';
 import type { InvoiceLine, InvoiceStatus, ServiceCode } from '../types';
 
@@ -59,6 +60,29 @@ export function Billing() {
   const [statusFilter, setStatusFilter] = useState<'all' | InvoiceStatus>('all');
   const [codeFilter, setCodeFilter] = useState<'all' | ServiceCode>('all');
   const [sheetFilter, setSheetFilter] = useState('');
+
+  const focus = useStore((s) => s.focus);
+  const clearFocus = useStore((s) => s.clearFocus);
+  const generateInvoiceLinesForClaim = useStore((s) => s.generateInvoiceLinesForClaim);
+
+  // Consume a billing fix intent: optionally auto-generate the invoice lines
+  // for a ready claim, then filter the log down to that claim so the result is
+  // immediately visible.
+  useEffect(() => {
+    if (!focus || focus.module !== 'billing') return;
+    const claim = focus.claimId ? data.claims.find((c) => c.id === focus.claimId) : undefined;
+    if (focus.intent === 'generate-invoices' && focus.claimId) {
+      generateInvoiceLinesForClaim(focus.claimId);
+    }
+    const q = (focus.prefill?.claimNumber as string) || claim?.claimNumber || '';
+    if (q) {
+      setStatusFilter('all');
+      setCodeFilter('all');
+      setSheetFilter('');
+      setSearch(q);
+    }
+    clearFocus();
+  }, [focus, data.claims, clearFocus, generateInvoiceLinesForClaim]);
 
   const sheets = useMemo(
     () => Array.from(new Set(data.invoiceLines.map((i) => i.invoiceSheet).filter(Boolean))).sort(),
@@ -178,10 +202,10 @@ export function Billing() {
       header: '',
       render: (r) => (
         <div className="flex items-center gap-1 justify-end">
-          <button className="btn btn-ghost p-1.5" onClick={() => openEdit(r)} aria-label="Edit">
+          <button className="btn btn-icon" onClick={() => openEdit(r)} aria-label="Edit">
             <IconEdit width={15} height={15} />
           </button>
-          <button className="btn btn-ghost p-1.5" onClick={() => void del(r)} aria-label="Delete">
+          <button className="btn btn-icon btn-icon-danger" onClick={() => void del(r)} aria-label="Delete">
             <IconTrash width={15} height={15} />
           </button>
         </div>
@@ -199,9 +223,12 @@ export function Billing() {
         title="Billing Log"
         subtitle="The core ledger. Salmon = awaiting billing or remittance (follow up); green = billed."
         actions={
-          <button className="btn btn-primary" onClick={openCreate}>
-            <IconPlus /> New invoice line
-          </button>
+          <div className="flex items-center gap-2">
+            <LetterImportButton />
+            <button className="btn btn-primary" onClick={openCreate}>
+              <IconPlus /> New invoice line
+            </button>
+          </div>
         }
       />
 
@@ -252,7 +279,7 @@ export function Billing() {
         </Select>
         <Select value={codeFilter} onChange={(e) => setCodeFilter(e.target.value as typeof codeFilter)} className="w-auto">
           <option value="all">All codes</option>
-          {ALL_SERVICE_CODES.map((c) => (
+          {visibleServiceCodes(data.settings).map((c) => (
             <option key={c} value={c}>
               {c}
             </option>
@@ -327,7 +354,7 @@ export function Billing() {
           </Field>
           <Field label="Service code">
             <Select value={form.serviceCode} onChange={(e) => setForm({ ...form, serviceCode: e.target.value as ServiceCode })}>
-              {ALL_SERVICE_CODES.map((c) => (
+              {visibleServiceCodes(data.settings, form.serviceCode).map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>

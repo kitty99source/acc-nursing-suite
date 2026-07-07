@@ -89,7 +89,7 @@ Paginated Report, Dataset, Mobile Report hrefs embed `FolderPath=%2FDHB-wide%2FA
 
 1. **Report entry link** — href for the paginated report tile that opens this grid (second discover run on opened report, or manual copy).
 2. **Parameter form** — screenshot if filters appear before Run (user screenshot shows results only).
-3. **User column priority** — which 3–4 columns matter most for daily letter cross-check (see [`REPORT_COLUMNS_2026-07-08.md`](./REPORT_COLUMNS_2026-07-08.md) for full mapping).
+3. ~~**User column priority**~~ — **Recorded 2026-07-08:** primary = NHI, Patient Name, ACCNumber; secondary = Service Item Code. Letter import matches portal rows on NHI + claim number + name (see [`REPORT_COLUMNS_2026-07-08.md`](./REPORT_COLUMNS_2026-07-08.md) § User cross-check priority).
 4. **D-05/D-06** — browser choice and session timeout (for CDP launch command).
 
 ## D-09 result grid (2026-07-08)

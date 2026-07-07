@@ -29,7 +29,9 @@
 | Letter type classification | **Attachment body only** — `classifyLetter()` in suite parses PDF/Word text (NUR02 vs NUR04VEN, "unable to approve", etc.) | B-07, §6c |
 | Word parser corpus (P8-020) | User confirms a real ACC **approval letter in Word (.docx)** is satisfactory for parser fixtures — drop into `scripts/stress/fixtures/email/` when ready; existing PDF fixtures used until then | B-08, P8-020 |
 
-**Still needed:** B-02 (Outlook version), B-09–B-14 (IT policy), D-05–D-06 (browser/session), D-02 table (which columns you use most — see D-09), **report parameter form screenshot** (if any filters before Run), **login page screenshot (D-07)**.
+**Still needed:** B-02 (Outlook version), B-09–B-14 (IT policy), D-05–D-06 (browser/session), **report parameter form screenshot** (if any filters before Run), **login page screenshot (D-07)**.
+
+**2026-07-08 — D-02 cross-check columns (recorded):** Primary = **Patient Name**, **ACCNumber**, **NHI**; secondary = **Service Item Code** (helpful but often derivable from ACC number). See [`REPORT_COLUMNS_2026-07-08.md`](portal-samples/REPORT_COLUMNS_2026-07-08.md) § User cross-check priority.
 
 **2026-07-08 — Portal screenshots inventory (3 PNGs from email corpus):**
 
@@ -54,7 +56,7 @@
 
 **Captured page:** `ACC District Nursing Visits` folder (`.../report/DHB-wide/ACC/ACC%20District%20Nursing%20Visits`). Breadcrumb links: Home → DHB-wide → ACC. Aria-label selectors: `View`, `Search`, `Manage folder`, `New`, `Show hidden items`. **No report rows, parameters, or result grid** — chrome only. Prior partial sample (`portal-map-2026-07-08-partial.json`) had `webSocketUsed: false` and 0 links.
 
-**2026-07-08 — Opened report screenshot (D-09):** User provided redacted SSRS **result grid** — 10 columns documented in [`portal-samples/REPORT_COLUMNS_2026-07-08.md`](portal-samples/REPORT_COLUMNS_2026-07-08.md). Portal Discover could not capture rows (report viewer iframe/rendered table, not folder links) — **not user error**. Still need: parameter form (if any) and user priority on which columns matter most for letter cross-check.
+**2026-07-08 — Opened report screenshot (D-09):** User provided redacted SSRS **result grid** — 10 columns documented in [`portal-samples/REPORT_COLUMNS_2026-07-08.md`](portal-samples/REPORT_COLUMNS_2026-07-08.md). Portal Discover could not capture rows (report viewer iframe/rendered table, not folder links) — **not user error**. **D-02 cross-check columns recorded** (primary: NHI, Patient Name, ACCNumber; secondary: Service Item Code). Still need: parameter form (if any).
 
 **2026-07-08 — Word approval fixture (P8-020):** `approval-template.docx` added (same ACC sample template as PDF — George Bellingham / claim 10000000149). `mammoth` + `extractWordText()` wired; parse/classify matches PDF fixture in tests. No redaction needed (template sample data only).
 
@@ -205,7 +207,7 @@ List each **page + fields** you look up manually today:
 
 | # | Page / menu path | Fields needed | Example use |
 |---|------------------|---------------|-------------|
-| 1 | Home → DHB-wide → ACC → **ACC District Nursing Visits** (opened report) | NHI, Patient Name, Service Item Code, ACCNumber, Total Visits, Most Recent Visit, Notes *(confirm top 3–4 with user)* | Cross-check ACC approval/decline letters vs DHB visit record |
+| 1 | Home → DHB-wide → ACC → **ACC District Nursing Visits** (opened report) | **Primary:** Patient Name, ACCNumber, NHI. **Secondary:** Service Item Code. *(Other columns — Total Visits, Most Recent Visit, Notes — for compliance review, not daily letter key.)* | Cross-check ACC approval/decline letters vs DHB visit record; suite match key = NHI + claim number + name |
 | 2 | _fill in_ | _fill in_ | |
 | 3 | _fill in_ | _fill in_ | |
 
@@ -216,7 +218,7 @@ List each **page + fields** you look up manually today:
   - SSRS Browse + ACC folder + **ACC District Nursing Visits** folder chrome captured (45 links, WebSocket). **Still need:** opened report + parameter screen.
 
 - [x] **D-09** Screenshot: result row with fields you need highlighted → link: [`acc-district-nursing-visits-report-redacted.png`](portal-samples/acc-district-nursing-visits-report-redacted.png) + [`REPORT_COLUMNS_2026-07-08.md`](portal-samples/REPORT_COLUMNS_2026-07-08.md)
-  - **2026-07-08:** Opened SSRS report with 10-column grid captured (NHI, Patient Name, Domicile, Service Item Code, ACCNumber, Activity Time, Total Visits, Total days, Most Recent Visit, Notes). Portal Discover folder run could not see table rows — report viewer limitation. **Follow-up:** parameter screen (if filters exist); user to confirm top 3–4 columns for daily letter cross-check.
+  - **2026-07-08:** Opened SSRS report with 10-column grid captured (NHI, Patient Name, Domicile, Service Item Code, ACCNumber, Activity Time, Total Visits, Total days, Most Recent Visit, Notes). Portal Discover folder run could not see table rows — report viewer limitation. **D-02 cross-check columns recorded** — primary: NHI, Patient Name, ACCNumber; secondary: Service Item Code. **Follow-up:** parameter screen (if filters exist).
 
 ### D.3 IT constraints for portal automation
 

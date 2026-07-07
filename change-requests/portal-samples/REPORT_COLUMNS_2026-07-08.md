@@ -34,6 +34,23 @@ Staff use it to **cross-check ACC letters and PO renewals** against what the DHB
 
 ---
 
+## User cross-check priority (2026-07-08 — Prakriti)
+
+When cross-checking ACC approval/decline letters against this report, staff use:
+
+| Priority | Column | Suite field | Role in matching |
+|----------|--------|-------------|------------------|
+| **Primary (always)** | Patient Name | `Patient.name` | Display + letter name match |
+| **Primary (always)** | ACCNumber | `Claim.claimNumber` | Matches letter subject `Claim:{digits}` and parsed body |
+| **Primary (always)** | NHI | `Patient.nhi` | Strongest patient key — ties letter import to portal row |
+| **Secondary** | Service Item Code | `Approval.serviceCode` | Helpful for service-line validation; often derivable from ACC number / letter body |
+
+**ACC Suite implication:** Letter import can match portal scrape rows on **NHI + ACC number + name** (triple-key). Service code is a tie-breaker when one patient has multiple NS rows, not a hard gate for initial match.
+
+Other columns (Total Visits, Most Recent Visit, Notes, Activity Time, Total days, Domicile) support compliance review but are not part of the daily letter cross-check key.
+
+---
+
 ## Why Portal Discover did not capture table rows (not user error)
 
 Portal Discover (`portal-discover.ps1` / `npm run wfh:portal-discover`) harvests **DOM links and aria-labelled chrome** from the SSRS **portal browse** shell via CDP. The prior full capture (`portal-map-2026-07-08-full.json`) correctly recorded **45 navigation links** on the **folder view** — View, Search, Manage folder, breadcrumbs — but **no data rows**.
@@ -55,7 +72,7 @@ This screenshot shows the user had navigated further: an **opened paginated repo
 | 2 | **Parameter form** — Screenshot + field names for any filters (date range, NHI, domicile, service code?) before results render | Checklist D-09 follow-up if parameters exist |
 | 3 | **Result grid selectors** — After Run, target SSRS viewer table headers (`NHI`, `Patient Name`, …) and row cells; handle iframe if present | Playwright `frameLocator` or export-to-CSV path |
 | 4 | **Column → suite mapping** — Use table above; confirm **Activity Time** units and whether **Total days** is stored or computed | Product + this doc |
-| 5 | **User priority columns** — Which 3–4 columns are used daily for letter cross-check (pending user answer) | Prakriti |
+| 5 | **User priority columns** — **Recorded 2026-07-08:** primary = NHI, Patient Name, ACCNumber; secondary = Service Item Code (see § User cross-check priority) | Done |
 | 6 | **D-05 / D-06** — Browser (Edge vs Chrome) and session timeout for CDP attach | Checklist |
 | 7 | **PHI handling** — Scrape config must redact/log minimally; align with B-14 subject-line PHI policy | Security review |
 

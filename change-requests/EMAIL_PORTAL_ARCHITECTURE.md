@@ -154,6 +154,8 @@ Acceptable when:
 - Computer-vision-only RPA without DOM access.
 - Storing portal password in plaintext config.
 
+**ACC District Nursing Visits — letter cross-check match key (2026-07-08):** User confirmed primary columns for daily letter cross-check: **Patient Name**, **ACCNumber**, **NHI**; secondary: **Service Item Code** (often derivable from ACC number). Portal scrape rows should join to letter-import staging on **NHI + claim number + name**; service code disambiguates when one patient has multiple NS rows. See [`portal-samples/REPORT_COLUMNS_2026-07-08.md`](portal-samples/REPORT_COLUMNS_2026-07-08.md).
+
 ---
 
 ## 5. Phased approach (aligned with MASTER_ROADMAP)
@@ -279,7 +281,7 @@ flowchart TD
 
 - Login page (D-07) — for break-detection only; CDP attach skips re-login.
 - Opened report: parameters + result grid with fields you look up (D-09).
-- D-02 table: which columns map to PO status, claim number, etc.
+- D-02 table: ~~which columns map to PO status, claim number, etc.~~ **Recorded 2026-07-08** — primary: NHI, Patient Name, ACCNumber; secondary: Service Item Code.
 
 The 3 screenshots are **enough to start** mapper scaffolding; they are **not enough** to finish field-level scrape without probe output or D-09.
 

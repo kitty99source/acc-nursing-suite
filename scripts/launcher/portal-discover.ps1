@@ -249,6 +249,280 @@ function Select-PortalTab {
     return $pages[0]
 }
 
+$script:CdpWebSocketMode = $null
+
+function Initialize-CdpWebSocketSupport {
+    if ($script:CdpWebSocketMode) { return $script:CdpWebSocketMode }
+
+    # ClientWebSocket is in System.dll on .NET Framework 4.5+, not a separate assembly.
+    foreach ($assemblyName in @('System', 'mscorlib')) {
+        try {
+            $asm = [Reflection.Assembly]::LoadWithPartialName($assemblyName)
+            if (-not $asm) { continue }
+            $wsType = $asm.GetType('System.Net.WebSockets.ClientWebSocket', $false)
+            if ($wsType) {
+                $script:CdpClientWebSocketType = $wsType
+                $script:CdpWebSocketMode = 'ClientWebSocket'
+                Write-LauncherLogSafe 'CDP: using System.Net.WebSockets.ClientWebSocket (.NET Framework)'
+                return $script:CdpWebSocketMode
+            }
+        } catch {}
+    }
+
+    try {
+        $null = [System.Net.WebSockets.ClientWebSocket]
+        $script:CdpWebSocketMode = 'ClientWebSocket'
+        Write-LauncherLogSafe 'CDP: using System.Net.WebSockets.ClientWebSocket (direct type)'
+        return $script:CdpWebSocketMode
+    } catch {}
+
+    $script:CdpWebSocketMode = 'Raw'
+    Write-LauncherLogSafe 'WARN: ClientWebSocket unavailable; using raw TCP WebSocket fallback'
+    return $script:CdpWebSocketMode
+}
+
+function New-CdpClientWebSocketInstance {
+    Initialize-CdpWebSocketSupport | Out-Null
+    if ($script:CdpClientWebSocketType) {
+        return $script:CdpClientWebSocketType.GetConstructor(@()).Invoke(@())
+    }
+    return New-Object System.Net.WebSockets.ClientWebSocket
+}
+
+function Get-CdpWebSocketHandshakeKey {
+    $bytes = New-Object byte[] 16
+    $rng = New-Object System.Security.Cryptography.RNGCryptoServiceProvider
+    $rng.GetBytes($bytes)
+    $rng.Dispose()
+    return [Convert]::ToBase64String($bytes)
+}
+
+function New-CdpRawWebSocket {
+    return [PSCustomObject]@{
+        TcpClient       = $null
+        Stream          = $null
+        ReceiveBuffer   = [byte[]]@()
+        Connected       = $false
+    }
+}
+
+function Send-CdpRawWebSocketFrame {
+    param(
+        $Raw,
+        [byte]$Opcode,
+        [byte[]]$Payload
+    )
+    if (-not $Raw.Connected) { throw 'Raw WebSocket not connected.' }
+    $len = $Payload.Length
+    $maskKey = New-Object byte[] 4
+    $rng = New-Object System.Security.Cryptography.RNGCryptoServiceProvider
+    $rng.GetBytes($maskKey)
+    $rng.Dispose()
+
+    $header = New-Object System.Collections.Generic.List[byte]
+    [void]$header.Add([byte](0x80 -bor $Opcode))
+    if ($len -lt 126) {
+        [void]$header.Add([byte](0x80 -bor $len))
+    } elseif ($len -lt 65536) {
+        [void]$header.Add([byte](0x80 -bor 126))
+        [void]$header.Add([byte](($len -shr 8) -band 0xFF))
+        [void]$header.Add([byte]($len -band 0xFF))
+    } else {
+        throw 'WebSocket frame too large'
+    }
+    foreach ($b in $maskKey) { [void]$header.Add($b) }
+    for ($i = 0; $i -lt $len; $i++) {
+        [void]$header.Add([byte]($Payload[$i] -bxor $maskKey[$i % 4]))
+    }
+    $frame = $header.ToArray()
+    $Raw.Stream.Write($frame, 0, $frame.Length)
+}
+
+function Send-CdpRawWebSocketText {
+    param($Raw, [string]$Text)
+    $payload = [Text.Encoding]::UTF8.GetBytes($Text)
+    Send-CdpRawWebSocketFrame -Raw $Raw -Opcode 1 -Payload $payload
+}
+
+function Send-CdpRawWebSocketPong {
+    param($Raw, [byte[]]$Payload)
+    Send-CdpRawWebSocketFrame -Raw $Raw -Opcode 10 -Payload $Payload
+}
+
+function Read-CdpRawWebSocketText {
+    param($Raw, [int]$TimeoutMs = 5000)
+    $deadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMs)
+    while ([DateTime]::UtcNow -lt $deadline) {
+        $text = Parse-CdpRawWebSocketBuffer -Raw $Raw
+        if ($text) { return $text }
+        if (-not $Raw.Stream.DataAvailable) {
+            Start-Sleep -Milliseconds 50
+            continue
+        }
+        $chunk = New-Object byte[] 8192
+        $read = $Raw.Stream.Read($chunk, 0, $chunk.Length)
+        if ($read -le 0) { break }
+        $newBuf = New-Object byte[] ($Raw.ReceiveBuffer.Length + $read)
+        if ($Raw.ReceiveBuffer.Length -gt 0) {
+            [Array]::Copy($Raw.ReceiveBuffer, $newBuf, $Raw.ReceiveBuffer.Length)
+        }
+        [Array]::Copy($chunk, 0, $newBuf, $Raw.ReceiveBuffer.Length, $read)
+        $Raw.ReceiveBuffer = $newBuf
+        $text = Parse-CdpRawWebSocketBuffer -Raw $Raw
+        if ($text) { return $text }
+    }
+    return $null
+}
+
+function Parse-CdpRawWebSocketBuffer {
+    param($Raw)
+    while ($Raw.ReceiveBuffer.Length -ge 2) {
+        $b0 = $Raw.ReceiveBuffer[0]
+        $b1 = $Raw.ReceiveBuffer[1]
+        $opcode = $b0 -band 0x0F
+        $masked = ($b1 -band 0x80) -ne 0
+        $len = $b1 -band 0x7F
+        $offset = 2
+
+        if ($len -eq 126) {
+            if ($Raw.ReceiveBuffer.Length -lt 4) { return $null }
+            $len = ($Raw.ReceiveBuffer[2] -shl 8) -bor $Raw.ReceiveBuffer[3]
+            $offset = 4
+        } elseif ($len -eq 127) {
+            if ($Raw.ReceiveBuffer.Length -lt 10) { return $null }
+            if ($Raw.ReceiveBuffer[2] -ne 0 -or $Raw.ReceiveBuffer[3] -ne 0) { return $null }
+            $len = ($Raw.ReceiveBuffer[6] -shl 24) -bor ($Raw.ReceiveBuffer[7] -shl 16) -bor ($Raw.ReceiveBuffer[8] -shl 8) -bor $Raw.ReceiveBuffer[9]
+            $offset = 10
+        }
+
+        $maskKey = $null
+        if ($masked) {
+            if ($Raw.ReceiveBuffer.Length -lt ($offset + 4)) { return $null }
+            $maskKey = $Raw.ReceiveBuffer[$offset..($offset + 3)]
+            $offset += 4
+        }
+
+        if ($Raw.ReceiveBuffer.Length -lt ($offset + $len)) { return $null }
+
+        $payload = New-Object byte[] $len
+        [Array]::Copy($Raw.ReceiveBuffer, $offset, $payload, 0, $len)
+        $consume = $offset + $len
+        $remaining = $Raw.ReceiveBuffer.Length - $consume
+        if ($remaining -gt 0) {
+            $rest = New-Object byte[] $remaining
+            [Array]::Copy($Raw.ReceiveBuffer, $consume, $rest, 0, $remaining)
+            $Raw.ReceiveBuffer = $rest
+        } else {
+            $Raw.ReceiveBuffer = [byte[]]@()
+        }
+
+        if ($masked -and $maskKey) {
+            for ($i = 0; $i -lt $len; $i++) {
+                $payload[$i] = [byte]($payload[$i] -bxor $maskKey[$i % 4])
+            }
+        }
+
+        if ($opcode -eq 8) {
+            throw 'WebSocket closed by browser.'
+        }
+        if ($opcode -eq 9) {
+            Send-CdpRawWebSocketPong -Raw $Raw -Payload $payload
+            continue
+        }
+        if ($opcode -eq 1 -or $opcode -eq 2) {
+            return [Text.Encoding]::UTF8.GetString($payload)
+        }
+    }
+    return $null
+}
+
+function Connect-CdpRawWebSocket {
+    param(
+        $Raw,
+        [string]$WsUrl,
+        [int]$TimeoutMs = 30000
+    )
+    $uri = [Uri]$WsUrl
+    $host = $uri.Host
+    $port = if ($uri.Port -gt 0) { $uri.Port } elseif ($uri.Scheme -eq 'wss') { 443 } else { 80 }
+    $path = $uri.PathAndQuery
+    if ([string]::IsNullOrEmpty($path)) { $path = '/' }
+
+    $key = Get-CdpWebSocketHandshakeKey
+    $request = @(
+        "GET $path HTTP/1.1"
+        "Host: $($uri.Host):$port"
+        "Upgrade: websocket"
+        "Connection: Upgrade"
+        "Sec-WebSocket-Key: $key"
+        "Sec-WebSocket-Version: 13"
+        ""
+        ""
+    ) -join "`r`n"
+
+    $tcp = New-Object System.Net.Sockets.TcpClient
+    $connect = $tcp.BeginConnect($host, $port, $null, $null)
+    if (-not $connect.AsyncWaitHandle.WaitOne($TimeoutMs)) {
+        $tcp.Close()
+        throw 'Raw WebSocket TCP connect timed out.'
+    }
+    $tcp.EndConnect($connect) | Out-Null
+    $stream = $tcp.GetStream()
+    $stream.ReadTimeout = 30000
+    $stream.WriteTimeout = 10000
+
+    $reqBytes = [Text.Encoding]::ASCII.GetBytes($request)
+    $stream.Write($reqBytes, 0, $reqBytes.Length)
+    $stream.Flush()
+
+    $headerBytes = New-Object System.Collections.Generic.List[byte]
+    $deadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMs)
+    while ([DateTime]::UtcNow -lt $deadline) {
+        if (-not $stream.DataAvailable) {
+            Start-Sleep -Milliseconds 50
+            continue
+        }
+        $chunk = New-Object byte[] 4096
+        $read = $stream.Read($chunk, 0, $chunk.Length)
+        if ($read -le 0) { break }
+        for ($i = 0; $i -lt $read; $i++) { [void]$headerBytes.Add($chunk[$i]) }
+        $arr = $headerBytes.ToArray()
+        $text = [Text.Encoding]::ASCII.GetString($arr)
+        $idx = $text.IndexOf("`r`n`r`n")
+        if ($idx -ge 0) {
+            $statusLine = ($text -split "`r`n")[0]
+            if ($statusLine -notmatch '^HTTP/1\.1 101') {
+                throw "Raw WebSocket upgrade failed: $statusLine"
+            }
+            $bodyStart = $idx + 4
+            if ($bodyStart -lt $arr.Length) {
+                $Raw.ReceiveBuffer = $arr[$bodyStart..($arr.Length - 1)]
+            } else {
+                $Raw.ReceiveBuffer = [byte[]]@()
+            }
+            $Raw.TcpClient = $tcp
+            $Raw.Stream = $stream
+            $Raw.Connected = $true
+            return
+        }
+    }
+    $tcp.Close()
+    throw 'Raw WebSocket upgrade timed out waiting for HTTP 101.'
+}
+
+function Close-CdpRawWebSocket {
+    param($Raw)
+    if (-not $Raw) { return }
+    try {
+        if ($Raw.Connected) {
+            Send-CdpRawWebSocketFrame -Raw $Raw -Opcode 8 -Payload ([byte[]]@())
+        }
+    } catch {}
+    try { if ($Raw.Stream) { $Raw.Stream.Close() } } catch {}
+    try { if ($Raw.TcpClient) { $Raw.TcpClient.Close() } } catch {}
+    $Raw.Connected = $false
+}
+
 function New-CdpSession {
     param([string]$WsUrl)
 
@@ -256,47 +530,61 @@ function New-CdpSession {
         throw 'WebSocket URL is empty.'
     }
 
-    Add-Type -AssemblyName System.Net.WebSockets -ErrorAction Stop
-    Add-Type -AssemblyName System.Threading -ErrorAction Stop
+    $mode = Initialize-CdpWebSocketSupport
+    if ($mode -eq 'ClientWebSocket') {
+        $ws = New-CdpClientWebSocketInstance
+        $uri = [Uri]$WsUrl
+        $cts = New-Object System.Threading.CancellationTokenSource
 
-    $ws = New-Object System.Net.WebSockets.ClientWebSocket
-    $uri = [Uri]$WsUrl
-    $cts = New-Object System.Threading.CancellationTokenSource
+        Write-LauncherLogSafe "CDP: WebSocket connect to $WsUrl"
+        $connectTask = $ws.ConnectAsync($uri, $cts.Token)
+        if (-not $connectTask.Wait(30000)) {
+            $ws.Dispose()
+            $cts.Dispose()
+            throw 'WebSocket connect timed out after 30s.'
+        }
+        if ($connectTask.IsFaulted) {
+            $err = Get-CdpExceptionText $connectTask.Exception
+            $ws.Dispose()
+            $cts.Dispose()
+            throw "WebSocket connect failed: $err"
+        }
+        if ($connectTask.IsCanceled) {
+            $ws.Dispose()
+            $cts.Dispose()
+            throw 'WebSocket connect was canceled.'
+        }
+        if ($ws.State -ne [System.Net.WebSockets.WebSocketState]::Open) {
+            $state = $ws.State
+            $ws.Dispose()
+            $cts.Dispose()
+            throw "WebSocket connect finished but state is $state (expected Open)."
+        }
 
-    Write-LauncherLogSafe "CDP: WebSocket connect to $WsUrl"
-    $connectTask = $ws.ConnectAsync($uri, $cts.Token)
-    if (-not $connectTask.Wait(30000)) {
-        $ws.Dispose()
-        $cts.Dispose()
-        throw 'WebSocket connect timed out after 30s.'
-    }
-    if ($connectTask.IsFaulted) {
-        $err = Get-CdpExceptionText $connectTask.Exception
-        $ws.Dispose()
-        $cts.Dispose()
-        throw "WebSocket connect failed: $err"
-    }
-    if ($connectTask.IsCanceled) {
-        $ws.Dispose()
-        $cts.Dispose()
-        throw 'WebSocket connect was canceled.'
-    }
-    if ($ws.State -ne [System.Net.WebSockets.WebSocketState]::Open) {
-        $state = $ws.State
-        $ws.Dispose()
-        $cts.Dispose()
-        throw "WebSocket connect finished but state is $state (expected Open)."
+        return [PSCustomObject]@{
+            Mode      = 'ClientWebSocket'
+            WebSocket = $ws
+            Cts       = $cts
+        }
     }
 
+    $raw = New-CdpRawWebSocket
+    Write-LauncherLogSafe "CDP: raw WebSocket connect to $WsUrl"
+    Connect-CdpRawWebSocket -Raw $raw -WsUrl $WsUrl
     return [PSCustomObject]@{
-        WebSocket = $ws
-        Cts       = $cts
+        Mode      = 'Raw'
+        WebSocket = $raw
+        Cts       = $null
     }
 }
 
 function Close-CdpSession {
     param($Session)
     if (-not $Session) { return }
+    if ($Session.Mode -eq 'Raw') {
+        Close-CdpRawWebSocket -Raw $Session.WebSocket
+        return
+    }
     try {
         if ($Session.WebSocket -and $Session.WebSocket.State -eq [System.Net.WebSockets.WebSocketState]::Open) {
             $closeTask = $Session.WebSocket.CloseAsync(
@@ -313,6 +601,12 @@ function Close-CdpSession {
 
 function Receive-CdpJson {
     param($Session, [int]$TimeoutMs = 60000)
+
+    if ($Session.Mode -eq 'Raw') {
+        $text = Read-CdpRawWebSocketText -Raw $Session.WebSocket -TimeoutMs $TimeoutMs
+        if ([string]::IsNullOrWhiteSpace($text)) { return $null }
+        return $text | ConvertFrom-Json
+    }
 
     $ws = $Session.WebSocket
     $cts = $Session.Cts
@@ -358,16 +652,20 @@ function Send-CdpCommand {
     $payload = @{ id = $id; method = $Method; params = $Params }
     $json = $payload | ConvertTo-Json -Compress -Depth 20
 
-    $bytes = [Text.Encoding]::UTF8.GetBytes($json)
-    $segment = New-Object 'System.ArraySegment[byte]' -ArgumentList (,$bytes)
-    $sendTask = $Session.WebSocket.SendAsync(
-        $segment,
-        [System.Net.WebSockets.WebSocketMessageType]::Text,
-        $true,
-        $Session.Cts.Token
-    )
-    if (-not $sendTask.Wait(10000)) {
-        throw "CDP send timeout: $Method"
+    if ($Session.Mode -eq 'Raw') {
+        Send-CdpRawWebSocketText -Raw $Session.WebSocket -Text $json
+    } else {
+        $bytes = [Text.Encoding]::UTF8.GetBytes($json)
+        $segment = New-Object 'System.ArraySegment[byte]' -ArgumentList (,$bytes)
+        $sendTask = $Session.WebSocket.SendAsync(
+            $segment,
+            [System.Net.WebSockets.WebSocketMessageType]::Text,
+            $true,
+            $Session.Cts.Token
+        )
+        if (-not $sendTask.Wait(10000)) {
+            throw "CDP send timeout: $Method"
+        }
     }
 
     $deadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMs)
@@ -840,11 +1138,13 @@ Then double-click Start Portal Discover.cmd again.
         Write-Host "  Open folder manually: $outDir" -ForegroundColor Yellow
     }
 
-    Write-LauncherLogSafe 'Step: portal discovery completed successfully'
-    if ($script:LauncherLogEnabled) {
-        Write-LauncherLog '=== finished successfully ==='
-    }
-    Show-MessageBox -Message @"
+    Write-LauncherLogSafe 'Step: portal discovery write completed'
+    if ($webSocketWorked) {
+        Write-LauncherLogSafe 'Step: portal discovery completed successfully'
+        if ($script:LauncherLogEnabled) {
+            Write-LauncherLog '=== finished successfully ==='
+        }
+        Show-MessageBox -Message @"
 Portal discovery finished.
 
 Results folder:
@@ -852,9 +1152,31 @@ Results folder:
 
 Review portal-map.json and redact any patient details before sharing.
 "@ -Icon Information
+        Read-Host 'Press Enter to close'
+        exit 0
+    }
 
+    $failDetail = if ($webSocketError) { $webSocketError } else { 'WebSocket snapshot was not used.' }
+    Write-LauncherLogSafe "WARN: portal discovery saved tab list only - $failDetail"
+    if ($script:LauncherLogEnabled) {
+        Write-LauncherLog '=== finished with warnings (no WebSocket snapshot) ==='
+    }
+    Write-Host ''
+    Write-Host '  Portal map saved with URLs/titles only (no link extraction).' -ForegroundColor Yellow
+    Write-Host "  WebSocket snapshot failed: $failDetail" -ForegroundColor Yellow
+    Show-MessageBox -Message @"
+Portal discovery saved tab URLs only (no link extraction).
+
+WebSocket snapshot failed:
+  $failDetail
+
+Results folder:
+  $outDir
+
+Try again on this PC. If it keeps failing, share portal-bootstrap.log with IT.
+"@ -Icon Warning
     Read-Host 'Press Enter to close'
-    exit 0
+    exit 2
 } catch {
     Write-BootstrapLog "FATAL: $($_.Exception.Message)"
     if ($_.ScriptStackTrace) { Write-BootstrapLog $_.ScriptStackTrace }

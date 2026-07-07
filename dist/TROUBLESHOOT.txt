@@ -1,0 +1,4 @@
+ACC Suite launcher — if double-click closes instantly
+1. Logs: C:\Users\<YourWindowsUsername>\ACC-Suite\logs\  AND  last-run.log next to the .cmd file (same folder as Start ACC Suite.cmd).
+2. Right-click the .cmd file → Run as administrator (hospital PCs sometimes block scripts).
+3. Email last-run.log (and any .log from the logs folder) to Prakriti.

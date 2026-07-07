@@ -3,14 +3,19 @@
 # This tool watches ~/ACC-Inbox for PDF drops. It is not yet available
 # without Node.js on the work laptop.
 
+try { [void][System.IO.Directory]::CreateDirectory((Join-Path $env:USERPROFILE 'ACC-Suite\logs')) } catch {}
+
+$script:LauncherDir = $env:ACC_LAUNCHER_DIR
+if ([string]::IsNullOrWhiteSpace($script:LauncherDir)) { $script:LauncherDir = $PSScriptRoot }
+if ([string]::IsNullOrWhiteSpace($script:LauncherDir)) { $script:LauncherDir = Split-Path -Parent $MyInvocation.MyCommand.Path }
+$script:LauncherDir = $script:LauncherDir.TrimEnd('\', '/')
+try { Set-Location -LiteralPath $script:LauncherDir -ErrorAction Stop } catch {}
+
 $script:LauncherHadError = $false
 $script:LauncherLogPath = $null
 
 try {
-    $logHelper = Join-Path $PSScriptRoot 'launcher-log.ps1'
-    if (-not (Test-Path -LiteralPath $logHelper)) {
-        $logHelper = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'launcher-log.ps1'
-    }
+    $logHelper = Join-Path $script:LauncherDir 'launcher-log.ps1'
     . $logHelper
     Initialize-LauncherLog -Prefix 'folder-watch' | Out-Null
     Write-LauncherLog 'Step: folder watch is not yet available on work laptops'

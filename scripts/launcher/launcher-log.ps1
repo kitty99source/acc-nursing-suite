@@ -2,10 +2,24 @@
 # Dot-source from launch.ps1 / portal-discover.ps1 / folder-watch.ps1.
 
 $script:LauncherLogPath = $null
+$script:LauncherLocalLogPath = $null
 $script:LauncherLogPrefix = 'launcher'
 $script:LauncherHadError = $false
 $script:LauncherShowSuccessOnExit = $true
 $script:UseWinForms = $false
+
+function Get-LauncherScriptDir {
+    if ($script:LauncherDir -and -not [string]::IsNullOrWhiteSpace($script:LauncherDir)) {
+        return $script:LauncherDir.TrimEnd('\', '/')
+    }
+    if ($env:ACC_LAUNCHER_DIR -and -not [string]::IsNullOrWhiteSpace($env:ACC_LAUNCHER_DIR)) {
+        return $env:ACC_LAUNCHER_DIR.TrimEnd('\', '/')
+    }
+    if ($PSScriptRoot -and -not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+        return $PSScriptRoot.TrimEnd('\', '/')
+    }
+    return (Split-Path -Parent $MyInvocation.MyCommand.Path).TrimEnd('\', '/')
+}
 
 function Initialize-LauncherUi {
     try {
@@ -23,19 +37,21 @@ function Show-LauncherMessageBox {
         [ValidateSet('Error', 'Information', 'Warning')]
         [string]$Icon = 'Information'
     )
-    if ($script:UseWinForms) {
-        $iconEnum = [System.Windows.Forms.MessageBoxIcon]::$Icon
-        [System.Windows.Forms.MessageBox]::Show(
-            $Message,
-            $Title,
-            [System.Windows.Forms.MessageBoxButtons]::OK,
-            $iconEnum
-        ) | Out-Null
-        return
-    }
     $flat = ($Message -replace '\s+', ' ').Trim()
     if ($flat.Length -gt 240) { $flat = $flat.Substring(0, 237) + '...' }
-    try { & msg.exe $env:USERNAME /time:120 $flat 2>$null | Out-Null } catch {}
+    # msg.exe works without .NET WinForms — try first on locked-down hospital PCs
+    try { & msg.exe $env:USERNAME /time:120 $flat 2>$null | Out-Null; return } catch {}
+    if ($script:UseWinForms) {
+        try {
+            $iconEnum = [System.Windows.Forms.MessageBoxIcon]::$Icon
+            [System.Windows.Forms.MessageBox]::Show(
+                $Message,
+                $Title,
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                $iconEnum
+            ) | Out-Null
+        } catch {}
+    }
 }
 
 function Initialize-LauncherLog {
@@ -53,6 +69,9 @@ function Initialize-LauncherLog {
 
     Initialize-LauncherUi
 
+    $launcherDir = Get-LauncherScriptDir
+    $script:LauncherLocalLogPath = Join-Path $launcherDir 'launch-error.log'
+
     $logDir = Join-Path $env:USERPROFILE 'ACC-Suite\logs'
     try {
         [void][System.IO.Directory]::CreateDirectory($logDir)
@@ -65,7 +84,7 @@ function Initialize-LauncherLog {
     $script:LauncherLogPath = Join-Path $logDir "$Prefix-$timestamp.log"
     Write-LauncherLog "=== $Prefix started ==="
     Write-LauncherLog "Timestamp: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-    Write-LauncherLog "Script: $($MyInvocation.ScriptName)"
+    Write-LauncherLog "Script dir: $launcherDir"
     Write-LauncherLog "Working directory: $(Get-Location)"
     return $script:LauncherLogPath
 }
@@ -76,6 +95,11 @@ function Write-LauncherLog {
     try {
         if ($script:LauncherLogPath) {
             Add-Content -LiteralPath $script:LauncherLogPath -Value $line -Encoding UTF8
+        }
+    } catch {}
+    try {
+        if ($script:LauncherLocalLogPath) {
+            Add-Content -LiteralPath $script:LauncherLocalLogPath -Value $line -Encoding UTF8
         }
     } catch {}
     try { Write-Host $line } catch {}
@@ -101,11 +125,13 @@ function Complete-LauncherLog {
     )
     if (-not $script:LauncherLogPath) { return }
 
+    $localHint = if ($script:LauncherLocalLogPath) { "`nAlso: $($script:LauncherLocalLogPath)" } else { '' }
+
     if ($script:LauncherHadError) {
         Write-LauncherLog "=== finished with errors ==="
         Show-LauncherMessageBox -Title $Title -Icon Error -Message @"
 Error — log saved to:
-$($script:LauncherLogPath)
+$($script:LauncherLogPath)$localHint
 
 Send this file to support.
 "@
@@ -113,7 +139,7 @@ Send this file to support.
         Write-LauncherLog "=== finished successfully ==="
         Show-LauncherMessageBox -Title $Title -Icon Information -Message @"
 Done — log saved to:
-$($script:LauncherLogPath)
+$($script:LauncherLogPath)$localHint
 "@
     } else {
         Write-LauncherLog "=== finished successfully (server still running or success message suppressed) ==="
@@ -123,12 +149,13 @@ $($script:LauncherLogPath)
 function Show-LauncherStartupSuccess {
     param([string]$Title = 'ACC Suite')
     if (-not $script:LauncherLogPath) { return }
+    $localHint = if ($script:LauncherLocalLogPath) { "`nAlso: $($script:LauncherLocalLogPath)" } else { '' }
     Write-LauncherLog "Startup completed successfully"
     Show-LauncherMessageBox -Title $Title -Icon Information -Message @"
 Done — ACC Suite is running.
 
 Log saved to:
-$($script:LauncherLogPath)
+$($script:LauncherLogPath)$localHint
 
 Keep this window open while you use the app.
 "@

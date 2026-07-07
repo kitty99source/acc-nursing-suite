@@ -17,6 +17,7 @@ const launcherFiles = [
   'launch.ps1',
   'Start ACC Suite.cmd',
   'portal-discover.ps1',
+  'folder-watch.ps1',
   'Start Portal Discover.cmd',
   'Start Portal Discover.command',
   'README.txt',

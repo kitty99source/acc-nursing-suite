@@ -1,4 +1,4 @@
-# Shared launcher logging + MessageBox helpers (work laptop, no install).
+﻿# Shared launcher logging + MessageBox helpers (work laptop, no install).
 # Dot-source from launch.ps1 / portal-discover.ps1 / folder-watch.ps1.
 
 $script:LauncherLogPath = $null
@@ -38,7 +38,7 @@ function Show-LauncherMessageBox {
     )
     $flat = ($Message -replace '\s+', ' ').Trim()
     if ($flat.Length -gt 240) { $flat = $flat.Substring(0, 237) + '...' }
-    # msg.exe works without .NET WinForms — try first on locked-down hospital PCs
+    # msg.exe works without .NET WinForms - try first on locked-down hospital PCs
     try { & msg.exe $env:USERNAME /time:120 $flat 2>$null | Out-Null; return } catch {}
     if ($script:UseWinForms) {
         try {
@@ -138,7 +138,7 @@ function Complete-LauncherLog {
     if ($script:LauncherHadError) {
         Write-LauncherLog "=== finished with errors ==="
         Show-LauncherMessageBox -Title $Title -Icon Error -Message @"
-Error — log saved to:
+Error - log saved to:
 $($script:LauncherLogPath)
 
 Send this file to support.
@@ -146,7 +146,7 @@ Send this file to support.
     } elseif (-not $SuppressSuccessMessage -and $script:LauncherShowSuccessOnExit) {
         Write-LauncherLog "=== finished successfully ==="
         Show-LauncherMessageBox -Title $Title -Icon Information -Message @"
-Done — log saved to:
+Done - log saved to:
 $($script:LauncherLogPath)
 "@
     } else {
@@ -159,7 +159,7 @@ function Show-LauncherStartupSuccess {
     if (-not $script:LauncherLogPath) { return }
     Write-LauncherLog "Startup completed successfully"
     Show-LauncherMessageBox -Title $Title -Icon Information -Message @"
-Done — ACC Suite is running.
+Done - ACC Suite is running.
 
 Log saved to:
 $($script:LauncherLogPath)

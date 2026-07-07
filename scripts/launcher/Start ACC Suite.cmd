@@ -1,13 +1,14 @@
 @echo off
+set "BOOTLOG=%USERPROFILE%\ACC-Suite\logs\bootstrap.log"
 mkdir "%USERPROFILE%\ACC-Suite\logs" 2>nul
-echo [%date% %time%] Start ACC Suite.cmd started >> "%USERPROFILE%\ACC-Suite\logs\bootstrap.log"
+echo [%date% %time%] Start ACC Suite.cmd started >> "%BOOTLOG%"
 cd /d "%~dp0"
 echo.
 echo   Starting the ACC District Nursing Admin Suite (local, offline)...
 echo   Microsoft Edge will open shortly. Keep this window open while you work.
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0launch.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0launch.ps1" >> "%BOOTLOG%" 2>&1
 if errorlevel 1 (
-  echo [%date% %time%] PowerShell failed errorlevel %ERRORLEVEL% >> "%USERPROFILE%\ACC-Suite\logs\bootstrap.log"
+  echo [%date% %time%] PowerShell failed errorlevel %ERRORLEVEL% >> "%BOOTLOG%"
   pause
 )

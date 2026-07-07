@@ -1,4 +1,4 @@
-# ACC Folder Watch — coming soon (work laptop)
+﻿# ACC Folder Watch - coming soon (work laptop)
 #
 # This tool watches ~/ACC-Inbox for PDF drops. It is not yet available
 # without Node.js on the work laptop.
@@ -35,7 +35,7 @@ try {
 Folder Watch is coming soon for work laptops.
 
 Today it still requires Node.js (dev machine only).
-Use the main app with Start ACC Suite.cmd — no extra software needed.
+Use the main app with Start ACC Suite.cmd - no extra software needed.
 
 Portal discovery works now: double-click Start Portal Discover.cmd
 "@

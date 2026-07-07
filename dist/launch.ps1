@@ -1,3 +1,15 @@
+# --- Bootstrap log (always works; never depends on launcher-log.ps1) -----------
+$script:BootstrapLogPath = Join-Path $env:USERPROFILE 'ACC-Suite\logs\bootstrap.log'
+function Write-BootstrapLog {
+    param([string]$Message)
+    try {
+        $logDir = Split-Path -Parent $script:BootstrapLogPath
+        if (-not (Test-Path -LiteralPath $logDir)) { [void][System.IO.Directory]::CreateDirectory($logDir) }
+        Add-Content -LiteralPath $script:BootstrapLogPath -Value "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $Message" -Encoding UTF8
+    } catch {}
+}
+Write-BootstrapLog 'launch.ps1 started'
+
 # ACC District Nursing Admin Suite - local launcher
 #
 # Serves the sibling index.html from http://127.0.0.1 (loopback ONLY) so the app
@@ -20,8 +32,12 @@ function Write-LauncherLogSafe {
     try {
         if ($script:LauncherLogEnabled -and (Get-Command Write-LauncherLog -ErrorAction SilentlyContinue)) {
             Write-LauncherLog $Message
+        } else {
+            Write-BootstrapLog $Message
         }
-    } catch {}
+    } catch {
+        try { Write-BootstrapLog $Message } catch {}
+    }
 }
 
 try {

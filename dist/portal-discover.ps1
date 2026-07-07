@@ -1,3 +1,15 @@
+# --- Bootstrap log (always works; never depends on launcher-log.ps1) -----------
+$script:BootstrapLogPath = Join-Path $env:USERPROFILE 'ACC-Suite\logs\bootstrap.log'
+function Write-BootstrapLog {
+    param([string]$Message)
+    try {
+        $logDir = Split-Path -Parent $script:BootstrapLogPath
+        if (-not (Test-Path -LiteralPath $logDir)) { [void][System.IO.Directory]::CreateDirectory($logDir) }
+        Add-Content -LiteralPath $script:BootstrapLogPath -Value "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $Message" -Encoding UTF8
+    } catch {}
+}
+Write-BootstrapLog 'portal-discover.ps1 started'
+
 # ACC Portal Discovery — double-click launcher (work laptop)
 #
 # Pure PowerShell — no Node.js required.
@@ -15,8 +27,12 @@ function Write-LauncherLogSafe {
     try {
         if ($script:LauncherLogEnabled -and (Get-Command Write-LauncherLog -ErrorAction SilentlyContinue)) {
             Write-LauncherLog $Message
+        } else {
+            Write-BootstrapLog $Message
         }
-    } catch {}
+    } catch {
+        try { Write-BootstrapLog $Message } catch {}
+    }
 }
 
 try {
@@ -67,17 +83,31 @@ function Show-MessageBox {
     } catch {}
 }
 
-function Find-BrowserExe {
-    $candidates = @(
-        (Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\msedge.exe'),
-        (Join-Path $env:ProgramFiles 'Microsoft\Edge\Application\msedge.exe'),
-        (Join-Path $env:ProgramFiles 'Google\Chrome\Application\chrome.exe'),
-        (Join-Path ${env:ProgramFiles(x86)} 'Google\Chrome\Application\chrome.exe')
+function Try-OpenPortalBrowser {
+    param(
+        [string]$Label,
+        [string]$FilePath,
+        [string[]]$ArgumentList,
+        [switch]$SkipPathCheck
     )
-    foreach ($p in $candidates) {
-        if ($p -and (Test-Path -LiteralPath $p)) { return $p }
+    Write-LauncherLogSafe "Step: try browser — $Label"
+    if (-not $SkipPathCheck -and $FilePath -and -not (Test-Path -LiteralPath $FilePath)) {
+        Write-LauncherLogSafe "Step: skip browser — $Label (path not found: $FilePath)"
+        return $false
     }
-    return $null
+    try {
+        Write-LauncherLogSafe "Step: Start-Process before — $Label"
+        if ($ArgumentList -and $ArgumentList.Count -gt 0) {
+            Start-Process -FilePath $FilePath -ArgumentList $ArgumentList -ErrorAction Stop | Out-Null
+        } else {
+            Start-Process -FilePath $FilePath -ErrorAction Stop | Out-Null
+        }
+        Write-LauncherLogSafe "Step: Start-Process after — $Label (ok)"
+        return $true
+    } catch {
+        Write-LauncherLogSafe "Step: Start-Process after — $Label (failed: $($_.Exception.Message))"
+        return $false
+    }
 }
 
 function Redact-Sensitive {
@@ -456,31 +486,71 @@ try {
     Write-Host '  (PowerShell only — no extra software)' -ForegroundColor Gray
     Write-Host ''
 
-    Write-LauncherLogSafe 'Step: find browser executable'
-    $browser = Find-BrowserExe
-    if (-not $browser) {
-        Write-LauncherLogSafe 'ERROR: browser not found'
-        Show-MessageBox -Message 'Could not find Microsoft Edge or Google Chrome. Install Edge or Chrome, then try again.' -Icon Error
+    Write-LauncherLogSafe "Step: ensure output directory $outDir"
+    New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+
+    Write-LauncherLogSafe 'Step: open browser with remote debugging on port 9222'
+    $browserArgs = @(
+        '--remote-debugging-port=9222',
+        '--new-window',
+        $portalUrl
+    )
+    $browserOpened = $false
+    $browserName = 'unknown'
+
+    $edgePaths = @(
+        (Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\msedge.exe')
+        (Join-Path $env:ProgramFiles 'Microsoft\Edge\Application\msedge.exe')
+        'msedge.exe'
+    )
+    foreach ($edgePath in $edgePaths) {
+        if (Try-OpenPortalBrowser -Label "Microsoft Edge ($edgePath)" -FilePath $edgePath -ArgumentList $browserArgs -SkipPathCheck:($edgePath -eq 'msedge.exe')) {
+            $browserOpened = $true
+            $browserName = Split-Path -Leaf $edgePath
+            break
+        }
+    }
+
+    if (-not $browserOpened) {
+        $chromePaths = @(
+            (Join-Path ${env:ProgramFiles(x86)} 'Google\Chrome\Application\chrome.exe')
+            (Join-Path $env:ProgramFiles 'Google\Chrome\Application\chrome.exe')
+            'chrome.exe'
+        )
+        foreach ($chromePath in $chromePaths) {
+            if (Try-OpenPortalBrowser -Label "Google Chrome ($chromePath)" -FilePath $chromePath -ArgumentList $browserArgs -SkipPathCheck:($chromePath -eq 'chrome.exe')) {
+                $browserOpened = $true
+                $browserName = Split-Path -Leaf $chromePath
+                break
+            }
+        }
+    }
+
+    if (-not $browserOpened) {
+        if (Try-OpenPortalBrowser -Label 'cmd start msedge' -FilePath 'cmd.exe' -ArgumentList (@('/c', 'start', '""', 'msedge.exe') + $browserArgs)) {
+            $browserOpened = $true
+            $browserName = 'msedge.exe'
+        }
+    }
+
+    if (-not $browserOpened) {
+        if (Try-OpenPortalBrowser -Label 'cmd start chrome' -FilePath 'cmd.exe' -ArgumentList (@('/c', 'start', '""', 'chrome.exe') + $browserArgs)) {
+            $browserOpened = $true
+            $browserName = 'chrome.exe'
+        }
+    }
+
+    if (-not $browserOpened) {
+        Write-LauncherLogSafe 'ERROR: browser not found or could not start'
+        Show-MessageBox -Message 'Could not find or start Microsoft Edge or Google Chrome. Install Edge or Chrome, then try again.' -Icon Error
         exit 1
     }
 
-    $browserName = Split-Path -Leaf $browser
     Write-LauncherLogSafe "Step: using browser $browserName"
     Write-Host "  Browser: $browserName" -ForegroundColor Gray
     Write-Host "  Output:  $outFile" -ForegroundColor Gray
     Write-Host ''
-
-    Write-LauncherLogSafe "Step: ensure output directory $outDir"
-    New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-
-    $browserArgs = @(
-        "--remote-debugging-port=9222",
-        '--new-window',
-        $portalUrl
-    )
-    Write-LauncherLogSafe 'Step: open browser with remote debugging on port 9222'
     Write-Host '  Opening browser with remote debugging on port 9222 …' -ForegroundColor Green
-    Start-Process -FilePath $browser -ArgumentList $browserArgs | Out-Null
     Start-Sleep -Seconds 2
 
     Show-MessageBox -Message @"

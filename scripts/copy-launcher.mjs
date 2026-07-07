@@ -36,6 +36,16 @@ for (const name of launcherFiles) {
   console.log(`Copied ${name} → dist/`);
 }
 
+const requiredInDist = ['launcher-log.ps1', 'launch.ps1', 'portal-discover.ps1'];
+for (const name of requiredInDist) {
+  const p = join(DIST, name);
+  if (!existsSync(p)) {
+    console.error(`Build verification failed: ${p} missing from dist/`);
+    process.exit(1);
+  }
+}
+console.log('Verified launcher-log.ps1, launch.ps1, portal-discover.ps1 in dist/');
+
 for (const name of readdirSync(WFH_SRC)) {
   if (!name.endsWith('.mjs')) continue;
   const from = join(WFH_SRC, name);

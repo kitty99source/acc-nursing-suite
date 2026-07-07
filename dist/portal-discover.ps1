@@ -119,13 +119,61 @@ function Escape-Html {
     return [System.Net.WebUtility]::HtmlEncode([string]$S)
 }
 
+function Wait-ForCdpPort {
+    param(
+        [string]$CdpBase = 'http://127.0.0.1:9222',
+        [int]$TimeoutSeconds = 30,
+        [int]$PollIntervalMs = 1000
+    )
+
+    $url = ($CdpBase.TrimEnd('/') + '/json/list')
+    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+    Write-LauncherLogSafe "Waiting for CDP port at $CdpBase (up to ${TimeoutSeconds}s)..."
+    Write-Host "  Waiting for CDP port..." -ForegroundColor Gray
+
+    while ([DateTime]::UtcNow -lt $deadline) {
+        try {
+            $null = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 3 -ErrorAction Stop
+            Write-LauncherLogSafe "CDP port ready at $CdpBase"
+            Write-Host "  CDP port ready." -ForegroundColor Green
+            return $true
+        } catch {
+            Start-Sleep -Milliseconds $PollIntervalMs
+        }
+    }
+
+    Write-LauncherLogSafe "ERROR: CDP port not ready after ${TimeoutSeconds}s at $CdpBase"
+    return $false
+}
+
 function Get-CdpTargets {
-    param([string]$CdpBase)
+    param(
+        [string]$CdpBase,
+        [int]$WaitSeconds = 0
+    )
+
+    if ($WaitSeconds -gt 0) {
+        $ready = Wait-ForCdpPort -CdpBase $CdpBase -TimeoutSeconds $WaitSeconds
+        if (-not $ready) {
+            throw @"
+Could not reach the browser debug port at $CdpBase after waiting ${WaitSeconds}s.
+
+- Portal Discover uses an isolated browser profile so CDP works even if Edge is already open.
+- If another program is using port 9222, close it and try again (ACC Suite uses port 8765, not 9222).
+"@
+        }
+    }
+
     $url = ($CdpBase.TrimEnd('/') + '/json/list')
     try {
         return @(Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 10)
     } catch {
-        throw "Could not reach the browser debug port at $CdpBase. Make sure Edge or Chrome is open with remote debugging."
+        throw @"
+Could not reach the browser debug port at $CdpBase.
+
+- Portal Discover uses an isolated browser profile so CDP works even if Edge is already open.
+- If another program is using port 9222, close it and try again (ACC Suite uses port 8765, not 9222).
+"@
     }
 }
 
@@ -493,9 +541,18 @@ try {
     Write-LauncherLogSafe "Step: ensure output directory $outDir"
     [void][System.IO.Directory]::CreateDirectory($outDir)
 
+    $browserProfileDir = Join-Path $outDir 'browser-profile'
+    [void][System.IO.Directory]::CreateDirectory($browserProfileDir)
+    Write-LauncherLogSafe "Using isolated browser profile at $browserProfileDir"
+    Write-Host "  Browser profile: $browserProfileDir" -ForegroundColor Gray
+    Write-Host '  (Separate from your normal Edge/Chrome - CDP always works)' -ForegroundColor Gray
+
     Write-LauncherLogSafe 'Step: open browser with remote debugging on port 9222'
     $browserArgs = @(
         '--remote-debugging-port=9222',
+        "--user-data-dir=$browserProfileDir",
+        '--no-first-run',
+        '--no-default-browser-check',
         '--new-window',
         $portalUrl
     )
@@ -555,7 +612,19 @@ try {
     Write-Host "  Output:  $outFile" -ForegroundColor Gray
     Write-Host ''
     Write-Host '  Opening browser with remote debugging on port 9222 ...' -ForegroundColor Green
-    Start-Sleep -Seconds 2
+
+    if (-not (Wait-ForCdpPort -CdpBase $cdpBase -TimeoutSeconds 30)) {
+        Write-LauncherLogSafe 'ERROR: CDP port not available after browser launch'
+        Show-MessageBox -Message @"
+Could not connect to the browser debug port (9222).
+
+Portal Discover opened a separate browser window with its own profile.
+If this keeps failing, another program may be using port 9222 - close it and try again.
+(ACC Suite uses port 8765, not 9222.)
+"@ -Icon Error
+        Read-Host 'Press Enter to close'
+        exit 1
+    }
 
     Show-MessageBox -Message @"
 Log into Citrix VPN and the ACC portal in the browser that opened.
@@ -569,7 +638,7 @@ Click OK when you are on the report page and ready to scan.
     Write-Host '  Scanning portal (this may take a minute) ...' -ForegroundColor Green
     Write-Host ''
 
-    $allTargets = Get-CdpTargets -CdpBase $cdpBase
+    $allTargets = Get-CdpTargets -CdpBase $cdpBase -WaitSeconds 15
     $tab = Select-PortalTab -Targets $allTargets
 
     $pages = @()
@@ -608,7 +677,7 @@ No portal page found in the browser.
 
 - Connect Citrix VPN first
 - Stay on the ACC report page in the browser
-- Close other Chrome/Edge windows if port 9222 is busy
+- If port 9222 is busy, close the other program using it (ACC Suite uses 8765, not 9222)
 
 Then double-click Start Portal Discover.cmd again.
 "@ -Icon Error
@@ -708,7 +777,7 @@ Portal Discovery stopped unexpectedly.
 
 - Connect Citrix VPN first
 - Stay on the ACC portal page in the browser
-- Close other Chrome/Edge windows if port 9222 is busy
+- If port 9222 is busy, close the other program using it (ACC Suite uses 8765, not 9222)
 
 Check this window for details, then try again.
 "@ -Icon Error

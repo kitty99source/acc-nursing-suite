@@ -12,6 +12,7 @@ import {
   IconPaste,
   IconFolder,
   IconShield,
+  IconReview,
 } from './icons';
 import { useStore } from '../state/store';
 
@@ -25,6 +26,7 @@ export type ModuleId =
   | 'complex'
   | 'declines'
   | 'quickpaste'
+  | 'review'
   | 'export'
   | 'imported'
   | 'settings';
@@ -53,6 +55,7 @@ export function Sidebar({
 
   const entries: NavEntry[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <IconDashboard /> },
+    { id: 'review', label: 'Review Queue', icon: <IconReview /> },
     { id: 'compliance', label: 'Flagged (Compliance)', icon: <IconShield /> },
     { id: 'patients', label: 'Patients & Cases', icon: <IconPatients /> },
     { id: 'calculator', label: 'Package Calculator', icon: <IconCalculator /> },
@@ -127,7 +130,10 @@ export function Sidebar({
       </nav>
       <div className="p-3 text-xs border-t" style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}>
         <div>100% offline · no network</div>
-        <div>v1.0.0</div>
+        <div>
+          v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.0'}
+          {typeof __BUILD_DATE__ !== 'undefined' ? ` · ${__BUILD_DATE__}` : ''}
+        </div>
       </div>
     </aside>
     </>

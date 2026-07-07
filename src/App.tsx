@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from './state/store';
 import { applyTheme } from './lib/theme';
+import { loadStagingItems } from './lib/staging';
 import { Sidebar, type ModuleId } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
+import { AutosaveErrorBanner } from './components/AutosaveErrorBanner';
 import { LockScreen } from './components/LockScreen';
 import { buildActionQueue, computeApproval, isBillingApproval } from './lib/analytics';
 import { complianceSummary } from './lib/compliance';
@@ -21,6 +23,7 @@ import { QuickPaste } from './modules/QuickPaste';
 import { ExportCenter } from './modules/ExportCenter';
 import { ImportedTables } from './modules/ImportedTables';
 import { SettingsModule } from './modules/SettingsModule';
+import { ReviewQueue } from './modules/ReviewQueue';
 import { LetterImportModal } from './components/LetterImportModal';
 import { RecoveryModal } from './components/RecoveryModal';
 import { BackupReminderModal } from './components/BackupReminderModal';
@@ -44,6 +47,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [backupReminderOpen, setBackupReminderOpen] = useState(false);
+  const [reviewBadge, setReviewBadge] = useState(0);
 
   // A cross-module focus request (e.g. from the Flagged page) switches the
   // active module; the target module then consumes the request on mount.
@@ -149,6 +153,12 @@ export default function App() {
     });
   }, [ready, locked, recovery, settings.backupReminderDays, status.lastExportAt]);
 
+  // HRQ pending count for sidebar badge (P8-002).
+  useEffect(() => {
+    if (!ready || locked || recovery) return;
+    void loadStagingItems().then((items) => setReviewBadge(items.length));
+  }, [ready, locked, recovery, module]);
+
   // Sidebar attention badges — cheap counters + cached compliance (P1-004).
   const badges = useMemo(() => {
     const result: Partial<Record<ModuleId, number>> = {};
@@ -180,8 +190,10 @@ export default function App() {
     const complianceAttention = compliance.violations + compliance.warnings;
     if (complianceAttention) result.compliance = complianceAttention;
 
+    if (reviewBadge) result.review = reviewBadge;
+
     return result;
-  }, [data, settings.expiryThresholdDays]);
+  }, [data, settings.expiryThresholdDays, reviewBadge]);
 
   if (!ready) {
     return (
@@ -217,6 +229,7 @@ export default function App() {
       />
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar onMenuToggle={() => setSidebarOpen((v) => !v)} />
+        <AutosaveErrorBanner />
         <main className="flex-1 overflow-y-auto p-5">
           {module === 'dashboard' && <Dashboard onNavigate={setModule} />}
           {module === 'compliance' && <Compliance />}
@@ -227,6 +240,7 @@ export default function App() {
           {module === 'complex' && <ComplexCases />}
           {module === 'declines' && <Declines />}
           {module === 'quickpaste' && <QuickPaste onNavigate={setModule} />}
+          {module === 'review' && <ReviewQueue />}
           {module === 'export' && <ExportCenter />}
           {module === 'imported' && <ImportedTables />}
           {module === 'settings' && <SettingsModule />}

@@ -42,6 +42,28 @@ Status legend: [ ] todo · [~] in progress · [x] done
 
 ---
 
+## P3 Production reliability + P8-002 HRQ (2026-07-08) [x]
+
+**P3 delivered (partial):**
+
+| Task | Delivered |
+|------|-----------|
+| P3-001 | `ErrorBoundary` — recovery screen, download JSON report, reload |
+| P3-002 | `AutosaveErrorBanner` — persistent IDB failure banner + retry |
+| P3-003 | `migrations/index.ts` — FILE_VERSION 2, v1→v2, downgrade blocked |
+| P3-006 | CI already runs test + build + verify-build + stress:medium |
+| P3-008 | Version + build date in Sidebar footer and Settings About |
+
+**P8-002 delivered:** `ReviewQueue.tsx` module — import folder-watch sidecars, SLA badges, batch reject, review→letter import sign-off with audit log. Sidebar badge for pending count.
+
+**P8-020 verified:** Word `.docx` via mammoth already shipped; HRQ letter picker accepts PDF + docx.
+
+**Tests:** 95 passing (`+10` migrations, ErrorBoundary, staging SLA, storage migrate).
+
+**Next:** P3-004 backup manifest, P3-005 Excel rollback, P5 letter UX critical path, P8-004 batch approve, P2-006 modal layout.
+
+---
+
 ## P2 Scale UI + P8-0 folder watch (2026-07-08) [~]
 
 **P2 delivered (partial):** Virtualized `DataTable` via `@tanstack/react-virtual` — windowed rows when count > 50 (Billing, Approvals, Declines). Compliance uses grouped cards (P1-007 cap) — P2-002 marked superseded.

@@ -4,6 +4,7 @@ import {
   parseStagingSidecar,
   importStagingSidecars,
   assertStagingIsolation,
+  stagingSlaLevel,
 } from './staging';
 
 vi.mock('./idb', () => ({
@@ -81,5 +82,12 @@ describe('staging', () => {
   it('assertStagingIsolation throws if live data mutated from staging', () => {
     expect(() => assertStagingIsolation(true, true)).toThrow(/HRQ sign-off/);
     expect(() => assertStagingIsolation(false, true)).not.toThrow();
+  });
+
+  it('computes SLA level from createdAt', () => {
+    const now = Date.now();
+    expect(stagingSlaLevel(now - 1_000, now)).toBe('ok');
+    expect(stagingSlaLevel(now - 10 * 3_600_000, now)).toBe('warn');
+    expect(stagingSlaLevel(now - 20 * 3_600_000, now)).toBe('danger');
   });
 });

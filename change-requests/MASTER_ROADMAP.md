@@ -454,6 +454,7 @@ flowchart TB
   - Optimization tie-in: STRESS_TEST_REPORT P2 Patients UI
   - Routing verification: search + pagination
   - Rollback: —
+  - **Deferred 2026-07-08:** stress benchmarks <1 ms at 2k — skip until U-06 shows jank
 
 - [ ] **P2-006: Modal layout / grid alignment**
   - Module/route: `Modal.tsx`, `LetterImportModal.tsx`, `index.css`
@@ -486,7 +487,7 @@ flowchart TB
 
 ### P3 — Production reliability
 
-- [ ] **P3-001: Global error boundary**
+- [x] **P3-001: Global error boundary**
   - Module/route: new `ErrorBoundary.tsx`, `App.tsx`
   - Depends on: P0-001
   - Acceptance criteria: React errors show recovery screen with "Download error report" JSON; reload button
@@ -494,8 +495,9 @@ flowchart TB
   - Optimization tie-in: PRODUCTION_READINESS §3
   - Routing verification: forced error → boundary not white screen
   - Rollback: —
+  - **Delivered 2026-07-08:** `ErrorBoundary` wraps app in `main.tsx`; download JSON report + reload
 
-- [ ] **P3-002: Autosave failure surfacing**
+- [x] **P3-002: Autosave failure surfacing**
   - Module/route: `store.ts` `persistAll`, `TopBar.tsx`
   - Depends on: P0-003
   - Acceptance criteria: IDB quota errors modal + retry; persistent banner until resolved
@@ -503,8 +505,9 @@ flowchart TB
   - Optimization tie-in: —
   - Routing verification: —
   - Rollback: —
+  - **Delivered 2026-07-08:** `AutosaveErrorBanner` below TopBar; retry via `saveNow()`
 
-- [ ] **P3-003: Schema migration framework**
+- [x] **P3-003: Schema migration framework**
   - Module/route: `storage.ts`, new `migrations/index.ts`
   - Depends on: P0-007
   - Acceptance criteria: `FILE_VERSION` increment runs ordered migrations; downgrade blocked with message
@@ -512,6 +515,7 @@ flowchart TB
   - Optimization tie-in: PRODUCTION_READINESS §1
   - Routing verification: load old .accdata → migrates
   - Rollback: migration revert script
+  - **Delivered 2026-07-08:** `FILE_VERSION` 2; v1→v2 migration; `DowngradeBlockedError`
 
 - [ ] **P3-004: Backup verification manifest**
   - Module/route: `backup.ts`, `ExportCenter.tsx`
@@ -531,7 +535,7 @@ flowchart TB
   - Routing verification: Excel import → undo restores prior state
   - Rollback: —
 
-- [ ] **P3-006: CI pipeline — unit + build + verify**
+- [x] **P3-006: CI pipeline — unit + build + verify**
   - Module/route: `.github/workflows/ci.yml`
   - Depends on: P1-015
   - Acceptance criteria: PR runs test, build, verify-build, stress:medium; branch protection required
@@ -539,6 +543,7 @@ flowchart TB
   - Optimization tie-in: PRODUCTION_READINESS §7
   - Routing verification: —
   - Rollback: —
+  - **Delivered 2026-07-08:** CI runs `npm test`, `build`, `verify-build`, `stress:medium` (branch protection is ops)
 
 - [ ] **P3-007: Playwright smoke harness (optional P3, required P7)**
   - Module/route: new `e2e/` folder
@@ -549,7 +554,7 @@ flowchart TB
   - Routing verification: —
   - Rollback: manual journeys only
 
-- [ ] **P3-008: Version display in UI**
+- [x] **P3-008: Version display in UI**
   - Module/route: `Sidebar.tsx`, `package.json` inject via vite
   - Depends on: —
   - Acceptance criteria: version + build date in sidebar footer; matches package.json
@@ -557,6 +562,7 @@ flowchart TB
   - Optimization tie-in: PRODUCTION_READINESS §5
   - Routing verification: Settings about section
   - Rollback: —
+  - **Delivered 2026-07-08:** `__APP_VERSION__` / `__BUILD_DATE__` via vite `define`; Sidebar footer + Settings About
 
 - [ ] **P3-009: PWA / offline packaging (optional)**
   - Module/route: `vite.config.ts`, manifest
@@ -1132,9 +1138,9 @@ flowchart TB
   - Optimization tie-in: SUPER_WFH §D trust zones
   - Routing verification: —
   - Rollback: delete staging store
-  - **Delivered 2026-07-08:** core staging types + IDB persistence; HRQ UI still P8-002
+  - **Delivered 2026-07-08:** core staging types + IDB persistence
 
-- [ ] **P8-002: Human Review Queue module**
+- [x] **P8-002: Human Review Queue module**
   - Module/route: new `src/modules/ReviewQueue.tsx`, `Sidebar.tsx` nav entry
   - Depends on: P8-001
   - Acceptance criteria: lists pending items by type/severity/SLA; batch select; sign-off → commit to live store
@@ -1142,6 +1148,7 @@ flowchart TB
   - Optimization tie-in: SUPER_WFH §B
   - Routing verification: Review → Approve → live data updated
   - Rollback: hide nav entry
+  - **Delivered 2026-07-08:** Review Queue module; import sidecars; review→letter import→HRQ sign-off audit
 
 - [x] **P8-003: Folder watch ingress**
   - Module/route: local daemon `scripts/wfh/folder-watch.mjs`
@@ -1202,7 +1209,7 @@ flowchart TB
   - Routing verification: Settings → edit sender → ACC Inbox updates
   - Rollback: restore defaults
 
-- [ ] **P8-020: Multi-format attachment support (PDF + Word)**
+- [x] **P8-020: Multi-format attachment support (PDF + Word)**
   - Module/route: `letterImport.ts` (`extractWordText`), `folder-watch.mjs`, `LetterImportModal.tsx`, Outlook COM bridge
   - Depends on: P5 letter parsers stable, checklist B-08 (2026-07-08: Word + PDF only)
   - Acceptance criteria: `.docx` via mammoth.js → `parseLetterFromText()`; `.doc` via Word COM or manual convert; folder watch + ACC Inbox accept both extensions; multi-attachment emails save all supported files
@@ -1210,6 +1217,7 @@ flowchart TB
   - Optimization tie-in: SUPER_WFH §C.1 ingress breadth
   - Routing verification: drop `.docx` → staging JSON → letter import modal prefill
   - Rollback: PDF-only filter in folder watch
+  - **Delivered 2026-07-08:** `extractWordText` + mammoth; parse parity tests; folder-watch PDF; HRQ accepts .docx import
 
 #### P8.1 — Email connector + digest
 

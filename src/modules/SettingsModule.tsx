@@ -147,6 +147,14 @@ export function SettingsModule() {
       <SectionTitle title="Settings" subtitle="Appearance, thresholds, security and data — all stored locally." />
 
       <Card className="mb-4">
+        <h3 className="font-semibold mb-2">About</h3>
+        <p className="text-sm" style={{ color: 'var(--muted)' }}>
+          ACC District Nursing Admin Suite · v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.0'}
+          {typeof __BUILD_DATE__ !== 'undefined' ? ` (build ${__BUILD_DATE__})` : ''}
+        </p>
+      </Card>
+
+      <Card className="mb-4">
         <h3 className="font-semibold mb-2">How saving works</h3>
         <p className="text-sm mb-2" style={{ color: 'var(--text)' }}>
           <strong>IndexedDB autosave</strong> keeps a working copy in this browser after every edit (crash-safe).

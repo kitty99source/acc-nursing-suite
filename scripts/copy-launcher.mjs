@@ -14,6 +14,7 @@ mkdirSync(DIST, { recursive: true });
 mkdirSync(WFH_DIST, { recursive: true });
 
 const launcherFiles = [
+  'launcher-log.ps1',
   'launch.ps1',
   'Start ACC Suite.cmd',
   'portal-discover.ps1',

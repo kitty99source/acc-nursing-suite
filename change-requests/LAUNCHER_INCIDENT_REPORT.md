@@ -453,3 +453,40 @@ Applied the same principles as the ACC Suite `d44924c` restore:
 ---
 
 *Report generated from git forensics on 2026-07-08. No runtime reproduction on physical work laptop was available in the investigation environment; conclusions are from code diff analysis and documented Windows/PowerShell behavior.*
+
+---
+
+## Addendum — Edge not opening (2026-07-08 afternoon)
+
+### User report
+
+Work-laptop screenshot showed the launcher console staying open with log reaching **`Step: enter serve loop`**, but **Microsoft Edge never opened**. User initially pasted **`launcher-log.ps1` source** thinking it was the run log — the actual log is a timestamped file under `%USERPROFILE%\ACC-Suite\logs\acc-suite-*.log`.
+
+### Forensic answers
+
+| Question | Answer |
+|----------|--------|
+| **Startup order** | **bind → open browser → serve loop** (correct). Browser code runs at lines 113–126 *before* `Step: enter serve loop`. Not a sequencing bug. |
+| **`Step: open browser` in log?** | Present in `d44924c`+ logging builds. If the user sees `enter serve loop` but not `open browser`, they may have an older dist zip, a truncated screenshot, or a build where logging was added after browser (now fixed with per-attempt before/after lines). |
+| **Edge path resolution** | Pre-fix code used bare `msedge.exe` only. Hospital PCs often have Edge installed at `Program Files (x86)\Microsoft\Edge\Application\msedge.exe` but **not in PATH** when PowerShell is launched from a `.cmd` on mapped `I:`. `Start-Process` can fail or no-op without a visible window. |
+| **Did `d44924c` remove browser launch?** | **No.** `git diff 912dc81 HEAD` shows the same `Start-Process "msedge.exe" $url` block; `d44924c` only wrapped it with `Write-LauncherLogSafe` calls. `Show-LauncherStartupSuccess` was removed, not the browser call. |
+
+### Fix shipped
+
+`launch.ps1` browser section now:
+
+1. Logs `Step: open browser` then **before/after each `Start-Process` attempt**.
+2. Tries Edge at full Program Files paths, then `msedge.exe` in PATH.
+3. Tries Chrome at full paths, then `chrome.exe`.
+4. Tries `Start-Process $url` (default protocol handler).
+5. Falls back to `cmd /c start "" "http://127.0.0.1:$port"` (works without knowing browser install path).
+6. On total failure: logs `WARN`, prints **`Open manually: $url`**, server **still enters serve loop**.
+7. No `Show-LauncherStartupSuccess` modal; logs stay under `%USERPROFILE%\ACC-Suite\logs\` only (never `I:`).
+
+### Work-laptop instructions after re-download
+
+1. Re-download / unzip the latest dist from the updated `main` build.
+2. Double-click **`Start ACC Suite.cmd`** on `I:` (or local copy).
+3. Check the console for `Step: open browser` and `Step: browser open succeeded` (or `Open manually: http://127.0.0.1:8765/`).
+4. If no browser opens, copy the URL from the yellow **Open manually** line into Edge/Chrome address bar.
+5. Send the newest `%USERPROFILE%\ACC-Suite\logs\acc-suite-*.log` to support if it still fails — not `launcher-log.ps1` (that file is the logging *helper*, not the run log).

@@ -3,30 +3,35 @@
 # This tool watches ~/ACC-Inbox for PDF drops. It is not yet available
 # without Node.js on the work laptop.
 
-$title = 'ACC Folder Watch'
+$script:LauncherHadError = $false
+$script:LauncherLogPath = $null
 
 try {
-    Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
-    [System.Windows.Forms.MessageBox]::Show(
-        @"
+    $logHelper = Join-Path $PSScriptRoot 'launcher-log.ps1'
+    if (-not (Test-Path -LiteralPath $logHelper)) {
+        $logHelper = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'launcher-log.ps1'
+    }
+    . $logHelper
+    Initialize-LauncherLog -Prefix 'folder-watch' | Out-Null
+    Write-LauncherLog 'Step: folder watch is not yet available on work laptops'
+
+    Show-LauncherMessageBox -Title 'ACC Folder Watch' -Icon Information -Message @"
 Folder Watch is coming soon for work laptops.
 
 Today it still requires Node.js (dev machine only).
 Use the main app with Start ACC Suite.cmd — no extra software needed.
 
 Portal discovery works now: double-click Start Portal Discover.cmd
-"@,
-        $title,
-        [System.Windows.Forms.MessageBoxButtons]::OK,
-        [System.Windows.Forms.MessageBoxIcon]::Information
-    ) | Out-Null
+"@
 } catch {
-    Write-Host ''
-    Write-Host '  ACC Folder Watch — coming soon' -ForegroundColor Cyan
-    Write-Host '  Folder watch still needs Node.js (dev machine only).' -ForegroundColor Yellow
-    Write-Host '  Portal discovery works now: Start Portal Discover.cmd' -ForegroundColor Green
-    Write-Host ''
-    Read-Host 'Press Enter to close'
+    $script:LauncherHadError = $true
+    if (Get-Command Write-LauncherLogException -ErrorAction SilentlyContinue) {
+        Write-LauncherLogException $_
+    }
+} finally {
+    if (Get-Command Complete-LauncherLog -ErrorAction SilentlyContinue) {
+        Complete-LauncherLog -Title 'ACC Folder Watch'
+    }
 }
 
 exit 0

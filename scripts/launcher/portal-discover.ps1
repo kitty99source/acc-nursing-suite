@@ -411,36 +411,49 @@ function ConvertTo-JsonDeep {
 
 # --- Main ---
 
-$root = $PSScriptRoot
-if ([string]::IsNullOrEmpty($root)) { $root = Split-Path -Parent $MyInvocation.MyCommand.Path }
-
-$portalUrl = 'http://cl-biprddb02/Reports_MSREPORT/browse/DHB-wide/ACC'
-$cdpBase = 'http://127.0.0.1:9222'
-$outDir = Join-Path $env:USERPROFILE 'ACC-Suite'
-$outFile = Join-Path $outDir 'portal-map.json'
-$summaryFile = Join-Path $outDir 'portal-summary.html'
-
-Initialize-Ui
-$ErrorActionPreference = 'Stop'
+$script:LauncherHadError = $false
+$script:LauncherLogPath = $null
 
 try {
+    $logHelper = Join-Path $PSScriptRoot 'launcher-log.ps1'
+    if (-not (Test-Path -LiteralPath $logHelper)) {
+        $logHelper = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'launcher-log.ps1'
+    }
+    . $logHelper
+    Initialize-LauncherLog -Prefix 'portal-discover' | Out-Null
+
+    Initialize-Ui
+    $ErrorActionPreference = 'Stop'
+
+    $root = $PSScriptRoot
+    if ([string]::IsNullOrEmpty($root)) { $root = Split-Path -Parent $MyInvocation.MyCommand.Path }
+
+    $portalUrl = 'http://cl-biprddb02/Reports_MSREPORT/browse/DHB-wide/ACC'
+    $cdpBase = 'http://127.0.0.1:9222'
+    $outDir = Join-Path $env:USERPROFILE 'ACC-Suite'
+    $outFile = Join-Path $outDir 'portal-map.json'
+    $summaryFile = Join-Path $outDir 'portal-summary.html'
+
+    Write-LauncherLog 'Step: start portal discovery'
     Write-Host ''
     Write-Host '  ACC Portal Discovery' -ForegroundColor Cyan
     Write-Host '  --------------------' -ForegroundColor Cyan
     Write-Host '  (PowerShell only — no extra software)' -ForegroundColor Gray
     Write-Host ''
 
+    Write-LauncherLog 'Step: find browser executable'
     $browser = Find-BrowserExe
     if (-not $browser) {
-        Show-MessageBox -Message 'Could not find Microsoft Edge or Google Chrome. Install Edge or Chrome, then try again.' -Icon Error
-        exit 1
+        throw 'Could not find Microsoft Edge or Google Chrome. Install Edge or Chrome, then try again.'
     }
 
     $browserName = Split-Path -Leaf $browser
+    Write-LauncherLog "Step: using browser $browserName"
     Write-Host "  Browser: $browserName" -ForegroundColor Gray
     Write-Host "  Output:  $outFile" -ForegroundColor Gray
     Write-Host ''
 
+    Write-LauncherLog "Step: ensure output directory $outDir"
     New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
     $browserArgs = @(
@@ -448,6 +461,7 @@ try {
         '--new-window',
         $portalUrl
     )
+    Write-LauncherLog 'Step: open browser with remote debugging on port 9222'
     Write-Host '  Opening browser with remote debugging on port 9222 …' -ForegroundColor Green
     Start-Process -FilePath $browser -ArgumentList $browserArgs | Out-Null
     Start-Sleep -Seconds 2
@@ -460,6 +474,7 @@ Navigate to the ACC report / browse page if needed.
 Click OK when you are on the report page and ready to scan.
 "@ -Icon Information
 
+    Write-LauncherLog 'Step: scan portal via CDP'
     Write-Host '  Scanning portal (this may take a minute) …' -ForegroundColor Green
     Write-Host ''
 
@@ -472,14 +487,17 @@ Click OK when you are on the report page and ready to scan.
 
     if ($tab -and $tab.webSocketDebuggerUrl) {
         try {
+            Write-LauncherLog "Step: attach WebSocket to tab $($tab.title)"
             Write-Host "  Attaching to: $($tab.title)" -ForegroundColor Gray
             $session = New-CdpSession -WsUrl $tab.webSocketDebuggerUrl
             Initialize-CdpSession -Session $session
             $snap = Get-PageSnapshot -Session $session -FallbackUrl $tab.url -FallbackTitle $tab.title -Depth 0 -IncludeLinks $true
             $pages += $snap
             $webSocketWorked = $true
+            Write-LauncherLog "Step: snapshot captured — $($snap.title)"
             Write-Host "  [snap] $($snap.title) — $($snap.url)" -ForegroundColor Green
         } catch {
+            Write-LauncherLog "WARN: WebSocket snapshot failed — $($_.Exception.Message)"
             Write-Host "  [warn] WebSocket snapshot failed: $($_.Exception.Message)" -ForegroundColor Yellow
             Write-Host '  Falling back to tab list only (URLs and titles).' -ForegroundColor Yellow
         } finally {
@@ -493,18 +511,13 @@ Click OK when you are on the report page and ready to scan.
                 $_.type -eq 'page' -and $_.url -and $_.url -notmatch '^(chrome|edge|devtools)://'
             })
         if (-not $pageTargets.Count) {
-            Show-MessageBox -Message @"
+            throw @"
 No portal page found in the browser.
 
-• Connect Citrix VPN first
-• Stay on the ACC report page in the browser
-• Close other Chrome/Edge windows if port 9222 is busy
-
-Then double-click Start Portal Discover.cmd again.
-"@ -Icon Error
-            Read-Host 'Press Enter to close'
-            exit 1
+Connect Citrix VPN first, stay on the ACC report page, and close other Chrome/Edge windows if port 9222 is busy.
+"@
         }
+        Write-LauncherLog "Step: fallback to tab list ($($pageTargets.Count) tab(s))"
         foreach ($t in $pageTargets) {
             $pages += [PSCustomObject]@{
                 depth         = 0
@@ -542,46 +555,72 @@ Then double-click Start Portal Discover.cmd again.
         )
     }
 
+    Write-LauncherLog "Step: write portal-map.json ($($pages.Count) page(s))"
     $json = ConvertTo-JsonDeep -InputObject $map
     [System.IO.File]::WriteAllText($outFile, $json, [Text.Encoding]::UTF8)
     Write-Host ''
     Write-Host "  Wrote $outFile ($($pages.Count) page(s))" -ForegroundColor Green
 
+    Write-LauncherLog 'Step: write portal-summary.html'
     $summaryFile = Write-PortalSummaryHtml -Map $map -OutPath $outFile
     Write-Host "  Wrote $summaryFile" -ForegroundColor Green
     Write-Host ''
 
     if (Test-Path -LiteralPath $summaryFile) {
-        try { Start-Process $summaryFile | Out-Null } catch {
+        try {
+            Start-Process $summaryFile | Out-Null
+            Write-LauncherLog 'Step: opened summary HTML'
+        } catch {
+            Write-LauncherLog "WARN: could not open summary HTML — $summaryFile"
             Write-Host "  Could not open summary HTML. Open manually: $summaryFile" -ForegroundColor Yellow
         }
     }
 
-    try { Start-Process explorer.exe $outDir | Out-Null } catch {
+    try {
+        Start-Process explorer.exe $outDir | Out-Null
+        Write-LauncherLog 'Step: opened results folder'
+    } catch {
+        Write-LauncherLog "WARN: could not open folder — $outDir"
         Write-Host "  Open folder manually: $outDir" -ForegroundColor Yellow
     }
 
-    Show-MessageBox -Message @"
-Portal discovery finished.
-
-Results folder:
-  $outDir
-
-Review portal-map.json and redact any patient details before sharing.
-"@ -Icon Information
-
-    Read-Host 'Press Enter to close'
+    Write-LauncherLog 'Step: portal discovery completed successfully'
 } catch {
-    Show-MessageBox -Message @"
-Portal Discovery stopped unexpectedly.
-
-• Connect Citrix VPN first
-• Stay on the ACC portal page in the browser
-• Close other Chrome/Edge windows if port 9222 is busy
-
-Check this window for details, then try again.
-"@ -Icon Error
-    Write-Host $_.Exception.Message -ForegroundColor Red
-    Read-Host 'Press Enter to close'
-    exit 1
+    $script:LauncherHadError = $true
+    if (Get-Command Write-LauncherLogException -ErrorAction SilentlyContinue) {
+        Write-LauncherLogException $_
+    } else {
+        try {
+            $fallbackDir = Join-Path $env:USERPROFILE 'ACC-Suite\logs'
+            [void][System.IO.Directory]::CreateDirectory($fallbackDir)
+            $fallbackLog = Join-Path $fallbackDir "portal-discover-$(Get-Date -Format 'yyyy-MM-dd-HHmmss').log"
+            Add-Content -LiteralPath $fallbackLog -Value "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] FATAL: $($_.Exception.Message)"
+            $script:LauncherLogPath = $fallbackLog
+        } catch {}
+        Write-Host $_.Exception.Message -ForegroundColor Red
+    }
+} finally {
+    if (Get-Command Complete-LauncherLog -ErrorAction SilentlyContinue) {
+        Complete-LauncherLog -Title 'ACC Portal Discovery'
+    } elseif ($script:LauncherLogPath) {
+        try {
+            Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
+            $icon = if ($script:LauncherHadError) {
+                [System.Windows.Forms.MessageBoxIcon]::Error
+            } else {
+                [System.Windows.Forms.MessageBoxIcon]::Information
+            }
+            $prefix = if ($script:LauncherHadError) { 'Error' } else { 'Done' }
+            $suffix = if ($script:LauncherHadError) { "`n`nSend this file to support." } else { '' }
+            [System.Windows.Forms.MessageBox]::Show(
+                "$prefix — log saved to:`n$($script:LauncherLogPath)$suffix",
+                'ACC Portal Discovery',
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                $icon
+            ) | Out-Null
+        } catch {
+            Read-Host 'Press Enter to close'
+        }
+    }
+    if ($script:LauncherHadError) { exit 1 }
 }

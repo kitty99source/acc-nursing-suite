@@ -177,11 +177,69 @@ Could not reach the browser debug port at $CdpBase.
     }
 }
 
+function Get-CdpExceptionText {
+    param($ErrorRecord)
+    if (-not $ErrorRecord) { return 'Unknown error' }
+    $parts = @()
+    if ($ErrorRecord.Exception) {
+        $parts += $ErrorRecord.Exception.Message
+        if ($ErrorRecord.Exception.InnerException) {
+            $parts += $ErrorRecord.Exception.InnerException.Message
+        }
+    } elseif ($ErrorRecord -is [string]) {
+        $parts += [string]$ErrorRecord
+    }
+    $flat = ($parts | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique) -join ' | '
+    if ([string]::IsNullOrWhiteSpace($flat)) { return 'Unknown error' }
+    return $flat
+}
+
+function Resolve-CdpWebSocketUrl {
+    param(
+        [string]$CdpBase,
+        $Target
+    )
+
+    if (-not $Target) { return $null }
+
+    $wsUrl = $null
+    if ($Target.PSObject.Properties['webSocketDebuggerUrl']) {
+        $wsUrl = [string]$Target.webSocketDebuggerUrl
+    }
+    if ([string]::IsNullOrWhiteSpace($wsUrl) -and $Target.id) {
+        $wsBase = ($CdpBase.TrimEnd('/') -replace '^http', 'ws')
+        $wsUrl = "$wsBase/devtools/page/$($Target.id)"
+        Write-LauncherLogSafe "CDP: built WebSocket URL from target id $($Target.id)"
+    }
+    if ([string]::IsNullOrWhiteSpace($wsUrl)) { return $null }
+
+    $wsUrl = $wsUrl -replace '://localhost(?=[:/])', '://127.0.0.1'
+    $wsUrl = $wsUrl -replace '://\[::1\](?=[:/])', '://127.0.0.1'
+    if ($wsUrl -notmatch '^wss?://') {
+        Write-LauncherLogSafe "WARN: unexpected WebSocket URL scheme: $wsUrl"
+    }
+    return $wsUrl
+}
+
+function Invoke-CdpActivateTarget {
+    param(
+        [string]$CdpBase,
+        [string]$TargetId
+    )
+    if ([string]::IsNullOrWhiteSpace($TargetId)) { return }
+    $url = ($CdpBase.TrimEnd('/') + "/json/activate/$TargetId")
+    try {
+        $null = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 5 -ErrorAction Stop
+        Write-LauncherLogSafe "CDP: activated target $TargetId"
+    } catch {
+        Write-LauncherLogSafe "WARN: target activate failed for $TargetId - $(Get-CdpExceptionText $_)"
+    }
+}
+
 function Select-PortalTab {
     param($Targets)
     $pages = @($Targets | Where-Object {
             $_.type -eq 'page' -and
-            $_.webSocketDebuggerUrl -and
             $_.url -and
             $_.url -notmatch '^(chrome|edge|devtools)://'
         })
@@ -194,6 +252,10 @@ function Select-PortalTab {
 function New-CdpSession {
     param([string]$WsUrl)
 
+    if ([string]::IsNullOrWhiteSpace($WsUrl)) {
+        throw 'WebSocket URL is empty.'
+    }
+
     Add-Type -AssemblyName System.Net.WebSockets -ErrorAction Stop
     Add-Type -AssemblyName System.Threading -ErrorAction Stop
 
@@ -201,14 +263,29 @@ function New-CdpSession {
     $uri = [Uri]$WsUrl
     $cts = New-Object System.Threading.CancellationTokenSource
 
+    Write-LauncherLogSafe "CDP: WebSocket connect to $WsUrl"
     $connectTask = $ws.ConnectAsync($uri, $cts.Token)
-    if (-not $connectTask.Wait(15000)) {
+    if (-not $connectTask.Wait(30000)) {
         $ws.Dispose()
-        throw 'WebSocket connect timed out.'
+        $cts.Dispose()
+        throw 'WebSocket connect timed out after 30s.'
     }
     if ($connectTask.IsFaulted) {
+        $err = Get-CdpExceptionText $connectTask.Exception
         $ws.Dispose()
-        throw ($connectTask.Exception.InnerException.Message)
+        $cts.Dispose()
+        throw "WebSocket connect failed: $err"
+    }
+    if ($connectTask.IsCanceled) {
+        $ws.Dispose()
+        $cts.Dispose()
+        throw 'WebSocket connect was canceled.'
+    }
+    if ($ws.State -ne [System.Net.WebSockets.WebSocketState]::Open) {
+        $state = $ws.State
+        $ws.Dispose()
+        $cts.Dispose()
+        throw "WebSocket connect finished but state is $state (expected Open)."
     }
 
     return [PSCustomObject]@{
@@ -297,7 +374,7 @@ function Send-CdpCommand {
     while ([DateTime]::UtcNow -lt $deadline) {
         $msg = Receive-CdpJson -Session $Session -TimeoutMs ([int]($deadline - [DateTime]::UtcNow).TotalMilliseconds)
         if (-not $msg) { continue }
-        if ($msg.id -eq $id) {
+        if ($null -ne $msg.id -and [int]$msg.id -eq [int]$id) {
             if ($msg.error) {
                 $errText = if ($msg.error.message) { $msg.error.message } else { ($msg.error | ConvertTo-Json -Compress) }
                 throw "CDP error ($Method): $errText"
@@ -640,30 +717,43 @@ Click OK when you are on the report page and ready to scan.
 
     $allTargets = Get-CdpTargets -CdpBase $cdpBase -WaitSeconds 15
     $tab = Select-PortalTab -Targets $allTargets
+    $wsUrl = Resolve-CdpWebSocketUrl -CdpBase $cdpBase -Target $tab
 
     $pages = @()
     $webSocketWorked = $false
+    $webSocketError = $null
     $session = $null
 
-    if ($tab -and $tab.webSocketDebuggerUrl) {
+    if ($tab -and $wsUrl) {
         try {
             Write-LauncherLogSafe "Step: attach WebSocket to tab $($tab.title)"
+            Write-LauncherLogSafe "CDP: WebSocket URL $wsUrl"
             Write-Host "  Attaching to: $($tab.title)" -ForegroundColor Gray
-            $session = New-CdpSession -WsUrl $tab.webSocketDebuggerUrl
+            Invoke-CdpActivateTarget -CdpBase $cdpBase -TargetId $tab.id
+            Start-Sleep -Milliseconds 500
+            $session = New-CdpSession -WsUrl $wsUrl
             Initialize-CdpSession -Session $session
             $snap = Get-PageSnapshot -Session $session -FallbackUrl $tab.url -FallbackTitle $tab.title -Depth 0 -IncludeLinks $true
             $pages += $snap
             $webSocketWorked = $true
-            Write-LauncherLogSafe "Step: snapshot captured - $($snap.title)"
+            Write-LauncherLogSafe "Step: snapshot captured - $($snap.title) (links=$(@($snap.links).Count))"
             Write-Host "  [snap] $($snap.title) - $($snap.url)" -ForegroundColor Green
         } catch {
-            Write-LauncherLogSafe "WARN: WebSocket snapshot failed - $($_.Exception.Message)"
-            Write-Host "  [warn] WebSocket snapshot failed: $($_.Exception.Message)" -ForegroundColor Yellow
+            $webSocketError = Get-CdpExceptionText $_
+            Write-LauncherLogSafe "ERROR: WebSocket snapshot failed - $webSocketError"
+            if ($_.ScriptStackTrace) {
+                Write-LauncherLogSafe "ERROR: WebSocket stack - $($_.ScriptStackTrace)"
+            }
+            Write-Host "  [warn] WebSocket snapshot failed: $webSocketError" -ForegroundColor Yellow
             Write-Host '  Falling back to tab list only (URLs and titles).' -ForegroundColor Yellow
         } finally {
             Close-CdpSession -Session $session
             $session = $null
         }
+    } elseif ($tab) {
+        $webSocketError = 'No WebSocket URL available for selected tab (missing webSocketDebuggerUrl and target id).'
+        Write-LauncherLogSafe "ERROR: $webSocketError"
+        Write-Host "  [warn] $webSocketError" -ForegroundColor Yellow
     }
 
     if (-not $pages.Count) {
@@ -706,6 +796,7 @@ Then double-click Start Portal Discover.cmd again.
         cdpUrl        = $cdpBase
         crawlEnabled  = $false
         webSocketUsed = $webSocketWorked
+        webSocketError = $webSocketError
         pageCount     = $pages.Count
         pages         = $pages
         allTargets    = @($allTargets | ForEach-Object {

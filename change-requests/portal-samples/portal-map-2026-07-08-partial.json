@@ -1,0 +1,50 @@
+﻿{
+    "crawlEnabled":  false,
+    "allTargets":  [
+                       {
+                           "title":  "New tab",
+                           "url":  "edge://newtab/",
+                           "id":  "10FE64063DD03BD6170FD0985FE7A24A",
+                           "type":  "other"
+                       },
+                       {
+                           "title":  "ACC District Nursing Visits - SQL Server Reporting Services",
+                           "url":  "http://cl-biprddb02/Reports_MSREPORT/report/DHB-wide/ACC/ACC%20District%20Nursing%20Visits",
+                           "id":  "44EB2525CB62C745552A19B9E9BD2C29",
+                           "type":  "page"
+                       },
+                       {
+                           "title":  "",
+                           "url":  "",
+                           "id":  "CE1826E93C078897C62ACD345F511D58",
+                           "type":  "worker"
+                       }
+                   ],
+    "version":  1,
+    "notes":  [
+                  "Review portal-map.json before commit - redact any patient names or identifiers.",
+                  "Do not store portal credentials in this file."
+              ],
+    "webSocketUsed":  false,
+    "cdpUrl":  "http://127.0.0.1:9222",
+    "generator":  "portal-discover.ps1",
+    "pageCount":  1,
+    "pages":  [
+                  {
+                      "depth":  0,
+                      "url":  "http://cl-biprddb02/Reports_MSREPORT/report/DHB-wide/ACC/ACC%20District%20Nursing%20Visits",
+                      "title":  "ACC District Nursing Visits - SQL Server Reporting Services",
+                      "headings":  [
+
+                                   ],
+                      "breadcrumbs":  [
+
+                                      ],
+                      "links":  [
+
+                                ],
+                      "accessibility":  null,
+                      "capturedAt":  "2026-07-07T22:43:36.9726675Z"
+                  }
+              ]
+}

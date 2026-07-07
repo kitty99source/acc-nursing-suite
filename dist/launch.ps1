@@ -110,19 +110,89 @@ Write-Host "  This is LOCAL ONLY (loopback 127.0.0.1) - nothing is exposed to th
 Write-Host "  Keep this window open while you use the app; close it (or press Ctrl+C) to stop." -ForegroundColor Yellow
 Write-Host ""
 
-# --- Open the browser (Edge preferred, default browser as fallback) ---------
-Write-LauncherLogSafe 'Step: open browser'
-try {
-    Start-Process "msedge.exe" $url -ErrorAction Stop | Out-Null
-    Write-LauncherLogSafe 'Step: opened Microsoft Edge'
-} catch {
-    try {
-        Start-Process $url -ErrorAction Stop | Out-Null
-        Write-LauncherLogSafe 'Step: opened default browser'
-    } catch {
-        Write-LauncherLogSafe "WARN: could not auto-open browser — open manually: $url"
-        Write-Host "  Could not auto-open a browser. Open this URL manually: $url" -ForegroundColor Yellow
+# --- Open the browser (Edge preferred; multiple paths + cmd start fallback) ---
+function Try-OpenAccSuiteBrowser {
+    param(
+        [string]$Label,
+        [string]$FilePath,
+        [string[]]$ArgumentList,
+        [switch]$SkipPathCheck
+    )
+    Write-LauncherLogSafe "Step: try browser — $Label"
+    if (-not $SkipPathCheck -and $FilePath -and -not (Test-Path -LiteralPath $FilePath)) {
+        Write-LauncherLogSafe "Step: skip browser — $Label (path not found: $FilePath)"
+        return $false
     }
+    try {
+        Write-LauncherLogSafe "Step: Start-Process before — $Label"
+        if ($ArgumentList -and $ArgumentList.Count -gt 0) {
+            Start-Process -FilePath $FilePath -ArgumentList $ArgumentList -ErrorAction Stop | Out-Null
+        } else {
+            Start-Process -FilePath $FilePath -ErrorAction Stop | Out-Null
+        }
+        Write-LauncherLogSafe "Step: Start-Process after — $Label (ok)"
+        return $true
+    } catch {
+        Write-LauncherLogSafe "Step: Start-Process after — $Label (failed: $($_.Exception.Message))"
+        return $false
+    }
+}
+
+Write-LauncherLogSafe 'Step: open browser'
+$browserOpened = $false
+
+$edgePaths = @(
+    (Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\msedge.exe')
+    (Join-Path $env:ProgramFiles 'Microsoft\Edge\Application\msedge.exe')
+    'msedge.exe'
+)
+foreach ($edgePath in $edgePaths) {
+    if (Try-OpenAccSuiteBrowser -Label "Microsoft Edge ($edgePath)" -FilePath $edgePath -ArgumentList @($url) -SkipPathCheck:($edgePath -eq 'msedge.exe')) {
+        $browserOpened = $true
+        break
+    }
+}
+
+if (-not $browserOpened) {
+    $chromePaths = @(
+        (Join-Path ${env:ProgramFiles(x86)} 'Google\Chrome\Application\chrome.exe')
+        (Join-Path $env:ProgramFiles 'Google\Chrome\Application\chrome.exe')
+        'chrome.exe'
+    )
+    foreach ($chromePath in $chromePaths) {
+        if (Try-OpenAccSuiteBrowser -Label "Google Chrome ($chromePath)" -FilePath $chromePath -ArgumentList @($url) -SkipPathCheck:($chromePath -eq 'chrome.exe')) {
+            $browserOpened = $true
+            break
+        }
+    }
+}
+
+if (-not $browserOpened) {
+    Write-LauncherLogSafe 'Step: try browser — default handler (Start-Process URL)'
+    try {
+        Write-LauncherLogSafe 'Step: Start-Process before — default handler'
+        Start-Process $url -ErrorAction Stop | Out-Null
+        Write-LauncherLogSafe 'Step: Start-Process after — default handler (ok)'
+        $browserOpened = $true
+    } catch {
+        Write-LauncherLogSafe "Step: Start-Process after — default handler (failed: $($_.Exception.Message))"
+    }
+}
+
+if (-not $browserOpened) {
+    if (Try-OpenAccSuiteBrowser -Label 'cmd start URL' -FilePath 'cmd.exe' -ArgumentList @('/c', 'start', '""', $url)) {
+        $browserOpened = $true
+    }
+}
+
+if (-not $browserOpened) {
+    Write-LauncherLogSafe "WARN: could not auto-open browser — open manually: $url"
+    Write-Host ""
+    Write-Host "  Could not auto-open a browser." -ForegroundColor Yellow
+    Write-Host "  Open manually: $url" -ForegroundColor Yellow
+    Write-Host ""
+} else {
+    Write-LauncherLogSafe 'Step: browser open succeeded'
 }
 
 # --- Helper: send one HTTP response, then close the connection --------------

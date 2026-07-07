@@ -1,13 +1,8 @@
-﻿# --- Bootstrap log (always works; never depends on launcher-log.ps1) -----------
-$script:BootstrapLogPath = Join-Path $env:USERPROFILE 'ACC-Suite\logs\bootstrap.log'
-function Write-BootstrapLog {
-    param([string]$Message)
-    try {
-        $logDir = Split-Path -Parent $script:BootstrapLogPath
-        if (-not (Test-Path -LiteralPath $logDir)) { [void][System.IO.Directory]::CreateDirectory($logDir) }
-        Add-Content -LiteralPath $script:BootstrapLogPath -Value "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $Message" -Encoding UTF8
-    } catch {}
-}
+﻿param([switch]$ValidateOnly)
+
+$bootstrapRoot = $PSScriptRoot
+if ([string]::IsNullOrEmpty($bootstrapRoot)) { $bootstrapRoot = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }
+. (Join-Path $bootstrapRoot 'bootstrap-log.ps1') -LogName 'portal'
 Write-BootstrapLog 'portal-discover.ps1 started'
 
 # ACC Portal Discovery - double-click launcher (work laptop)
@@ -485,6 +480,16 @@ try {
     Write-Host '  (PowerShell only - no extra software)' -ForegroundColor Gray
     Write-Host ''
 
+    if ($ValidateOnly) {
+        Write-LauncherLogSafe 'ValidateOnly: script parsed OK'
+        Write-LauncherLogSafe "ValidateOnly: script dir=$root"
+        Write-LauncherLogSafe "ValidateOnly: launcher-log enabled=$script:LauncherLogEnabled"
+        Write-LauncherLogSafe 'ValidateOnly: pre-CDP checks passed'
+        if ($script:LauncherLogEnabled) { Write-LauncherLog '=== validate-only OK ===' }
+        Write-Host 'portal-discover.ps1: validate-only passed (no browser/CDP)' -ForegroundColor Green
+        exit 0
+    }
+
     Write-LauncherLogSafe "Step: ensure output directory $outDir"
     New-Item -ItemType Directory -Force -LiteralPath $outDir | Out-Null
 
@@ -601,9 +606,9 @@ Click OK when you are on the report page and ready to scan.
             Show-MessageBox -Message @"
 No portal page found in the browser.
 
-• Connect Citrix VPN first
-• Stay on the ACC report page in the browser
-• Close other Chrome/Edge windows if port 9222 is busy
+- Connect Citrix VPN first
+- Stay on the ACC report page in the browser
+- Close other Chrome/Edge windows if port 9222 is busy
 
 Then double-click Start Portal Discover.cmd again.
 "@ -Icon Error
@@ -676,6 +681,9 @@ Then double-click Start Portal Discover.cmd again.
     }
 
     Write-LauncherLogSafe 'Step: portal discovery completed successfully'
+    if ($script:LauncherLogEnabled) {
+        Write-LauncherLog '=== finished successfully ==='
+    }
     Show-MessageBox -Message @"
 Portal discovery finished.
 

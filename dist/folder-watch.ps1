@@ -3,15 +3,9 @@
 # This tool watches ~/ACC-Inbox for PDF drops. It is not yet available
 # without Node.js on the work laptop.
 
-$script:BootstrapLogPath = Join-Path $env:USERPROFILE 'ACC-Suite\logs\bootstrap.log'
-function Write-BootstrapLog {
-    param([string]$Message)
-    try {
-        $logDir = Split-Path -Parent $script:BootstrapLogPath
-        if (-not (Test-Path -LiteralPath $logDir)) { [void][System.IO.Directory]::CreateDirectory($logDir) }
-        Add-Content -LiteralPath $script:BootstrapLogPath -Value "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $Message" -Encoding UTF8
-    } catch {}
-}
+$bootstrapRoot = $PSScriptRoot
+if ([string]::IsNullOrEmpty($bootstrapRoot)) { $bootstrapRoot = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }
+. (Join-Path $bootstrapRoot 'bootstrap-log.ps1') -LogName 'folder-watch'
 Write-BootstrapLog 'folder-watch.ps1 started'
 
 try { [void][System.IO.Directory]::CreateDirectory((Join-Path $env:USERPROFILE 'ACC-Suite\logs')) } catch {}

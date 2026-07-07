@@ -82,10 +82,13 @@ function Initialize-LauncherLog {
 
     $timestamp = Get-Date -Format 'yyyy-MM-dd-HHmmss'
     $script:LauncherLogPath = Join-Path $logDir "$Prefix-$timestamp.log"
-    Write-LauncherLog "=== $Prefix started ==="
-    Write-LauncherLog "Timestamp: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-    Write-LauncherLog "Script dir: $launcherDir"
-    Write-LauncherLog "Working directory: $(Get-Location)"
+    try { Write-LauncherLog "=== $Prefix started ===" } catch {}
+    try { Write-LauncherLog "Timestamp: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" } catch {}
+    try { Write-LauncherLog "Script dir: $launcherDir" } catch {}
+    try {
+        $cwd = try { (Get-Location).Path } catch { '(unknown)' }
+        Write-LauncherLog "Working directory: $cwd"
+    } catch {}
     return $script:LauncherLogPath
 }
 

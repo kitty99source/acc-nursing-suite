@@ -53,6 +53,19 @@ function Show-LauncherMessageBox {
     }
 }
 
+function Get-LauncherLogPath {
+    return $script:LauncherLogPath
+}
+
+function Show-LauncherLogPath {
+    $path = $script:LauncherLogPath
+    if ([string]::IsNullOrWhiteSpace($path)) { return }
+    try {
+        Write-Host "  LOG FILE: " -NoNewline -ForegroundColor Yellow
+        Write-Host $path -ForegroundColor Green
+    } catch {}
+}
+
 function Initialize-LauncherLog {
     param(
         [string]$Prefix,
@@ -87,6 +100,7 @@ function Initialize-LauncherLog {
         $cwd = try { (Get-Location).Path } catch { '(unknown)' }
         Write-LauncherLog "Working directory: $cwd"
     } catch {}
+    Show-LauncherLogPath
     return $script:LauncherLogPath
 }
 

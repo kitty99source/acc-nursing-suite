@@ -54,6 +54,8 @@ const ENTRY_POINT_HINTS: Record<string, string> = {
     'Opened from Patients — full import: creates or updates patient, claim, approvals or declines, and attaches the PDF.',
   'claim-documents':
     'Opened from Claim Documents — approval or decline letter (auto-detected), filed for this claim; PDF stays on the claim.',
+  'review-queue':
+    'Opened from Human Review Queue — sign-off import from folder-watch staging. Confirm before saving to live data.',
 };
 
 function LetterIssueFix({
@@ -584,6 +586,7 @@ export function LetterImportModal() {
         letterKind: letterKind === 'approval' || letterKind === 'decline' ? letterKind : undefined,
       });
       setCommitResult(res);
+      letterImport.onImportComplete?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Attach failed');
     } finally {
@@ -628,6 +631,7 @@ export function LetterImportModal() {
           rows,
         });
         setCommitResult(commitRes);
+        letterImport.onImportComplete?.();
       } else {
         const commitRes = await commitParsedDecline(parsed, letterImport.file, {
           patientName,
@@ -639,6 +643,7 @@ export function LetterImportModal() {
           claimId: selectedClaimId || undefined,
         });
         setCommitResult(commitRes);
+        letterImport.onImportComplete?.();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Save failed');

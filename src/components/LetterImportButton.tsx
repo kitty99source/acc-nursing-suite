@@ -14,7 +14,8 @@ export type LetterImportEntryPoint =
   | 'patients'
   | 'claim-documents'
   | 'prefill'
-  | 'global';
+  | 'global'
+  | 'review-queue';
 
 /** Tooltip for full-save entry points (Patients list, Approvals, Declines). */
 export const LETTER_IMPORT_FULL_TOOLTIP =

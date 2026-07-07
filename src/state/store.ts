@@ -145,6 +145,9 @@ interface StoreState {
     prefillOnly?: boolean;
     onPrefill?: (patches: ReturnType<typeof prefillFromParsed>) => void;
     entryPoint?: import('../components/LetterImportButton').LetterImportEntryPoint;
+    /** HRQ sign-off — resolved when import commits successfully (P8-002). */
+    stagingItemId?: string;
+    onImportComplete?: () => void;
   };
 
   // lifecycle
@@ -162,7 +165,7 @@ interface StoreState {
   clearFocus: () => void;
 
   // ACC letter import (approval / decline PDFs)
-  openLetterImport: (file: File, opts?: { context?: LetterImportContext; prefillOnly?: boolean; onPrefill?: (patches: ReturnType<typeof prefillFromParsed>) => void; entryPoint?: import('../components/LetterImportButton').LetterImportEntryPoint }) => void;
+  openLetterImport: (file: File, opts?: { context?: LetterImportContext; prefillOnly?: boolean; onPrefill?: (patches: ReturnType<typeof prefillFromParsed>) => void; entryPoint?: import('../components/LetterImportButton').LetterImportEntryPoint; stagingItemId?: string; onImportComplete?: () => void }) => void;
   closeLetterImport: () => void;
   parseLetterFile: (
     file: File,
@@ -611,6 +614,8 @@ export const useStore = create<StoreState>((set, get) => ({
         prefillOnly: opts?.prefillOnly,
         onPrefill: opts?.onPrefill,
         entryPoint: opts?.entryPoint ?? (opts?.prefillOnly ? 'prefill' : opts?.context?.claimId ? 'claim-documents' : 'global'),
+        stagingItemId: opts?.stagingItemId,
+        onImportComplete: opts?.onImportComplete,
       },
     }),
   closeLetterImport: () => set({ letterImport: undefined }),

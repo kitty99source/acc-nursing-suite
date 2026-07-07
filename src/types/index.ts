@@ -242,7 +242,7 @@ export interface AppData {
   importHistory?: ImportHistoryEntry[];
 }
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'clinical-light',

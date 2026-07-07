@@ -113,7 +113,26 @@ export async function importStagingJsonText(text: string): Promise<number> {
   return importStagingSidecars([parsed]);
 }
 
-/** Staging items must never call store.mutate() — this guard is for tests and future HRQ sign-off. */
+/** Hours before HRQ item escalates warn → danger (P8-013 preview). */
+export const HRQ_SLA_WARN_HOURS = 18;
+
+export type StagingSlaLevel = 'ok' | 'warn' | 'danger';
+
+export function stagingSlaLevel(createdAt: number, now = Date.now()): StagingSlaLevel {
+  const hours = (now - createdAt) / 3_600_000;
+  if (hours >= HRQ_SLA_WARN_HOURS) return 'danger';
+  if (hours >= HRQ_SLA_WARN_HOURS * 0.5) return 'warn';
+  return 'ok';
+}
+
+export function stagingAgeLabel(createdAt: number, now = Date.now()): string {
+  const hours = Math.floor((now - createdAt) / 3_600_000);
+  if (hours < 1) return 'Just now';
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 export function assertStagingIsolation(liveMutated: boolean, fromStaging: boolean): void {
   if (fromStaging && liveMutated) {
     throw new Error('Staging ingress must not mutate live AppData without HRQ sign-off');

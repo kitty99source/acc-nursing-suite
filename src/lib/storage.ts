@@ -1,7 +1,8 @@
 import type { AppData } from '../types';
-import { DEFAULT_SETTINGS } from '../types';
+import { DEFAULT_SETTINGS, SCHEMA_VERSION } from '../types';
 import { DEFAULT_RATES } from './serviceCodes';
 import { encryptString, decryptString, type EncryptedPayload } from './crypto';
+import { assertNotDowngrade, migrateAppData, LATEST_FILE_VERSION } from './migrations';
 
 // ============================================================================
 // File persistence: file-format envelope, File System Access API helpers, and
@@ -9,7 +10,7 @@ import { encryptString, decryptString, type EncryptedPayload } from './crypto';
 // ============================================================================
 
 export const FILE_FORMAT = 'accdata';
-export const FILE_VERSION = 1;
+export const FILE_VERSION = LATEST_FILE_VERSION;
 export const FILE_EXTENSION = '.accdata';
 
 interface PlainEnvelope {
@@ -90,7 +91,14 @@ export function normalizeData(data: AppData): AppData {
     ...a,
     recordStatus: a.recordStatus ?? 'current',
   }));
-  return { ...data, settings, documents, approvals };
+  const schemaVersion = data.schemaVersion ?? SCHEMA_VERSION;
+  return { ...data, schemaVersion, settings, documents, approvals };
+}
+
+function applyFileMigrations(data: AppData, fileVersion: number): AppData {
+  const migrated =
+    fileVersion < FILE_VERSION ? migrateAppData(data, fileVersion, FILE_VERSION) : normalizeData(data);
+  return normalizeData({ ...migrated, schemaVersion: SCHEMA_VERSION });
 }
 
 export { validateReferentialIntegrity } from './integrity';
@@ -106,19 +114,21 @@ export async function deserialize(text: string, passphrase?: string): Promise<Ap
   if (env.format !== FILE_FORMAT) {
     // Be lenient: allow a bare AppData JSON (e.g. older manual export).
     const maybe = JSON.parse(text) as AppData;
-    if (maybe && Array.isArray(maybe.patients)) return normalizeData(maybe);
+    if (maybe && Array.isArray(maybe.patients)) return applyFileMigrations(maybe, 1);
     throw new Error('Unrecognised file format.');
   }
+  const fileVersion = typeof env.version === 'number' ? env.version : 1;
+  assertNotDowngrade(fileVersion, FILE_VERSION);
   if (env.encrypted) {
     if (!passphrase) throw new PassphraseRequiredError();
     try {
       const json = await decryptString(env.payload, passphrase);
-      return normalizeData(JSON.parse(json) as AppData);
+      return applyFileMigrations(JSON.parse(json) as AppData, fileVersion);
     } catch {
       throw new WrongPassphraseError();
     }
   }
-  return normalizeData(env.data);
+  return applyFileMigrations(env.data, fileVersion);
 }
 
 // ---------------------------------------------------------------------------

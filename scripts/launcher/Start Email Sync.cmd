@@ -9,14 +9,15 @@ echo   --------------------------
 echo   Requires Outlook desktop open and logged in.
 echo   Mailbox: ACCDistrictNursing (override via office-config.json or ACC_SHARED_MAILBOX).
 echo   Default: backlog mode - oldest unactioned ACC letters first (batch per run).
-echo   Work hours only (7am-6pm NZ). Skips Outlook category "actioned".
+echo   Manual run: proceeds now regardless of time of day. Skips Outlook category "actioned".
 echo   Saves PDF/DOCX attachments to %%USERPROFILE%%\ACC-Inbox
 echo   Does NOT delete, move mail, or auto-import into the app.
 echo.
 echo   Switches (pass to outlook-sync.ps1):
 echo     -Recent          recent mail only (last 14 days, newest first)
 echo     -BatchSize 25    attachments per run (default 50)
-echo     -IgnoreWorkHours run outside 7am-6pm NZ
+echo     -Scheduled       future daemon mode - obeys accWorkHours window if enabled
+echo     -IgnoreWorkHours force a scheduled run outside its work-hours window
 echo.
 echo   Tip: run Start Folder Watch.cmd next so letters stage for Review Queue.
 echo.

@@ -31,6 +31,12 @@
     "workEndHour": 18,
     "skipCategories": ["actioned"]
   },
+  "accWorkHours": {
+    "start": 7,
+    "end": 18,
+    "enabled": false,
+    "notes": "Work-hours window for a FUTURE scheduled/automated sync daemon only (runs with -Scheduled). enabled=false (default) means MANUAL runs — double-clicking Start Email Sync.cmd or Start WFH Mode.cmd — ALWAYS proceed regardless of time of day, because a manual launch is itself the signal you are working. Set enabled=true only if you later add a scheduled daemon and want it to skip outside start-end (whole hours, 24h NZ local time; start inclusive, end exclusive). start/end here take precedence over emailSync.workStartHour/workEndHour. Also overridable via env ACC_EMAIL_SYNC_WORK_START / ACC_EMAIL_SYNC_WORK_END / ACC_EMAIL_SYNC_WORK_HOURS_ENABLED. Manual runs never consult this block."
+  },
   "settings": {
     "theme": "clinical-light",
     "accentColor": "#2f8f83",

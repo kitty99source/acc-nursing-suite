@@ -1,5 +1,10 @@
 ﻿param(
-    [string]$SharedMailbox = ''
+    [string]$SharedMailbox = '',
+    # OFF by default. Enumerating $namespace.Stores (even just reading DisplayName)
+    # can force Outlook to bind the slow Exchange "Public Folders" store (~20 min).
+    # The default double-click run never iterates Stores; pass -ListStores only for
+    # advanced diagnostics, and even then Public Folders is listed but never opened.
+    [switch]$ListStores
 )
 
 $bootstrapRoot = $PSScriptRoot
@@ -243,46 +248,51 @@ Write-DiagLine ''
 $outlook = $null
 $script:DiagExitCode = 0
 $reportProduced = $false
-# Captured during store enumeration so a failed resolution can tell the user which
-# stores WERE visible (they have several: ACCTeam, Digitisation Bureau, ACCForms, ...).
-$visibleStores = New-Object System.Collections.Generic.List[string]
 try {
     Write-DiagLine 'Connecting to Outlook.Application COM object...'
     $outlook = New-Object -ComObject Outlook.Application
     $namespace = $outlook.GetNamespace('MAPI')
     [void]$namespace.Logon($null, $null, $false, $true)
 
-    # List stores using ONLY the fast, cached Store.DisplayName property. We deliberately do
-    # NOT call GetRootFolder()/GetDefaultFolder() or read PropertyAccessor SMTP here: on
-    # Exchange the "Public Folders" store can take ~20 MINUTES to open its root folder, which
-    # previously made this listing appear to hang before resolution even started. Sync never
-    # opens these stores - it resolves ACCDistrictNursing directly via CreateRecipient +
-    # GetSharedDefaultFolder - so this listing is purely informational and must stay cheap.
-    Write-DiagLine 'Visible stores (name only - not opened):'
-    foreach ($store in $namespace.Stores) {
-        $display = ''
-        try { $display = [string]$store.DisplayName } catch {}
-        if ([string]::IsNullOrWhiteSpace($display)) {
-            Write-DiagLine '  - (unnamed store)'
-            continue
+    # --- Optional visible-stores listing (OFF by default, -ListStores opt-in) ---
+    # We NEVER iterate $namespace.Stores in the normal path: on this mailbox even
+    # reading Store.DisplayName can force Outlook to bind the Exchange "Public
+    # Folders" store, which blocks ~20 MINUTES (also "Online Archive", "NonNZResident
+    # Admin" are toxic here). Sync never touches Stores - it resolves ACCDistrictNursing
+    # directly via CreateRecipient + GetSharedDefaultFolder - so diagnose does the same.
+    # This listing runs ONLY when the user passes -ListStores, and even then each store
+    # access is wrapped in try/catch and any "Public Folders" store is skipped untouched.
+    if ($ListStores) {
+        Write-DiagLine 'Visible stores (name only - not opened; -ListStores opt-in):'
+        try {
+            foreach ($store in $namespace.Stores) {
+                $display = ''
+                try { $display = [string]$store.DisplayName } catch {}
+                if ([string]::IsNullOrWhiteSpace($display)) {
+                    Write-DiagLine '  - (unnamed store)'
+                    continue
+                }
+                if ($display -match 'Public Folders') {
+                    # Known-slow Exchange store: list the name but never open/touch it.
+                    Write-DiagLine ("  - {0} (skipped - not opened; known-slow store)" -f $display)
+                } else {
+                    Write-DiagLine ("  - {0}" -f $display)
+                }
+            }
+        } catch {
+            Write-DiagLine ("WARN - could not list stores: {0} (line {1})" -f $_.Exception.Message, $_.InvocationInfo.ScriptLineNumber)
         }
-        [void]$visibleStores.Add($display)
-        if ($display -match 'Public Folders') {
-            # Known-slow Exchange store: list the name but never open it for diagnostics.
-            Write-DiagLine ("  - {0} (skipped - not opened; known-slow store)" -f $display)
-        } else {
-            Write-DiagLine ("  - {0}" -f $display)
-        }
+        Write-DiagLine ''
     }
-    Write-DiagLine ''
-    $storeCsv = if ($visibleStores.Count -gt 0) { ($visibleStores.ToArray() -join '; ') } else { '(no stores visible)' }
 
-    # --- Resolve target inbox folder ------------------------------------------
+    # --- Resolve target inbox folder DIRECTLY (no store enumeration) -----------
     # Reuse the SAME helper outlook-sync.ps1 uses (Get-SharedInboxFolder /
-    # Get-LastMailboxResolution) so diagnose matches the working sync path. This
-    # section is the prime suspect for "stops right after Visible stores": if it
-    # throws or returns null, log the exact error + which stores were visible.
-    Write-DiagLine ("Resolving shared inbox folder for '{0}'..." -f $SharedMailbox)
+    # Get-LastMailboxResolution): CreateRecipient + Resolve + GetSharedDefaultFolder.
+    # For the default ACCDistrictNursing mailbox this returns before any Stores
+    # iteration, so it can never trigger the slow Public Folders bind that stalls
+    # the run. If it throws or returns null, log the exact error and exit non-zero
+    # WITHOUT enumerating stores.
+    Write-DiagLine ("Resolving mailbox {0} directly (store enumeration skipped to avoid slow Public Folders bind)..." -f $SharedMailbox)
     $inbox = $null
     $resolution = ''
     try {
@@ -290,13 +300,14 @@ try {
         $resolution = Get-LastMailboxResolution
     } catch {
         Write-DiagLine ("FAIL - could not resolve inbox folder for '{0}': {1} (line {2})" -f $SharedMailbox, $_.Exception.Message, $_.InvocationInfo.ScriptLineNumber)
-        Write-DiagLine ("Could not resolve inbox folder for {0}; visible stores were: {1}" -f $SharedMailbox, $storeCsv)
-        Write-DiagLine '  FIX: set emailSync.sharedMailbox in office-config to one of the visible store names above.'
+        Write-DiagLine '  FIX: add the ACCDistrictNursing shared mailbox in Outlook (File > Account Settings), enable programmatic access in Trust Center, or set emailSync.sharedMailbox in office-config.'
+        Write-BootstrapLog ("FAIL - inbox resolution failed for '{0}': {1} (line {2})" -f $SharedMailbox, $_.Exception.Message, $_.InvocationInfo.ScriptLineNumber)
         throw ("inbox resolution failed for '{0}': {1}" -f $SharedMailbox, $_.Exception.Message)
     }
     if (-not $inbox) {
-        Write-DiagLine ("Could not resolve inbox folder for {0}; visible stores were: {1}" -f $SharedMailbox, $storeCsv)
-        Write-DiagLine '  FIX: set emailSync.sharedMailbox in office-config to one of the visible store names above.'
+        Write-DiagLine ("FAIL - Get-SharedInboxFolder returned null for '{0}' (no folder to inspect)" -f $SharedMailbox)
+        Write-DiagLine '  FIX: add the ACCDistrictNursing shared mailbox in Outlook (File > Account Settings), enable programmatic access in Trust Center, or set emailSync.sharedMailbox in office-config.'
+        Write-BootstrapLog ("FAIL - Get-SharedInboxFolder returned null for '{0}'" -f $SharedMailbox)
         throw ("Get-SharedInboxFolder returned null for '{0}'" -f $SharedMailbox)
     }
 

@@ -12,5 +12,20 @@ node_modules/
 # Release bundle (uploaded as GitHub Release asset, not committed)
 acc-nursing-suite-dist.zip
 
+# Zips (never commit source/release/export bundles — may embed data)
+*.zip
+
+# Real patient data / PHI — must NEVER be committed. Working data lives in the
+# browser's IndexedDB (local only); these are the on-disk forms it can take.
+*.accdata
+*.log
+# Outlook/email sync state written under %USERPROFILE%\ACC-Suite (PHI in subjects/
+# filenames). Exact names so the synthetic *.sample.json fixtures stay tracked.
+email-sync-status.json
+email-sync-state.json
+# Local data folders (letter drops, exports, per-user ACC-Suite dir)
+ACC-Inbox/
+ACC-Suite/
+
 # Local knowledge graph (graphify)
 graphify-out/

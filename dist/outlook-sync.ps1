@@ -10,6 +10,7 @@ $bootstrapRoot = $PSScriptRoot
 if ([string]::IsNullOrEmpty($bootstrapRoot)) { $bootstrapRoot = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }
 . (Join-Path $bootstrapRoot 'bootstrap-log.ps1') -LogName 'email-sync'
 . (Join-Path $bootstrapRoot 'mailbox-config.ps1')
+. (Join-Path $bootstrapRoot 'inbox-config.ps1')
 Write-BootstrapLog 'outlook-sync.ps1 started'
 
 # ACC Outlook COM sync - work laptop only
@@ -53,6 +54,7 @@ $script:SyncState = $null
 $script:StatePath = $null
 $script:LastSyncStatus = $null
 $script:ScanSkipReason = $null
+$script:NonMatchSamples = @()
 
 function Write-SyncLine {
     param([string]$Message)
@@ -70,21 +72,6 @@ function Get-TruncatedSubject {
 
 function Resolve-AccSuiteDir {
     return Join-Path $env:USERPROFILE 'ACC-Suite'
-}
-
-function Resolve-InboxDir {
-    if (-not [string]::IsNullOrWhiteSpace($env:ACC_INBOX)) {
-        return [System.IO.Path]::GetFullPath($env:ACC_INBOX)
-    }
-    return Join-Path $env:USERPROFILE 'ACC-Inbox'
-}
-
-function Initialize-InboxDirs {
-    param([string]$Inbox)
-    [void][System.IO.Directory]::CreateDirectory($Inbox)
-    [void][System.IO.Directory]::CreateDirectory((Join-Path $Inbox 'processed'))
-    [void][System.IO.Directory]::CreateDirectory((Join-Path $Inbox '.staging'))
-    [void][System.IO.Directory]::CreateDirectory((Join-Path $Inbox '.email-sync'))
 }
 
 function Get-OfficeConfigPath {
@@ -111,6 +98,17 @@ function Get-ConfigInt {
     return $Default
 }
 
+function Add-NonMatchSample {
+    param(
+        [string]$Reason,
+        [string]$Sender,
+        [string]$Subject
+    )
+    if ($script:NonMatchSamples.Count -ge 3) { return }
+    $detail = "{0} | from={1} | subj={2}" -f $Reason, $Sender, (Get-TruncatedSubject -Subject $Subject -MaxLen 50)
+    $script:NonMatchSamples += $detail
+}
+
 function Load-SyncConfig {
     $senders = @($DefaultSenders)
     $patterns = @($DefaultSubjectPatterns)
@@ -124,17 +122,25 @@ function Load-SyncConfig {
         try {
             $raw = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8
             $cfg = $raw | ConvertFrom-Json
+            $mergedSenders = @()
+            $mergedPatterns = @()
             if ($cfg.accInbox -and $cfg.accInbox.senderAllowlist) {
-                $senders = @($cfg.accInbox.senderAllowlist)
-            }
-            if ($cfg.accInbox -and $cfg.accInbox.subjectPatterns) {
-                $patterns = @($cfg.accInbox.subjectPatterns)
+                $mergedSenders += @($cfg.accInbox.senderAllowlist)
             }
             if ($cfg.settings -and $cfg.settings.accInboxSenderAllowlist) {
-                $senders = @($cfg.settings.accInboxSenderAllowlist)
+                $mergedSenders += @($cfg.settings.accInboxSenderAllowlist)
+            }
+            if ($cfg.accInbox -and $cfg.accInbox.subjectPatterns) {
+                $mergedPatterns += @($cfg.accInbox.subjectPatterns)
             }
             if ($cfg.settings -and $cfg.settings.accInboxSubjectPatterns) {
-                $patterns = @($cfg.settings.accInboxSubjectPatterns)
+                $mergedPatterns += @($cfg.settings.accInboxSubjectPatterns)
+            }
+            if ($mergedSenders.Count -gt 0) {
+                $senders = Merge-UniqueStringList -Values $mergedSenders
+            }
+            if ($mergedPatterns.Count -gt 0) {
+                $patterns = Merge-UniqueStringList -Values $mergedPatterns
             }
             if ($cfg.emailSync) {
                 if ($cfg.emailSync.skipCategories) { $skipCategories = @($cfg.emailSync.skipCategories) }
@@ -267,51 +273,6 @@ function Register-GracefulShutdown {
     [Console]::TreatControlCAsInput = $false
 }
 
-function Get-SenderAddress {
-    param([object]$Item)
-    $from = ''
-    try { $from = [string]$Item.SenderEmailAddress } catch {}
-    if (-not [string]::IsNullOrWhiteSpace($from) -and $from -notmatch '^/O=') {
-        return $from
-    }
-    try {
-        $smtp = [string]$Item.Sender.EmailAddress
-        if (-not [string]::IsNullOrWhiteSpace($smtp)) { return $smtp }
-    } catch {}
-    try {
-        $smtp = [string]$Item.PropertyAccessor.GetProperty('http://schemas.microsoft.com/mapi/proptag/0x39FE001E')
-        if (-not [string]::IsNullOrWhiteSpace($smtp)) { return $smtp }
-    } catch {}
-    return $from
-}
-
-function Test-AccSender {
-    param(
-        [string]$FromAddress,
-        [string[]]$Allowlist
-    )
-    if ([string]::IsNullOrWhiteSpace($FromAddress)) { return $false }
-    $lower = $FromAddress.ToLowerInvariant()
-    foreach ($entry in $Allowlist) {
-        if ([string]::IsNullOrWhiteSpace($entry)) { continue }
-        if ($lower.Contains($entry.ToLowerInvariant())) { return $true }
-    }
-    return $false
-}
-
-function Test-AccSubject {
-    param(
-        [string]$Subject,
-        [string[]]$Patterns
-    )
-    if ([string]::IsNullOrWhiteSpace($Subject)) { return $false }
-    foreach ($pat in $Patterns) {
-        if ([string]::IsNullOrWhiteSpace($pat)) { continue }
-        if ($Subject -match $pat) { return $true }
-    }
-    return $false
-}
-
 function Test-ShouldSkipMessage {
     param(
         [object]$Item,
@@ -407,10 +368,16 @@ function Write-ScanBreakdownSummary {
     Write-SyncLine ("Scan: {0} mail item(s); {1} matched sender; {2} matched sender+subject; {3} skipped (category/flag); {4} already processed; {5} matched but no PDF/DOCX" -f $ss.mailItemsScanned, $ss.matchedSender, $ss.matchedBoth, $ss.skippedCategory, $ss.alreadyProcessed, $ss.noSupportedAttachment)
     if ($Status.savedCount -eq 0 -and $ss.mailItemsScanned -eq 0) {
         Write-SyncLine 'Hint: inbox has no mail items in scan range - confirm ACCDistrictNursing is open in Outlook and you have delegate access.'
-    } elseif ($Status.savedCount -eq 0 -and $ss.matchedBoth -eq 0 -and $ss.matchedSender -eq 0) {
+    } else    if ($Status.savedCount -eq 0 -and $ss.matchedBoth -eq 0 -and $ss.matchedSender -eq 0) {
         Write-SyncLine 'Hint: no sender matches - letters may be in a shared mailbox or SenderEmailAddress differs from allowlist.'
     } elseif ($Status.savedCount -eq 0 -and $ss.matchedBoth -eq 0) {
-        Write-SyncLine 'Hint: sender matched but subject did not - widen subjectPatterns in office-config.json.'
+        Write-SyncLine 'Hint: sender matched but subject did not - ensure Claim: and ACCID: are in subjectPatterns (office-config accInbox + settings).'
+    }
+    if ($script:NonMatchSamples -and $script:NonMatchSamples.Count -gt 0) {
+        Write-SyncLine 'First non-match samples:'
+        foreach ($sample in $script:NonMatchSamples) {
+            Write-SyncLine "  - $sample"
+        }
     }
 }
 
@@ -553,10 +520,11 @@ if ($env:ACC_AUTOMATION_PAUSED -eq '1') {
     exit 0
 }
 
-$inbox = Resolve-InboxDir
+$inbox = Resolve-InboxPath -ScriptRoot $bootstrapRoot
 $status.inboxPath = $inbox
 $status.sharedMailbox = $SharedMailbox
 Initialize-InboxDirs -Inbox $inbox
+[void][System.IO.Directory]::CreateDirectory((Join-Path $inbox '.email-sync'))
 
 $pauseFile = Join-Path $inbox '.automation-paused'
 if (Test-Path -LiteralPath $pauseFile) {
@@ -590,8 +558,12 @@ try {
     [void]$namespace.Logon($null, $null, $false, $true)
 
     $folder = Get-SharedInboxFolder -Namespace $namespace -SharedName $SharedMailbox
+    $resolution = Get-LastMailboxResolution
     Write-SyncLine "OK - COM connected (shared inbox: $SharedMailbox)"
-    Write-SyncLine ("Sender allowlist: {0} pattern(s), {1} sender(s)" -f $config.Patterns.Count, $config.Senders.Count)
+    if ($resolution) {
+        Write-SyncLine "Mailbox resolved via: $resolution"
+    }
+    Write-SyncLine ("Sender allowlist: {0} sender(s), {1} subject pattern(s)" -f $config.Senders.Count, $config.Patterns.Count)
     Write-SyncLine "Saving attachments to: $inbox"
     if ($useBacklog) {
         Write-SyncLine ("Mode: backlog incremental  -  oldest first, up to {0} message(s) this run" -f $config.BatchSize)
@@ -608,18 +580,39 @@ try {
         $items.Sort('[ReceivedTime]', $true)
     }
 
+    $mailItems = $items
+    try {
+        $restricted = $items.Restrict("[MessageClass] = 'IPM.Note'")
+        if ($restricted -and $restricted.Count -gt 0) {
+            if ($useBacklog) {
+                $restricted.Sort('[ReceivedTime]', $false)
+            } else {
+                $restricted.Sort('[ReceivedTime]', $true)
+            }
+            $mailItems = $restricted
+            Write-SyncLine ("Scanning {0} mail item(s) via Restrict (folder total {1})" -f $mailItems.Count, $items.Count)
+        } else {
+            Write-SyncLine ("Scanning {0} folder item(s) (Restrict returned empty - using full Items)" -f $items.Count)
+        }
+    } catch {
+        Write-SyncLine ("WARN - Restrict filter failed, using full Items: $($_.Exception.Message)")
+    }
+
     $processedThisRun = 0
     $scanned = 0
     $hitBatchLimit = $false
+    $itemTotal = [int]$mailItems.Count
 
-    foreach ($item in $items) {
+    for ($itemIndex = 1; $itemIndex -le $itemTotal; $itemIndex++) {
         if ($script:ShutdownRequested) { break }
         if ($processedThisRun -ge $config.BatchSize) {
             $hitBatchLimit = $true
             break
         }
 
+        $item = $null
         try {
+            $item = $mailItems.Item($itemIndex)
             if ($item.Class -ne 43) { continue }
 
             $received = $null
@@ -632,13 +625,20 @@ try {
             $subject = ''
             try { $subject = [string]$item.Subject } catch {}
 
-            if (-not (Test-AccSender -FromAddress $from -Allowlist $config.Senders)) { continue }
+            if (-not (Test-AccSender -FromAddress $from -Allowlist $config.Senders)) {
+                Add-NonMatchSample -Reason 'sender mismatch' -Sender $from -Subject $subject
+                continue
+            }
             $status.scanStats.matchedSender++
-            if (-not (Test-AccSubject -Subject $subject -Patterns $config.Patterns)) { continue }
+            if (-not (Test-AccSubject -Subject $subject -Patterns $config.Patterns)) {
+                Add-NonMatchSample -Reason 'subject mismatch' -Sender $from -Subject $subject
+                continue
+            }
             $status.scanStats.matchedBoth++
             if (Test-ShouldSkipMessage -Item $item -SkipCategories $config.SkipCategories) {
                 $status.skippedCount++
                 $status.scanStats.skippedCategory++
+                Add-NonMatchSample -Reason 'skipped category/flag' -Sender $from -Subject $subject
                 continue
             }
 
@@ -651,6 +651,7 @@ try {
             if (Test-AlreadyProcessed -State $syncState -MarkerDir $markerDir -EntryId $entryId) {
                 $status.skippedCount++
                 $status.scanStats.alreadyProcessed++
+                Add-NonMatchSample -Reason 'already processed' -Sender $from -Subject $subject
                 continue
             }
 
@@ -689,6 +690,7 @@ try {
                 $status.skippedCount++
                 $status.scanStats.noSupportedAttachment++
                 $syncState.runStats.totalSkipped++
+                Add-NonMatchSample -Reason 'no PDF/DOCX attachment' -Sender $from -Subject $subject
             }
         } catch {
             $status.errorCount++

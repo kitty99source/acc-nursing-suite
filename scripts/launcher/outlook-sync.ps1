@@ -211,7 +211,7 @@ function Load-SyncState {
         $obj = $raw | ConvertFrom-Json
         $ids = @()
         if ($obj.processedEntryIds) { $ids = @($obj.processedEntryIds) }
-        $stats = New-EmptySyncState.runStats
+        $stats = (New-EmptySyncState).runStats
         if ($obj.runStats) {
             if ($null -ne $obj.runStats.totalSaved) { $stats.totalSaved = [int]$obj.runStats.totalSaved }
             if ($null -ne $obj.runStats.totalSkipped) { $stats.totalSkipped = [int]$obj.runStats.totalSkipped }

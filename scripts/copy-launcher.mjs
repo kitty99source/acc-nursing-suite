@@ -68,6 +68,8 @@ const launcherFiles = [
   'Start Folder Watch.cmd',
   'Start Email Probe.cmd',
   'Start Email Sync.cmd',
+  'Start WFH Mode.cmd',
+  'wfh-mode.ps1',
   'Start Portal Discover.cmd',
   'Start Portal Discover.command',
   'README.txt',

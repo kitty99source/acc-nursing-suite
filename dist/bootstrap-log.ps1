@@ -1,11 +1,11 @@
 ﻿# Inline bootstrap logger for Windows launchers (PowerShell 5.1, no dependencies).
-# Dot-source once at the top of launch.ps1 / portal-discover.ps1 / folder-watch.ps1:
+# Dot-source once at the top of launch.ps1 / portal-discover.ps1 / folder-watch.ps1 / outlook-sync.ps1:
 #   . (Join-Path $PSScriptRoot 'bootstrap-log.ps1') -LogName 'acc'
 # Writes %USERPROFILE%\ACC-Suite\logs\<LogName>-bootstrap.log using shared read/write.
 
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('acc', 'portal', 'folder-watch', 'email-probe')]
+    [ValidateSet('acc', 'portal', 'folder-watch', 'email-probe', 'email-sync', 'wfh')]
     [string]$LogName
 )
 

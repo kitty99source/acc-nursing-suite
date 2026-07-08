@@ -447,7 +447,7 @@ function Write-ScanBreakdownSummary {
     Write-SyncLine ("Scan: {0} mail item(s); {1} matched sender; {2} sender+subject (subject is a hint only); {3} skipped (category/flag); {4} already processed; {5} sender-matched but no PDF/DOCX/DOC" -f $ss.mailItemsScanned, $ss.matchedSender, $ss.matchedBoth, $ss.skippedCategory, $ss.alreadyProcessed, $ss.noSupportedAttachment)
     if ($Status.savedCount -eq 0 -and $ss.mailItemsScanned -eq 0) {
         Write-SyncLine 'Hint: inbox has no mail items in scan range - confirm ACCDistrictNursing is open in Outlook and you have delegate access.'
-    } else    if ($Status.savedCount -eq 0 -and $ss.matchedSender -eq 0) {
+    } elseif ($Status.savedCount -eq 0 -and $ss.matchedSender -eq 0) {
         Write-SyncLine 'Hint: no sender matches - letters may be in a shared mailbox or SenderEmailAddress differs from allowlist.'
     } elseif ($Status.savedCount -eq 0 -and $ss.noSupportedAttachment -gt 0) {
         Write-SyncLine 'Hint: sender matched but no .pdf/.docx/.doc attachment found - body-only emails are not captured (capture rule = sender + supported attachment; subject optional).'

@@ -3,6 +3,8 @@
   "officeName": "Example District Nursing — North",
   "notes": "Forkable baseline for U-26. Import via Settings → Office config. Does not include patient PHI.",
   "accInbox": {
+    "inboxPath": "",
+    "notes": "Leave inboxPath empty for default %USERPROFILE%\\ACC-Inbox. Set a writable path if IT blocks profile folders (e.g. H:\\ACC-Inbox). Also overridable via env ACC_INBOX_PATH or ACC_INBOX.",
     "senderAllowlist": [
       "Bec.Williams@acc.co.nz",
       "John.Bentley@acc.co.nz",
@@ -50,6 +52,8 @@
       "acc.govt.nz"
     ],
     "accInboxSubjectPatterns": [
+      "Claim:",
+      "ACCID:",
       "approv",
       "declin",
       "nur0[245]",

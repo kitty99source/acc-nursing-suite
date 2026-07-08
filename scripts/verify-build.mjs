@@ -86,8 +86,13 @@ if (!fs.existsSync('dist/tesseract.worker.min.js') || !fs.existsSync('dist/tesse
 }
 console.log('letter import class  :', html.includes('btn btn-outline btn-sm'));
 console.log('LETTER_IMPORT label  :', html.includes('Import ACC letter'));
+console.log('letter accept docx   :', html.includes('.docx'));
 if (!html.includes('Import ACC letter (PDF or Word)')) {
   console.warn('WARN: expected Import ACC letter (PDF or Word) label in bundle');
+}
+if (!html.includes('.docx')) {
+  console.error('FAIL: bundle missing .docx in letter import accept — file picker may block Word letters');
+  process.exitCode = 1;
 }
 const launcherRequired = [
   'bootstrap-log.ps1',
@@ -97,11 +102,16 @@ const launcherRequired = [
   'folder-watch.ps1',
   'outlook-probe.ps1',
   'outlook-sync.ps1',
+  'outlook-diagnose.ps1',
   'Start ACC Suite.cmd',
   'Start Portal Discover.cmd',
   'Start Folder Watch.cmd',
+  'Start ACC-Inbox Folder.cmd',
+  'inbox-config.ps1',
+  'open-inbox-folder.ps1',
   'Start Email Probe.cmd',
   'Start Email Sync.cmd',
+  'Start Email Diagnose.cmd',
   'Start WFH Mode.cmd',
   'wfh-mode.ps1',
   'TROUBLESHOOT.txt',

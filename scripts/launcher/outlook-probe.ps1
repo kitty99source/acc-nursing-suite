@@ -17,7 +17,9 @@ Write-BootstrapLog 'outlook-probe.ps1 started'
 $AccSenders = @(
     'Bec.Williams@acc.co.nz',
     'John.Bentley@acc.co.nz',
-    'Becky.Tunnell@acc.co.nz'
+    'Becky.Tunnell@acc.co.nz',
+    'nursing@acc.co.nz',
+    'acc.co.nz'
 )
 
 function Write-ProbeLine {
@@ -32,15 +34,6 @@ function Get-TruncatedSubject {
     $oneLine = ($Subject -replace '\s+', ' ').Trim()
     if ($oneLine.Length -le $MaxLen) { return $oneLine }
     return $oneLine.Substring(0, $MaxLen) + '...'
-}
-
-function Test-AccSender {
-    param([string]$FromAddress)
-    if ([string]::IsNullOrWhiteSpace($FromAddress)) { return $false }
-    foreach ($sender in $AccSenders) {
-        if ($FromAddress -match [regex]::Escape($sender)) { return $true }
-    }
-    return $false
 }
 
 Write-ProbeLine ''
@@ -59,25 +52,41 @@ try {
     [void]$namespace.Logon($null, $null, $false, $true)
 
     $inbox = Get-SharedInboxFolder -Namespace $namespace -SharedName $SharedMailbox
+    $resolution = Get-LastMailboxResolution
 
     Write-ProbeLine "OK - COM connected (shared inbox: $SharedMailbox)"
+    if ($resolution) {
+        Write-ProbeLine "Mailbox resolved via: $resolution"
+    }
     Write-ProbeLine "Unread count: $($inbox.UnReadItemCount)"
     Write-ProbeLine ''
 
     $items = $inbox.Items
     $items.Sort('[ReceivedTime]', $true)
+    $mailItems = $items
+    try {
+        $restricted = $items.Restrict("[MessageClass] = 'IPM.Note'")
+        if ($restricted -and $restricted.Count -gt 0) {
+            $restricted.Sort('[ReceivedTime]', $true)
+            $mailItems = $restricted
+        }
+    } catch {
+    }
 
     Write-ProbeLine 'Last 3 messages (subject only - may contain patient names):'
     $shown = 0
-    foreach ($item in $items) {
+    $total = [int]$mailItems.Count
+    for ($idx = 1; $idx -le $total; $idx++) {
         if ($shown -ge 3) { break }
+        $item = $null
         try {
+            $item = $mailItems.Item($idx)
             if ($item.Class -ne 43) { continue }
             $subject = Get-TruncatedSubject -Subject ([string]$item.Subject)
-            $from = ''
-            try { $from = [string]$item.SenderEmailAddress } catch {}
-            $accTag = if (Test-AccSender -FromAddress $from) { ' [ACC sender]' } else { '' }
+            $from = Get-SenderAddress -Item $item
+            $accTag = if (Test-AccSender -FromAddress $from -Allowlist $AccSenders) { ' [ACC sender]' } else { '' }
             Write-ProbeLine ("  {0}. {1}{2}" -f ($shown + 1), $subject, $accTag)
+            Write-ProbeLine ("      from: {0}" -f $from)
             $shown++
         } finally {
             if ($item) { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($item) }
@@ -90,12 +99,13 @@ try {
     Write-ProbeLine ''
     Write-ProbeLine 'ACC sender filter test (count only, no subjects listed):'
     $accCount = 0
-    foreach ($item in $items) {
+    for ($idx = 1; $idx -le $total; $idx++) {
+        $item = $null
         try {
+            $item = $mailItems.Item($idx)
             if ($item.Class -ne 43) { continue }
-            $from = ''
-            try { $from = [string]$item.SenderEmailAddress } catch {}
-            if (Test-AccSender -FromAddress $from) { $accCount++ }
+            $from = Get-SenderAddress -Item $item
+            if (Test-AccSender -FromAddress $from -Allowlist $AccSenders) { $accCount++ }
         } finally {
             if ($item) { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($item) }
         }
@@ -103,7 +113,7 @@ try {
     Write-ProbeLine "  Messages from ACC allowlist senders in inbox: $accCount"
     Write-ProbeLine ''
     Write-ProbeLine 'PASS - Outlook COM read works on this PC.'
-    Write-ProbeLine 'Next: engineering can wire P8-017 (save ACC attachments to ACC-Inbox).'
+    Write-ProbeLine 'Next: run Start Email Diagnose.cmd before backlog sync.'
 }
 catch {
     Write-ProbeLine ''

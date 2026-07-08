@@ -1,4 +1,4 @@
-/** ACC Inbox filter rules — narrow ACC letter emails only (P8-018 stub defaults). */
+/** ACC Inbox filter rules — narrow ACC letter emails only (P8-018). */
 
 export interface AccInboxFilterConfig {
   senderAllowlist: string[];
@@ -25,6 +25,27 @@ export const DEFAULT_ACC_INBOX_FILTERS: AccInboxFilterConfig = {
     /ACC\s+letter/i,
   ],
 };
+
+/** Build filter config from Settings strings (office-config / P8-018). */
+export function accInboxConfigFromSettings(
+  senderAllowlist: string[],
+  subjectPatternStrings: string[],
+): AccInboxFilterConfig {
+  const senders = senderAllowlist.filter((s) => s.trim().length > 0);
+  const patterns = subjectPatternStrings
+    .filter((s) => s.trim().length > 0)
+    .map((s) => {
+      try {
+        return new RegExp(s, 'i');
+      } catch {
+        return new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      }
+    });
+  return {
+    senderAllowlist: senders.length > 0 ? senders : DEFAULT_ACC_INBOX_FILTERS.senderAllowlist,
+    subjectPatterns: patterns.length > 0 ? patterns : DEFAULT_ACC_INBOX_FILTERS.subjectPatterns,
+  };
+}
 
 export function matchesAccInboxSender(sender: string, allowlist: string[]): boolean {
   const lower = sender.toLowerCase();

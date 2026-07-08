@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p tsconfig.json --noEmit && node scripts/copy-pdf-worker.mjs && vite build && node scripts/copy-launcher.mjs",
-    "postinstall": "node scripts/copy-tessdata.mjs && node scripts/copy-pdf-worker.mjs",
+    "build": "tsc -p tsconfig.json --noEmit && node scripts/copy-pdf-worker.mjs && node scripts/copy-tesseract-assets.mjs && vite build && node scripts/copy-launcher.mjs",
+    "postinstall": "node scripts/copy-tessdata.mjs && node scripts/copy-pdf-worker.mjs && node scripts/copy-tesseract-assets.mjs",
     "preview": "vite preview",
     "launch": "node scripts/launch-built.mjs",
     "test": "vitest run",

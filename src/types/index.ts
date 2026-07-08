@@ -214,6 +214,10 @@ export interface Settings {
   userDisplayName: string;
   /** Hold folder watch / inbox automation (P8-005). */
   automationPaused: boolean;
+  /** ACC Inbox sender allowlist fragments (P8-018). */
+  accInboxSenderAllowlist: string[];
+  /** ACC Inbox subject regex patterns as strings (P8-018). */
+  accInboxSubjectPatterns: string[];
   /** Dismiss dashboard letter-import discoverability card (P5-014). */
   dismissLetterDiscoverCard: boolean;
   // Defaults to every code; lets an office hide the ones they never use.
@@ -271,6 +275,22 @@ export const DEFAULT_SETTINGS: Settings = {
   complianceRulesVersion: '2025-03',
   userDisplayName: '',
   automationPaused: false,
+  accInboxSenderAllowlist: [
+    'Bec.Williams@acc.co.nz',
+    'John.Bentley@acc.co.nz',
+    'Becky.Tunnell@acc.co.nz',
+    'nursing@acc.co.nz',
+    'acc.co.nz',
+    'acc.govt.nz',
+  ],
+  accInboxSubjectPatterns: [
+    'approv',
+    'declin',
+    'nur0[245]',
+    'purchase order',
+    'PO\\s*number',
+    'ACC\\s+letter',
+  ],
   dismissLetterDiscoverCard: false,
   enabledServiceCodes: [...ALL_SERVICE_CODES],
   serviceRates: { ...DEFAULT_RATES },

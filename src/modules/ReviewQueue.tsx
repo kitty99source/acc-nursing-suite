@@ -25,7 +25,11 @@ import {
 } from '../lib/bulkImport';
 import { appendAudit, recordHrqResolution } from '../lib/auditLog';
 import { LETTER_IMPORT_ACCEPT } from '../components/LetterImportButton';
-import { fetchInboxFileForStaging, fetchLocalStagingSidecars } from '../lib/localAccBridge';
+import {
+  fetchInboxFileForStaging,
+  probeLocalStagingBridge,
+  type StagingBridgeStatus,
+} from '../lib/localAccBridge';
 import { enqueueStagingPreparse } from '../lib/stagingPreparse';
 
 const BULK_LETTER_TYPES: ReadonlySet<StagingItem['type']> = new Set([
@@ -97,6 +101,7 @@ export function ReviewQueue() {
   const [items, setItems] = useState<StagingItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [autoImportNote, setAutoImportNote] = useState<string | null>(null);
+  const [bridgeStatus, setBridgeStatus] = useState<StagingBridgeStatus | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirm, confirmDialog] = useConfirm();
   const sidecarInput = useRef<HTMLInputElement>(null);
@@ -114,9 +119,10 @@ export function ReviewQueue() {
   }, []);
 
   const autoImportFromLauncher = useCallback(async () => {
-    const sidecars = await fetchLocalStagingSidecars();
-    if (!sidecars.length) return;
-    const fresh = sidecars.filter((sc) => {
+    const probe = await probeLocalStagingBridge();
+    setBridgeStatus(probe.status);
+    if (!probe.sidecars.length) return;
+    const fresh = probe.sidecars.filter((sc) => {
       if (seenSidecarIds.current.has(sc.item.id)) return false;
       seenSidecarIds.current.add(sc.item.id);
       return true;
@@ -129,7 +135,7 @@ export function ReviewQueue() {
         entityType: 'staging',
         summary: `Auto-imported ${added} folder-watch sidecar(s) via /_acc/staging`,
       });
-      setAutoImportNote(`Auto-imported ${added} letter(s) from ACC-Inbox staging.`);
+      setAutoImportNote(`Auto-imported ${added} letter(s) from ACC-Inbox\\.staging.`);
       await refresh();
     }
   }, [refresh]);
@@ -419,8 +425,9 @@ export function ReviewQueue() {
     const letterItems = bulkSelectableItems;
     if (!letterItems.length) {
       await confirm({
-        title: 'Select letters first',
-        message: 'Tick one or more staged letters, then run Bulk import.',
+        title: 'Select queue letters first',
+        message:
+          'Tick one or more rows in this Review Queue (IndexedDB staging), then run Bulk import. You are not selecting files from ACC-Inbox\\processed/ — that folder is only searched later for matching letter bytes after you pick ACC-Inbox.',
         confirmLabel: 'OK',
       });
       return;
@@ -447,6 +454,7 @@ export function ReviewQueue() {
     setBusy(true);
     try {
       // Index files in the chosen folder (root + one level deep, e.g. processed/).
+      // Pick ACC-Inbox (the parent), not processed/ alone — otherwise root-only names miss.
       const fileIndex = new Map<string, FileSystemFileHandle>();
       const indexDir = async (handle: FileSystemDirectoryHandle, depth: number): Promise<void> => {
         for await (const entry of handle.values()) {
@@ -506,7 +514,7 @@ export function ReviewQueue() {
     <div>
       <SectionTitle
         title="Human Review Queue"
-        subtitle="Primary inbox for ACC letters — folder-watch stages them automatically via the local suite server. Sign off before they touch live patient data. Oldest items first."
+        subtitle="Primary inbox for ACC letters — folder-watch writes JSON sidecars to ACC-Inbox\.staging; launch.ps1 serves them at /_acc/staging so they land here automatically. Sign off before they touch live patient data. Oldest items first."
         actions={
           sorted.length > 0 ? (
             <div className="flex items-center gap-2 flex-wrap">
@@ -518,6 +526,33 @@ export function ReviewQueue() {
           ) : undefined
         }
       />
+
+      {bridgeStatus === 'unavailable' && (
+        <div
+          className="card mb-4 p-3 text-sm"
+          style={{ borderColor: 'var(--warn-fg)', background: 'var(--surface-2)' }}
+          role="status"
+        >
+          <strong>Local staging bridge is down.</strong> This page cannot auto-import folder-watch
+          letters because <span className="font-mono">/_acc/staging</span> is missing (typical when
+          the suite is opened via <span className="font-mono">npm run dev</span>, file://, or a host
+          without <span className="font-mono">launch.ps1</span>). Use{' '}
+          <strong>Start ACC Suite.cmd</strong> so the launcher serves the app, or use the Import
+          buttons below to pick <span className="font-mono">ACC-Inbox\.staging</span> manually.
+          AccInbox &quot;Advanced: stage&quot; also writes directly into this queue (IndexedDB) and
+          does not need the bridge.
+        </div>
+      )}
+
+      {bridgeStatus === 'empty' && !sorted.length && (
+        <div className="card mb-4 p-3 text-sm" style={{ background: 'var(--surface-2)' }} role="status">
+          Launcher bridge is up, but <span className="font-mono">ACC-Inbox\.staging</span> has no
+          sidecar JSON yet. Run <span className="font-mono">Start Folder Watch.cmd</span> (or WFH
+          Mode) so new letters get staged. Files already moved to{' '}
+          <span className="font-mono">processed/</span> are not queue rows — only{' '}
+          <span className="font-mono">.staging\*.json</span> sidecars are.
+        </div>
+      )}
 
       {autoImportNote && (
         <p className="text-sm mb-3" style={{ color: 'var(--good-fg, var(--muted))' }}>
@@ -558,7 +593,7 @@ export function ReviewQueue() {
           className="btn btn-primary"
           disabled={busy || !bulkSelectableItems.length}
           onClick={() => void bulkImportSelected()}
-          title="Pick the ACC-Inbox folder — clean, matched, high-confidence letters file automatically; anything needing a fix stays in the queue"
+          title="Select queue rows first, then pick ACC-Inbox (root). Bulk matches letter files by name in the root and one level deep (e.g. processed/) — it does not select files from processed/ itself."
         >
           Bulk import selected ({bulkSelectableItems.length})
         </button>
@@ -588,7 +623,11 @@ export function ReviewQueue() {
       {!sorted.length ? (
         <EmptyState
           title="No pending reviews"
-          message="1. Run Start WFH Mode.cmd (or Start Folder Watch.cmd).  2. Letters stage into ACC-Inbox\.staging and appear here automatically when the suite is served by launch.ps1.  3. If nothing appears, use Import ACC-Inbox .staging folder as a fallback."
+          message={
+            bridgeStatus === 'unavailable'
+              ? 'Auto-import needs launch.ps1 (/_acc/staging). Until then: Import ACC-Inbox .staging folder, or use AccInbox → Advanced: stage (writes IndexedDB directly). processed/ PDFs alone never appear here.'
+              : '1. Run Start WFH Mode.cmd (or Start Folder Watch.cmd). 2. Sidecars land in ACC-Inbox\\.staging and auto-import here when launch.ps1 is serving. 3. If the queue stays empty, use Import ACC-Inbox .staging folder. You select queue rows here — not files in processed/.'
+          }
         />
       ) : (
         <>
@@ -600,9 +639,9 @@ export function ReviewQueue() {
             type="checkbox"
             checked={allSelected}
             onChange={toggleSelectAll}
-            aria-label="Select all pending items"
+            aria-label="Select all pending queue items"
           />
-          Select all ({sorted.length})
+          Select all queue rows ({sorted.length}) — not files in processed/
           {batchReadyItems.length > 0 && (
             <button
               type="button"

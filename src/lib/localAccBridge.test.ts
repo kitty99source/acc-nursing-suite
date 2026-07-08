@@ -1,5 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fetchLocalStagingSidecars, fetchInboxFileByHash } from './localAccBridge';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import {
+  fetchLocalStagingSidecars,
+  fetchInboxFileByHash,
+  probeLocalStagingBridge,
+} from './localAccBridge';
 
 describe('localAccBridge', () => {
   afterEach(() => {
@@ -35,11 +39,27 @@ describe('localAccBridge', () => {
     expect(list).toHaveLength(1);
     expect(list[0].item.id).toBe('a1');
     expect(list[0].item.sourceHash).toBe('a'.repeat(64));
+    const probe = await probeLocalStagingBridge();
+    expect(probe.status).toBe('ok');
+    expect(probe.sidecars).toHaveLength(1);
   });
 
   it('returns [] when staging endpoint is unavailable', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false })));
     expect(await fetchLocalStagingSidecars()).toEqual([]);
+    expect(await probeLocalStagingBridge()).toEqual({ status: 'unavailable', sidecars: [] });
+  });
+
+  it('reports empty when launch.ps1 returns []', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => [] })));
+    expect(await probeLocalStagingBridge()).toEqual({ status: 'empty', sidecars: [] });
+  });
+
+  it('reports unavailable on network error', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      throw new Error('Failed to fetch');
+    }));
+    expect(await probeLocalStagingBridge()).toEqual({ status: 'unavailable', sidecars: [] });
   });
 
   it('fetches inbox file bytes by hash', async () => {

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from './state/store';
 import { applyTheme } from './lib/theme';
-import { loadStagingItems } from './lib/staging';
+import { importStagingSidecars, loadStagingItems } from './lib/staging';
+import { probeLocalStagingBridge } from './lib/localAccBridge';
+import { appendAudit } from './lib/auditLog';
 import { Sidebar, type ModuleId } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { AutosaveErrorBanner } from './components/AutosaveErrorBanner';
@@ -209,10 +211,46 @@ export default function App() {
     });
   }, [ready, locked, recovery, settings.backupReminderDays, status.lastExportAt]);
 
-  // HRQ pending count for sidebar badge (P8-002).
+  // HRQ pending count for sidebar badge (P8-002) + background sidecar auto-import.
+  // Auto-import must not depend on Review Queue being open — otherwise AccInbox feels required
+  // whenever the user never visits Review while folder-watch is writing .staging sidecars.
   useEffect(() => {
     if (!ready || locked || recovery) return;
-    void loadStagingItems().then((items) => setReviewBadge(items.length));
+    const seen = new Set<string>();
+    let cancelled = false;
+
+    const pull = async () => {
+      const pending = await loadStagingItems();
+      if (!cancelled) setReviewBadge(pending.length);
+
+      const probe = await probeLocalStagingBridge();
+      if (cancelled || !probe.sidecars.length) return;
+      const fresh = probe.sidecars.filter((sc) => {
+        if (seen.has(sc.item.id)) return false;
+        seen.add(sc.item.id);
+        return true;
+      });
+      if (!fresh.length) return;
+      const added = await importStagingSidecars(fresh);
+      if (added > 0) {
+        await appendAudit({
+          action: 'staging-import',
+          entityType: 'staging',
+          summary: `Auto-imported ${added} folder-watch sidecar(s) via /_acc/staging (app background)`,
+        });
+        const next = await loadStagingItems();
+        if (!cancelled) setReviewBadge(next.length);
+      }
+    };
+
+    void pull();
+    const id = window.setInterval(() => {
+      void pull();
+    }, 30_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
   }, [ready, locked, recovery, module]);
 
   // Sidebar attention badges — cheap counters + cached compliance (P1-004).

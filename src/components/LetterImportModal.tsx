@@ -365,10 +365,52 @@ function LetterImportLoading({
       </div>
       <div>
         <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--muted)' }}>Extracted text preview</p>
-        <div className="rounded-lg p-3 text-xs leading-relaxed max-h-44 overflow-y-auto whitespace-pre-wrap break-words font-mono" style={{ background: 'var(--surface-2)', color: preview ? 'var(--fg)' : 'var(--muted)', border: '1px solid var(--border)' }}>
+        <div className="rounded-lg p-3 text-xs leading-relaxed max-h-44 overflow-y-auto whitespace-pre-wrap break-words font-mono" style={{ background: 'var(--surface-2)', color: preview ? 'var(--text)' : 'var(--muted)', border: '1px solid var(--border)' }}>
           {preview || 'Text will appear here as each page is read…'}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Plain-language destination summary — exactly what "Save everything" will do. */
+function SaveDestinationSummary({
+  kind,
+  fileName,
+  patientLabel,
+  claimLabel,
+  rows,
+}: {
+  kind: 'approval' | 'decline';
+  fileName: string;
+  patientLabel: string;
+  claimLabel: string;
+  rows: ParsedServiceRow[];
+}) {
+  const currentRow = rows.find((r) => r.recordStatus === 'current');
+  return (
+    <div
+      className="mt-4 rounded-lg p-3 text-sm"
+      style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent)' }}
+    >
+      <p className="font-semibold mb-1.5" style={{ color: 'var(--accent)' }}>
+        Save everything will:
+      </p>
+      <ul className="space-y-1 text-xs" style={{ color: 'var(--text)' }}>
+        <li>• Patient: {patientLabel}</li>
+        <li>• Claim: {claimLabel}</li>
+        {kind === 'approval' ? (
+          <li>
+            • File {rows.length} NS04/NS05 period{rows.length === 1 ? '' : 's'}
+            {currentRow
+              ? ` — ${currentRow.serviceCode} (${formatDateNZ(currentRow.approvalStartDate)} → ${formatDateNZ(currentRow.approvalEndDate)}) marked current for billing`
+              : ' — none marked current for billing'}
+          </li>
+        ) : (
+          <li>• Create a decline record for follow-up in the Decline Tracker</li>
+        )}
+        <li>• Attach the letter file ({fileName}) to the claim's documents</li>
+      </ul>
     </div>
   );
 }
@@ -959,6 +1001,28 @@ export function LetterImportModal() {
           </div>
         </div>
       )}
+
+      {(() => {
+        const linkedPatient = data.patients.find((p) => p.id === selectedPatientId);
+        const linkedClaim = data.claims.find((c) => c.id === selectedClaimId);
+        return (
+          <SaveDestinationSummary
+            kind={parsed.kind}
+            fileName={letterImport.file.name}
+            patientLabel={
+              linkedPatient
+                ? `update existing — ${linkedPatient.name} (${linkedPatient.nhi || 'no NHI'})`
+                : `create new — ${patientName || 'name from form above'}`
+            }
+            claimLabel={
+              linkedClaim
+                ? `update existing — ${linkedClaim.claimNumber}`
+                : `create new — ${claimNumber || 'number from form above'}`
+            }
+            rows={rows}
+          />
+        );
+      })()}
       {confirmDialog}
     </Modal>
   );

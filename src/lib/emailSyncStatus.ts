@@ -1,5 +1,7 @@
 /** Shape of email-sync-status.json written by outlook-sync.ps1 on work laptop. */
 
+import { parseSubjectMetadata } from './accInboxFilters';
+
 export const EMAIL_SYNC_STATUS_VERSION = 1;
 
 export const EMAIL_SYNC_STATUS_FILENAME = 'email-sync-status.json';
@@ -47,6 +49,23 @@ export interface EmailSyncStatus {
 }
 
 const VALID_OUTCOMES = new Set<EmailSyncStatus['outcome']>(['running', 'ok', 'fail', 'paused']);
+
+function parseSavedFiles(raw: unknown): EmailSyncSavedFile[] {
+  if (!Array.isArray(raw)) return [];
+  const files: EmailSyncSavedFile[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const f = entry as Record<string, unknown>;
+    if (typeof f.fileName !== 'string' || f.fileName.length === 0) continue;
+    files.push({
+      fileName: f.fileName,
+      subject: typeof f.subject === 'string' ? f.subject : '',
+      sender: typeof f.sender === 'string' ? f.sender : '',
+      savedAt: typeof f.savedAt === 'string' ? f.savedAt : '',
+    });
+  }
+  return files;
+}
 
 function parseScanStats(raw: unknown): EmailSyncScanStats | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
@@ -131,6 +150,7 @@ export interface InboxEmptyStateCopy {
 export function describeInboxEmptyState(
   status: EmailSyncStatus | null,
   loading: boolean,
+  hiddenRowCount = 0,
 ): InboxEmptyStateCopy {
   if (loading) {
     return {
@@ -179,6 +199,13 @@ export function describeInboxEmptyState(
       message: `Scan detail: ${scan}. Mailbox: ${mailbox}. Check ACC-Inbox folder for PDF/DOCX files; widen sender/subject filters in office-config.json if matches are zero.`,
     };
   }
+  if (status.savedFiles.length > 0 && hiddenRowCount > 0) {
+    return {
+      title: `${hiddenRowCount} synced letter(s) hidden`,
+      message:
+        'Email sync saved attachments, but the ACC Inbox sender/subject filter rules (or Ignore) hid them all. Widen accInboxSenderAllowlist / accInboxSubjectPatterns via Settings office config, or open the ACC-Inbox folder directly.',
+    };
+  }
   return {
     title: 'No ACC letters in inbox',
     message: 'Filtered ACC correspondence will appear here after email sync saves attachments.',
@@ -198,13 +225,15 @@ export function inboxRowsFromSyncStatus(
 ): import('./accInboxFilters').AccInboxRow[] {
   return status.savedFiles.map((f, i) => {
     const ext = f.fileName.includes('.') ? f.fileName.slice(f.fileName.lastIndexOf('.')).toLowerCase() : '';
+    const savedAtMs = new Date(f.savedAt).getTime();
     return {
       id: `sync-${i}-${f.fileName}`,
       sender: f.sender,
       subject: f.subject,
-      receivedAt: new Date(f.savedAt).getTime(),
+      receivedAt: Number.isNaN(savedAtMs) ? 0 : savedAtMs,
       attachmentName: f.fileName,
       attachmentExt: ext,
+      ...parseSubjectMetadata(f.subject),
     };
   });
 }
@@ -257,7 +286,7 @@ export function parseEmailSyncStatus(raw: unknown): EmailSyncStatus | null {
     savedCount: typeof o.savedCount === 'number' ? o.savedCount : 0,
     skippedCount: typeof o.skippedCount === 'number' ? o.skippedCount : 0,
     errorCount: typeof o.errorCount === 'number' ? o.errorCount : 0,
-    savedFiles: Array.isArray(o.savedFiles) ? (o.savedFiles as EmailSyncSavedFile[]) : [],
+    savedFiles: parseSavedFiles(o.savedFiles),
     errors: Array.isArray(o.errors) ? (o.errors as string[]) : [],
     inboxPath: typeof o.inboxPath === 'string' ? o.inboxPath : '',
     sharedMailbox: typeof o.sharedMailbox === 'string' ? o.sharedMailbox : '',

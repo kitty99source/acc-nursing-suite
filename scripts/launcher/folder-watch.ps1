@@ -5,6 +5,7 @@
 $bootstrapRoot = $PSScriptRoot
 if ([string]::IsNullOrEmpty($bootstrapRoot)) { $bootstrapRoot = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }
 . (Join-Path $bootstrapRoot 'bootstrap-log.ps1') -LogName 'folder-watch'
+. (Join-Path $bootstrapRoot 'inbox-config.ps1')
 Write-BootstrapLog 'folder-watch.ps1 started'
 
 # ACC Folder Watch - work laptop (PowerShell only, no Node.js)
@@ -43,28 +44,10 @@ try {
     }
 } catch {}
 
-function Resolve-InboxPath {
-    param([string]$Override)
-    if (-not [string]::IsNullOrWhiteSpace($Override)) {
-        return [System.IO.Path]::GetFullPath($Override)
-    }
-    if (-not [string]::IsNullOrWhiteSpace($env:ACC_INBOX)) {
-        return [System.IO.Path]::GetFullPath($env:ACC_INBOX)
-    }
-    return Join-Path $env:USERPROFILE 'ACC-Inbox'
-}
-
 function Test-AutomationPaused {
     param([string]$Inbox)
     if ($env:ACC_AUTOMATION_PAUSED -eq '1') { return $true }
     return Test-Path -LiteralPath (Join-Path $Inbox '.automation-paused')
-}
-
-function Initialize-InboxDirs {
-    param([string]$Inbox)
-    [void][System.IO.Directory]::CreateDirectory($Inbox)
-    [void][System.IO.Directory]::CreateDirectory((Join-Path $Inbox 'processed'))
-    [void][System.IO.Directory]::CreateDirectory((Join-Path $Inbox '.staging'))
 }
 
 function Get-Sha256Hex {
@@ -181,7 +164,7 @@ function Invoke-ScanInbox {
 
 try {
     $ErrorActionPreference = 'Stop'
-    $script:InboxPath = Resolve-InboxPath -Override $InboxDir
+    $script:InboxPath = Resolve-InboxPath -Override $InboxDir -ScriptRoot $bootstrapRoot
     Initialize-InboxDirs -Inbox $script:InboxPath
 
     if (Test-AutomationPaused -Inbox $script:InboxPath) {

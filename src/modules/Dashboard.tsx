@@ -21,6 +21,9 @@ import { getComplianceFindings } from '../lib/complianceCache';
 import { buildDataIndexes } from '../lib/indexes';
 import { formatCurrency } from '../lib/serviceCodes';
 import { formatDate } from '../lib/format';
+import { loadStagingItems } from '../lib/staging';
+import { fetchLocalEmailSyncStatus, formatSyncOutcome, type EmailSyncStatus } from '../lib/emailSyncStatus';
+import { LetterImportButton, LETTER_IMPORT_FULL_TOOLTIP } from '../components/LetterImportButton';
 
 function useThemeColors() {
   const settings = useStore((s) => s.data.settings);
@@ -70,6 +73,23 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
   const compliance = useMemo(() => complianceSummary(findings), [findings]);
   const topFindings = useMemo(() => findings.slice(0, 6), [findings]);
 
+  // Daily triage signals: HRQ pending count + email-sync freshness (read-only,
+  // via existing exports — no live-data writes from the dashboard).
+  const [reviewPending, setReviewPending] = useState<number | null>(null);
+  const [syncStatus, setSyncStatus] = useState<EmailSyncStatus | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void loadStagingItems().then((items) => {
+      if (!cancelled) setReviewPending(items.length);
+    });
+    void fetchLocalEmailSyncStatus().then((status) => {
+      if (!cancelled) setSyncStatus(status);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const isEmpty =
     data.patients.length === 0 &&
     data.invoiceLines.length === 0 &&
@@ -84,11 +104,23 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
         <EmptyState
           icon={<IconDashboard width={32} height={32} />}
           title="Nothing to show yet"
-          message="Add patients, approvals and invoice lines and this dashboard will fill with your action queue and analytics."
+          message="Import an ACC letter to file your first patient, claim and approvals in one step — or add a patient manually."
           action={
-            <button className="btn btn-primary" onClick={() => onNavigate('patients')}>
-              Add your first patient
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <LetterImportButton
+                className="btn btn-primary"
+                opts={{ entryPoint: 'global' }}
+                title={LETTER_IMPORT_FULL_TOOLTIP}
+              />
+              <button className="btn" onClick={() => onNavigate('patients')}>
+                Add a patient manually
+              </button>
+              {reviewPending ? (
+                <button className="btn" onClick={() => onNavigate('review')}>
+                  Review Queue ({reviewPending} pending)
+                </button>
+              ) : null}
+            </div>
           }
         />
       </div>
@@ -138,6 +170,33 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
         </Card>
       )}
 
+      {/* Today's work — the daily letter-triage loop, before analytics. */}
+      <Card className="mb-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex-1 min-w-[14rem]">
+            <h3 className="font-semibold text-sm">Today's work</h3>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
+              {reviewPending
+                ? `${reviewPending} staged letter${reviewPending === 1 ? '' : 's'} waiting for your sign-off in the Review Queue.`
+                : 'No staged letters waiting for sign-off.'}
+              {syncStatus ? ` Email sync: ${formatSyncOutcome(syncStatus)}` : ''}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {reviewPending ? (
+              <button className="btn btn-primary btn-sm" onClick={() => onNavigate('review')}>
+                Open Review Queue ({reviewPending})
+              </button>
+            ) : (
+              <button className="btn btn-sm" onClick={() => onNavigate('review')}>
+                Open Review Queue
+              </button>
+            )}
+            <LetterImportButton opts={{ entryPoint: 'global' }} title={LETTER_IMPORT_FULL_TOOLTIP} />
+          </div>
+        </div>
+      </Card>
+
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
         <button className="clickable-card" onClick={() => onNavigate('compliance')}>
           <StatCard
@@ -147,15 +206,23 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
             hint={`${compliance.warnings} warning(s) · ${compliance.predictive} heads-up`}
           />
         </button>
-        <StatCard
-          label="Approvals expiring ≤30d"
-          value={m.expiringApprovals.filter((x) => x.computed.status === 'Expiring Soon (<30 days)').length}
-          tone="salmon"
-          hint={`${m.expiringApprovals.filter((x) => x.computed.status === 'EXPIRED').length} already expired`}
-        />
-        <StatCard label="Coverage gaps" value={m.coverageGaps} tone={m.coverageGaps ? 'danger' : 'good'} hint="Active NS04/NS05 with no current PO" />
-        <StatCard label="Outstanding $" value={formatCurrency(m.outstandingTotal)} tone="warn" hint="Invoiced, not yet paid" />
-        <StatCard label="Complex reviews due" value={m.complexDue} tone={m.complexDue ? 'salmon' : 'good'} />
+        <button className="clickable-card" onClick={() => onNavigate('approvals')}>
+          <StatCard
+            label="Approvals expiring ≤30d"
+            value={m.expiringApprovals.filter((x) => x.computed.status === 'Expiring Soon (<30 days)').length}
+            tone="salmon"
+            hint={`${m.expiringApprovals.filter((x) => x.computed.status === 'EXPIRED').length} already expired`}
+          />
+        </button>
+        <button className="clickable-card" onClick={() => onNavigate('approvals')}>
+          <StatCard label="Coverage gaps" value={m.coverageGaps} tone={m.coverageGaps ? 'danger' : 'good'} hint="Active NS04/NS05 with no current PO" />
+        </button>
+        <button className="clickable-card" onClick={() => onNavigate('billing')}>
+          <StatCard label="Outstanding $" value={formatCurrency(m.outstandingTotal)} tone="warn" hint="Invoiced, not yet paid" />
+        </button>
+        <button className="clickable-card" onClick={() => onNavigate('complex')}>
+          <StatCard label="Complex reviews due" value={m.complexDue} tone={m.complexDue ? 'salmon' : 'good'} />
+        </button>
       </div>
 
       {/* Action queue */}
@@ -167,7 +234,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
         </div>
         {displayActions.length === 0 ? (
           <p className="text-sm" style={{ color: 'var(--muted)' }}>
-            Nothing needs attention right now. 🎉
+            Nothing needs attention right now.
           </p>
         ) : (
           <>
@@ -260,7 +327,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
         </div>
         {topFindings.length === 0 ? (
           <p className="text-sm" style={{ color: 'var(--muted)' }}>
-            No contract-compliance issues detected. 🎉
+            No contract-compliance issues detected.
           </p>
         ) : (
           <div className="space-y-1.5">

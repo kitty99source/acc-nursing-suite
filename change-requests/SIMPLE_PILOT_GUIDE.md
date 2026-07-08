@@ -52,7 +52,7 @@ Plain English. Tiny steps. For your **work laptop** (Windows).
 | App (after copy)       | `I:\ACC-Suite\` (or `%USERPROFILE%\Desktop\ACC-Suite\` for solo test) |
 | Launcher logs          | `%USERPROFILE%\ACC-Suite\logs\`                                       |
 | Portal discover output | `%USERPROFILE%\ACC-Suite\portal-map.json`                             |
-| Folder watch inbox     | `%USERPROFILE%\ACC-Inbox\` (PDF and Word letters)                     |
+| Folder watch inbox     | `%USERPROFILE%\ACC-Inbox\` (PDF and Word `.docx` letters) — open via `Start ACC-Inbox Folder.cmd` |
 | Folder watch sidecars  | `%USERPROFILE%\ACC-Inbox\.staging\*.json`                             |
 | Your data file         | Wherever you save it — e.g. `I:\ACC-Suite\acc-nursing-data.accdata`   |
 
@@ -446,6 +446,66 @@ Steps if needed:
 
 
 
+---
+
+## Two ways to get ACC letters into the app (read this first)
+
+There are **two different flows**. Mixing them up is the usual reason file pickers seem to "block" PDF or Word.
+
+### Flow 1 — Outlook → ACC-Inbox folder (automation path)
+
+Use this when the letter arrives as an **email attachment** in Outlook.
+
+1. Open the ACC email in **Outlook desktop** (not web, not Citrix).
+2. **Right-click the attachment** (e.g. `John-Bentley-approval.docx`) → **Save As…**
+3. Save into your **ACC-Inbox folder** — not into the app.
+   - Default: `C:\Users\YourName\ACC-Inbox\`
+   - Quick open: double-click **`Start ACC-Inbox Folder.cmd`** in your `dist\` folder (creates the folder if missing).
+4. With **`Start Folder Watch.cmd`** running, the file is picked up automatically and a `.staging\*.json` sidecar is written.
+5. In the app: **Review Queue** → **Import ACC-Inbox .staging folder** → pick the **`.staging` folder** (JSON sidecars only — **not** the PDF/DOCX here).
+6. Click **Review & import** on the staged item → **now** pick the letter file (PDF or `.docx`) from `ACC-Inbox\processed\`.
+
+**Do not** use the app's import buttons to "submit" straight from Outlook — save the attachment to disk first.
+
+### Flow 2 — Direct import in the app (no folder watch)
+
+Use this when you already have the letter file on disk (USB, Downloads, `ACC-Inbox\processed\`, etc.).
+
+1. Go to **Approvals**, **Declines**, or **Patients**.
+2. Click **Import ACC letter (PDF or Word)**.
+3. In the file picker, choose a **`.pdf` or `.docx`** file.
+4. Confirm fields → **Save**.
+
+**Supported:** `.pdf` and `.docx` only. Legacy `.doc` (old Word) is **not** supported — in Word use **Save As → Word Document (.docx)** first.
+
+### Example — John Bentley approval `.docx`
+
+| Step | Action |
+| ---- | ------ |
+| 1 | Email from `John.Bentley@acc.co.nz` arrives in **ACCDistrictNursing** mailbox |
+| 2 | Right-click attachment → **Save As** → `C:\Users\YourName\ACC-Inbox\approval.docx` |
+| 3 | Folder watch window shows `[staged] approval.docx -> .staging\....json` |
+| 4 | App → **Review Queue** → **Import ACC-Inbox .staging folder** → select `ACC-Inbox\.staging` |
+| 5 | **Review & import** → pick `ACC-Inbox\processed\approval.docx` → confirm → **Save** |
+
+Or skip steps 3–5: **Approvals** → **Import ACC letter (PDF or Word)** → pick the `.docx` directly.
+
+### If IT blocks writing to your profile folder
+
+Set a writable path in `%USERPROFILE%\ACC-Suite\office-config.json`:
+
+```json
+"accInbox": {
+  "inboxPath": "H:\\ACC-Inbox"
+}
+```
+
+Or set env **`ACC_INBOX_PATH`** (or **`ACC_INBOX`**) before running Folder Watch / Email Sync. All three launchers use the same resolution order.
+
+**Old build warning:** If buttons still say "PDF only" or the picker hides `.docx`, replace `dist\` with a fresh zip after `npm run build` on the dev machine (see Phase I).
+
+---
+
 ## Phase G — Folder watch automation (work laptop)
 
 **Time: ~15 minutes**
@@ -456,6 +516,7 @@ All patient data stays on the work laptop — do **not** run folder watch on the
 2. Unzip `dist/` to your test folder (e.g. Desktop `ACC-Suite\`).
 3. Confirm these files exist:
    - `Start Folder Watch.cmd`
+   - `Start ACC-Inbox Folder.cmd`
    - `folder-watch.ps1`
 4. Double-click **`Start Folder Watch.cmd`**.
 5. A black window opens and stays open — it says it is watching `%USERPROFILE%\ACC-Inbox`.

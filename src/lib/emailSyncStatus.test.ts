@@ -146,6 +146,55 @@ describe('emailSyncStatus', () => {
     expect(rows[0].attachmentName).toBe('approval.pdf');
   });
 
+  it('real synced rows carry Claim/ACCID metadata and pass default filters', async () => {
+    const [{ inboxRowsFromSyncStatus }, { filterAccInboxRows, DEFAULT_ACC_INBOX_FILTERS }] =
+      await Promise.all([import('./emailSyncStatus'), import('./accInboxFilters')]);
+    const rows = inboxRowsFromSyncStatus({
+      version: 1,
+      lastRunAt: '2026-07-08T10:00:00.000Z',
+      outcome: 'ok',
+      savedCount: 1,
+      skippedCount: 0,
+      errorCount: 0,
+      savedFiles: [
+        {
+          fileName: 'Mr-Gilbert-Gandor-approval.pdf',
+          subject: 'Mr Gilbert Gandor - Claim:10000003194 ACCID:VEND-K96655',
+          sender: 'John.Bentley@acc.co.nz',
+          savedAt: '2026-07-08T10:00:00.000Z',
+        },
+      ],
+      errors: [],
+      inboxPath: '',
+      sharedMailbox: 'ACCDistrictNursing',
+    });
+    expect(rows[0].claimNumber).toBe('10000003194');
+    expect(rows[0].accId).toBe('VEND-K96655');
+    // The real row must survive default sender/subject filtering (rendered, not filtered out).
+    expect(filterAccInboxRows(rows, DEFAULT_ACC_INBOX_FILTERS)).toHaveLength(1);
+  });
+
+  it('drops malformed savedFiles entries instead of crashing the inbox', () => {
+    const parsed = parseEmailSyncStatus({
+      version: 1,
+      lastRunAt: '2026-07-08T10:00:00.000Z',
+      outcome: 'ok',
+      savedCount: 2,
+      skippedCount: 0,
+      errorCount: 0,
+      savedFiles: [
+        null,
+        { subject: 'missing fileName' },
+        { fileName: 'ok.pdf' },
+      ],
+      errors: [],
+      inboxPath: '',
+      sharedMailbox: '',
+    });
+    expect(parsed?.savedFiles).toHaveLength(1);
+    expect(parsed?.savedFiles[0]).toEqual({ fileName: 'ok.pdf', subject: '', sender: '', savedAt: '' });
+  });
+
   it('infers minimal status from email-sync-state.json', () => {
     const parsed = parseEmailSyncStateFallback({
       version: 1,
@@ -182,5 +231,26 @@ describe('emailSyncStatus', () => {
     })!;
     expect(describeInboxEmptyState(zeroSave, false).title).toContain('0 letters saved');
     expect(describeInboxEmptyState(zeroSave, false).message).toContain('50 scanned');
+  });
+
+  it('describes synced letters hidden by filters', () => {
+    const status = parseEmailSyncStatus({
+      version: 1,
+      lastRunAt: '2026-07-08T10:00:00.000Z',
+      outcome: 'ok',
+      savedCount: 2,
+      skippedCount: 0,
+      errorCount: 0,
+      savedFiles: [
+        { fileName: 'a.pdf', subject: 'x', sender: 'x@other.nz', savedAt: '2026-07-08T10:00:00.000Z' },
+        { fileName: 'b.pdf', subject: 'y', sender: 'y@other.nz', savedAt: '2026-07-08T10:00:00.000Z' },
+      ],
+      errors: [],
+      inboxPath: '',
+      sharedMailbox: '',
+    })!;
+    const copy = describeInboxEmptyState(status, false, 2);
+    expect(copy.title).toContain('2 synced letter(s) hidden');
+    expect(copy.message).toContain('filter');
   });
 });

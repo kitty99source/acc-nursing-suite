@@ -47,7 +47,7 @@ npm run wfh:folder-watch
 node scripts/wfh/folder-watch.mjs "C:\Users\You\ACC-Inbox"
 ```
 
-Word (`.docx`) support in folder watch is planned for P8-020 — PDF only today.
+Word (`.docx`) support is included — same as PowerShell folder-watch on Windows.
 
 ---
 

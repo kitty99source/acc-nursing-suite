@@ -14,6 +14,7 @@ import type {
   FieldConfidence,
 } from '../lib/letterImport';
 import { prefillFromParsed } from '../lib/letterImport';
+import { formatDateNZ } from '../lib/format';
 
 function issueForField(issues: LetterIssue[], field: LetterFormField): LetterIssue | undefined {
   return issues.find((i) => i.field === field);
@@ -942,7 +943,7 @@ export function LetterImportModal() {
                   {row.recordStatus === 'current' ? 'Current' : 'Historical'}
                 </Badge>
                 <span className="font-medium">{row.serviceCode}</span>
-                <span>{row.approvalStartDate} → {row.approvalEndDate}</span>
+                <span>{formatDateNZ(row.approvalStartDate)} → {formatDateNZ(row.approvalEndDate)}</span>
                 <NumberInput
                   className="w-20 py-0.5 text-xs"
                   min={0}

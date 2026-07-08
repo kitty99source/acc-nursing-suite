@@ -15,14 +15,17 @@ Plain English. Tiny steps. For your **work laptop** (Windows).
 | **C Day 1 — Core UAT** | 🟡 **Partial** | J-01, J-01a, J-01b, J-04, J-05, J-23 **Pass**; J-02, J-03, J-06, J-12, J-14, J-15, J-22 skipped (“lazy — assume functional”) |
 | **C Day 2 — Scale/edge** | ⏸ Not started | Most rows still blank |
 | **D — Portal** | ✅ Captured | Folder nav + 45 SSRS links; optional re-run only if ACC changes UI |
-| **E — I: drive deploy** | ⏭ **Next** | After you rebuild `dist/` with Word import (see below) |
+| **Automation — Folder watch** | 🟡 **Next** | Double-click `Start Folder Watch.cmd` on work laptop (see Phase G below) |
+| **E — I: drive deploy** | ⏭ **Last** | After automation UAT + fresh `dist/` zip |
 | **F — Sign-off** | ⏭ After E | Review checklist + shared `.accdata` |
 
 **Word import (new):** Rebuild `dist/` from dev — buttons now say **Import ACC letter (PDF or Word)** and accept `.docx`. Test with `approval-template.docx` same as PDF.
 
-**HRQ / folder-watch (J-25, J-26):** Your note is right — **all patient data must stay on the work laptop**. Next engineering tranche: run folder-watch **on the work laptop** (Node installed there), not the dev Mac. See “What happens next” at the bottom of this guide.
+**HRQ / folder-watch (J-25, J-26):** All patient data stays on the work laptop. Folder watch now runs **on the work laptop** via `Start Folder Watch.cmd` (PowerShell only — no Node.js). See Phase G below.
 
-**👉 Do next:** Phase **E** (deploy fresh `dist/` to I: drive) → finish lazy Day 1 rows if you want formal sign-off → Phase **F**.
+**Dates:** All on-screen dates now show **dd/mm/yyyy** (NZ format). Data still stores as ISO internally.
+
+**👉 Do next:** Phase **G** (folder watch on work laptop) → finish lazy Day 1 rows if you want → Phase **E** (I: drive deploy, last) → Phase **F**.
 
 ---
 
@@ -49,6 +52,8 @@ Plain English. Tiny steps. For your **work laptop** (Windows).
 | App (after copy)       | `I:\ACC-Suite\` (or `%USERPROFILE%\Desktop\ACC-Suite\` for solo test) |
 | Launcher logs          | `%USERPROFILE%\ACC-Suite\logs\`                                       |
 | Portal discover output | `%USERPROFILE%\ACC-Suite\portal-map.json`                             |
+| Folder watch inbox     | `%USERPROFILE%\ACC-Inbox\` (PDF and Word letters)                     |
+| Folder watch sidecars  | `%USERPROFILE%\ACC-Inbox\.staging\*.json`                             |
 | Your data file         | Wherever you save it — e.g. `I:\ACC-Suite\acc-nursing-data.accdata`   |
 
 
@@ -437,6 +442,43 @@ Steps if needed:
 
 
 
+---
+
+
+
+## Phase G — Folder watch automation (work laptop)
+
+**Time: ~15 minutes**
+
+All patient data stays on the work laptop — do **not** run folder watch on the dev Mac for real letters.
+
+1. On dev Mac: `npm test` → `npm run build` → zip `dist/` → copy to work laptop (or wait until Phase E if testing locally first).
+2. Unzip `dist/` to your test folder (e.g. Desktop `ACC-Suite\`).
+3. Confirm these files exist:
+   - `Start Folder Watch.cmd`
+   - `folder-watch.ps1`
+4. Double-click **`Start Folder Watch.cmd`**.
+5. A black window opens and stays open — it says it is watching `%USERPROFILE%\ACC-Inbox`.
+6. Open File Explorer → go to `C:\Users\YourName\ACC-Inbox\` (Windows creates it on first run).
+7. Copy a test **approval PDF or .docx** into `ACC-Inbox\` (fixtures: `approval-template.pdf` or `approval-template.docx`).
+8. In the black folder-watch window, you should see `[staged] approval-template.pdf -> .staging\...json`.
+9. The letter file moves to `ACC-Inbox\processed\`.
+10. Double-click **`Start ACC Suite.cmd`** (separate window — keep both open).
+11. In the app sidebar, click **Review Queue**.
+12. Click **Import ACC-Inbox .staging folder** → pick `C:\Users\YourName\ACC-Inbox\.staging`.
+13. The staged letter appears in the queue.
+14. Click **Review & import** → pick the letter from `ACC-Inbox\processed\` (or your original copy).
+15. Confirm fields (dates show **dd/mm/yyyy**) → **Save**.
+16. **Pass if:** sidecar imports, letter parses, data saves.
+
+**Pause automation:** create an empty file `ACC-Inbox\.automation-paused` or set env `ACC_AUTOMATION_PAUSED=1`.
+
+**Logs:** `%USERPROFILE%\ACC-Suite\logs\folder-watch-bootstrap.log` and `folder-watch-*.log`.
+
+---
+
+
+
 ## Phase E — Deploy to I: drive for coworkers
 
 **Time: ~30 minutes**
@@ -494,6 +536,7 @@ You are **done with the pilot** when:
 | Lost browser data             | **TopBar → Open** your `.accdata` — data is in the file, not the browser |
 | Launcher logs                 | `%USERPROFILE%\ACC-Suite\logs\acc-suite-*.log`                           |
 | Portal discover logs          | `%USERPROFILE%\ACC-Suite\logs\portal-discover-*.log`                     |
+| Folder watch not staging      | Check `%USERPROFILE%\ACC-Suite\logs\folder-watch-bootstrap.log`          |
 | Still stuck                   | Email bootstrap log + diagnostics to Prakriti                            |
 
 
@@ -513,7 +556,8 @@ You are **done with the pilot** when:
 | C Day 1 — Core UAT       | ~2 hr                             |
 | C Day 2 — Scale/edge UAT | ~2–3 hr                           |
 | D — Portal (if needed)   | ~10 min                           |
-| E — I: drive deploy      | ~30 min                           |
+| G — Folder watch         | ~15 min                           |
+| E — I: drive deploy      | ~30 min (last)                    |
 | F — Sign-off review      | ~15 min                           |
 | **Total**                | **~6–7 hours** spread over 2 days |
 
@@ -526,12 +570,12 @@ You are **done with the pilot** when:
 
 ## What happens next (5 steps)
 
-1. **You — rebuild & copy app:** On dev Mac run `npm test` → `npm run build` → zip `dist/` → copy to work laptop (or I: drive). New build accepts **PDF and Word** import.
+1. **You — rebuild & copy app:** On dev Mac run `npm test` → `npm run build` → zip `dist/` → copy to work laptop. New build has **dd/mm/yyyy dates**, **PDF and Word** import, and **Start Folder Watch.cmd**.
 
-2. **You — finish pilot deploy (Phase E):** Unzip to `I:\ACC-Suite\`, test `Start ACC Suite.cmd`, export your tested `.accdata` to the shared path, brief coworkers (one editor at a time).
+2. **You — folder watch (Phase G):** On work laptop, double-click `Start Folder Watch.cmd`, drop letters in `%USERPROFILE%\ACC-Inbox`, import `.staging` in **Review Queue**.
 
-3. **You — optional UAT cleanup:** Re-run the “lazy” Day 1 rows (J-02 corrupt file, J-14 scanned OCR) if you want zero gaps before sign-off; otherwise your Pass + “assume functional” notes are enough for the hospital pilot gate.
+3. **You — optional UAT cleanup:** Re-run the “lazy” Day 1 rows (J-02 corrupt file, J-14 scanned OCR) if you want zero gaps before sign-off.
 
-4. **Engineering — folder watch on work laptop:** Package a small “ACC-Inbox watcher” for Windows (Node script + `Start Folder Watch.cmd`) so dropped PDFs/Word files land in **Review Queue** without leaving the work PC. No dev Mac in the PHI path.
+4. **You — pilot deploy last (Phase E):** Unzip to `I:\ACC-Suite\`, test `Start ACC Suite.cmd`, export your tested `.accdata` to the shared path, brief coworkers (one editor at a time).
 
 5. **Engineering — after pilot sign-off:** Outlook COM bridge (P8-017) on work PC when IT allows; portal read task (P8-2b) using your captured `portal-map.json`; overnight orchestrator last. **Blocked on you:** U-08 automation policy, real ACC sender/subject filters (B-04–B-07), and anonymised letter corpus (U-05) when ready.

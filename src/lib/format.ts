@@ -35,17 +35,22 @@ export function daysUntil(dateISO: string): number {
   return daysBetween(todayISO(), dateISO);
 }
 
-/** Format an ISO date for display, e.g. "12 Mar 2026". Empty input -> "". */
-export function formatDate(iso?: string): string {
+/** Format an ISO date for display as dd/mm/yyyy (NZ/British). Empty input -> "". */
+export function formatDateNZ(iso?: string): string {
   if (!iso) return '';
   const ms = Date.parse(iso + 'T00:00:00Z');
   if (Number.isNaN(ms)) return iso;
   return new Date(ms).toLocaleDateString('en-NZ', {
     day: '2-digit',
-    month: 'short',
+    month: '2-digit',
     year: 'numeric',
     timeZone: 'UTC',
   });
+}
+
+/** @deprecated alias — use formatDateNZ. Kept for existing imports. */
+export function formatDate(iso?: string): string {
+  return formatDateNZ(iso);
 }
 
 /** Month index (0-11) for an ISO date, or -1 if invalid. */

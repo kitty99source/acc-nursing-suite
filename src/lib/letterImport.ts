@@ -166,11 +166,15 @@ export function buildLetterIssues(
         blocking: !matched,
       });
     }
-    if (parsed.serviceRows.length === 0) {
+    // NS03 (and other NS01–NS03 package rows) no longer require approval and
+    // never bill (ACC change, March 2025). A letter with package rows but no
+    // NS04/NS05 is historic-only: do NOT block — it files as a historic record.
+    // Only a letter with NO usable rows at all is a genuine blocker.
+    if (parsed.serviceRows.length === 0 && parsed.packageRows.length === 0) {
       issues.push({
         id: 'no-service-rows',
         field: 'serviceRows',
-        message: 'No NS04/NS05 rows were found — check dates and quantities below or remove bad rows.',
+        message: 'No NS03, NS04 or NS05 rows were found — check the letter, or use “Attach file only”.',
       });
     }
   }
@@ -851,6 +855,28 @@ export function assignRecordStatus(rows: ParsedServiceRow[]): ParsedServiceRow[]
   }));
 }
 
+/** Label prefix used everywhere NS03/package rows are filed as history. */
+export const HISTORIC_PACKAGE_LABEL = 'NS03 — historic, no billing';
+
+/**
+ * One-line, human-readable summary of NS01–NS03 package rows for the document
+ * note when a letter is filed as historic. These rows NEVER create approvals
+ * and NEVER bill (ACC dropped the NS03 approval requirement in March 2025) —
+ * they exist only so the patient's history is complete.
+ */
+export function describeHistoricPackageRows(rows: ParsedPackageRow[]): string {
+  if (rows.length === 0) return '';
+  const parts = rows.map((r) => {
+    const period =
+      r.approvalStartDate && r.approvalEndDate
+        ? ` ${r.approvalStartDate}→${r.approvalEndDate}`
+        : '';
+    const qty = Number.isFinite(r.quantity) ? ` (×${r.quantity})` : '';
+    return `${r.serviceCode}${period}${qty}`;
+  });
+  return `${HISTORIC_PACKAGE_LABEL}: ${parts.join('; ')}`;
+}
+
 // ----------------------------------------------------------------------------
 // Matching & confidence
 // ----------------------------------------------------------------------------
@@ -930,8 +956,19 @@ function scoreApproval(parsed: ParsedApprovalLetter, match: LetterMatch): {
   add('nhi', parsed.patient.nhi, parsed.patient.nhi ? 100 : 50);
   add('acc45Number', parsed.claim.acc45Number, parsed.claim.acc45Number ? 90 : 40);
 
-  if (parsed.serviceRows.length === 0) blockers.push('No NS04/NS05 service rows found');
-  else fieldConfidences.push({ field: 'serviceRows', value: String(parsed.serviceRows.length), confidence: 100 });
+  if (parsed.serviceRows.length > 0) {
+    fieldConfidences.push({ field: 'serviceRows', value: String(parsed.serviceRows.length), confidence: 100 });
+  } else if (parsed.packageRows.length > 0) {
+    // Historic NS03-only letter — no billing, not a blocker (ACC change, Mar 2025).
+    fieldConfidences.push({
+      field: 'historicPackage',
+      value: parsed.packageRows.map((p) => p.serviceCode).join(', '),
+      confidence: 100,
+      note: 'Historic package — no billing',
+    });
+  } else {
+    blockers.push('No NS04/NS05 service rows found');
+  }
 
   // Name mismatch in letter body lowers confidence; not a blocker when patient+claim matched.
   const bodyNames = allMatches(parsed.rawText, /for\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/g);

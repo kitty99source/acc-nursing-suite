@@ -13,6 +13,7 @@ import {
   normalizeClaimNumber,
   classifyLetter,
   buildLetterIssues,
+  describeHistoricPackageRows,
   letterKindToDocumentKind,
   sniffDocumentKindFromFileName,
   isDuplicateLetterImport,
@@ -308,6 +309,70 @@ describe('letterImport — issues', () => {
     const noMatch = result.issues.find((i) => i.id === 'no-match');
     expect(noMatch).toBeDefined();
     expect(noMatch?.blocking).toBe(false);
+  });
+});
+
+// Synthetic NUR02 approval whose only service table row is NS03 (a historic
+// package, no NS04/NS05). Effective March 2025 NS03 no longer needs approval
+// and never bills, so this must import as a historic record — never blocked.
+const NS03_ONLY_APPROVAL = [
+  'NUR02 Approval for nursing services',
+  '12 June 2024',
+  "Client's claim number: 10000000149",
+  'Purchase order number: 15089011 12 June 2024',
+  'Client name: John Smith Date of injury: 01/06/2024',
+  'Date of birth: 01/01/1950',
+  'ACC45 number: YN65488 NHI number: ABC1234 Injury(s): Sprain Services approved',
+  'NS03 Nursing Services Package 01/06/2024 31/05/2025 1 Units',
+].join('\n');
+
+describe('letterImport — NS03 historic (no billing)', () => {
+  it('parses NS03-only letter with a package row and no NS04/NS05 service rows', () => {
+    const parsed = parseApprovalLetter(NS03_ONLY_APPROVAL);
+    expect(parsed.serviceRows).toHaveLength(0);
+    expect(parsed.packageRows.some((r) => r.serviceCode === 'NS03')).toBe(true);
+  });
+
+  it('does NOT block an NS03-only letter — no blocking service-row issue', async () => {
+    const parsed = parseApprovalLetter(NS03_ONLY_APPROVAL);
+    const result = await parseLetterFromText(NS03_ONLY_APPROVAL, emptyData());
+
+    expect(result.parsed?.kind).toBe('approval');
+    // The old blocking "No NS04/NS05 service rows found" must be gone for NS03.
+    expect(result.blockers).not.toContain('No NS04/NS05 service rows found');
+
+    const issues = buildLetterIssues(parsed, result.match, result.blockers);
+    expect(issues.some((i) => i.id === 'no-service-rows')).toBe(false);
+    const blocking = issues.filter((i) => i.blocking !== false);
+    expect(blocking).toHaveLength(0);
+    // Historic-only letters never silently auto-commit.
+    expect(result.autoCommit).toBe(false);
+  });
+
+  it('still BLOCKS a letter with no NS03/NS04/NS05 rows at all', () => {
+    const parsed = parseApprovalLetter('NUR02 Approval for nursing services\n12 June 2024');
+    expect(parsed.serviceRows).toHaveLength(0);
+    expect(parsed.packageRows).toHaveLength(0);
+    const issues = buildLetterIssues(parsed, { ambiguous: false, notes: [] }, []);
+    const noRows = issues.find((i) => i.id === 'no-service-rows');
+    expect(noRows).toBeDefined();
+    expect(noRows?.blocking).not.toBe(false);
+  });
+
+  it('a normal NS04/NS05 letter still surfaces its billable rows (unchanged)', async () => {
+    const text = await extractPdfText(loadPdf('approval-template.pdf'));
+    const result = await parseLetterFromText(text, emptyData());
+    expect(result.parsed?.kind).toBe('approval');
+    expect(result.parsed && result.parsed.kind === 'approval' && result.parsed.serviceRows.length).toBeGreaterThan(0);
+    expect(result.blockers).not.toContain('No NS04/NS05 service rows found');
+  });
+
+  it('describeHistoricPackageRows labels rows as historic, no billing', () => {
+    const parsed = parseApprovalLetter(NS03_ONLY_APPROVAL);
+    const note = describeHistoricPackageRows(parsed.packageRows);
+    expect(note).toContain('NS03 — historic, no billing');
+    expect(note).toContain('NS03');
+    expect(describeHistoricPackageRows([])).toBe('');
   });
 });
 

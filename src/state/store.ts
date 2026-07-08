@@ -73,6 +73,8 @@ import {
   type ParsedApprovalLetter,
   type ParsedDeclineLetter,
   type ParsedServiceRow,
+  type ParsedPackageRow,
+  describeHistoricPackageRows,
   prefillFromParsed,
   letterKindToDocumentKind,
   sniffDocumentKindFromFileName,
@@ -213,6 +215,13 @@ interface StoreState {
       patientPatch?: Partial<Patient>;
       claimPatch?: Partial<Claim>;
       rows: ParsedServiceRow[];
+      /**
+       * NS01–NS03 package rows to record as HISTORIC, non-billable history
+       * (ACC dropped the NS03 approval requirement in March 2025). These never
+       * create approvals and never bill — they are folded into the letter
+       * document's note so the patient's history is complete.
+       */
+      historicRows?: ParsedPackageRow[];
     },
   ) => Promise<LetterImportCommitResult>;
   commitParsedDecline: (
@@ -714,6 +723,13 @@ export const useStore = create<StoreState>((set, get) => ({
       state.updateClaim(claimId, patch);
     }
 
+    // Fold any NS01–NS03 package rows into the document note as HISTORIC,
+    // non-billable history. These never become approvals and never bill.
+    const historicRows = opts.historicRows ?? [];
+    const noteParts: string[] = [];
+    if (parsed.letterDate) noteParts.push(`Letter dated ${formatDateNZ(parsed.letterDate)}`);
+    if (historicRows.length > 0) noteParts.push(describeHistoricPackageRows(historicRows));
+
     const docId = await state.addDocument(
       {
         claimId,
@@ -721,7 +737,7 @@ export const useStore = create<StoreState>((set, get) => ({
         fileName: file instanceof File ? file.name : 'approval-letter.pdf',
         mimeType: file.type || 'application/pdf',
         sizeBytes: file.size,
-        notes: parsed.letterDate ? `Letter dated ${formatDateNZ(parsed.letterDate)}` : undefined,
+        notes: noteParts.length ? noteParts.join(' · ') : undefined,
       },
       file,
     );

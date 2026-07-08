@@ -163,6 +163,12 @@ export function SettingsModule() {
         enabledServiceCodes: settings.enabledServiceCodes,
         serviceRates: settings.serviceRates,
         userDisplayName: settings.userDisplayName,
+        accInboxSenderAllowlist: settings.accInboxSenderAllowlist,
+        accInboxSubjectPatterns: settings.accInboxSubjectPatterns,
+      },
+      accInbox: {
+        senderAllowlist: settings.accInboxSenderAllowlist,
+        subjectPatterns: settings.accInboxSubjectPatterns,
       },
     };
     downloadText('acc-office-config.json', JSON.stringify(payload, null, 2));
@@ -172,11 +178,21 @@ export function SettingsModule() {
   async function importOfficeConfig(file: File) {
     try {
       const text = await readFileAsText(file);
-      const parsed = JSON.parse(text) as { settings?: Partial<Settings> };
+      const parsed = JSON.parse(text) as {
+        settings?: Partial<Settings>;
+        accInbox?: { senderAllowlist?: string[]; subjectPatterns?: string[] };
+      };
       if (!parsed.settings || typeof parsed.settings !== 'object') {
         throw new Error('Invalid office config — missing settings block.');
       }
-      updateSettings(parsed.settings);
+      const patch: Partial<Settings> = { ...parsed.settings };
+      if (parsed.accInbox?.senderAllowlist) {
+        patch.accInboxSenderAllowlist = parsed.accInbox.senderAllowlist;
+      }
+      if (parsed.accInbox?.subjectPatterns) {
+        patch.accInboxSubjectPatterns = parsed.accInbox.subjectPatterns;
+      }
+      updateSettings(patch);
       logInfo('Office config imported', 'settings');
     } catch (e) {
       window.alert(e instanceof Error ? e.message : 'Could not import office config.');

@@ -408,8 +408,14 @@ async function ocrPdfPages(
   const data = await toPdfData(input);
   const doc = await pdfjs.getDocument({ data, ...PDF_OPTS }).promise;
   const worker = await createWorker('eng', 1, {
-    workerPath: new URL('tesseract.js/dist/worker.min.js', import.meta.url).toString(),
-    corePath: new URL('tesseract.js-core/tesseract-core-simd.wasm.js', import.meta.url).toString(),
+    workerPath:
+      typeof window !== 'undefined'
+        ? new URL('tesseract.worker.min.js', window.location.href).href
+        : new URL('tesseract.js/dist/worker.min.js', import.meta.url).toString(),
+    corePath:
+      typeof window !== 'undefined'
+        ? new URL('tesseract-core-simd.wasm.js', window.location.href).href
+        : new URL('tesseract.js-core/tesseract-core-simd.wasm.js', import.meta.url).toString(),
     langPath: typeof window !== 'undefined' ? new URL('.', window.location.href).href : '/',
     gzip: false,
   });

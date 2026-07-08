@@ -477,17 +477,28 @@ All patient data stays on the work laptop — do **not** run folder watch on the
 
 ---
 
-## Phase H — Outlook COM probe (optional, ~2 min)
+## Phase H — Outlook COM probe + email sync (optional, ~5 min)
 
-**Purpose:** Check whether IT allows PowerShell to read your **already-open Outlook desktop** — the "cherry on top" before full email sync (P8-017).
+**Purpose:** Check whether IT allows PowerShell to read your **already-open Outlook desktop**, then sync ACC letter attachments into `ACC-Inbox`.
 
 **Prerequisite:** Outlook desktop open and logged in (not Outlook web, not Citrix).
+
+### Step 1 — Probe (read-only test)
 
 1. Confirm `Start Email Probe.cmd` and `outlook-probe.ps1` exist in your `dist/` folder (after rebuild).
 2. Double-click **`Start Email Probe.cmd`**.
 3. **PASS** if you see unread count + last 3 subjects + "PASS - Outlook COM read works".
 4. **FAIL** if programmatic access is blocked — keep using Phase G folder watch + manual Outlook rule (see [`EMAIL_AUTOMATION_FEASIBILITY.md`](EMAIL_AUTOMATION_FEASIBILITY.md)).
 5. Log: `%USERPROFILE%\ACC-Suite\logs\email-probe-bootstrap.log`
+
+### Step 2 — Full sync (only if probe PASS)
+
+1. Confirm `Start Email Sync.cmd` and `outlook-sync.ps1` exist in `dist/`.
+2. Optional: copy `office-config.example.json` to `%USERPROFILE%\ACC-Suite\office-config.json` and tune ACC sender/subject filters.
+3. Double-click **`Start Email Sync.cmd`** — saves PDF/DOCX attachments to `%USERPROFILE%\ACC-Inbox`.
+4. Status file: `%USERPROFILE%\ACC-Suite\email-sync-status.json` — load this in **ACC Inbox** → **Load sync report**.
+5. Double-click **`Start Folder Watch.cmd`** so new attachments stage for **Review Queue**.
+6. Log: `%USERPROFILE%\ACC-Suite\logs\email-sync-bootstrap.log`
 
 **PHI:** Subjects may show patient names — do not screenshot for support; send log file only if asked.
 

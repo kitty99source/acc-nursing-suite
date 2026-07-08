@@ -1,11 +1,20 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { SectionTitle, Card, Badge, EmptyState } from '../components/ui';
 import { IconFolder } from '../components/icons';
-import { filterAccInboxRows, type AccInboxRow } from '../lib/accInboxFilters';
+import {
+  accInboxConfigFromSettings,
+  filterAccInboxRows,
+  type AccInboxRow,
+} from '../lib/accInboxFilters';
 import { loadStagingItems, addStagingItem, type StagingItem } from '../lib/staging';
+import {
+  formatSyncOutcome,
+  parseEmailSyncStatus,
+  type EmailSyncStatus,
+} from '../lib/emailSyncStatus';
 
-/** Demo rows until Outlook COM bridge (P8-017) lands on work PC. */
+/** Demo rows until Outlook COM bridge feeds live manifest (P8-017). */
 const DEMO_ROWS: AccInboxRow[] = [
   {
     id: 'demo-1',
@@ -35,10 +44,17 @@ export function AccInbox() {
   const [ignored, setIgnored] = useState<Set<string>>(() => new Set());
   const [stagingCount, setStagingCount] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<EmailSyncStatus | null>(null);
+  const syncInputRef = useRef<HTMLInputElement>(null);
+
+  const filterConfig = useMemo(
+    () => accInboxConfigFromSettings(settings.accInboxSenderAllowlist, settings.accInboxSubjectPatterns),
+    [settings.accInboxSenderAllowlist, settings.accInboxSubjectPatterns],
+  );
 
   const rows = useMemo(
-    () => filterAccInboxRows(DEMO_ROWS).filter((r) => !ignored.has(r.id)),
-    [ignored],
+    () => filterAccInboxRows(DEMO_ROWS, filterConfig).filter((r) => !ignored.has(r.id)),
+    [filterConfig, ignored],
   );
 
   async function refreshStaging() {
@@ -71,23 +87,75 @@ export function AccInbox() {
 
   function openImportStub(row: AccInboxRow) {
     setMessage(
-      `Real PDF required: save ${row.attachmentName} to ACC-Inbox/ or use Review Queue after folder watch. COM bridge blocked until work PC (P8-017).`,
+      `Real PDF required: save ${row.attachmentName} to ACC-Inbox/ or use Review Queue after folder watch + email sync.`,
     );
     setFocus({ module: 'patients' });
+  }
+
+  async function loadSyncReport(file: File) {
+    try {
+      const text = await file.text();
+      const parsed = parseEmailSyncStatus(JSON.parse(text) as unknown);
+      if (!parsed) {
+        throw new Error('Not a valid email-sync-status.json from Start Email Sync.cmd');
+      }
+      setSyncStatus(parsed);
+      setMessage(null);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Could not read sync report.');
+    }
   }
 
   return (
     <div>
       <SectionTitle
         title="ACC Inbox"
-        subtitle="Filtered ACC letters only — not a full mail client. Outlook COM bridge pending work PC."
+        subtitle="Filtered ACC letters only — run Start Email Sync.cmd on work laptop, then folder watch."
       />
 
       {settings.automationPaused && (
         <div className="card mb-4 p-3 text-sm" style={{ borderColor: 'var(--warn-fg)' }}>
-          <strong>Automation paused.</strong> Folder watch and inbox parse are held until you turn this off in Settings.
+          <strong>Automation paused.</strong> Folder watch, email sync, and inbox parse are held until you turn this off in Settings.
         </div>
       )}
+
+      <Card className="mb-4 p-4">
+        <h3 className="font-semibold mb-2 text-sm">Email sync status</h3>
+        {syncStatus ? (
+          <p className="text-sm mb-2">{formatSyncOutcome(syncStatus)}</p>
+        ) : (
+          <p className="text-sm mb-2" style={{ color: 'var(--muted)' }}>
+            No sync report loaded. On work laptop: double-click <span className="font-mono">Start Email Sync.cmd</span>, then load{' '}
+            <span className="font-mono">%USERPROFILE%\ACC-Suite\email-sync-status.json</span> below.
+          </p>
+        )}
+        {syncStatus && syncStatus.savedFiles.length > 0 && (
+          <ul className="text-xs mb-2 list-disc pl-4" style={{ color: 'var(--muted)' }}>
+            {syncStatus.savedFiles.slice(0, 5).map((f) => (
+              <li key={f.fileName + f.savedAt}>
+                {f.fileName} — {f.subject.slice(0, 48)}
+              </li>
+            ))}
+          </ul>
+        )}
+        <input
+          ref={syncInputRef}
+          type="file"
+          accept=".json,application/json"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void loadSyncReport(f);
+            e.target.value = '';
+          }}
+        />
+        <button className="btn btn-sm" type="button" onClick={() => syncInputRef.current?.click()}>
+          Load sync report
+        </button>
+        <p className="text-xs mt-2" style={{ color: 'var(--muted)' }}>
+          Filter rules: {settings.accInboxSenderAllowlist.length} sender(s), {settings.accInboxSubjectPatterns.length} subject pattern(s) — edit via Settings office config.
+        </p>
+      </Card>
 
       {message && (
         <div className="card mb-4 p-3 text-sm" style={{ background: 'var(--surface-2)' }}>
@@ -96,7 +164,7 @@ export function AccInbox() {
       )}
 
       <div className="card mb-4 p-3 text-xs" style={{ color: 'var(--muted)' }}>
-        Stub panel (P8-016). Shows demo filtered rows. Live email ingress requires P8-017 on Windows work PC.
+        Demo rows until live COM feed lands. After probe PASS: run email sync, then folder watch, then import staging in Review Queue.
         {stagingCount > 0 && ` · ${stagingCount} item(s) already in HRQ staging.`}
       </div>
 
@@ -104,7 +172,7 @@ export function AccInbox() {
         <EmptyState
           icon={<IconFolder width={32} height={32} />}
           title="No ACC letters in inbox"
-          message="Filtered ACC correspondence will appear here after the Outlook COM bridge is configured."
+          message="Filtered ACC correspondence will appear here after email sync + folder watch on the work laptop."
         />
       ) : (
         <div className="space-y-2">
@@ -118,7 +186,7 @@ export function AccInbox() {
                   </div>
                   <div className="text-xs mt-1 flex items-center gap-2">
                     <Badge tone="accent">{row.attachmentName}</Badge>
-                    <span style={{ color: 'var(--muted)' }}>stub</span>
+                    <span style={{ color: 'var(--muted)' }}>demo</span>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">

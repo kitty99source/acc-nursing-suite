@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_ACC_INBOX_FILTERS, filterAccInboxRows, isAccInboxCandidate } from './accInboxFilters';
+import { DEFAULT_ACC_INBOX_FILTERS, accInboxConfigFromSettings, filterAccInboxRows, isAccInboxCandidate } from './accInboxFilters';
 
 describe('accInboxFilters', () => {
   it('accepts ACC approval PDF from allowlisted sender', () => {
@@ -43,5 +43,11 @@ describe('accInboxFilters', () => {
     ], DEFAULT_ACC_INBOX_FILTERS);
     expect(rows).toHaveLength(1);
     expect(rows[0].id).toBe('1');
+  });
+
+  it('builds config from settings strings', () => {
+    const cfg = accInboxConfigFromSettings(['nursing@acc.co.nz'], ['approv']);
+    expect(cfg.senderAllowlist).toEqual(['nursing@acc.co.nz']);
+    expect(cfg.subjectPatterns[0].test('Approval letter')).toBe(true);
   });
 });

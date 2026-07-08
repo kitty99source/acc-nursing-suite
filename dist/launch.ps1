@@ -142,7 +142,17 @@ function Get-StagingSidecarsBody {
                 if ($obj) { [void]$items.Add($obj) }
             } catch {}
         }
-        $json = ConvertTo-Json -InputObject @($items.ToArray()) -Depth 10 -Compress:$false
+        # Windows PowerShell 5.1 unwraps a single-element array to a bare object.
+        # The browser bridge requires a JSON array (localAccBridge checks Array.isArray).
+        $arr = @($items.ToArray())
+        if ($arr.Count -eq 0) {
+            $json = '[]'
+        } elseif ($arr.Count -eq 1) {
+            $inner = ConvertTo-Json -InputObject $arr[0] -Depth 10 -Compress:$false
+            $json = "[$inner]"
+        } else {
+            $json = ConvertTo-Json -InputObject $arr -Depth 10 -Compress:$false
+        }
         if ([string]::IsNullOrWhiteSpace($json)) { $json = '[]' }
         $utf8 = New-Object System.Text.UTF8Encoding $false
         return $utf8.GetBytes($json)
@@ -185,7 +195,9 @@ function Resolve-InboxFileByHash {
         }
         $candidate = Join-Path $inboxFull ($rel -replace '/', [System.IO.Path]::DirectorySeparatorChar)
         $full = [System.IO.Path]::GetFullPath($candidate)
-        if (-not $full.StartsWith($inboxFull, [System.StringComparison]::OrdinalIgnoreCase)) { return $null }
+        # Require a trailing separator so ACC-Inbox-evil\... cannot match ACC-Inbox prefix.
+        $inboxPrefix = $inboxFull.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
+        if (-not $full.StartsWith($inboxPrefix, [System.StringComparison]::OrdinalIgnoreCase)) { return $null }
         if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { return $null }
         $ext = [System.IO.Path]::GetExtension($full).ToLowerInvariant()
         if ($ext -ne '.pdf' -and $ext -ne '.docx' -and $ext -ne '.doc') { return $null }

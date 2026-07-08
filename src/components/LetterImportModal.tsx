@@ -380,12 +380,14 @@ function SaveDestinationSummary({
   patientLabel,
   claimLabel,
   rows,
+  historicCodes,
 }: {
   kind: 'approval' | 'decline';
   fileName: string;
   patientLabel: string;
   claimLabel: string;
   rows: ParsedServiceRow[];
+  historicCodes?: string;
 }) {
   const currentRow = rows.find((r) => r.recordStatus === 'current');
   return (
@@ -400,12 +402,18 @@ function SaveDestinationSummary({
         <li>• Patient: {patientLabel}</li>
         <li>• Claim: {claimLabel}</li>
         {kind === 'approval' ? (
-          <li>
-            • File {rows.length} NS04/NS05 period{rows.length === 1 ? '' : 's'}
-            {currentRow
-              ? ` — ${currentRow.serviceCode} (${formatDateNZ(currentRow.approvalStartDate)} → ${formatDateNZ(currentRow.approvalEndDate)}) marked current for billing`
-              : ' — none marked current for billing'}
-          </li>
+          rows.length > 0 ? (
+            <li>
+              • File {rows.length} NS04/NS05 period{rows.length === 1 ? '' : 's'}
+              {currentRow
+                ? ` — ${currentRow.serviceCode} (${formatDateNZ(currentRow.approvalStartDate)} → ${formatDateNZ(currentRow.approvalEndDate)}) marked current for billing`
+                : ' — none marked current for billing'}
+            </li>
+          ) : (
+            <li>
+              • File as a historic record{historicCodes ? ` (${historicCodes})` : ''} — no billable approvals, no billing
+            </li>
+          )
         ) : (
           <li>• Create a decline record for follow-up in the Decline Tracker</li>
         )}
@@ -553,6 +561,7 @@ export function LetterImportModal() {
               patientPatch: r.match.patient ? { name: r.match.patient.name, nhi: r.match.patient.nhi, dob: r.match.patient.dob } : pre.patient,
               claimPatch: pre.claim,
               rows: r.parsed.serviceRows,
+              historicRows: r.parsed.packageRows,
             });
             setCommitResult(commitRes);
             announceLetterImportSuccess(commitRes);
@@ -691,6 +700,7 @@ export function LetterImportModal() {
           patientPatch: { name: patientName, nhi, dob },
           claimPatch: { claimNumber, acc45Number: acc45, poNumber, injuryDescription: injury, day1Date: day1 },
           rows,
+          historicRows: parsed.kind === 'approval' ? parsed.packageRows : undefined,
         });
         setCommitResult(commitRes);
         announceLetterImportSuccess(commitRes);
@@ -844,8 +854,14 @@ export function LetterImportModal() {
 
       {matchedPatient && (
         <div className="rounded-lg p-3 mb-3 text-sm" style={{ background: 'var(--surface-2)', border: '1px solid var(--good-fg)' }}>
-          Matched <strong>{matchedPatient.name}</strong> (NHI {matchedPatient.nhi || '—'})
-          {result?.match.claim && <> · Claim {result.match.claim.claimNumber}</>}
+          <div>
+            Linking to existing patient: <strong>{matchedPatient.name}</strong> (NHI {matchedPatient.nhi || '—'})
+            {result?.match.claim && <> · Claim {result.match.claim.claimNumber}</>}
+          </div>
+          <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+            Matched on claim number / NHI — a new approval is added to this profile (existing approvals kept as history).
+            To create a separate profile instead, set “Link to existing patient” below to “New / from letter”.
+          </div>
         </div>
       )}
 
@@ -965,8 +981,14 @@ export function LetterImportModal() {
           <h4 className="text-sm font-semibold mb-2">NS04 / NS05 periods to file</h4>
           {packageOffer && (
             <p className="text-xs mb-2 rounded-lg p-2" style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}>
-              Package row(s) on letter ({packageOffer}) are informational — not filed as approvals.
-              After import, add an NS03 service line manually if needed.
+              {rows.length === 0
+                ? `Historic ${packageOffer} package — this letter will be filed as a historic record on the claim (no billing). NS03 no longer needs approval (ACC change, March 2025).`
+                : `Package row(s) on letter (${packageOffer}) are historic — recorded on the claim document as history, not filed as billable approvals (no billing).`}
+            </p>
+          )}
+          {rows.length === 0 && !packageOffer && (
+            <p className="text-xs mb-2 rounded-lg p-2" style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}>
+              No NS04/NS05 periods on this letter.
             </p>
           )}
           <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -1020,6 +1042,7 @@ export function LetterImportModal() {
                 : `create new — ${claimNumber || 'number from form above'}`
             }
             rows={rows}
+            historicCodes={parsed.kind === 'approval' ? packageOffer ?? undefined : undefined}
           />
         );
       })()}

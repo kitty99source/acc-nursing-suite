@@ -142,6 +142,59 @@ describe('letterImport commit journey', () => {
     expect(after).toBe(true);
   });
 
+  it('NS03-only letter files as a historic record — no approvals, no billing', async () => {
+    const NS03_ONLY_APPROVAL = [
+      'NUR02 Approval for nursing services',
+      '12 June 2024',
+      "Client's claim number: 10000000149",
+      'Purchase order number: 15089011 12 June 2024',
+      'Client name: George Bellingham Date of injury: 01/06/2024',
+      'Date of birth: 12/03/1945',
+      'ACC45 number: YN65488 NHI number: ABC1234 Injury(s): Sprain Services approved',
+      'NS03 Nursing Services Package 01/06/2024 31/05/2025 1 Units',
+    ].join('\n');
+    const parsed = parseApprovalLetter(NS03_ONLY_APPROVAL);
+    expect(parsed.serviceRows).toHaveLength(0);
+    const file = new File([NS03_ONLY_APPROVAL], 'ns03-historic.pdf', { type: 'application/pdf' });
+
+    const result = await useStore.getState().commitParsedApproval(parsed, file, {
+      patientId: 'p1',
+      claimId: 'c1',
+      rows: [],
+      historicRows: parsed.packageRows,
+    });
+
+    expect(result.kind).toBe('approval');
+    const data = useStore.getState().data;
+    // No billable approval line items created for NS03.
+    expect(data.approvals.filter((a) => a.claimId === 'c1')).toHaveLength(0);
+    // The letter is attached with a clearly-labelled historic note.
+    const doc = data.documents.find((d) => d.claimId === 'c1' && d.kind === 'acc-approval-letter');
+    expect(doc).toBeDefined();
+    expect(doc?.notes).toContain('NS03 — historic, no billing');
+  });
+
+  it('a letter with NS04 + NS03 files billable approvals AND records NS03 as historic', async () => {
+    const text = await extractPdfText(loadPdf('approval-template.pdf'));
+    const parsed = parseApprovalLetter(text);
+    const rows = assignRecordStatus(parsed.serviceRows);
+    const file = new File([loadPdf('approval-template.pdf')], 'approval-template.pdf', { type: 'application/pdf' });
+
+    await useStore.getState().commitParsedApproval(parsed, file, {
+      patientId: 'p1',
+      claimId: 'c1',
+      rows,
+      historicRows: parsed.packageRows,
+    });
+
+    const data = useStore.getState().data;
+    // NS04/NS05 billable flow unchanged.
+    expect(data.approvals.filter((a) => a.claimId === 'c1').length).toBeGreaterThan(0);
+    // NS03 still recorded as history on the document note.
+    const doc = data.documents.find((d) => d.claimId === 'c1' && d.kind === 'acc-approval-letter');
+    expect(doc?.notes).toContain('NS03 — historic, no billing');
+  });
+
   it('commitParsedApproval from Patients context creates full records for new patient', async () => {
     const bytes = loadPdf('approval-template.pdf');
     const text = await extractPdfText(bytes);

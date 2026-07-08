@@ -16,8 +16,20 @@ import {
   isBatchApprovable,
   stagingPatientNames,
 } from '../lib/hrqBatch';
+import {
+  candidateFileNames,
+  normalizeMatchName,
+  runBulkImport,
+  type BulkImportOutcome,
+} from '../lib/bulkImport';
 import { appendAudit, recordHrqResolution } from '../lib/auditLog';
 import { LETTER_IMPORT_ACCEPT } from '../components/LetterImportButton';
+
+const BULK_LETTER_TYPES: ReadonlySet<StagingItem['type']> = new Set([
+  'letter-import-pending',
+  'letter-import-low-confidence',
+  'letter-duplicate-suspect',
+]);
 
 function slaTone(level: SlaLevel): 'good' | 'warn' | 'danger' {
   if (level === 'danger') return 'danger';
@@ -42,10 +54,42 @@ function typeLabel(type: StagingItem['type']): string {
   }
 }
 
+function BulkImportSummary({ outcomes }: { outcomes: BulkImportOutcome[] }) {
+  const committed = outcomes.filter((o) => o.committed);
+  const skipped = outcomes.filter((o) => !o.committed);
+  return (
+    <div className="space-y-3">
+      <p>
+        Filed <strong>{committed.length}</strong> letter{committed.length === 1 ? '' : 's'} to live data.{' '}
+        {skipped.length > 0 ? (
+          <>
+            <strong>{skipped.length}</strong> left in the queue for manual review.
+          </>
+        ) : (
+          'Nothing needed manual review.'
+        )}
+      </p>
+      {skipped.length > 0 && (
+        <div>
+          <p className="text-sm font-medium mb-1">Still needs you (left in queue):</p>
+          <ul className="list-disc pl-5 space-y-1 text-sm max-h-48 overflow-y-auto">
+            {skipped.map((o) => (
+              <li key={o.stagingId}>
+                <strong>{o.title}</strong> — {o.detail}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ReviewQueue() {
   const openLetterImport = useStore((s) => s.openLetterImport);
   const commitParsedApproval = useStore((s) => s.commitParsedApproval);
   const commitParsedDecline = useStore((s) => s.commitParsedDecline);
+  const parseLetterFile = useStore((s) => s.parseLetterFile);
   const userName = useStore((s) => s.data.settings.userDisplayName?.trim() || undefined);
   const [items, setItems] = useState<StagingItem[]>([]);
   const [busy, setBusy] = useState(false);
@@ -69,6 +113,10 @@ export function ReviewQueue() {
   const sorted = useMemo(() => items, [items]);
 
   const selectedItems = useMemo(() => sorted.filter((i) => selected.has(i.id)), [sorted, selected]);
+  const bulkSelectableItems = useMemo(
+    () => selectedItems.filter((i) => BULK_LETTER_TYPES.has(i.type)),
+    [selectedItems],
+  );
   const canBatchApprove = useMemo(() => allSelectedBatchApprovable(selectedItems), [selectedItems]);
   const batchApprovableCount = useMemo(
     () => selectedItems.filter(isBatchApprovable).length,
@@ -304,6 +352,93 @@ export function ReviewQueue() {
     }
   }
 
+  async function bulkImportSelected() {
+    const letterItems = bulkSelectableItems;
+    if (!letterItems.length) {
+      await confirm({
+        title: 'Select letters first',
+        message: 'Tick one or more staged letters, then run Bulk import.',
+        confirmLabel: 'OK',
+      });
+      return;
+    }
+    if (!('showDirectoryPicker' in window)) {
+      await confirm({
+        title: 'Folder access needed',
+        message:
+          'Bulk import reads the letter files from a folder (Chrome/Edge only). Use “Review & import” on each item instead.',
+        confirmLabel: 'OK',
+      });
+      return;
+    }
+
+    let dir: FileSystemDirectoryHandle;
+    try {
+      dir = await window.showDirectoryPicker({ mode: 'read' });
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') return;
+      await confirm({ title: 'Bulk import failed', message: (err as Error).message, confirmLabel: 'OK' });
+      return;
+    }
+
+    setBusy(true);
+    try {
+      // Index files in the chosen folder (root + one level deep, e.g. processed/).
+      const fileIndex = new Map<string, FileSystemFileHandle>();
+      const indexDir = async (handle: FileSystemDirectoryHandle, depth: number): Promise<void> => {
+        for await (const entry of handle.values()) {
+          if (entry.kind === 'file') {
+            const key = normalizeMatchName(entry.name);
+            if (!fileIndex.has(key)) fileIndex.set(key, entry as FileSystemFileHandle);
+          } else if (entry.kind === 'directory' && depth > 0) {
+            await indexDir(entry as FileSystemDirectoryHandle, depth - 1);
+          }
+        }
+      };
+      await indexDir(dir, 1);
+
+      const outcomes = await runBulkImport(letterItems, {
+        resolveFile: async (item) => {
+          for (const name of candidateFileNames(item)) {
+            const handle = fileIndex.get(name);
+            if (handle) return handle.getFile();
+          }
+          return undefined;
+        },
+        parse: (file) => parseLetterFile(file),
+        commitApproval: (parsed, file, opts) => commitParsedApproval(parsed, file, opts),
+        commitDecline: (parsed, file, opts) => commitParsedDecline(parsed, file, opts),
+      });
+
+      for (const outcome of outcomes) {
+        if (!outcome.committed) continue;
+        const item = letterItems.find((i) => i.id === outcome.stagingId);
+        await updateStagingItem(outcome.stagingId, { status: 'approved' });
+        await recordHrqResolution({
+          action: 'hrq-batch-sign-off',
+          stagingItemId: outcome.stagingId,
+          title: item?.title ?? outcome.stagingId,
+          beforeStatus: item?.status ?? 'pending',
+          afterStatus: 'approved',
+          user: userName,
+          runId: item?.runId,
+          detail: `bulk-filed ${outcome.kind} → claim ${outcome.claimId}`,
+        });
+      }
+
+      await refresh();
+      await confirm({
+        title: 'Bulk import complete',
+        message: <BulkImportSummary outcomes={outcomes} />,
+        confirmLabel: 'Done',
+      });
+    } catch (err) {
+      await confirm({ title: 'Bulk import failed', message: (err as Error).message, confirmLabel: 'OK' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div>
       <SectionTitle
@@ -348,6 +483,15 @@ export function ReviewQueue() {
           title="File all selected high-confidence letters after confirming every patient name"
         >
           Approve selected ({batchApprovableCount})
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={busy || !bulkSelectableItems.length}
+          onClick={() => void bulkImportSelected()}
+          title="Pick the ACC-Inbox folder — clean, matched, high-confidence letters file automatically; anything needing a fix stays in the queue"
+        >
+          Bulk import selected ({bulkSelectableItems.length})
         </button>
         <button type="button" className="btn" disabled={busy || !selected.size} onClick={() => void rejectSelected()}>
           Reject selected ({selected.size})

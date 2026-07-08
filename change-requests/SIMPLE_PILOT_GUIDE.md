@@ -524,13 +524,14 @@ All patient data stays on the work laptop — do **not** run folder watch on the
 7. Copy a test **approval PDF or .docx** into `ACC-Inbox\` (fixtures: `approval-template.pdf` or `approval-template.docx`).
 8. In the black folder-watch window, you should see `[staged] approval-template.pdf -> .staging\...json`.
 9. The letter file moves to `ACC-Inbox\processed\`.
-10. Double-click **`Start ACC Suite.cmd`** (separate window — keep both open).
-11. In the app sidebar, click **Review Queue**.
-12. Click **Import ACC-Inbox .staging folder** → pick `C:\Users\YourName\ACC-Inbox\.staging`.
-13. The staged letter appears in the queue.
-14. Click **Review & import** → pick the letter from `ACC-Inbox\processed\` (or your original copy).
-15. Confirm fields (dates show **dd/mm/yyyy**) → **Save**.
-16. **Pass if:** sidecar imports, letter parses, data saves.
+10. **Dedup note:** Folder watch hashes **file bytes** (SHA-256), not filenames alone. Re-scanning the same file is skipped (`[skip] re-scan: identical bytes for …`). Different emails that share a generic ACC filename (e.g. `1_NUR02_…_vendor.docx` and `…_vendor-1.docx` after email sync uniquifies) are staged separately even when the bytes match — each saved name gets its own `.staging\{hash}_{filename}.json` sidecar.
+11. Double-click **`Start ACC Suite.cmd`** (separate window — keep both open).
+12. In the app sidebar, click **Review Queue**.
+13. Click **Import ACC-Inbox .staging folder** → pick `C:\Users\YourName\ACC-Inbox\.staging`.
+14. The staged letter appears in the queue.
+15. Click **Review & import** → pick the letter from `ACC-Inbox\processed\` (or your original copy).
+16. Confirm fields (dates show **dd/mm/yyyy**) → **Save**.
+17. **Pass if:** sidecar imports, letter parses, data saves.
 
 **Pause automation:** create an empty file `ACC-Inbox\.automation-paused` or set env `ACC_AUTOMATION_PAUSED=1`.
 

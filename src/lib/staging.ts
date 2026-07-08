@@ -77,9 +77,26 @@ export async function saveStagingItems(items: StagingItem[]): Promise<void> {
   await idbSaveStaging(items);
 }
 
+/** Ingress dedup key: same bytes saved under different names are distinct queue entries. */
+export function stagingIngressDedupKey(
+  item: Pick<StagingItem, 'sourceHash' | 'sourceFileName'>,
+): string | null {
+  if (!item.sourceHash) return null;
+  return `${item.sourceHash}::${item.sourceFileName ?? ''}`;
+}
+
+export function isStagingIngressDuplicate(
+  existing: StagingItem,
+  incoming: Pick<StagingItem, 'sourceHash' | 'sourceFileName'>,
+): boolean {
+  const key = stagingIngressDedupKey(incoming);
+  if (!key || existing.status !== 'pending') return false;
+  return stagingIngressDedupKey(existing) === key;
+}
+
 export async function addStagingItem(item: StagingItem): Promise<void> {
   const existing = await idbLoadStaging();
-  if (item.sourceHash && existing.some((e) => e.sourceHash === item.sourceHash && e.status === 'pending')) {
+  if (existing.some((e) => isStagingIngressDuplicate(e, item))) {
     return;
   }
   await idbSaveStaging([...existing, item]);
@@ -101,7 +118,7 @@ export async function importStagingSidecars(sidecars: StagingSidecar[]): Promise
   let added = 0;
   for (const sc of sidecars) {
     const before = await idbLoadStaging();
-    const dup = sc.item.sourceHash && before.some((e) => e.sourceHash === sc.item.sourceHash);
+    const dup = before.some((e) => isStagingIngressDuplicate(e, sc.item));
     if (dup) continue;
     await addStagingItem({ ...sc.item, status: 'pending' });
     added++;
@@ -148,10 +165,12 @@ export function assertStagingIsolation(liveMutated: boolean, fromStaging: boolea
 // ============================================================================
 // P8-014 — attachment-hash idempotency.
 //
-// The same attachment ingested twice (same PDF re-dropped in the inbox, or the
-// same email re-processed) must yield ONE queue item, not two. We reuse the
-// SHA-256 attachment hash from letterImport (`hashBlob`, the same primitive
-// behind isDuplicateLetterImport) as the dedup key on `sourceHash`.
+// `ingestAttachment` (blob re-drop): dedupes on content hash alone — same bytes
+// ingested twice yield one queue item.
+//
+// Folder-watch / sidecar ingress: dedupes on hash + sourceFileName so ACC emails
+// that save the same generic filename with different uniquified names (vendor.docx,
+// vendor-1.docx) or byte-identical templates for different patients each get a row.
 // ============================================================================
 
 /** Existing staging item already holding this attachment hash (pending by default). */

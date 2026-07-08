@@ -55,7 +55,7 @@ describe('staging', () => {
     expect(parseStagingSidecar({ version: 2, item: {} })).toBeNull();
   });
 
-  it('deduplicates by sourceHash on import', async () => {
+  it('deduplicates by sourceHash + sourceFileName on import', async () => {
     const item = createStagingItem({
       type: 'letter-import-pending',
       source: 'folder',
@@ -63,10 +63,37 @@ describe('staging', () => {
       title: 'Letter',
       summary: 'Test',
       sourceHash: 'hash1',
+      sourceFileName: 'vendor.docx',
     });
     vi.mocked(loadStagingQueue).mockResolvedValue([item]);
-    const added = await importStagingSidecars([{ version: 1, item: { ...item, id: 'other' } }]);
+    const added = await importStagingSidecars([
+      { version: 1, item: { ...item, id: 'other', title: 'Letter again' } },
+    ]);
     expect(added).toBe(0);
+  });
+
+  it('imports sidecars with same hash but different saved filenames', async () => {
+    const first = createStagingItem({
+      type: 'letter-import-pending',
+      source: 'folder',
+      severity: 'info',
+      title: 'Letter A',
+      summary: 'Test',
+      sourceHash: 'same-hash',
+      sourceFileName: '1_NUR02_Nursing_services_approve_-_vendor.docx',
+    });
+    vi.mocked(loadStagingQueue).mockResolvedValue([first]);
+    const second = createStagingItem({
+      type: 'letter-import-pending',
+      source: 'folder',
+      severity: 'info',
+      title: 'Letter B',
+      summary: 'Test',
+      sourceHash: 'same-hash',
+      sourceFileName: '1_NUR02_Nursing_services_approve_-_vendor-1.docx',
+    });
+    const added = await importStagingSidecars([{ version: 1, item: second }]);
+    expect(added).toBe(1);
   });
 
   it('imports new sidecar into staging queue', async () => {

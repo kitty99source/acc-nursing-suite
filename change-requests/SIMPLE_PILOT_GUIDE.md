@@ -554,7 +554,7 @@ All patient data stays on the work laptop — do **not** run folder watch on the
 
 ### Step 2 — Backlog sync (only if probe PASS)
 
-**What this does (plain English):** Each time you double-click **Start Email Sync.cmd** (any time of day — see note below), it pulls the **oldest unactioned ACC emails** from Outlook (up to 50 per run), saves PDF or Word attachments into `ACC-Inbox`, and remembers where it stopped. It **never** auto-imports into the app — use **Start Folder Watch.cmd** → **Review Queue** to import manually. Emails tagged **actioned** in Outlook (or marked complete with a flag) are skipped.
+**What this does (plain English):** Each time you double-click **Start Email Sync.cmd** (any time of day — see note below), it pulls the **oldest ACC emails** from Outlook (up to 50 per run), saves PDF or Word attachments into `ACC-Inbox`, and remembers where it stopped. It **never** auto-imports into the app — use **Start Folder Watch.cmd** → **Review Queue** to import manually. Outlook category **actioned** means you saved the letter locally — it does **not** exclude capture; those letters are included and still flow to the Human Review Queue for real processing.
 
 > **Work hours (U-08 update):** Manual runs are **no longer clock-blocked**. Double-clicking **Start Email Sync.cmd** or **Start WFH Mode.cmd** always runs, even late at night — a manual launch is itself the signal you're working from home. The log will say `Manual run (HH:mm NZ) - work-hours gate skipped`. The 7am–6pm window is now only a configurable option for a *future* scheduled/automated daemon (`accWorkHours` in `office-config.json`, `enabled: false` by default).
 
@@ -562,7 +562,7 @@ All patient data stays on the work laptop — do **not** run folder watch on the
 2. Optional: copy `office-config.example.json` to `%USERPROFILE%\ACC-Suite\office-config.json` and tune ACC sender/subject filters or batch size (`emailSync.batchSize`, default 50). Default shared mailbox is **`ACCDistrictNursing`** (`emailSync.sharedMailbox`).
 3. Double-click **`Start Email Sync.cmd`** — runs **immediately, any time of day** (manual run; the old 7am–6pm block no longer applies to manual launches). Log should show **`Using mailbox: ACCDistrictNursing`** and **`Manual run ... work-hours gate skipped`**.
 4. Repeat during work hours until the log shows **saved 0** attachments (backlog cleared).
-5. Tag processed emails **actioned** in Outlook if you want them skipped on future runs.
+5. Tag emails **actioned** in Outlook after you save the attachment locally (optional personal workflow marker — sync still captures them for HRQ review).
 6. Status file: `%USERPROFILE%\ACC-Suite\email-sync-status.json` — load in **ACC Inbox** → **Load sync report**.
 7. Checkpoint file: `%USERPROFILE%\ACC-Suite\email-sync-state.json` — resume after close or Ctrl+C.
 8. Double-click **`Start Folder Watch.cmd`** so new attachments stage for **Review Queue**.
@@ -570,13 +570,13 @@ All patient data stays on the work laptop — do **not** run folder watch on the
 
 **Switches:** `-Recent` for last-14-days mode only; `-BatchSize 25` for smaller batches; `-Scheduled` marks a run as the future automated daemon (obeys the `accWorkHours` window if `enabled: true`); `-IgnoreWorkHours` forces a `-Scheduled` run even outside its window. Manual double-click runs need none of these — they always run.
 
-### One-time backfill (pull historical actioned letters)
+### Historical backfill (optional labelled launcher)
 
-Normal **Start Email Sync.cmd** skips any email already tagged **actioned** or marked complete with a flag. If your mailbox is already worked through, a first sync may save almost nothing. To pull the **historical** letters in once for the pilot:
+**Start Email Backfill.cmd** is an alias for **Start Email Sync.cmd** — both run the same backlog sync and **include** actioned mail. Use the backfill launcher when you want a clearly labelled historical run in the bootstrap log; otherwise use **Start Email Sync.cmd** for day-to-day incremental sync.
 
-1. Double-click **`Start Email Backfill.cmd`** (same as Email Sync but passes `-IncludeActioned`, so it **includes** already-actioned/flagged messages). The log shows `Backfill mode: INCLUDING already-actioned/flagged messages (one-time backfill)`.
+1. Double-click **`Start Email Backfill.cmd`** (or **`Start Email Sync.cmd`** — same behavior). The log shows `Skip categories/flags: (none - actioned mail is captured for HRQ review)`.
 2. Run it a **few times** until it reports **saved 0** (it still batches ~50 per run). Everything still lands in the **Human Review Queue** — nothing auto-imports.
-3. After the backfill, go back to the normal **Start Email Sync.cmd** for day-to-day incremental sync.
+3. Continue with **Start Email Sync.cmd** for day-to-day incremental sync.
 
 **VPN reliability tip:** enable **Cached Exchange Mode** in Outlook (File > Account Settings > double-click the account > tick *Use Cached Exchange Mode*) so sync reads Outlook's local copy and survives Citrix VPN drops. If the VPN drops mid-scan, the sync now **stops early** with a clear "Outlook lost its connection to Exchange" message instead of spamming ~1000 errors — reconnect the VPN, wait until Outlook shows *Connected*, then re-run.
 

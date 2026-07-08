@@ -20,7 +20,7 @@ Write-BootstrapLog 'outlook-sync.ps1 started'
 #
 # Reads filtered inbox from open Outlook session.
 # Saves PDF/DOCX attachments to %USERPROFILE%\ACC-Inbox for folder watch + HRQ.
-# Default mode: incremental backlog (oldest unactioned ACC letters first, batched per run).
+# Default mode: incremental backlog (oldest ACC letters first, batched per run).
 # Writes email-sync-status.json for ACC Inbox UI and email-sync-state.json for checkpoint resume.
 # Does NOT delete, move, send mail, or auto-import into the app.
 
@@ -43,7 +43,7 @@ $DefaultSubjectPatterns = @(
     'ACC\s+letter'
 )
 
-$DefaultSkipCategories = @('actioned')
+$DefaultSkipCategories = @()
 $DefaultWorkStartHour = 7
 $DefaultWorkEndHour = 18
 # Enforcement of the work-hours window is OFF by default. Manual runs (Start Email Sync.cmd /
@@ -357,15 +357,21 @@ function Register-GracefulShutdown {
     [Console]::TreatControlCAsInput = $false
 }
 
+function Format-SkipCategoriesSummary {
+    param([string[]]$SkipCategories)
+    if (-not $SkipCategories -or $SkipCategories.Count -eq 0) {
+        return '(none - actioned mail is captured for HRQ review)'
+    }
+    return ($SkipCategories -join ', ')
+}
+
 function Test-ShouldSkipMessage {
     param(
         [object]$Item,
-        [string[]]$SkipCategories,
-        [switch]$IncludeActioned
+        [string[]]$SkipCategories
     )
-    # One-time backfill: never skip on category or completed-flag so already-actioned/flagged
-    # historical letters are pulled into the Human Review Queue.
-    if ($IncludeActioned) { return $false }
+    # Outlook "actioned" means saved locally, not HRQ-complete - do not skip by default.
+    # Admins may opt in to skip specific categories via office-config skipCategories.
     $cats = ''
     try { $cats = [string]$Item.Categories } catch {}
     if (-not [string]::IsNullOrWhiteSpace($cats)) {
@@ -374,10 +380,6 @@ function Test-ShouldSkipMessage {
             if ($cats -match [regex]::Escape($skip)) { return $true }
         }
     }
-    # olFlagComplete = 1  -  treat completed follow-up flags as actioned
-    try {
-        if ([int]$Item.FlagStatus -eq 1) { return $true }
-    } catch {}
     return $false
 }
 
@@ -471,7 +473,7 @@ function Write-ScanBreakdownSummary {
         Write-SyncLine 'Scan: (no stats recorded)'
         return
     }
-    Write-SyncLine ("Scan: {0} mail item(s); {1} matched sender; {2} sender+subject (subject is a hint only); {3} skipped (category/flag); {4} already processed; {5} sender-matched but no PDF/DOCX/DOC" -f $ss.mailItemsScanned, $ss.matchedSender, $ss.matchedBoth, $ss.skippedCategory, $ss.alreadyProcessed, $ss.noSupportedAttachment)
+    Write-SyncLine ("Scan: {0} mail item(s); {1} matched sender; {2} sender+subject (subject is a hint only); {3} skipped (configured category); {4} already processed; {5} sender-matched but no PDF/DOCX/DOC" -f $ss.mailItemsScanned, $ss.matchedSender, $ss.matchedBoth, $ss.skippedCategory, $ss.alreadyProcessed, $ss.noSupportedAttachment)
     if ($Status.savedCount -eq 0 -and $ss.mailItemsScanned -eq 0) {
         Write-SyncLine 'Hint: inbox has no mail items in scan range - confirm ACCDistrictNursing is open in Outlook and you have delegate access.'
     } elseif ($Status.savedCount -eq 0 -and $ss.matchedSender -eq 0) {
@@ -577,9 +579,6 @@ if ($env:ACC_EMAIL_SYNC_RECENT -eq '1') { $useBacklog = $false }
 if ($env:ACC_EMAIL_SYNC_BACKLOG -eq '0') { $useBacklog = $false }
 
 $config = Load-SyncConfig
-# One-time backfill: clear the skip categories so "actioned" no longer excludes messages. The
-# completed-flag skip is bypassed separately via -IncludeActioned on Test-ShouldSkipMessage.
-if ($IncludeActioned) { $config.SkipCategories = @() }
 $syncState = Load-SyncState
 $script:SyncState = $syncState
 $script:StatePath = Get-StatePath
@@ -705,11 +704,11 @@ try {
     Write-SyncLine ("Attachment types saved (case-insensitive): {0}" -f ($config.SupportedExt -join ', '))
     Write-SyncLine "Saving attachments to: $inbox"
     if ($IncludeActioned) {
-        Write-SyncLine 'Backfill mode: INCLUDING already-actioned/flagged messages (one-time backfill)'
+        Write-SyncLine 'Backfill mode (legacy -IncludeActioned alias; default sync now includes actioned mail)'
     }
     if ($useBacklog) {
         Write-SyncLine ("Mode: backlog incremental  -  oldest first, up to {0} message(s) this run" -f $config.BatchSize)
-        Write-SyncLine ("Skip categories/flags: {0}" -f ($config.SkipCategories -join ', '))
+        Write-SyncLine ("Skip categories/flags: {0}" -f (Format-SkipCategoriesSummary -SkipCategories $config.SkipCategories))
     } else {
         Write-SyncLine ("Mode: recent  -  last {0} day(s), newest first, up to {1} message(s)" -f $DaysBack, $config.BatchSize)
     }
@@ -794,10 +793,10 @@ try {
                 continue
             }
 
-            if (Test-ShouldSkipMessage -Item $item -SkipCategories $config.SkipCategories -IncludeActioned:$IncludeActioned) {
+            if (Test-ShouldSkipMessage -Item $item -SkipCategories $config.SkipCategories) {
                 $status.skippedCount++
                 $status.scanStats.skippedCategory++
-                Add-NonMatchSample -Reason 'skipped category/flag' -Sender $from -Subject $subject
+                Add-NonMatchSample -Reason 'skipped category' -Sender $from -Subject $subject
                 continue
             }
 

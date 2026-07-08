@@ -8,8 +8,8 @@ echo   ACC Outlook COM email sync
 echo   --------------------------
 echo   Requires Outlook desktop open and logged in.
 echo   Mailbox: ACCDistrictNursing (override via office-config.json or ACC_SHARED_MAILBOX).
-echo   Default: backlog mode - oldest unactioned ACC letters first (batch per run).
-echo   Manual run: proceeds now regardless of time of day. Skips Outlook category "actioned".
+echo   Default: backlog mode - oldest ACC letters first (batch per run).
+echo   Manual run: proceeds now regardless of time of day. Captures actioned mail for HRQ review.
 echo   Saves PDF/DOCX attachments to %%USERPROFILE%%\ACC-Inbox
 echo   Does NOT delete, move mail, or auto-import into the app.
 echo.

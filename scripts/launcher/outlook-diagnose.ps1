@@ -35,6 +35,12 @@ $KnownSampleSender = 'John.Bentley@acc.co.nz'
 $KnownSampleSubject = 'Mr R... - Claim: ... ACCID:VEND-K96655'
 $DefaultSubjectMatchMode = 'tokens'
 $DefaultRequiredTokens = @('Claim', 'ACCID')
+# Bounded scan: cap message iteration so a huge shared mailbox can never make the
+# read-only diagnose appear to hang. Matches outlook-sync.ps1 backlog scope.
+$DefaultMaxScan = 2000
+# Heartbeat cadence: log an "emails processed" progress line every N messages so a
+# truncated screenshot still shows "still working" vs "stopped/hung".
+$HeartbeatEvery = 100
 
 # Words kept visible when masking subjects (structural / filter tokens, never PHI).
 $script:MaskKeepWords = @(
@@ -235,6 +241,11 @@ Write-DiagLine ("Subject match mode: {0} (required tokens: {1})" -f $config.Subj
 Write-DiagLine ''
 
 $outlook = $null
+$script:DiagExitCode = 0
+$reportProduced = $false
+# Captured during store enumeration so a failed resolution can tell the user which
+# stores WERE visible (they have several: ACCTeam, Digitisation Bureau, ACCForms, ...).
+$visibleStores = New-Object System.Collections.Generic.List[string]
 try {
     Write-DiagLine 'Connecting to Outlook.Application COM object...'
     $outlook = New-Object -ComObject Outlook.Application
@@ -247,70 +258,78 @@ try {
             $display = [string]$store.DisplayName
             $hints = Get-StoreSmtpHint -Store $store
             $hintText = if ($hints.Count -gt 0) { ($hints | Select-Object -Unique) -join ' / ' } else { '(no SMTP hint)' }
+            if (-not [string]::IsNullOrWhiteSpace($display)) { [void]$visibleStores.Add($display) }
             Write-DiagLine ("  - {0} [{1}]" -f $display, $hintText)
         } catch {
         }
     }
     Write-DiagLine ''
+    $storeCsv = if ($visibleStores.Count -gt 0) { ($visibleStores.ToArray() -join '; ') } else { '(no stores visible)' }
 
-    $inbox = Get-SharedInboxFolder -Namespace $namespace -SharedName $SharedMailbox
-    $resolution = Get-LastMailboxResolution
-    $mailItems = Get-MailItemsCollection -Folder $inbox
+    # --- Resolve target inbox folder ------------------------------------------
+    # Reuse the SAME helper outlook-sync.ps1 uses (Get-SharedInboxFolder /
+    # Get-LastMailboxResolution) so diagnose matches the working sync path. This
+    # section is the prime suspect for "stops right after Visible stores": if it
+    # throws or returns null, log the exact error + which stores were visible.
+    Write-DiagLine ("Resolving shared inbox folder for '{0}'..." -f $SharedMailbox)
+    $inbox = $null
+    $resolution = ''
+    try {
+        $inbox = Get-SharedInboxFolder -Namespace $namespace -SharedName $SharedMailbox
+        $resolution = Get-LastMailboxResolution
+    } catch {
+        Write-DiagLine ("FAIL - could not resolve inbox folder for '{0}': {1} (line {2})" -f $SharedMailbox, $_.Exception.Message, $_.InvocationInfo.ScriptLineNumber)
+        Write-DiagLine ("Could not resolve inbox folder for {0}; visible stores were: {1}" -f $SharedMailbox, $storeCsv)
+        Write-DiagLine '  FIX: set emailSync.sharedMailbox in office-config to one of the visible store names above.'
+        throw ("inbox resolution failed for '{0}': {1}" -f $SharedMailbox, $_.Exception.Message)
+    }
+    if (-not $inbox) {
+        Write-DiagLine ("Could not resolve inbox folder for {0}; visible stores were: {1}" -f $SharedMailbox, $storeCsv)
+        Write-DiagLine '  FIX: set emailSync.sharedMailbox in office-config to one of the visible store names above.'
+        throw ("Get-SharedInboxFolder returned null for '{0}'" -f $SharedMailbox)
+    }
 
-    Write-DiagLine "OK - inbox resolved via: $resolution"
-    Write-DiagLine "Inbox item count (all classes): $($inbox.Items.Count)"
-    Write-DiagLine "Mail item count (IPM.Note / Restrict): $($mailItems.Count)"
-    Write-DiagLine "Unread count: $($inbox.UnReadItemCount)"
-    Write-DiagLine ''
+    $folderName = ''
+    try { $folderName = [string]$inbox.Name } catch {}
+    if ([string]::IsNullOrWhiteSpace($folderName)) { $folderName = 'Inbox' }
+    Write-DiagLine ("OK - inbox resolved via: {0}" -f $resolution)
 
-    Write-DiagLine 'First 5 mail items (newest first):'
-    $shown = 0
-    $total = [int]$mailItems.Count
-    for ($idx = 1; $idx -le $total; $idx++) {
-        if ($shown -ge 5) { break }
-        $item = $null
-        try {
-            $item = $mailItems.Item($idx)
-            if ($item.Class -ne 43) { continue }
-
-            $from = Get-SenderAddress -Item $item
-            $subject = ''
-            try { $subject = [string]$item.Subject } catch {}
-            $cats = ''
-            try { $cats = [string]$item.Categories } catch {}
-            if ([string]::IsNullOrWhiteSpace($cats)) { $cats = '(none)' }
-            $exts = Get-AttachmentExtensions -Item $item
-            $senderOk = Test-AccSender -FromAddress $from -Allowlist $config.Senders
-            $subjectOk = Test-AccSubject -Subject $subject -Patterns $config.Patterns
-            $matchTag = if ($senderOk -and $subjectOk) { 'MATCH' } else { 'no-match' }
-            $reason = Explain-FilterResult -Sender $from -Subject $subject -Allowlist $config.Senders -Patterns $config.Patterns -SkipCategories $config.SkipCategories -Categories $cats
-
-            Write-DiagLine ("  {0}. [{1}] from={2}" -f ($shown + 1), $matchTag, $from)
-            Write-DiagLine ("     subject: {0}" -f (Get-TruncatedSubject -Subject $subject))
-            Write-DiagLine ("     attachments: {0}" -f $exts)
-            Write-DiagLine ("     category: {0}" -f $cats)
-            Write-DiagLine ("     filter: {0}" -f $reason)
-            $shown++
-        } finally {
-            if ($item) { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($item) }
+    # --- Build the mail-item collection (guarded; never abort the whole run) ---
+    $mailItems = $null
+    try {
+        $mailItems = Get-MailItemsCollection -Folder $inbox
+    } catch {
+        Write-DiagLine ("WARN - could not build restricted collection ({0}); falling back to folder.Items" -f $_.Exception.Message)
+        try { $mailItems = $inbox.Items } catch {
+            Write-DiagLine ("WARN - could not read folder.Items either: {0}" -f $_.Exception.Message)
         }
     }
-    if ($shown -eq 0) {
-        Write-DiagLine '  (no mail items found - inbox scan is empty)'
-        Write-DiagLine '  Likely cause: shared mailbox not opened in Outlook or delegate access missing.'
+
+    $allCount = 0
+    try { $allCount = [int]$inbox.Items.Count } catch {}
+    $unread = 0
+    try { $unread = [int]$inbox.UnReadItemCount } catch {}
+    $total = 0
+    if ($mailItems) { try { $total = [int]$mailItems.Count } catch { $total = 0 } }
+
+    # Progress line requested: emit the moment the folder is resolved + total known,
+    # BEFORE the scan loop, so a truncated log still proves we got past resolution.
+    Write-BootstrapLog ("Scanning folder '{0}' - {1} messages total" -f $folderName, $total)
+
+    Write-DiagLine ("Inbox item count (all classes): {0}" -f $allCount)
+    Write-DiagLine ("Mail item count (IPM.Note / Restrict): {0}" -f $total)
+    Write-DiagLine ("Unread count: {0}" -f $unread)
+
+    $scanTotal = if ($total -gt $DefaultMaxScan) { $DefaultMaxScan } else { $total }
+    if ($total -gt $DefaultMaxScan) {
+        Write-DiagLine ("NOTE - folder has {0} messages; scan capped at {1} (newest first)." -f $total, $DefaultMaxScan)
+        Write-BootstrapLog ("Scan capped: {0} of {1} messages will be scanned (newest first)" -f $DefaultMaxScan, $total)
     }
     Write-DiagLine ''
 
-    Write-DiagLine 'Known sample filter test (John Bentley Claim/ACCID letter):'
-    $sampleSenderOk = Test-AccSender -FromAddress $KnownSampleSender -Allowlist $config.Senders
-    $sampleSubjectOk = Test-AccSubject -Subject $KnownSampleSubject -Patterns $config.Patterns
-    Write-DiagLine ("  sender {0} -> {1}" -f $KnownSampleSender, $(if ($sampleSenderOk) { 'MATCH' } else { 'NO MATCH' }))
-    Write-DiagLine ("  subject sample -> {0}" -f $(if ($sampleSubjectOk) { 'MATCH' } else { 'NO MATCH' }))
-    if (-not $sampleSubjectOk) {
-        Write-DiagLine '  FIX: ensure office-config includes Claim: and ACCID: in subject patterns.'
-    }
-    Write-DiagLine ''
-
+    # --- Single bounded pass: preview (first 5) + histograms + heartbeats ------
+    $shown = 0
+    $scanned = 0
     $matchCount = 0
     $senderOnlyCount = 0
     $modeMatchCount = 0
@@ -325,84 +344,144 @@ try {
     $rejectSamples = New-Object System.Collections.Generic.List[string]
     $maxRejectSamples = 6
 
-    for ($idx = 1; $idx -le $total; $idx++) {
+    Write-DiagLine 'First 5 mail items (newest first):'
+    for ($idx = 1; $idx -le $scanTotal; $idx++) {
         $item = $null
         try {
             $item = $mailItems.Item($idx)
             if ($item.Class -ne 43) { continue }
+
             $from = Get-SenderAddress -Item $item
             $subject = ''
             try { $subject = [string]$item.Subject } catch {}
-            if (-not (Test-AccSender -FromAddress $from -Allowlist $config.Senders)) { continue }
+            $senderOk = Test-AccSender -FromAddress $from -Allowlist $config.Senders
 
-            $senderOnlyCount++
+            # Attachment extensions are needed for the preview (first 5) and for the
+            # histogram (sender-matched). Compute once per item, only when needed.
+            $extText = $null
+            if ($shown -lt 5 -or $senderOk) { $extText = Get-AttachmentExtensions -Item $item }
 
-            $hasClaim = Get-SubjectTokenPresence -Subject $subject -Token 'Claim'
-            $hasAccid = Get-SubjectTokenPresence -Subject $subject -Token 'ACCID'
-            if ($hasClaim -and $hasAccid) { $tokBoth++ }
-            elseif ($hasClaim) { $tokClaim++ }
-            elseif ($hasAccid) { $tokAccid++ }
-            else { $tokNeither++ }
+            if ($shown -lt 5) {
+                $cats = ''
+                try { $cats = [string]$item.Categories } catch {}
+                if ([string]::IsNullOrWhiteSpace($cats)) { $cats = '(none)' }
+                $subjectOk = Test-AccSubject -Subject $subject -Patterns $config.Patterns
+                $matchTag = if ($senderOk -and $subjectOk) { 'MATCH' } else { 'no-match' }
+                $reason = Explain-FilterResult -Sender $from -Subject $subject -Allowlist $config.Senders -Patterns $config.Patterns -SkipCategories $config.SkipCategories -Categories $cats
+                Write-DiagLine ("  {0}. [{1}] from={2}" -f ($shown + 1), $matchTag, $from)
+                Write-DiagLine ("     subject: {0}" -f (Get-TruncatedSubject -Subject $subject))
+                Write-DiagLine ("     attachments: {0}" -f $extText)
+                Write-DiagLine ("     category: {0}" -f $cats)
+                Write-DiagLine ("     filter: {0}" -f $reason)
+                $shown++
+            }
 
-            # distinct extensions on this email (or 'none')
-            $extText = Get-AttachmentExtensions -Item $item
-            if ($extText -eq '(none)') {
-                if ($extHist.ContainsKey('none')) { $extHist['none']++ } else { $extHist['none'] = 1 }
-            } else {
-                foreach ($e in ($extText -split ',\s*')) {
-                    $key = $e.Trim().TrimStart('.')
-                    if ([string]::IsNullOrWhiteSpace($key)) { continue }
-                    if ($extHist.ContainsKey($key)) { $extHist[$key]++ } else { $extHist[$key] = 1 }
+            if ($senderOk) {
+                $senderOnlyCount++
+
+                $hasClaim = Get-SubjectTokenPresence -Subject $subject -Token 'Claim'
+                $hasAccid = Get-SubjectTokenPresence -Subject $subject -Token 'ACCID'
+                if ($hasClaim -and $hasAccid) { $tokBoth++ }
+                elseif ($hasClaim) { $tokClaim++ }
+                elseif ($hasAccid) { $tokAccid++ }
+                else { $tokNeither++ }
+
+                if ($extText -eq '(none)') {
+                    if ($extHist.ContainsKey('none')) { $extHist['none']++ } else { $extHist['none'] = 1 }
+                } else {
+                    foreach ($e in ($extText -split ',\s*')) {
+                        $key = $e.Trim().TrimStart('.')
+                        if ([string]::IsNullOrWhiteSpace($key)) { continue }
+                        if ($extHist.ContainsKey($key)) { $extHist[$key]++ } else { $extHist[$key] = 1 }
+                    }
+                }
+
+                $legacyOk = Test-AccSubject -Subject $subject -Patterns $config.Patterns
+                if ($legacyOk) { $matchCount++ }
+                if (Test-AccSubjectMode -Subject $subject -Patterns $config.Patterns -Mode $config.SubjectMatchMode -RequiredTokens $config.RequiredTokens) {
+                    $modeMatchCount++
+                }
+                if (-not $legacyOk -and $rejectSamples.Count -lt $maxRejectSamples) {
+                    [void]$rejectSamples.Add((Get-MaskedSubject -Subject $subject))
                 }
             }
-
-            $legacyOk = Test-AccSubject -Subject $subject -Patterns $config.Patterns
-            if ($legacyOk) { $matchCount++ }
-            if (Test-AccSubjectMode -Subject $subject -Patterns $config.Patterns -Mode $config.SubjectMatchMode -RequiredTokens $config.RequiredTokens) {
-                $modeMatchCount++
-            }
-            if (-not $legacyOk -and $rejectSamples.Count -lt $maxRejectSamples) {
-                [void]$rejectSamples.Add((Get-MaskedSubject -Subject $subject))
-            }
+        } catch {
+            # One bad message never aborts the scan; log it and keep going.
+            Write-BootstrapLog ("WARN - scan error on item {0}: {1} (line {2})" -f $idx, $_.Exception.Message, $_.InvocationInfo.ScriptLineNumber)
         } finally {
             if ($item) { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($item) }
+            $scanned++
+            # Heartbeat: proves the script is still working (vs stopped/hung) even if
+            # the report below fails. Written straight to the bootstrap log.
+            if ($scanned % $HeartbeatEvery -eq 0) {
+                Write-BootstrapLog ("Processed {0}/{1} (sender-matched so far: {2}, subject-matched: {3})" -f $scanned, $scanTotal, $senderOnlyCount, $modeMatchCount)
+            }
         }
     }
-    Write-DiagLine "Inbox totals: $senderOnlyCount sender match(es), $matchCount sender+subject match(es) [legacy 'any' patterns]"
-    Write-DiagLine ("Would match under current mode '{0}': {1} email(s)" -f $config.SubjectMatchMode, $modeMatchCount)
-    Write-DiagLine ''
-    Write-DiagLine 'Token presence among sender-matched emails (colon-optional, case-insensitive):'
-    Write-DiagLine ("  Claim only: {0}  |  ACCID only: {1}  |  BOTH: {2}  |  NEITHER: {3}" -f $tokClaim, $tokAccid, $tokBoth, $tokNeither)
-    Write-DiagLine ''
-    Write-DiagLine 'Attachment extension histogram among sender-matched emails:'
-    if ($extHist.Count -eq 0) {
-        Write-DiagLine '  (no sender-matched emails)'
-    } else {
-        $extLine = (($extHist.GetEnumerator() | Sort-Object -Property Value -Descending | ForEach-Object { "{0}:{1}" -f $_.Key, $_.Value }) -join '  ')
-        Write-DiagLine ("  {0}" -f $extLine)
+    Write-BootstrapLog ("Processed {0} messages total (sender-matched: {1}, subject-matched: {2})" -f $scanned, $senderOnlyCount, $modeMatchCount)
+    Write-DiagLine ("Scanned {0} of {1} message(s)." -f $scanned, $total)
+
+    if ($shown -eq 0) {
+        Write-DiagLine '  (no mail items found - inbox scan is empty)'
+        Write-DiagLine '  Likely cause: shared mailbox not opened in Outlook or delegate access missing.'
     }
     Write-DiagLine ''
-    Write-DiagLine 'Masked sample subjects (sender-matched but subject REJECTED by legacy patterns):'
-    Write-DiagLine '  (digits -> #, names -> Xxxxx, filter tokens like Claim:/ACCID: kept visible)'
-    if ($rejectSamples.Count -eq 0) {
-        Write-DiagLine '  (none - every sender-matched email also matched the subject patterns)'
-    } else {
-        foreach ($s in $rejectSamples) {
-            Write-DiagLine ("  - {0}" -f $s)
+
+    # --- Report (always logged, bounded by clear markers) ----------------------
+    Write-DiagLine '===== DIAGNOSE REPORT BEGIN ====='
+    try {
+        Write-DiagLine 'Known sample filter test (John Bentley Claim/ACCID letter):'
+        $sampleSenderOk = Test-AccSender -FromAddress $KnownSampleSender -Allowlist $config.Senders
+        $sampleSubjectOk = Test-AccSubject -Subject $KnownSampleSubject -Patterns $config.Patterns
+        Write-DiagLine ("  sender {0} -> {1}" -f $KnownSampleSender, $(if ($sampleSenderOk) { 'MATCH' } else { 'NO MATCH' }))
+        Write-DiagLine ("  subject sample -> {0}" -f $(if ($sampleSubjectOk) { 'MATCH' } else { 'NO MATCH' }))
+        if (-not $sampleSubjectOk) {
+            Write-DiagLine '  FIX: ensure office-config includes Claim: and ACCID: in subject patterns.'
         }
+        Write-DiagLine ''
+        Write-DiagLine ("Inbox totals (of {0} scanned): {1} sender match(es), {2} sender+subject match(es) [legacy 'any' patterns]" -f $scanned, $senderOnlyCount, $matchCount)
+        Write-DiagLine ("Would match under current mode '{0}': {1} email(s)" -f $config.SubjectMatchMode, $modeMatchCount)
+        Write-DiagLine ''
+        Write-DiagLine 'Token presence among sender-matched emails (colon-optional, case-insensitive):'
+        Write-DiagLine ("  Claim only: {0}  |  ACCID only: {1}  |  BOTH: {2}  |  NEITHER: {3}" -f $tokClaim, $tokAccid, $tokBoth, $tokNeither)
+        Write-DiagLine ''
+        Write-DiagLine 'Attachment extension histogram among sender-matched emails:'
+        if ($extHist.Count -eq 0) {
+            Write-DiagLine '  (no sender-matched emails)'
+        } else {
+            $extLine = (($extHist.GetEnumerator() | Sort-Object -Property Value -Descending | ForEach-Object { "{0}:{1}" -f $_.Key, $_.Value }) -join '  ')
+            Write-DiagLine ("  {0}" -f $extLine)
+        }
+        Write-DiagLine ''
+        Write-DiagLine 'Masked sample subjects (sender-matched but subject REJECTED by legacy patterns):'
+        Write-DiagLine '  (digits -> #, names -> Xxxxx, filter tokens like Claim:/ACCID: kept visible)'
+        if ($rejectSamples.Count -eq 0) {
+            Write-DiagLine '  (none - every sender-matched email also matched the subject patterns)'
+        } else {
+            foreach ($s in $rejectSamples) {
+                Write-DiagLine ("  - {0}" -f $s)
+            }
+        }
+        $reportProduced = $true
+    } catch {
+        Write-DiagLine ("WARN - report section error: {0} (line {1})" -f $_.Exception.Message, $_.InvocationInfo.ScriptLineNumber)
+        Write-BootstrapLog ("WARN - report section error: {0} (line {1})" -f $_.Exception.Message, $_.InvocationInfo.ScriptLineNumber)
     }
+    Write-DiagLine '===== DIAGNOSE REPORT END ====='
     Write-DiagLine ''
     Write-DiagLine 'Diagnose complete. No files were saved.'
 }
 catch {
     Write-DiagLine ''
-    Write-DiagLine ("FAIL - $($_.Exception.Message)")
+    Write-DiagLine ("FAIL - {0} (line {1})" -f $_.Exception.Message, $_.InvocationInfo.ScriptLineNumber)
+    Write-BootstrapLog ("FAIL - diagnose error: {0} (line {1})" -f $_.Exception.Message, $_.InvocationInfo.ScriptLineNumber)
     Write-DiagLine ''
     Write-DiagLine 'Common causes:'
     Write-DiagLine '  - Outlook desktop is not running'
     Write-DiagLine '  - Shared mailbox ACCDistrictNursing not added in Outlook'
     Write-DiagLine '  - Programmatic access blocked in Outlook Trust Center'
-    exit 1
+    # Only fail hard if we could not produce the report at all.
+    if (-not $reportProduced) { $script:DiagExitCode = 1 }
 }
 finally {
     if ($outlook) {
@@ -415,3 +494,5 @@ finally {
 Write-DiagLine ''
 Write-DiagLine "Log: $env:USERPROFILE\ACC-Suite\logs\email-diagnose-bootstrap.log"
 Write-DiagLine ''
+
+if ($script:DiagExitCode -ne 0) { exit $script:DiagExitCode }

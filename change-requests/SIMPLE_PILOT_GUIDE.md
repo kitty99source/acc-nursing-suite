@@ -570,6 +570,20 @@ All patient data stays on the work laptop — do **not** run folder watch on the
 
 **Switches:** `-Recent` for last-14-days mode only; `-BatchSize 25` for smaller batches; `-Scheduled` marks a run as the future automated daemon (obeys the `accWorkHours` window if `enabled: true`); `-IgnoreWorkHours` forces a `-Scheduled` run even outside its window. Manual double-click runs need none of these — they always run.
 
+### Subject matching + attachment types (2026-07-08 update)
+
+The sync no longer needs a subject to contain the exact literal `Claim:`/`ACCID:`. It now uses a **subject match mode** (`emailSync.subjectMatchMode` in `office-config.json`):
+
+- **`tokens`** (default, safest): saves the email if the subject contains **EITHER `Claim` OR `ACCID`** — colon optional, case-insensitive (`Claim 123`, `Claim:123`, `ACCID` all match).
+- **`all`**: require **BOTH** `Claim` **AND** `ACCID` in the subject (stricter — only if a user wants it).
+- **`any`**: legacy behaviour — match **any** of `accInbox.subjectPatterns` (approv/declin/nur0.../etc.).
+
+Attachment types saved are now **case-insensitive** and cover **`.pdf`, `.docx`, `.doc`** (configurable via `emailSync.attachmentExtensions`). `.doc` is saved for review, but in Word you still **Save As → .docx** before importing into the app.
+
+Nothing changed about safety: every saved attachment still flows to the **Human Review Queue** for manual sign-off — no auto-commit.
+
+**Diagnose first (read-only, PHI-safe):** if a sync saves 0 letters, double-click **`Start Email Diagnose.cmd`** (or run `outlook-diagnose.ps1`). The log at `%USERPROFILE%\ACC-Suite\logs\email-diagnose-bootstrap.log` now shows a **Claim/ACCID token histogram**, an **attachment extension histogram**, and a few **masked** sample subjects (digits→`#`, names→`Xxxxx`, tokens kept visible) so you can send us the real subject format without leaking PHI.
+
 **Shared mailbox:** District nursing ACC letters live in **`ACCDistrictNursing`**, not your personal inbox. Sync/probe use that mailbox by default. Override in `%USERPROFILE%\ACC-Suite\office-config.json` (`emailSync.sharedMailbox`) or env `ACC_SHARED_MAILBOX` only if IT gives a different name.
 
 **PHI:** Subjects may show patient names — do not screenshot for support; send log file only if asked.

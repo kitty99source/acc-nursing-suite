@@ -33,11 +33,49 @@ $DefaultSubjectPatterns = @(
 
 $KnownSampleSender = 'John.Bentley@acc.co.nz'
 $KnownSampleSubject = 'Mr R... - Claim: ... ACCID:VEND-K96655'
+$DefaultSubjectMatchMode = 'tokens'
+$DefaultRequiredTokens = @('Claim', 'ACCID')
+
+# Words kept visible when masking subjects (structural / filter tokens, never PHI).
+$script:MaskKeepWords = @(
+    'claim', 'accid', 'acc', 'ref', 'vend', 'po', 'nur', 'id', 'no', 'number',
+    'letter', 'purchase', 'order', 'approval', 'approved', 'declined', 'decline',
+    're', 'fw', 'fwd'
+)
 
 function Write-DiagLine {
     param([string]$Message)
     Write-Host $Message
     Write-BootstrapLog $Message
+}
+
+# PHI-safe subject mask: digits -> #, capitalised name-like words -> Xxxxx,
+# structural tokens (Claim:, ACCID:, etc.) kept visible so we can see the real format.
+function Get-MaskedSubject {
+    param([string]$Subject)
+    if ([string]::IsNullOrWhiteSpace($Subject)) { return '(empty subject)' }
+    $oneLine = ($Subject -replace '\s+', ' ').Trim()
+    $words = $oneLine -split ' '
+    $out = New-Object System.Collections.Generic.List[string]
+    foreach ($w in $words) {
+        if ([string]::IsNullOrEmpty($w)) { continue }
+        $bare = ($w -replace '[^A-Za-z]', '')
+        $isKeep = $false
+        if (-not [string]::IsNullOrEmpty($bare) -and ($script:MaskKeepWords -contains $bare.ToLowerInvariant())) {
+            $isKeep = $true
+        }
+        if ($isKeep) {
+            # keep the word (and its token colon) but mask any digits
+            [void]$out.Add(($w -replace '\d', '#'))
+        } elseif ($w -cmatch '^[A-Z][a-z]+$') {
+            # Capitalised name-like word (Gilbert, Gandor) -> Xxxxx
+            [void]$out.Add('Xxxxx')
+        } else {
+            # everything else: mask digits, preserve punctuation/structure
+            [void]$out.Add(($w -replace '\d', '#'))
+        }
+    }
+    return ($out -join ' ')
 }
 
 function Get-TruncatedSubject {
@@ -52,6 +90,8 @@ function Load-DiagnoseFilterConfig {
     $senders = @($DefaultSenders)
     $patterns = @($DefaultSubjectPatterns)
     $skipCategories = @('actioned')
+    $subjectMode = $DefaultSubjectMatchMode
+    $requiredTokens = @($DefaultRequiredTokens)
 
     $configPath = Get-OfficeConfigPath
     if ($configPath) {
@@ -82,16 +122,33 @@ function Load-DiagnoseFilterConfig {
             if ($cfg.emailSync -and $cfg.emailSync.skipCategories) {
                 $skipCategories = @($cfg.emailSync.skipCategories)
             }
+            if ($cfg.emailSync -and -not [string]::IsNullOrWhiteSpace([string]$cfg.emailSync.subjectMatchMode)) {
+                $subjectMode = [string]$cfg.emailSync.subjectMatchMode
+            }
+            if ($cfg.emailSync -and $cfg.emailSync.requiredTokens) {
+                $tokList = @($cfg.emailSync.requiredTokens | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+                if ($tokList.Count -gt 0) { $requiredTokens = $tokList }
+            }
         } catch {
             Write-DiagLine "WARN - could not parse office config: $($_.Exception.Message)"
         }
     }
 
+    if (-not [string]::IsNullOrWhiteSpace($env:ACC_EMAIL_SYNC_SUBJECT_MODE)) {
+        $subjectMode = $env:ACC_EMAIL_SYNC_SUBJECT_MODE.Trim()
+    }
+    $subjectMode = $subjectMode.Trim().ToLowerInvariant()
+    if ($subjectMode -ne 'any' -and $subjectMode -ne 'all' -and $subjectMode -ne 'tokens') {
+        $subjectMode = $DefaultSubjectMatchMode
+    }
+
     return @{
-        Senders        = $senders
-        Patterns       = $patterns
-        SkipCategories = $skipCategories
-        ConfigPath     = $configPath
+        Senders          = $senders
+        Patterns         = $patterns
+        SkipCategories   = $skipCategories
+        SubjectMatchMode = $subjectMode
+        RequiredTokens   = @($requiredTokens)
+        ConfigPath       = $configPath
     }
 }
 
@@ -174,6 +231,7 @@ if ($config.ConfigPath) {
 }
 Write-DiagLine ("Merged filters: {0} sender(s), {1} subject pattern(s)" -f $config.Senders.Count, $config.Patterns.Count)
 Write-DiagLine ("Subject patterns: {0}" -f ($config.Patterns -join ' | '))
+Write-DiagLine ("Subject match mode: {0} (required tokens: {1})" -f $config.SubjectMatchMode, ($config.RequiredTokens -join ', '))
 Write-DiagLine ''
 
 $outlook = $null
@@ -255,6 +313,18 @@ try {
 
     $matchCount = 0
     $senderOnlyCount = 0
+    $modeMatchCount = 0
+    # Token presence histogram (colon-optional) among sender-matched emails.
+    $tokClaim = 0
+    $tokAccid = 0
+    $tokBoth = 0
+    $tokNeither = 0
+    # Attachment extension histogram (distinct ext per email) among sender-matched emails.
+    $extHist = @{}
+    # Masked samples of sender-matched but subject-REJECTED (legacy pattern) emails.
+    $rejectSamples = New-Object System.Collections.Generic.List[string]
+    $maxRejectSamples = 6
+
     for ($idx = 1; $idx -le $total; $idx++) {
         $item = $null
         try {
@@ -263,17 +333,64 @@ try {
             $from = Get-SenderAddress -Item $item
             $subject = ''
             try { $subject = [string]$item.Subject } catch {}
-            if (Test-AccSender -FromAddress $from -Allowlist $config.Senders) {
-                $senderOnlyCount++
-                if (Test-AccSubject -Subject $subject -Patterns $config.Patterns) {
-                    $matchCount++
+            if (-not (Test-AccSender -FromAddress $from -Allowlist $config.Senders)) { continue }
+
+            $senderOnlyCount++
+
+            $hasClaim = Get-SubjectTokenPresence -Subject $subject -Token 'Claim'
+            $hasAccid = Get-SubjectTokenPresence -Subject $subject -Token 'ACCID'
+            if ($hasClaim -and $hasAccid) { $tokBoth++ }
+            elseif ($hasClaim) { $tokClaim++ }
+            elseif ($hasAccid) { $tokAccid++ }
+            else { $tokNeither++ }
+
+            # distinct extensions on this email (or 'none')
+            $extText = Get-AttachmentExtensions -Item $item
+            if ($extText -eq '(none)') {
+                if ($extHist.ContainsKey('none')) { $extHist['none']++ } else { $extHist['none'] = 1 }
+            } else {
+                foreach ($e in ($extText -split ',\s*')) {
+                    $key = $e.Trim().TrimStart('.')
+                    if ([string]::IsNullOrWhiteSpace($key)) { continue }
+                    if ($extHist.ContainsKey($key)) { $extHist[$key]++ } else { $extHist[$key] = 1 }
                 }
+            }
+
+            $legacyOk = Test-AccSubject -Subject $subject -Patterns $config.Patterns
+            if ($legacyOk) { $matchCount++ }
+            if (Test-AccSubjectMode -Subject $subject -Patterns $config.Patterns -Mode $config.SubjectMatchMode -RequiredTokens $config.RequiredTokens) {
+                $modeMatchCount++
+            }
+            if (-not $legacyOk -and $rejectSamples.Count -lt $maxRejectSamples) {
+                [void]$rejectSamples.Add((Get-MaskedSubject -Subject $subject))
             }
         } finally {
             if ($item) { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($item) }
         }
     }
-    Write-DiagLine "Inbox totals: $senderOnlyCount sender match(es), $matchCount sender+subject match(es)"
+    Write-DiagLine "Inbox totals: $senderOnlyCount sender match(es), $matchCount sender+subject match(es) [legacy 'any' patterns]"
+    Write-DiagLine ("Would match under current mode '{0}': {1} email(s)" -f $config.SubjectMatchMode, $modeMatchCount)
+    Write-DiagLine ''
+    Write-DiagLine 'Token presence among sender-matched emails (colon-optional, case-insensitive):'
+    Write-DiagLine ("  Claim only: {0}  |  ACCID only: {1}  |  BOTH: {2}  |  NEITHER: {3}" -f $tokClaim, $tokAccid, $tokBoth, $tokNeither)
+    Write-DiagLine ''
+    Write-DiagLine 'Attachment extension histogram among sender-matched emails:'
+    if ($extHist.Count -eq 0) {
+        Write-DiagLine '  (no sender-matched emails)'
+    } else {
+        $extLine = (($extHist.GetEnumerator() | Sort-Object -Property Value -Descending | ForEach-Object { "{0}:{1}" -f $_.Key, $_.Value }) -join '  ')
+        Write-DiagLine ("  {0}" -f $extLine)
+    }
+    Write-DiagLine ''
+    Write-DiagLine 'Masked sample subjects (sender-matched but subject REJECTED by legacy patterns):'
+    Write-DiagLine '  (digits -> #, names -> Xxxxx, filter tokens like Claim:/ACCID: kept visible)'
+    if ($rejectSamples.Count -eq 0) {
+        Write-DiagLine '  (none - every sender-matched email also matched the subject patterns)'
+    } else {
+        foreach ($s in $rejectSamples) {
+            Write-DiagLine ("  - {0}" -f $s)
+        }
+    }
     Write-DiagLine ''
     Write-DiagLine 'Diagnose complete. No files were saved.'
 }

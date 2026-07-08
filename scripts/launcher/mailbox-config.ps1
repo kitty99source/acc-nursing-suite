@@ -216,6 +216,77 @@ function Test-AccSubject {
     return $false
 }
 
+# Colon-optional, case-insensitive token presence test.
+# Token 'Claim:' (or 'Claim') matches 'Claim:123', 'Claim 123', 'CLAIM123', 'reclaim' etc.
+# Deliberately permissive: everything that passes still flows to the Human Review Queue.
+function Get-SubjectTokenPresence {
+    param(
+        [string]$Subject,
+        [string]$Token
+    )
+    if ([string]::IsNullOrWhiteSpace($Subject) -or [string]::IsNullOrWhiteSpace($Token)) { return $false }
+    $needle = $Token.Trim().TrimEnd(':').Trim()
+    if ([string]::IsNullOrWhiteSpace($needle)) { return $false }
+    return ($Subject.IndexOf($needle, [System.StringComparison]::OrdinalIgnoreCase) -ge 0)
+}
+
+# Subject matcher with configurable mode:
+#   'any'    - legacy OR over subjectPatterns (Test-AccSubject) - broadest.
+#   'tokens' - subject contains ANY required token (default; e.g. Claim OR ACCID), colon-optional.
+#   'all'    - subject contains ALL required tokens (require BOTH Claim AND ACCID).
+# Unknown/blank mode falls back to 'tokens'.
+function Test-AccSubjectMode {
+    param(
+        [string]$Subject,
+        [string[]]$Patterns,
+        [string]$Mode = 'tokens',
+        [string[]]$RequiredTokens
+    )
+    if ([string]::IsNullOrWhiteSpace($Subject)) { return $false }
+    if (-not $RequiredTokens -or $RequiredTokens.Count -eq 0) {
+        $RequiredTokens = @('Claim', 'ACCID')
+    }
+    $m = 'tokens'
+    if (-not [string]::IsNullOrWhiteSpace($Mode)) { $m = $Mode.Trim().ToLowerInvariant() }
+
+    if ($m -eq 'any') {
+        return (Test-AccSubject -Subject $Subject -Patterns $Patterns)
+    }
+    if ($m -eq 'all') {
+        foreach ($tok in $RequiredTokens) {
+            if ([string]::IsNullOrWhiteSpace($tok)) { continue }
+            if (-not (Get-SubjectTokenPresence -Subject $Subject -Token $tok)) { return $false }
+        }
+        return $true
+    }
+    # default: 'tokens' - EITHER/any required token present
+    foreach ($tok in $RequiredTokens) {
+        if ([string]::IsNullOrWhiteSpace($tok)) { continue }
+        if (Get-SubjectTokenPresence -Subject $Subject -Token $tok) { return $true }
+    }
+    return $false
+}
+
+# Case-insensitive supported-extension test. Accepts '.PDF', '.Pdf', '.pdf' identically.
+function Test-SupportedExtension {
+    param(
+        [string]$FileName,
+        [string[]]$SupportedExt
+    )
+    if ([string]::IsNullOrWhiteSpace($FileName)) { return $false }
+    if (-not $SupportedExt -or $SupportedExt.Count -eq 0) { return $false }
+    $ext = [System.IO.Path]::GetExtension($FileName)
+    if ([string]::IsNullOrWhiteSpace($ext)) { return $false }
+    $ext = $ext.Trim().ToLowerInvariant()
+    foreach ($allowed in $SupportedExt) {
+        if ([string]::IsNullOrWhiteSpace($allowed)) { continue }
+        $a = $allowed.Trim().ToLowerInvariant()
+        if (-not $a.StartsWith('.')) { $a = '.' + $a }
+        if ($ext -eq $a) { return $true }
+    }
+    return $false
+}
+
 function Merge-UniqueStringList {
     param([string[]]$Values)
     $seen = @{}

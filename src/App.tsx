@@ -154,9 +154,18 @@ export default function App() {
     };
   }, []);
 
-  // Global PDF drag-drop → letter import.
+  // Global letter drag-drop (PDF or Word) → letter import.
   useEffect(() => {
     if (locked) return;
+    function isLetterFile(f: File): boolean {
+      const n = f.name.toLowerCase();
+      return (
+        f.type === 'application/pdf' ||
+        n.endsWith('.pdf') ||
+        f.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+        n.endsWith('.docx')
+      );
+    }
     function onDragOver(e: DragEvent) {
       if (e.dataTransfer?.types.includes('Files')) {
         e.preventDefault();
@@ -169,7 +178,7 @@ export default function App() {
     function onDrop(e: DragEvent) {
       e.preventDefault();
       setDragOver(false);
-      const file = [...(e.dataTransfer?.files ?? [])].find((f) => f.type === 'application/pdf' || f.name.endsWith('.pdf'));
+      const file = [...(e.dataTransfer?.files ?? [])].find(isLetterFile);
       if (file) openLetterImport(file, { entryPoint: 'global' });
     }
     window.addEventListener('dragover', onDragOver);
@@ -264,7 +273,7 @@ export default function App() {
     <div className="h-full flex relative" style={{ background: 'var(--bg)' }}>
       {dragOver && (
         <div className="fixed inset-0 z-[60] pointer-events-none flex items-center justify-center p-4" style={{ background: 'rgba(47,143,131,0.15)', border: '3px dashed var(--accent)' }}>
-          <p className="text-lg font-semibold text-center" style={{ color: 'var(--accent)' }}>Drop ACC letter PDF to import</p>
+          <p className="text-lg font-semibold text-center" style={{ color: 'var(--accent)' }}>Drop ACC letter (PDF or Word) to import</p>
         </div>
       )}
       {concurrentTabWarning && (

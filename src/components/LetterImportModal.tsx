@@ -3,7 +3,7 @@ import { useStore } from '../state/store';
 import type { LetterImportCommitResult } from '../state/store';
 import { Modal } from './Modal';
 import { Field, TextInput, DateInput, NumberInput, Badge, Select } from './ui';
-import { PREFILL_FROM_LETTER_LABEL } from './LetterImportButton';
+import { LETTER_IMPORT_ACCEPT, PREFILL_FROM_LETTER_LABEL } from './LetterImportButton';
 import { useConfirm } from './useConfirm';
 import type {
   ParsedServiceRow,
@@ -461,7 +461,7 @@ export function LetterImportModal() {
     setResult(null);
     setCommitResult(null);
     setPackageOffer(null);
-    setLoadProgress({ stage: 'open', message: 'Opening PDF…', progress: 2, extractPreview: '' });
+    setLoadProgress({ stage: 'open', message: 'Opening letter…', progress: 2, extractPreview: '' });
     void parseLetterFile(letterImport.file, letterImport.context, (p) => {
       if (!cancelled) setLoadProgress(p);
     })
@@ -535,8 +535,8 @@ export function LetterImportModal() {
       })
       .catch((e) => {
         if (cancelled) return;
-        setError(e instanceof Error ? e.message : 'Failed to read PDF');
-        setLoadProgress({ stage: 'done', message: 'Could not read PDF', progress: 100, extractPreview: e instanceof Error ? e.message : String(e) });
+        setError(e instanceof Error ? e.message : 'Failed to read letter file');
+        setLoadProgress({ stage: 'done', message: 'Could not read letter', progress: 100, extractPreview: e instanceof Error ? e.message : String(e) });
         setBusy(false);
       });
     return () => { cancelled = true; };
@@ -632,7 +632,7 @@ export function LetterImportModal() {
       if (isDuplicate) {
         const ok = await confirm({
           title: 'Duplicate file?',
-          message: `This exact PDF is already on claim ${claimNumber || targetClaimId}. Import anyway?`,
+          message: `This exact file is already on claim ${claimNumber || targetClaimId}. Import anyway?`,
           confirmLabel: 'Import anyway',
         });
         if (!ok) return;
@@ -706,12 +706,12 @@ export function LetterImportModal() {
         }
       >
         <p className="text-sm mb-3" style={{ color: 'var(--danger-fg)' }}>
-          {error || result?.blockers.join(' · ') || 'Unrecognised letter format — this PDF does not look like an ACC NUR02 approval or NUR04VEN decline.'}
+          {error || result?.blockers.join(' · ') || 'Unrecognised letter format — this file does not look like an ACC NUR02 approval or NUR04VEN decline.'}
         </p>
         <p className="text-sm" style={{ color: 'var(--muted)' }}>
-          You can attach the PDF to a claim without extracting approvals, or pick a different file.
+          You can attach the file to a claim without extracting approvals, or pick a different file.
         </p>
-        <input ref={fileInputRef} type="file" accept=".pdf,application/pdf" className="hidden" onChange={(e) => {
+        <input ref={fileInputRef} type="file" accept={LETTER_IMPORT_ACCEPT} className="hidden" onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) {
             closeLetterImport();
@@ -777,7 +777,7 @@ export function LetterImportModal() {
               )}
             </>
           )}
-          <button className="btn" onClick={() => void attachOnly()} disabled={busy}>Attach PDF only</button>
+          <button className="btn" onClick={() => void attachOnly()} disabled={busy}>Attach file only</button>
           <button className="btn btn-primary" onClick={() => void saveAll()} disabled={busy || blockingIssues.length > 0}>
             Save everything
           </button>

@@ -309,14 +309,40 @@ function report(onProgress: LetterImportProgressHandler | undefined, progress: L
 // Worker runs in browser; Node/vitest loads the worker module from disk automatically.
 const PDF_OPTS = { useSystemFonts: true };
 
-async function toPdfData(input: Blob | ArrayBuffer | Uint8Array): Promise<ArrayBuffer> {
-  if (input instanceof Blob) return input.arrayBuffer();
+async function toArrayBuffer(input: Blob | ArrayBuffer | Uint8Array): Promise<ArrayBuffer> {
+  if (input instanceof ArrayBuffer) return input;
   if (input instanceof Uint8Array) {
     const copy = new Uint8Array(input.byteLength);
     copy.set(input);
     return copy.buffer;
   }
-  return input;
+  if (typeof input.arrayBuffer === 'function') return input.arrayBuffer();
+  if (typeof (input as Blob & { bytes?: () => Promise<Uint8Array> }).bytes === 'function') {
+    const b = await (input as Blob & { bytes: () => Promise<Uint8Array> }).bytes();
+    return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
+  }
+  if (typeof input.stream === 'function') {
+    const reader = input.stream().getReader();
+    const chunks: Uint8Array[] = [];
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) chunks.push(value);
+    }
+    const total = chunks.reduce((n, c) => n + c.byteLength, 0);
+    const merged = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      merged.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return merged.buffer;
+  }
+  return new Response(input).arrayBuffer();
+}
+
+async function toPdfData(input: Blob | ArrayBuffer | Uint8Array): Promise<ArrayBuffer> {
+  return toArrayBuffer(input);
 }
 
 export async function extractPdfText(
@@ -351,13 +377,7 @@ export async function extractPdfText(
 }
 
 async function toWordBuffer(input: Blob | ArrayBuffer | Uint8Array): Promise<ArrayBuffer> {
-  if (input instanceof Blob) return input.arrayBuffer();
-  if (input instanceof Uint8Array) {
-    const copy = new Uint8Array(input.byteLength);
-    copy.set(input);
-    return copy.buffer;
-  }
-  return input;
+  return toArrayBuffer(input);
 }
 
 /** Extract plain text from .docx (P8-020). Legacy .doc not supported — convert to .docx first. */
@@ -429,6 +449,20 @@ async function ocrPdfPages(
     await worker.terminate();
   }
   return parts.join('\n\n');
+}
+
+/** True for .docx (Office Open XML). Legacy .doc is not supported — save as .docx first. */
+export function isWordDocument(file: Blob & { name?: string }): boolean {
+  const name = (file instanceof File ? file.name : file.name ?? '').toLowerCase();
+  return (
+    name.endsWith('.docx') ||
+    file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  );
+}
+
+export function isPdfDocument(file: Blob & { name?: string }): boolean {
+  const name = (file instanceof File ? file.name : file.name ?? '').toLowerCase();
+  return file.type === 'application/pdf' || name.endsWith('.pdf');
 }
 
 export async function extractLetterText(
@@ -1062,6 +1096,10 @@ export async function parseLetterFile(
   context?: LetterImportContext,
   onProgress?: LetterImportProgressHandler,
 ): Promise<LetterParseResult> {
+  if (isWordDocument(file)) {
+    const text = await extractWordText(file, onProgress);
+    return parseLetterFromText(text, data, context, false, onProgress);
+  }
   const { text, usedOcr } = await extractLetterText(file, onProgress);
   return parseLetterFromText(text, data, context, usedOcr, onProgress);
 }

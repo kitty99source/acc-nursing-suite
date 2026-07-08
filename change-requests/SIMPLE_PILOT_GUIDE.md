@@ -1,0 +1,537 @@
+# Simple Pilot Guide — Last Steps to Finish the Roadmap
+
+Plain English. Tiny steps. For your **work laptop** (Windows).
+
+**You are the UAT tester** (Prakriti). Sign-off is self-sign-off until more admins join.
+
+---
+
+## Your progress (2026-07-08)
+
+| Phase / area | Status | Notes |
+| ------------ | ------ | ----- |
+| **A — Work laptop setup** | ✅ Assumed done | PDF import working on work laptop |
+| **B — Letter import smoke** | ✅ **Pass** | Approval + decline PDF import confirmed |
+| **C Day 1 — Core UAT** | 🟡 **Partial** | J-01, J-01a, J-01b, J-04, J-05, J-23 **Pass**; J-02, J-03, J-06, J-12, J-14, J-15, J-22 skipped (“lazy — assume functional”) |
+| **C Day 2 — Scale/edge** | ⏸ Not started | Most rows still blank |
+| **D — Portal** | ✅ Captured | Folder nav + 45 SSRS links; optional re-run only if ACC changes UI |
+| **E — I: drive deploy** | ⏭ **Next** | After you rebuild `dist/` with Word import (see below) |
+| **F — Sign-off** | ⏭ After E | Review checklist + shared `.accdata` |
+
+**Word import (new):** Rebuild `dist/` from dev — buttons now say **Import ACC letter (PDF or Word)** and accept `.docx`. Test with `approval-template.docx` same as PDF.
+
+**HRQ / folder-watch (J-25, J-26):** Your note is right — **all patient data must stay on the work laptop**. Next engineering tranche: run folder-watch **on the work laptop** (Node installed there), not the dev Mac. See “What happens next” at the bottom of this guide.
+
+**👉 Do next:** Phase **E** (deploy fresh `dist/` to I: drive) → finish lazy Day 1 rows if you want formal sign-off → Phase **F**.
+
+---
+
+## Before you start — what to bring
+
+
+| Item                                                                      | Why                                                                                              |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **Built** `dist/` **folder** (zip from dev machine after `npm run build`) | The app itself                                                                                   |
+| **2–3 test PDFs**                                                         | Approval + decline letters (repo fixtures work: `approval-template.pdf`, `decline-template.pdf`) |
+| **1 test Word letter (.docx)** (optional)                                 | Same template as PDF: `approval-template.docx` — import should match PDF fields                  |
+| **1 scanned PDF** (optional)                                              | For OCR test J-14                                                                                |
+| **1 broken/corrupt file** (rename a .txt to .pdf)                         | For J-02                                                                                         |
+| **Shared** `.accdata` **file** (or start empty)                           | Your patient data on I: drive                                                                    |
+| **VPN** (optional)                                                        | Only for Portal Discover — not needed for normal app use                                         |
+| **Pen + this checklist**                                                  | Fill Pass/Fail as you go                                                                         |
+
+
+**Where things live on Windows:**
+
+
+| Thing                  | Path                                                                  |
+| ---------------------- | --------------------------------------------------------------------- |
+| App (after copy)       | `I:\ACC-Suite\` (or `%USERPROFILE%\Desktop\ACC-Suite\` for solo test) |
+| Launcher logs          | `%USERPROFILE%\ACC-Suite\logs\`                                       |
+| Portal discover output | `%USERPROFILE%\ACC-Suite\portal-map.json`                             |
+| Your data file         | Wherever you save it — e.g. `I:\ACC-Suite\acc-nursing-data.accdata`   |
+
+
+---
+
+
+
+## Phase A — Get the app on your work laptop
+
+**Time: ~15 minutes**
+
+1. On your **dev Mac**, run `npm run build` (if not already built).
+2. Zip the whole `dist/` folder.
+3. Copy the zip to your work laptop (USB, email, OneDrive — whatever works).
+4. Unzip to a folder — e.g. `C:\Users\YourName\Desktop\ACC-Suite\`.
+5. Open that folder in File Explorer.
+6. Confirm these files exist:
+  - `index.html` (big file, ~10 MB)
+  - `Start ACC Suite.cmd`
+  - `launch.ps1`
+  - `eng.traineddata` (for scanned letters)
+7. Double-click `Start ACC Suite.cmd`.
+8. A black command window should stay open. Read the text — it should say something like serving on port 8765.
+9. Edge or Chrome should open to `http://127.0.0.1:8765`.
+10. You should see the ACC District Nursing Admin Suite sidebar (Dashboard, Patients, etc.).
+11. If the browser did not open, copy the URL from the black window and paste it into Edge manually.
+12. Click **TopBar → Open** (or **Connect file**) and pick your `.accdata` — or skip if starting fresh.
+13. **Leave the black window open** the whole time you use the app. Closing it closes the app.
+
+**Pass if:** Browser shows the app and you can click between sidebar items without errors.
+
+---
+
+
+
+## Phase B — Letter import smoke test
+
+**Time: ~20 minutes**
+
+Do this once before the full UAT checklist.
+
+1. In the sidebar, click **Approvals**.
+2. Click **Import ACC letter (PDF or Word)**.
+3. In the file picker, choose an **approval PDF or .docx** (e.g. `approval-template.pdf` or `approval-template.docx`).
+4. Wait — you should see a loading bar, then a preview of text from the PDF.
+5. On the confirm screen, check these fields look filled in:
+  - Patient name
+  - NHI
+  - Claim number
+  - Service rows (NS04/NS05)
+6. If something is wrong, edit the field — do not click Save yet until it looks right.
+7. Click **Save** (or **Confirm and save**).
+8. You should see a **success** screen with links like **Open claim**.
+9. Click **Open claim**.
+10. In Patients, open the claim and check:
+  - Approvals are listed
+    - The PDF appears under Documents
+11. Click **TopBar → Save my data** and save a `.accdata` file to disk.
+12. Repeat steps 1–7 with a **decline PDF** from the **Declines** module.
+
+**Pass if:** Approval and decline both save, letter files attach, and data survives after **Save my data**.
+
+> **2026-07-08:** ✅ PDF approval + decline confirmed on work laptop.
+
+---
+
+
+
+## Phase C — UAT checklist (two sessions)
+
+Open `change-requests/UAT_CHECKLIST.md` and fill in **Tester | Date | Pass/Fail | Notes** for each row.
+
+### Day 1 — Core daily work (~2 hours)
+
+Focus: import, save, errors, layout.
+
+#### J-01 — Approval full save
+
+1. Sidebar → **Approvals**.
+2. **Import ACC letter (PDF)** → pick approval fixture.
+3. Review fields on confirm screen.
+4. Click **Save**.
+5. On success, click **Open claim**.
+6. Count approvals on the claim — fixture should show multiple rows (expect ~8).
+7. Open **Documents** — PDF should be there.
+8. **Pass/Fail:** ____Pass_______
+
+
+
+#### J-01a — Prefill new patient
+
+1. Sidebar → **Patients**.
+2. Click **New patient**.
+3. Click **Prefill from letter** (inside the modal).
+4. Pick an approval PDF.
+5. Check name, NHI, DOB fields filled — **do not save yet**.
+6. Click **Save patient** on the form.
+7. Manually add a claim if needed.
+8. **Pass/Fail:** _____Pass______
+
+
+
+#### J-01b — Prefill new claim
+
+1. Open an **existing patient**.
+2. Click **New claim**.
+3. Click **Prefill from letter**.
+4. Pick a PDF — claim fields fill in.
+5. Close modal **without saving** — nothing should be saved to the claim yet.
+6. Re-open and save — now it should persist.
+7. **Pass/Fail:** ____Pass_______
+
+
+
+#### J-02 — Corrupt PDF error
+
+1. Any import button → pick a **fake PDF** (text file renamed to `.pdf`).
+2. An **error modal** should appear — not a blank screen.
+3. Click **Try another file** — picker opens again.
+4. **Pass/Fail:** __Lazy to do assume functional flag as possible future error_________
+
+
+
+#### J-03 — Dirty save model
+
+1. Edit any patient field (change a phone number).
+2. Look at TopBar — should show unsaved / dirty state.
+3. Click **Save my data** → pick `.accdata` location.
+4. Reload app → **Open** that file — change should be there.
+5. **Pass/Fail:** ____Lazy to do assume functional flag as possible future error_______
+
+
+
+#### J-04 — Close-tab warning
+
+1. Edit a patient again (dirty state).
+2. Try to **close the browser tab** — browser should warn you.
+3. Click **Stay on page**.
+4. Navigate to **Dashboard** without editing — no warning.
+5. **Pass/Fail:** ____Pass_______
+
+
+
+#### J-05 — Backup reminder
+
+1. Sidebar → **Settings** → find backup / export section.
+2. If you exported recently, reminder may not show — note "skipped, exported today" OR
+3. Use **Export Center** after a week without export to trigger reminder modal.
+4. Modal should link to **Export Center**.
+5. **Pass/Fail:** ___Pass________
+
+
+
+#### J-06 — No auto-commit (George)
+
+1. Load sample data if empty: Settings → load sample (dev only) OR use a patient named George in fixture data.
+2. Import a letter that **matches George**.
+3. Confirm screen must still appear — app must **not** skip straight to saved.
+4. You must click **Save** yourself.
+5. **Pass/Fail:** ____Lazy to do assume functional flag as possible future error_______
+
+
+
+#### J-12 — Modal fits screen (1280×720)
+
+1. Set browser window to roughly **1280×720** (not full screen).
+2. Run letter import → get to **confirm** screen.
+3. Scroll the modal — footer buttons (**Save**, **Cancel**) must not be cut off.
+4. **Pass/Fail:** ____Lazy to do assume functional flag as possible future error_______
+
+
+
+#### J-14 — Scanned OCR
+
+1. Import a **scanned** PDF (image-only, no selectable text).
+2. Wait for **"Scanned PDF detected"** callout and progress.
+3. When done, confirm screen should have extracted text.
+4. Save or attach as document only if OCR fails.
+5. **Pass/Fail:** ____Lazy to do assume functional flag as possible future error_______
+
+
+
+#### J-15 — Compliance routing
+
+1. Sidebar → **Compliance**.
+2. Find a row with **Create approval** fix → click it.
+3. Should open **Approvals** with new-approval modal — **not** a file picker.
+4. Go back to Compliance → find **Request PO** fix → click it.
+5. Should jump to **Patients** on that claim.
+6. Find **Import approval letter** button → should open letter import with claim context.
+7. **Pass/Fail:** ___Lazy to do assume functional flag as possible future error________
+
+
+
+#### J-22 — Duplicate letter
+
+1. Import the **same PDF file** twice (same file, same hash).
+2. Second time should warn **duplicate** — confirm before saving again.
+3. **Pass/Fail:** ___Lazy to do assume functional flag as possible future error________
+
+
+
+#### J-23 — Drag-drop import
+
+1. Drag a PDF from File Explorer onto the app window.
+2. Import modal should open automatically.
+3. Complete import as normal.
+4. **Pass/Fail:** ___Pass________
+
+---
+
+
+
+### Day 2 — Scale, tables, edge cases (~2–3 hours)
+
+
+
+#### J-07 — Dashboard queue cap
+
+1. Load large or sample data (many patients).
+2. Sidebar → **Dashboard**.
+3. Action queue should show **at most 50 rows**.
+4. Click a link to **Compliance** — should deep-link to a claim.
+5. **Pass/Fail:** ____Lazy to do assume functional flag as possible future error_______
+
+
+
+#### J-08 — Compliance pagination
+
+1. **Compliance** with many violations.
+2. Use filters — results should paginate (not one endless list).
+3. Click a **Fix** button — routes to correct module.
+4. **Pass/Fail:** _____Lazy to do assume functional flag as possible future error______
+
+
+
+#### J-09 — Billing scroll
+
+1. Sidebar → **Billing** (needs many invoice lines — sample/large data).
+2. Scroll up and down — should feel smooth, not frozen.
+3. Click a column header to sort.
+4. **Pass/Fail:** _____Lazy to do assume functional flag as possible future error______
+
+
+
+#### J-10 — Approvals historical
+
+1. Import a letter with **multiple approval rows**.
+2. In Approvals table, default view shows **current** rows only.
+3. Toggle **historical** — older rows appear.
+4. Click **View letter** on a row.
+5. **Pass/Fail:** _____Lazy to do assume functional flag as possible future error______
+
+
+
+#### J-11 — Declines table
+
+1. Sidebar → **Declines**.
+2. Scroll the table with many rows.
+3. Click **Open patient** on a row — jumps to correct patient.
+4. **Pass/Fail:** ____Lazy to do assume functional flag as possible future error_______
+
+
+
+#### J-13 — Mobile width (375px)
+
+1. Narrow browser to **375px** wide (or use DevTools device mode).
+2. Sidebar **hamburger** toggle works.
+3. **Patients** page — grid stacks vertically.
+4. Letter import modal uses full width.
+5. **Pass/Fail:** ___Lazy to do assume functional flag as possible future error________
+
+
+
+#### J-16 — Corrupt browser storage (IT)
+
+1. *Optional / IT:* Corrupt IndexedDB via DevTools.
+2. Reload app → **Recovery** screen — not silent empty dashboard.
+3. Restore from `.accdata`.
+4. **Pass/Fail:** ____Lazy to do assume functional flag as possible future error_______ (or N/A)
+
+
+
+#### J-17 — Corrupt .accdata file (IT)
+
+1. Try to **Open** a broken `.accdata` (garbage text file renamed).
+2. Error shown — existing data **unchanged**.
+3. **Pass/Fail:** _____Lazy to do assume functional flag as possible future error______
+
+
+
+#### J-18 — Backup round-trip (IT)
+
+1. **Export Center → Export full backup (.zip)**.
+2. Close browser, reopen app (fresh session).
+3. **Export Center → Restore full backup**.
+4. Patient/claim counts should match before export.
+5. **Pass/Fail:** ____Lazy to do assume functional flag as possible future error_______
+
+
+
+#### J-19 — Error boundary (Dev)
+
+*Skip unless you enable dev mode.* Red error screen → download report.
+
+**Pass/Fail:** Skip / N/A skip
+
+#### J-20 — Encryption
+
+**Skip** — encryption is off per your decision (U-03).
+
+**Pass/Fail:** N/A skip
+
+#### J-21 — Two tabs
+
+1. Open app in **two browser tabs** (same URL).
+2. A **warning banner** about concurrent tabs should appear.
+3. **Pass/Fail:** ___Lazy to do assume functional flag as possible future error________
+
+
+
+#### J-24 — Stale remittance queue
+
+1. Find an old remittance-related row in data.
+2. Check it appears in Dashboard or action queue as stale.
+3. **Pass/Fail:** _____Lazy to do assume functional flag as possible future error______
+
+
+
+#### J-25 — HRQ sign-off
+
+*Partial on work laptop* — folder-watch needs dev machine Node.js today.
+
+1. On work laptop: Sidebar → **Review Queue** — confirm module loads and shows empty/help text.
+2. For full test: on dev machine run folder-watch, drop PDF, import sidecar in Review Queue, approve.
+3. **Pass/Fail:** ____We need to rethink this part all patient info needs to stay on work laptop so we need the work from home to be on the work laptop which is at the location of home but is the work laptop_______ (note: partial OK)
+
+
+
+#### J-26 — Batch approve HRQ
+
+*Same as J-25* — needs folder-watch sidecars on dev machine.
+
+1. Stage 3 letters in HRQ.
+2. Select all → **Approve selected** → confirm patient names listed.
+3. All three commit.
+4. **Pass/Fail:** _____We need to rethink this part all patient info needs to stay on work laptop so we need the work from home to be on the work laptop which is at the location of home but is the work laptop______ (note: partial OK)
+
+
+
+#### J-27 — ACC Inbox stub
+
+1. Sidebar → **ACC Inbox** (if visible).
+2. Stub list loads — staging actions show stub messages.
+3. **Pass/Fail:** ___Its loading and i can see the stub messages________ (stub expected until P8-017)
+
+---
+
+
+
+## Phase D — Portal (mostly done)
+
+**Time: ~10 minutes** (only if ACC changes their portal UI)
+
+**Already captured (2026-07-08):** folder navigation, 45 SSRS links, base URL `http://cl-biprddb02/Reports_MSREPORT/`.
+
+**What's left (optional, not blocking pilot):**
+
+1. Second Portal Discover run **after opening the actual report grid** (not just folder browse).
+2. Note report parameter fields if any appear before **Run**.
+3. Send updated `portal-map.json` from `%USERPROFILE%\ACC-Suite\` to dev.
+
+**Only do this if:** ACC changes the portal and automation breaks later.
+
+Steps if needed:
+
+1. Connect **VPN** / hospital network.
+2. Copy `dist/` to laptop.
+3. Double-click `Start Portal Discover.cmd`.
+4. Log into Citrix and ACC portal as usual.
+5. Navigate to **ACC District Nursing Visits** report.
+6. Click **OK** on the popup when page is fully loaded.
+7. File Explorer opens — check `%USERPROFILE%\ACC-Suite\portal-map.json` exists.
+
+---
+
+
+
+## Phase E — Deploy to I: drive for coworkers
+
+**Time: ~30 minutes**
+
+1. On dev machine: `npm test` → `npm run build` → `npm run verify-build` (all pass).
+2. Zip the `dist/` folder.
+3. On hospital network, open the shared **I:** drive.
+4. Create folder: `I:\ACC-Suite\` (or your team's path).
+5. Copy/unzip entire `dist/` contents into `I:\ACC-Suite\`.
+6. Confirm `Start ACC Suite.cmd` is there.
+7. Create or copy shared data file: `I:\ACC-Suite\acc-nursing-data.accdata` (export from your tested copy).
+8. Double-click `Start ACC Suite.cmd` from I: drive — confirm it works.
+9. Send coworkers a short note:
+  - Double-click `I:\ACC-Suite\Start ACC Suite.cmd`
+  - Keep black window open
+  - TopBar → **Open** → pick shared `.accdata`
+  - **Save my data** before leaving
+  - **Only one person edits at a time** (last save wins)
+10. Put `office-config.example.json` on I: for reference if offices fork later.
+
+---
+
+
+
+## Phase F — Sign-off (what "done" looks like)
+
+**Time: ~15 minutes to review**
+
+You are **done with the pilot** when:
+
+- [ ] Phase A works on work laptop from I: drive (or local copy).
+- [ ] Phase B letter import passes for approval + decline.
+- [ ] Day 1 UAT rows filled — **zero Fail** on J-01 through J-06, J-12, J-14, J-15, J-22, J-23.
+- [ ] Day 2 UAT rows filled — no P0 regressions (corrupt load, auto-commit, save model, import blank modal).
+- [ ] J-20 skipped (encryption off). J-19 skipped (dev). J-25/J-26 partial OK.
+- [ ] Shared `.accdata` on I: drive with backup routine documented.
+- [ ] `UAT_CHECKLIST.md` signed with your name and dates.
+- [ ] **Release gate:** zero P0 regressions from roadmap §6.
+
+**Production readiness today:** ~78% engineering — your sign-off closes the **hospital pilot gate** (P7), not full SUPER WFH automation.
+
+---
+
+
+
+## If something breaks
+
+
+| Problem                       | What to do                                                               |
+| ----------------------------- | ------------------------------------------------------------------------ |
+| Black window closes instantly | Read `%USERPROFILE%\ACC-Suite\logs\acc-bootstrap.log`                    |
+| App won't start               | See `dist\TROUBLESHOOT.txt` — re-download latest `dist/`                 |
+| Browser blank / errors        | **Settings → Download diagnostics** — save file                          |
+| Red crash screen              | Click **Download error report**                                          |
+| Lost browser data             | **TopBar → Open** your `.accdata` — data is in the file, not the browser |
+| Launcher logs                 | `%USERPROFILE%\ACC-Suite\logs\acc-suite-*.log`                           |
+| Portal discover logs          | `%USERPROFILE%\ACC-Suite\logs\portal-discover-*.log`                     |
+| Still stuck                   | Email bootstrap log + diagnostics to Prakriti                            |
+
+
+**Do not** look for logs inside `I:\ACC-Suite\` — logs go to your user profile only.
+
+---
+
+
+
+## Time summary
+
+
+| Phase                    | Time                              |
+| ------------------------ | --------------------------------- |
+| A — Work laptop setup    | ~15 min                           |
+| B — Letter import test   | ~20 min                           |
+| C Day 1 — Core UAT       | ~2 hr                             |
+| C Day 2 — Scale/edge UAT | ~2–3 hr                           |
+| D — Portal (if needed)   | ~10 min                           |
+| E — I: drive deploy      | ~30 min                           |
+| F — Sign-off review      | ~15 min                           |
+| **Total**                | **~6–7 hours** spread over 2 days |
+
+
+---
+
+*Created 2026-07-08 from UAT_CHECKLIST, WRAP_UP_STATUS, USER_INPUTS_NEEDED, RUNBOOK, and MASTER_ROADMAP journey scripts.*
+
+---
+
+## What happens next (5 steps)
+
+1. **You — rebuild & copy app:** On dev Mac run `npm test` → `npm run build` → zip `dist/` → copy to work laptop (or I: drive). New build accepts **PDF and Word** import.
+
+2. **You — finish pilot deploy (Phase E):** Unzip to `I:\ACC-Suite\`, test `Start ACC Suite.cmd`, export your tested `.accdata` to the shared path, brief coworkers (one editor at a time).
+
+3. **You — optional UAT cleanup:** Re-run the “lazy” Day 1 rows (J-02 corrupt file, J-14 scanned OCR) if you want zero gaps before sign-off; otherwise your Pass + “assume functional” notes are enough for the hospital pilot gate.
+
+4. **Engineering — folder watch on work laptop:** Package a small “ACC-Inbox watcher” for Windows (Node script + `Start Folder Watch.cmd`) so dropped PDFs/Word files land in **Review Queue** without leaving the work PC. No dev Mac in the PHI path.
+
+5. **Engineering — after pilot sign-off:** Outlook COM bridge (P8-017) on work PC when IT allows; portal read task (P8-2b) using your captured `portal-map.json`; overnight orchestrator last. **Blocked on you:** U-08 automation policy, real ACC sender/subject filters (B-04–B-07), and anonymised letter corpus (U-05) when ready.

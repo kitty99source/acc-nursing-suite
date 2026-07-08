@@ -7,6 +7,7 @@ import {
   extractWordText,
   parseApprovalLetter,
   parseDeclineLetter,
+  parseLetterFile,
   parseLetterFromText,
   assignRecordStatus,
   normalizeClaimNumber,
@@ -61,6 +62,23 @@ describe('letterImport — Word (.docx) extract', () => {
     expect(wordParsed.serviceRows.length).toBeGreaterThanOrEqual(6);
     expect(wordParsed.serviceRows.every((r) => r.serviceCode === 'NS04')).toBe(true);
     expect(wordParsed.packageRows.some((r) => r.serviceCode === 'NS03')).toBe(true);
+  });
+});
+
+describe('letterImport — parseLetterFile (.docx)', () => {
+  it('routes Word files through mammoth and parses approval', async () => {
+    const bytes = loadDocx('approval-template.docx');
+    const file = {
+      name: 'approval-template.docx',
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      size: bytes.byteLength,
+      arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+    } as unknown as Blob;
+    const result = await parseLetterFile(file, emptyData());
+    expect(result.kind).toBe('approval');
+    expect(result.parsed?.kind).toBe('approval');
+    expect(normalizeClaimNumber(result.parsed?.claim.claimNumber)).toBe('10000000149');
+    expect(result.usedOcr).toBe(false);
   });
 });
 

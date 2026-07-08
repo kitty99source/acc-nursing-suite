@@ -3,7 +3,9 @@ import { useStore } from '../state/store';
 import type { prefillFromParsed } from '../lib/letterImport';
 import type { LetterImportContext } from '../lib/letterImport';
 
-export const LETTER_IMPORT_LABEL = 'Import ACC letter (PDF)';
+export const LETTER_IMPORT_LABEL = 'Import ACC letter (PDF or Word)';
+export const LETTER_IMPORT_ACCEPT =
+  '.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 export const PREFILL_FROM_LETTER_LABEL = 'Prefill from letter';
 /** Bordered accent style — use for every ACC letter import entry point. */
 export const LETTER_IMPORT_BTN_CLASS = 'btn btn-outline btn-sm';
@@ -66,7 +68,7 @@ export function LetterImportButton({
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf,application/pdf"
+        accept={LETTER_IMPORT_ACCEPT}
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];

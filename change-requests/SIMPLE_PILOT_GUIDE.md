@@ -594,6 +594,24 @@ All patient data stays on the work laptop — do **not** run folder watch on the
 - **ACC Inbox UI:** any letter the sync SAVED is now **shown** in ACC Inbox even if its subject has no `Claim:`/`ACCID:` — saved files are already vetted. The Claim/ACCID badges still appear when present; a missing token no longer hides the row.
 - **Diagnose match:** `Start Email Diagnose.cmd` now reports the **true capture count** (sender-matched emails with ≥1 supported attachment) and marks each previewed message `would match sync filters (sender + supported attachment)`, so the read-only diagnose verdict matches what the sync will actually save.
 
+**Saved-file naming (2026-07-09):** attachments are now saved into `ACC-Inbox` under a **patient/claim-identifiable** filename derived from the email subject, so you can tell whose letter it is in `processed/` **without opening it**. Format:
+
+```
+<Surname>-<FirstName>_Claim<claim>_<original ACC name>.<ext>
+```
+
+Example — subject `Mr Graham Wayne Reichenbach - Claim:P2222756868 ACCID:VEND-K96655`, attachment `1_NUR02_Nursing_services_approve_-_vendor.docx`, saves as:
+
+```
+Reichenbach-Graham_ClaimP2222756868_1_NUR02_Nursing_services_approve_-_vendor.docx
+```
+
+- The patient name is the text **before `" - Claim"`** (title `Mr/Mrs/Ms/Miss/Dr` stripped), shown **surname-first**; the claim is the alphanumerics after `Claim:` (the leading `P` is kept).
+- The **original ACC filename is kept** as a suffix (nothing is lost) and the extension (`.pdf`/`.docx`/`.doc`) is preserved. Length is capped (~150 chars) with the extension protected.
+- **Fallback:** if the subject has no parseable patient name or claim, the **original ACC filename is used unchanged** (never an empty/garbage prefix); if only one of the two is present, only that part is used.
+- Bytes are untouched, so folder-watch SHA-256 dedup, `Get-UniquePath` collision handling (`-1`/`-2`), and the flat `processed/` folder are all unaffected — two genuinely different letters for the same patient/claim are both kept.
+- The **Review Queue** card shows the patient, claim, ACCID, and the **expected descriptive filename** to look for when you click **Review & import**, so the name in `processed/` matches what the app tells you to pick.
+
 ### Subject matching + attachment types (2026-07-08 update)
 
 The sync no longer needs a subject to contain the exact literal `Claim:`/`ACCID:`. The subject is now only a **confidence hint** (see capture rule above). When it IS used (legacy `sender+subject+attachment` capture mode, or the logged hint), it uses a **subject match mode** (`emailSync.subjectMatchMode` in `office-config.json`):

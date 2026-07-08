@@ -7,6 +7,7 @@ echo.
 echo   ACC Outlook COM email sync
 echo   --------------------------
 echo   Requires Outlook desktop open and logged in.
+echo   Mailbox: ACCDistrictNursing (override via office-config.json or ACC_SHARED_MAILBOX).
 echo   Default: backlog mode - oldest unactioned ACC letters first (batch per run).
 echo   Work hours only (7am-6pm NZ). Skips Outlook category "actioned".
 echo   Saves PDF/DOCX attachments to %%USERPROFILE%%\ACC-Inbox

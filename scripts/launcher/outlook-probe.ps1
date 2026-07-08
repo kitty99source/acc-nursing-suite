@@ -5,6 +5,7 @@ param(
 $bootstrapRoot = $PSScriptRoot
 if ([string]::IsNullOrEmpty($bootstrapRoot)) { $bootstrapRoot = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }
 . (Join-Path $bootstrapRoot 'bootstrap-log.ps1') -LogName 'email-probe'
+. (Join-Path $bootstrapRoot 'mailbox-config.ps1')
 Write-BootstrapLog 'outlook-probe.ps1 started'
 
 # ACC Outlook COM probe - read-only, work laptop only
@@ -23,21 +24,6 @@ function Write-ProbeLine {
     param([string]$Message)
     Write-Host $Message
     Write-BootstrapLog $Message
-}
-
-function Get-InboxFolder {
-    param(
-        [object]$Namespace,
-        [string]$SharedName
-    )
-    if (-not [string]::IsNullOrWhiteSpace($SharedName)) {
-        $recipient = $Namespace.CreateRecipient($SharedName)
-        if (-not $recipient.Resolve()) {
-            throw "Shared mailbox not found: $SharedName"
-        }
-        return $Namespace.GetSharedDefaultFolder($recipient, 6)
-    }
-    return $Namespace.GetDefaultFolder(6)
 }
 
 function Get-TruncatedSubject {
@@ -62,9 +48,8 @@ Write-ProbeLine 'ACC Outlook COM probe (read-only)'
 Write-ProbeLine '================================='
 Write-ProbeLine ''
 
-if (-not [string]::IsNullOrWhiteSpace($env:ACC_SHARED_MAILBOX)) {
-    $SharedMailbox = $env:ACC_SHARED_MAILBOX
-}
+$SharedMailbox = Resolve-SharedMailbox -Override $SharedMailbox
+Write-ProbeLine "Using mailbox: $SharedMailbox"
 
 $outlook = $null
 try {
@@ -73,10 +58,9 @@ try {
     $namespace = $outlook.GetNamespace('MAPI')
     [void]$namespace.Logon($null, $null, $false, $true)
 
-    $inbox = Get-InboxFolder -Namespace $namespace -SharedName $SharedMailbox
-    $label = if ([string]::IsNullOrWhiteSpace($SharedMailbox)) { 'Default inbox' } else { "Shared inbox: $SharedMailbox" }
+    $inbox = Get-SharedInboxFolder -Namespace $namespace -SharedName $SharedMailbox
 
-    Write-ProbeLine "OK - COM connected ($label)"
+    Write-ProbeLine "OK - COM connected (shared inbox: $SharedMailbox)"
     Write-ProbeLine "Unread count: $($inbox.UnReadItemCount)"
     Write-ProbeLine ''
 

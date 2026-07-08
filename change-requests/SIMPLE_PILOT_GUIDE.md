@@ -496,8 +496,8 @@ All patient data stays on the work laptop — do **not** run folder watch on the
 **What this does (plain English):** Each time you double-click **Start Email Sync.cmd** during work hours, it pulls the **oldest unactioned ACC emails** from Outlook (up to 50 per run), saves PDF or Word attachments into `ACC-Inbox`, and remembers where it stopped. It **never** auto-imports into the app — use **Start Folder Watch.cmd** → **Review Queue** to import manually. Emails tagged **actioned** in Outlook (or marked complete with a flag) are skipped.
 
 1. Confirm `Start Email Sync.cmd` and `outlook-sync.ps1` exist in `dist/`.
-2. Optional: copy `office-config.example.json` to `%USERPROFILE%\ACC-Suite\office-config.json` and tune ACC sender/subject filters or batch size (`emailSync.batchSize`, default 50).
-3. Double-click **`Start Email Sync.cmd`** — runs **7am–6pm NZ only** (outside hours it exits safely; no overnight catch-up).
+2. Optional: copy `office-config.example.json` to `%USERPROFILE%\ACC-Suite\office-config.json` and tune ACC sender/subject filters or batch size (`emailSync.batchSize`, default 50). Default shared mailbox is **`ACCDistrictNursing`** (`emailSync.sharedMailbox`).
+3. Double-click **`Start Email Sync.cmd`** — runs **7am–6pm NZ only** (outside hours it exits safely; no overnight catch-up). Log should show **`Using mailbox: ACCDistrictNursing`**.
 4. Repeat during work hours until the log shows **saved 0** attachments (backlog cleared).
 5. Tag processed emails **actioned** in Outlook if you want them skipped on future runs.
 6. Status file: `%USERPROFILE%\ACC-Suite\email-sync-status.json` — load in **ACC Inbox** → **Load sync report**.
@@ -507,7 +507,7 @@ All patient data stays on the work laptop — do **not** run folder watch on the
 
 **Switches:** `-Recent` for last-14-days mode only; `-BatchSize 25` for smaller batches; `-IgnoreWorkHours` if IT requires off-hours test.
 
-**Shared mailbox:** set `ACC_SHARED_MAILBOX=YourTeamMailbox` before running if ACC letters arrive there.
+**Shared mailbox:** District nursing ACC letters live in **`ACCDistrictNursing`**, not your personal inbox. Sync/probe use that mailbox by default. Override in `%USERPROFILE%\ACC-Suite\office-config.json` (`emailSync.sharedMailbox`) or env `ACC_SHARED_MAILBOX` only if IT gives a different name.
 
 **PHI:** Subjects may show patient names — do not screenshot for support; send log file only if asked.
 

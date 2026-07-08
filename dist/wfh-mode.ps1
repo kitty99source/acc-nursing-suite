@@ -3,6 +3,7 @@
 $bootstrapRoot = $PSScriptRoot
 if ([string]::IsNullOrEmpty($bootstrapRoot)) { $bootstrapRoot = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }
 . (Join-Path $bootstrapRoot 'bootstrap-log.ps1') -LogName 'wfh'
+. (Join-Path $bootstrapRoot 'mailbox-config.ps1')
 Write-BootstrapLog 'wfh-mode.ps1 started'
 
 $launcherDir = $bootstrapRoot
@@ -65,12 +66,14 @@ Start-Process -FilePath 'cmd.exe' -ArgumentList @(
 ) -WindowStyle Normal | Out-Null
 Write-BootstrapLog 'Started folder-watch.ps1 (new cmd window)'
 
+$sharedMailbox = Resolve-SharedMailbox
 Write-Host ''
-Write-Host 'Running Email Sync (Outlook COM, one backlog batch)...'
+Write-Host "Running Email Sync (Outlook COM, one backlog batch)..."
+Write-Host "Using mailbox: $sharedMailbox"
 Write-Host ''
-Write-BootstrapLog 'Starting outlook-sync.ps1 in this window'
+Write-BootstrapLog "Starting outlook-sync.ps1 in this window (mailbox: $sharedMailbox)"
 
-& $syncPs1
+& $syncPs1 -SharedMailbox $sharedMailbox
 $syncExit = if ($null -ne $LASTEXITCODE) { $LASTEXITCODE } else { 0 }
 
 Write-Host ''

@@ -6,20 +6,20 @@ import {
   loadStagingItems,
   importStagingJsonText,
   updateStagingItem,
-  stagingSlaLevel,
   stagingAgeLabel,
   type StagingItem,
 } from '../lib/staging';
+import { hrqSlaStatus, hrqSlaLabel, summarizeQueueSla, type SlaLevel } from '../lib/hrqSla';
 import {
   allSelectedBatchApprovable,
   commitBatchStagingItems,
   isBatchApprovable,
   stagingPatientNames,
 } from '../lib/hrqBatch';
-import { appendAudit } from '../lib/auditLog';
+import { appendAudit, recordHrqResolution } from '../lib/auditLog';
 import { LETTER_IMPORT_ACCEPT } from '../components/LetterImportButton';
 
-function slaTone(level: ReturnType<typeof stagingSlaLevel>): 'good' | 'warn' | 'danger' {
+function slaTone(level: SlaLevel): 'good' | 'warn' | 'danger' {
   if (level === 'danger') return 'danger';
   if (level === 'warn') return 'warn';
   return 'good';
@@ -46,6 +46,7 @@ export function ReviewQueue() {
   const openLetterImport = useStore((s) => s.openLetterImport);
   const commitParsedApproval = useStore((s) => s.commitParsedApproval);
   const commitParsedDecline = useStore((s) => s.commitParsedDecline);
+  const userName = useStore((s) => s.data.settings.userDisplayName?.trim() || undefined);
   const [items, setItems] = useState<StagingItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -74,10 +75,8 @@ export function ReviewQueue() {
     [selectedItems],
   );
   const batchReadyItems = useMemo(() => sorted.filter(isBatchApprovable), [sorted]);
-  const overdueCount = useMemo(
-    () => sorted.filter((i) => stagingSlaLevel(i.createdAt) === 'danger').length,
-    [sorted],
-  );
+  const slaSummary = useMemo(() => summarizeQueueSla(sorted), [sorted]);
+  const overdueCount = slaSummary.breached;
   const allSelected = sorted.length > 0 && selected.size === sorted.length;
 
   function toggleSelectAll() {
@@ -170,12 +169,17 @@ export function ReviewQueue() {
       stagingItemId: stagingId,
       onImportComplete: () => {
         void (async () => {
+          const before = items.find((i) => i.id === stagingId);
           await updateStagingItem(stagingId, { status: 'approved' });
-          await appendAudit({
+          await recordHrqResolution({
             action: 'hrq-sign-off',
-            entityType: 'staging',
-            entityId: stagingId,
-            summary: `HRQ approved letter import: ${file.name}`,
+            stagingItemId: stagingId,
+            title: before?.title ?? file.name,
+            beforeStatus: before?.status ?? 'pending',
+            afterStatus: 'approved',
+            user: userName,
+            runId: before?.runId,
+            detail: `filed letter import ${file.name}`,
           });
           await refresh();
         })();
@@ -193,17 +197,29 @@ export function ReviewQueue() {
     });
     if (!ok) return;
     await updateStagingItem(item.id, { status: 'rejected' });
-    await appendAudit({
+    await recordHrqResolution({
       action: 'hrq-reject',
-      entityType: 'staging',
-      entityId: item.id,
-      summary: `HRQ rejected: ${item.title}`,
+      stagingItemId: item.id,
+      title: item.title,
+      beforeStatus: item.status,
+      afterStatus: 'rejected',
+      user: userName,
+      runId: item.runId,
     });
     await refresh();
   }
 
   async function deferItem(item: StagingItem) {
     await updateStagingItem(item.id, { status: 'deferred' });
+    await recordHrqResolution({
+      action: 'hrq-defer',
+      stagingItemId: item.id,
+      title: item.title,
+      beforeStatus: item.status,
+      afterStatus: 'deferred',
+      user: userName,
+      runId: item.runId,
+    });
     await refresh();
   }
 
@@ -217,7 +233,17 @@ export function ReviewQueue() {
     });
     if (!ok) return;
     for (const id of selected) {
+      const item = sorted.find((i) => i.id === id);
       await updateStagingItem(id, { status: 'rejected' });
+      await recordHrqResolution({
+        action: 'hrq-reject',
+        stagingItemId: id,
+        title: item?.title ?? id,
+        beforeStatus: item?.status ?? 'pending',
+        afterStatus: 'rejected',
+        user: userName,
+        runId: item?.runId,
+      });
     }
     await refresh();
   }
@@ -253,13 +279,17 @@ export function ReviewQueue() {
         commitParsedDecline,
       });
       for (const result of results) {
-        await updateStagingItem(result.stagingId, { status: 'approved' });
         const item = selectedItems.find((i) => i.id === result.stagingId);
-        await appendAudit({
+        await updateStagingItem(result.stagingId, { status: 'approved' });
+        await recordHrqResolution({
           action: 'hrq-batch-sign-off',
-          entityType: 'staging',
-          entityId: result.stagingId,
-          summary: `HRQ batch approved ${result.kind} for staging item: ${item?.title ?? result.stagingId}`,
+          stagingItemId: result.stagingId,
+          title: item?.title ?? result.stagingId,
+          beforeStatus: item?.status ?? 'pending',
+          afterStatus: 'approved',
+          user: userName,
+          runId: item?.runId,
+          detail: `filed ${result.kind} → claim ${result.claimId}`,
         });
       }
       await refresh();
@@ -283,6 +313,7 @@ export function ReviewQueue() {
           sorted.length > 0 ? (
             <div className="flex items-center gap-2 flex-wrap">
               <Badge tone={overdueCount ? 'danger' : 'good'}>{sorted.length} pending</Badge>
+              {slaSummary.warn > 0 && <Badge tone="warn">{slaSummary.warn} approaching SLA</Badge>}
               {overdueCount > 0 && <Badge tone="danger">{overdueCount} overdue</Badge>}
               {batchReadyItems.length > 0 && <Badge tone="good">{batchReadyItems.length} batch ready</Badge>}
             </div>
@@ -374,7 +405,7 @@ export function ReviewQueue() {
         </label>
         <div className="space-y-3">
           {sorted.map((item) => {
-            const sla = stagingSlaLevel(item.createdAt);
+            const sla = hrqSlaStatus(item.createdAt);
             return (
               <Card key={item.id} className="p-4">
                 <div className="flex flex-wrap items-start gap-3">
@@ -390,7 +421,10 @@ export function ReviewQueue() {
                       <Badge tone={item.severity === 'danger' ? 'danger' : item.severity === 'warn' ? 'warn' : 'good'}>
                         {typeLabel(item.type)}
                       </Badge>
-                      <Badge tone={slaTone(sla)}>{stagingAgeLabel(item.createdAt)}</Badge>
+                      <Badge tone={slaTone(sla.level)}>{stagingAgeLabel(item.createdAt)}</Badge>
+                      {sla.level !== 'ok' && (
+                        <Badge tone={slaTone(sla.level)}>{hrqSlaLabel(sla)}</Badge>
+                      )}
                       {isBatchApprovable(item) && (
                         <Badge tone="good">Batch ready</Badge>
                       )}

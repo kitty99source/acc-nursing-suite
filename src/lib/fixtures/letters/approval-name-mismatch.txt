@@ -1,0 +1,10 @@
+NUR02
+Approval for nursing services
+21 January 2026
+Client's claim number: 10000778899 Purchase order number: 15093555 21 January 2026
+Client name: Margaret Chen Date of injury: 08/08/2023
+Date of birth: 27/09/1951
+ACC45 number: YN73456 NHI number: MNO7890 Injury(s): Hip replacement recovery Services approved
+We are writing to confirm approval for Robert Andrews under the above claim.
+NS04 Nursing Services 01/09/2023 30/11/2023 16 Units
+Thank you for supporting this client.

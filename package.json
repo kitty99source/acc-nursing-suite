@@ -12,6 +12,11 @@
     "launch": "node scripts/launch-built.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:headed": "playwright test --headed",
+    "e2e:report": "playwright show-report e2e/.report",
+    "e2e:install": "playwright install --with-deps chromium",
     "stress": "node scripts/stress/run-stress.mjs",
     "stress:medium": "node scripts/stress/run-stress.mjs --scale=medium",
     "stress:large": "node scripts/stress/run-stress.mjs --scale=large",
@@ -32,6 +37,7 @@
     "zustand": "^4.5.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",

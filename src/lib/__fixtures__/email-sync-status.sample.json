@@ -1,0 +1,44 @@
+{
+  "_comment": "SYNTHETIC fixture for tests only. Contains NO real PHI — all names, claim numbers and ACCIDs are obviously fake. Shape mirrors email-sync-status.json written by outlook-sync.ps1 on the work laptop. Used to lock in the ACC Inbox render pipeline without a live sync.",
+  "version": 1,
+  "lastRunAt": "2026-07-08T02:15:00.000Z",
+  "outcome": "ok",
+  "mode": "recent",
+  "batchSize": 50,
+  "savedCount": 3,
+  "skippedCount": 4,
+  "errorCount": 0,
+  "savedFiles": [
+    {
+      "fileName": "Ms-Fakey-McTestface-approval.pdf",
+      "subject": "Ms Fakey McTestface - Claim:90000000001 ACCID:VEND-FAKE001",
+      "sender": "John.Bentley@acc.co.nz",
+      "savedAt": "2026-07-08T02:14:58.000Z"
+    },
+    {
+      "fileName": "Mr-Sample-Q-Public-decline.docx",
+      "subject": "Mr Sample Q Public - Claim:90000000002 ACCID:VEND-FAKE002",
+      "sender": "Bec.Williams@acc.co.nz",
+      "savedAt": "2026-07-08T02:14:59.000Z"
+    },
+    {
+      "fileName": "office-newsletter-july.pdf",
+      "subject": "July team newsletter - morning tea roster",
+      "sender": "comms@notacc.example.test",
+      "savedAt": "2026-07-08T02:15:00.000Z"
+    }
+  ],
+  "errors": [],
+  "inboxPath": "C:\\Users\\TestUser\\ACC-Inbox",
+  "sharedMailbox": "ACCDistrictNursing",
+  "processedTotal": 128,
+  "backlogRemaining": 0,
+  "scanStats": {
+    "mailItemsScanned": 40,
+    "matchedSender": 3,
+    "matchedBoth": 2,
+    "skippedCategory": 1,
+    "alreadyProcessed": 3,
+    "noSupportedAttachment": 1
+  }
+}

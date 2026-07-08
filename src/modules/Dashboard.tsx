@@ -238,7 +238,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
           </p>
         ) : (
           <>
-            <div className="space-y-1.5 max-h-72 overflow-y-auto">
+            <div data-testid="action-queue" className="space-y-1.5 max-h-72 overflow-y-auto">
               {displayActions.map((a) => (
                 <button
                   key={a.id}

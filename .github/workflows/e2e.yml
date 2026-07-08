@@ -1,0 +1,41 @@
+# Playwright smoke + UAT e2e (P7-008 / P3-007).
+# Optional CI stub — runs the browser-verifiable UAT journeys against the Vite dev server.
+# No Outlook COM / Citrix VPN / PHI required; the app seeds synthetic sample data offline.
+name: e2e
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  playwright:
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run e2e (starts Vite dev server automatically)
+        run: npm run e2e
+        env:
+          CI: '1'
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/.report
+          retention-days: 7

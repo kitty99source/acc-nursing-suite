@@ -149,7 +149,7 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
     >
       <div className="flex items-center gap-3 min-w-0">
         {onMenuToggle && (
-          <button className="btn btn-icon lg:hidden" onClick={onMenuToggle} aria-label="Open menu">
+          <button className="btn btn-icon shrink-0 lg:hidden" onClick={onMenuToggle} aria-label="Open menu">
             ☰
           </button>
         )}
@@ -163,10 +163,10 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 min-w-0">
         {flash && (
           <span
-            className="text-xs max-w-[14rem] truncate"
+            className="text-xs max-w-[7rem] sm:max-w-[14rem] truncate"
             style={{ color: flash.tone === 'good' ? 'var(--good-fg)' : flash.tone === 'danger' ? 'var(--danger-fg)' : 'var(--warn-fg)' }}
             title={flash.text}
           >
@@ -174,22 +174,27 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
           </span>
         )}
 
-        {/* Primary, always-visible persistence (works on file://). */}
+        {/* Primary, always-visible persistence (works on file://). At narrow widths the
+            labels collapse to icon-only so the controls never overlap the ☰ toggle. */}
         <button
-          className="btn btn-primary"
+          className="btn btn-primary shrink-0"
           disabled={busy}
           onClick={() => void handleSave()}
+          aria-label="Save my data"
           title={`Download a backup of all your data (${SAVE_FILENAME})`}
         >
-          <IconSave /> Save my data
+          <IconSave />
+          <span className="hidden sm:inline">Save my data</span>
         </button>
         <button
-          className="btn"
+          className="btn shrink-0"
           disabled={busy}
           onClick={() => fileInput.current?.click()}
+          aria-label="Load my data"
           title="Load your data back from a saved file"
         >
-          <IconFolder /> Load my data
+          <IconFolder />
+          <span className="hidden sm:inline">Load my data</span>
         </button>
         <input
           ref={fileInput}
@@ -205,7 +210,7 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
         {/* Optional/advanced: File System Access API (only on secure contexts). */}
         {status.fsaSupported && (
           <div
-            className="flex items-center gap-1 pl-2 ml-1 border-l"
+            className="hidden sm:flex items-center gap-1 pl-2 ml-1 border-l"
             style={{ borderColor: 'var(--border)' }}
             title="Advanced: silent autosave to a file you choose (requires the localhost launcher)"
           >
@@ -228,7 +233,7 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
           </div>
         )}
 
-        <button className="btn btn-icon" onClick={lock} title="Lock the app">
+        <button className="btn btn-icon shrink-0" onClick={lock} title="Lock the app">
           <IconLock />
         </button>
       </div>

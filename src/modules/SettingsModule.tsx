@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useStore, isSampleData, wipeAllLocalStorage, hasSessionPassphrase } from '../state/store';
-import { SectionTitle, Card, Field, NumberInput, Select, TextInput } from '../components/ui';
+import { SectionTitle, Card, Field, NumberInput, Select, TextInput, TextArea } from '../components/ui';
 import { useConfirm } from '../components/useConfirm';
 import { ACCENT_PRESETS } from '../lib/theme';
 import { ALL_SERVICE_CODES, SERVICE_CODES } from '../lib/serviceCodes';
 import { readRecentAudit, type AuditEntry } from '../lib/auditLog';
 import { exportDiagnosticsJson, logInfo } from '../lib/logger';
 import { downloadText, readFileAsText } from '../lib/storage';
-import type { Settings } from '../types';
+import { DEFAULT_SETTINGS, type Settings } from '../types';
+import {
+  missingRequiredSubjectTokens,
+  parseFilterLines,
+} from '../lib/accInboxFilters';
 import { compareDocumentBlobs } from '../lib/integrity';
 import { listDocumentIds } from '../lib/idb';
 import { STORAGE_QUOTA_GUIDANCE } from '../lib/storageQuota';
@@ -62,6 +66,36 @@ export function SettingsModule() {
   const [pass1, setPass1] = useState('');
   const [pass2, setPass2] = useState('');
   const [passMsg, setPassMsg] = useState<{ text: string; tone: 'good' | 'danger' } | null>(null);
+
+  // ACC Inbox filter editors (P8-018). Kept as raw multi-line text while editing
+  // so blank lines aren't collapsed mid-keystroke; committed to settings on blur.
+  const [senderText, setSenderText] = useState(() => settings.accInboxSenderAllowlist.join('\n'));
+  const [subjectText, setSubjectText] = useState(() => settings.accInboxSubjectPatterns.join('\n'));
+
+  useEffect(() => {
+    setSenderText(settings.accInboxSenderAllowlist.join('\n'));
+  }, [settings.accInboxSenderAllowlist]);
+  useEffect(() => {
+    setSubjectText(settings.accInboxSubjectPatterns.join('\n'));
+  }, [settings.accInboxSubjectPatterns]);
+
+  const missingRequiredTokens = missingRequiredSubjectTokens(parseFilterLines(subjectText));
+
+  function commitSenderAllowlist() {
+    updateSettings({ accInboxSenderAllowlist: parseFilterLines(senderText) });
+  }
+
+  function commitSubjectPatterns() {
+    updateSettings({ accInboxSubjectPatterns: parseFilterLines(subjectText) });
+  }
+
+  function restoreAccInboxDefaults() {
+    updateSettings({
+      accInboxSenderAllowlist: [...DEFAULT_SETTINGS.accInboxSenderAllowlist],
+      accInboxSubjectPatterns: [...DEFAULT_SETTINGS.accInboxSubjectPatterns],
+    });
+    logInfo('ACC Inbox filter rules reset to defaults', 'settings');
+  }
 
   const sampleLoaded = isSampleData(data);
 
@@ -565,6 +599,61 @@ export function SettingsModule() {
           <p className="text-xs" style={{ color: 'var(--muted)' }}>
             Template: <span className="font-mono">docs/templates/office-config.example.json</span>
           </p>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <h3 className="font-semibold mb-1">ACC Inbox filter rules (P8-018)</h3>
+          <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>
+            Which emails the work-laptop sync treats as ACC letters. One entry per line — persisted
+            locally and exported with office config (feeds ACC Inbox and{' '}
+            <span className="font-mono">outlook-sync.ps1</span>). Your entries{' '}
+            <strong>merge with built-in defaults</strong>: the{' '}
+            <span className="font-mono">Claim:</span> / <span className="font-mono">ACCID:</span>{' '}
+            subject rules are always re-added, so a narrow edit can never silently drop real ACC
+            letters (the 7cee0da regression).
+          </p>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Field
+              label="Sender allowlist"
+              hint="Match if the From address contains any line (e.g. John.Bentley@acc.co.nz or acc.co.nz). Empty falls back to defaults."
+            >
+              <TextArea
+                rows={7}
+                value={senderText}
+                spellCheck={false}
+                onChange={(e) => setSenderText(e.target.value)}
+                onBlur={commitSenderAllowlist}
+                aria-label="ACC Inbox sender allowlist"
+              />
+            </Field>
+            <Field
+              label="Subject patterns"
+              hint="Case-insensitive regex or plain text — the subject must match at least one. Claim:/ACCID: stay enforced via defaults even if removed here."
+            >
+              <TextArea
+                rows={7}
+                value={subjectText}
+                spellCheck={false}
+                onChange={(e) => setSubjectText(e.target.value)}
+                onBlur={commitSubjectPatterns}
+                aria-label="ACC Inbox subject patterns"
+              />
+            </Field>
+          </div>
+          {missingRequiredTokens.length > 0 && (
+            <p className="text-xs mt-2 font-medium" style={{ color: 'var(--warn-fg)' }}>
+              Heads up — {missingRequiredTokens.join(' and ')}{' '}
+              {missingRequiredTokens.length > 1 ? 'are' : 'is'} not in your subject list. Built-in
+              defaults still enforce {missingRequiredTokens.length > 1 ? 'them' : 'it'}, so real ACC
+              letters are not dropped, but add {missingRequiredTokens.length > 1 ? 'them' : 'it'}{' '}
+              back to be explicit.
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2 mt-3">
+            <button type="button" className="btn btn-sm" onClick={restoreAccInboxDefaults}>
+              Restore ACC filter defaults
+            </button>
+          </div>
         </Card>
 
         <Card>

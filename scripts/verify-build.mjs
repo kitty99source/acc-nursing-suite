@@ -80,8 +80,8 @@ if (!fs.existsSync('dist/pdf.worker.mjs')) {
 }
 console.log('letter import class  :', html.includes('btn btn-outline btn-sm'));
 console.log('LETTER_IMPORT label  :', html.includes('Import ACC letter'));
-if (!html.includes('Import ACC letter (PDF)')) {
-  console.warn('WARN: expected Import ACC letter (PDF) label in bundle');
+if (!html.includes('Import ACC letter (PDF or Word)')) {
+  console.warn('WARN: expected Import ACC letter (PDF or Word) label in bundle');
 }
 const launcherRequired = [
   'bootstrap-log.ps1',

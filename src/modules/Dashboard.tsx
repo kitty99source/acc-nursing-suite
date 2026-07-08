@@ -124,7 +124,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
           <div className="flex flex-wrap items-start justify-between gap-3">
             <p className="text-sm flex-1 min-w-0">
               <strong>Received an ACC letter?</strong> Go to Patients → select a claim → Documents →{' '}
-              <span className="font-medium">Import ACC letter (PDF)</span> to file approvals and attach the PDF in one step.
+              <span className="font-medium">Import ACC letter (PDF or Word)</span> to file approvals and attach the letter in one step.
               See Settings → About for the full import routing guide.
             </p>
             <button

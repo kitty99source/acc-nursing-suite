@@ -10,6 +10,7 @@ import {
 import { loadStagingItems, addStagingItem, type StagingItem } from '../lib/staging';
 import {
   describeEmailSyncStatusRejectReason,
+  describeInboxEmptyState,
   EMAIL_SYNC_STATUS_HINT_PATH,
   fetchLocalEmailSyncStatus,
   formatScanStatsSummary,
@@ -20,26 +21,6 @@ import {
   stripJsonBom,
   type EmailSyncStatus,
 } from '../lib/emailSyncStatus';
-
-/** Demo rows until Outlook COM bridge feeds live manifest (P8-017). */
-const DEMO_ROWS: AccInboxRow[] = [
-  {
-    id: 'demo-1',
-    sender: 'nursing@acc.co.nz',
-    subject: 'Approval — Extended Nursing NUR02 (stub)',
-    receivedAt: Date.now() - 3600_000,
-    attachmentName: 'approval-stub.pdf',
-    attachmentExt: '.pdf',
-  },
-  {
-    id: 'demo-2',
-    sender: 'acc.co.nz',
-    subject: 'Decline NUR04VEN — service not approved (stub)',
-    receivedAt: Date.now() - 7200_000,
-    attachmentName: 'decline-stub.pdf',
-    attachmentExt: '.pdf',
-  },
-];
 
 function formatWhen(ts: number): string {
   return new Date(ts).toLocaleString('en-NZ');
@@ -52,6 +33,7 @@ export function AccInbox() {
   const [stagingCount, setStagingCount] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<EmailSyncStatus | null>(null);
+  const [syncLoading, setSyncLoading] = useState(true);
   const syncInputRef = useRef<HTMLInputElement>(null);
 
   const filterConfig = useMemo(
@@ -64,24 +46,29 @@ export function AccInbox() {
     [syncStatus],
   );
 
-  const useLiveRows = syncStatus !== null;
-
   const rows = useMemo(() => {
-    const source = syncStatus ? syncRows : DEMO_ROWS;
-    return filterAccInboxRows(source, filterConfig).filter((r) => !ignored.has(r.id));
-  }, [filterConfig, ignored, syncRows, syncStatus]);
+    if (syncLoading || !syncStatus) return [];
+    return filterAccInboxRows(syncRows, filterConfig).filter((r) => !ignored.has(r.id));
+  }, [filterConfig, ignored, syncRows, syncLoading, syncStatus]);
+
+  const emptyState = useMemo(
+    () => describeInboxEmptyState(syncStatus, syncLoading),
+    [syncLoading, syncStatus],
+  );
+
+  async function refreshSyncStatus() {
+    setSyncLoading(true);
+    try {
+      const local = await fetchLocalEmailSyncStatus();
+      setSyncStatus(local);
+      setMessage(null);
+    } finally {
+      setSyncLoading(false);
+    }
+  }
 
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const local = await fetchLocalEmailSyncStatus();
-      if (!cancelled && local) {
-        setSyncStatus(local);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    void refreshSyncStatus();
   }, []);
 
   async function refreshStaging() {
@@ -102,7 +89,7 @@ export function AccInbox() {
       createdAt: Date.now(),
       severity: 'info',
       title: `ACC Inbox: ${row.attachmentName}`,
-      summary: `${row.subject} — awaiting HRQ review (stub; attach real PDF or Word letter via folder watch).`,
+      summary: `${row.subject} — awaiting HRQ review after folder watch picks up ${row.attachmentName}.`,
       sourceFileName: row.attachmentName,
       runId: `acc-inbox-${new Date().toISOString().slice(0, 10)}`,
     };
@@ -135,12 +122,14 @@ export function AccInbox() {
         const fallback = parseEmailSyncStateFallback(raw);
         if (fallback) {
           setSyncStatus(fallback);
+          setSyncLoading(false);
           setMessage(null);
           return;
         }
         throw new Error(describeEmailSyncStatusRejectReason(raw, file.name));
       }
       setSyncStatus(parsed);
+      setSyncLoading(false);
       setMessage(null);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Could not read sync report.');
@@ -162,7 +151,11 @@ export function AccInbox() {
 
       <Card className="mb-4 p-4">
         <h3 className="font-semibold mb-2 text-sm">Email sync status</h3>
-        {syncStatus ? (
+        {syncLoading ? (
+          <p className="text-sm mb-2" style={{ color: 'var(--muted)' }}>
+            Loading sync report from <span className="font-mono">launch.ps1</span>…
+          </p>
+        ) : syncStatus ? (
           <>
             <p className="text-sm mb-2">{formatSyncOutcome(syncStatus)}</p>
             {syncStatus.scanStats && syncStatus.savedCount === 0 && (
@@ -202,9 +195,19 @@ export function AccInbox() {
             e.target.value = '';
           }}
         />
-        <button className="btn btn-sm" type="button" onClick={() => syncInputRef.current?.click()}>
-          Load sync report
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            className="btn btn-sm"
+            type="button"
+            disabled={syncLoading}
+            onClick={() => void refreshSyncStatus()}
+          >
+            {syncLoading ? 'Refreshing…' : 'Refresh sync status'}
+          </button>
+          <button className="btn btn-sm" type="button" onClick={() => syncInputRef.current?.click()}>
+            Load sync report
+          </button>
+        </div>
         <p className="text-xs mt-2" style={{ color: 'var(--muted)' }}>
           Filter rules: {settings.accInboxSenderAllowlist.length} sender(s), {settings.accInboxSubjectPatterns.length} subject pattern(s) — edit via Settings office config.
         </p>
@@ -216,18 +219,24 @@ export function AccInbox() {
         </div>
       )}
 
-      <div className="card mb-4 p-3 text-xs" style={{ color: 'var(--muted)' }}>
-        {useLiveRows
-          ? 'Rows from last email sync (demo hidden). Run folder watch, then import staging in Review Queue.'
-          : 'Demo rows until email sync runs. After sync: folder watch, then Review Queue.'}
-        {stagingCount > 0 && ` · ${stagingCount} item(s) already in HRQ staging.`}
-      </div>
+      {!syncLoading && syncStatus && (
+        <div className="card mb-4 p-3 text-xs" style={{ color: 'var(--muted)' }}>
+          Rows from last email sync. Run folder watch, then import staging in Review Queue.
+          {stagingCount > 0 && ` · ${stagingCount} item(s) already in HRQ staging.`}
+        </div>
+      )}
 
-      {rows.length === 0 ? (
+      {syncLoading ? (
         <EmptyState
           icon={<IconFolder width={32} height={32} />}
-          title="No ACC letters in inbox"
-          message="Filtered ACC correspondence will appear here after email sync + folder watch on the work laptop."
+          title={emptyState.title}
+          message={emptyState.message}
+        />
+      ) : rows.length === 0 ? (
+        <EmptyState
+          icon={<IconFolder width={32} height={32} />}
+          title={emptyState.title}
+          message={emptyState.message}
         />
       ) : (
         <div className="space-y-2">
@@ -241,7 +250,6 @@ export function AccInbox() {
                   </div>
                   <div className="text-xs mt-1 flex items-center gap-2">
                     <Badge tone="accent">{row.attachmentName}</Badge>
-                    {!useLiveRows && <span style={{ color: 'var(--muted)' }}>demo</span>}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">

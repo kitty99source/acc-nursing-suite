@@ -19,11 +19,45 @@ import {
   resolveLetterAutoCommit,
 } from './letterImport';
 import { emptyData } from './sampleData';
+import { LETTER_CORPUS } from './fixtures/letters/corpus';
 import type { AppData } from '../types';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 const loadPdf = (name: string) => new Uint8Array(readFileSync(join(dir, 'fixtures', name)));
 const loadDocx = (name: string) => new Uint8Array(readFileSync(join(dir, 'fixtures', name)));
+const loadCorpusText = (file: string) =>
+  readFileSync(join(dir, 'fixtures', 'letters', file), 'utf8');
+
+/** Stable, snapshot-friendly view of a parse result (drops volatile rawText). */
+function corpusParseSnapshot(text: string) {
+  const kind = classifyLetter(text);
+  if (kind === 'approval') {
+    const parsed = parseApprovalLetter(text);
+    return {
+      kind,
+      claimNumber: normalizeClaimNumber(parsed.claim.claimNumber),
+      nhi: parsed.patient.nhi,
+      patientName: parsed.patient.name,
+      poNumber: parsed.claim.poNumber,
+      serviceRowCodes: [...new Set(parsed.serviceRows.map((r) => r.serviceCode))].sort(),
+      serviceRowCount: parsed.serviceRows.length,
+      packageRowCodes: [...new Set(parsed.packageRows.map((r) => r.serviceCode))].sort(),
+    };
+  }
+  if (kind === 'decline') {
+    const parsed = parseDeclineLetter(text);
+    return {
+      kind,
+      claimNumber: normalizeClaimNumber(parsed.claim.claimNumber),
+      nhi: parsed.patient.nhi,
+      patientName: parsed.patient.name,
+      serviceRequested: parsed.serviceRequested,
+      reasonPresent: !!parsed.reason?.trim(),
+      alternateClaimCount: parsed.alternateClaimNumbers.length,
+    };
+  }
+  return { kind };
+}
 
 describe('letterImport — PDF extract', () => {
   it('extracts text from approval fixture', async () => {
@@ -331,4 +365,85 @@ describe('letterImport — duplicate detection', () => {
     });
     expect(dup).toBe(true);
   });
+});
+
+// ============================================================================
+// P5-001 — synthetic letter corpus regression (text-layer subset).
+// ============================================================================
+describe('letterImport — synthetic corpus (P5-001)', () => {
+  it('exposes a mix of PDF and .docx approval/decline letters', () => {
+    expect(LETTER_CORPUS.length).toBeGreaterThanOrEqual(8);
+    expect(LETTER_CORPUS.some((c) => c.format === 'pdf')).toBe(true);
+    expect(LETTER_CORPUS.some((c) => c.format === 'docx')).toBe(true);
+    expect(LETTER_CORPUS.some((c) => c.expect.kind === 'approval')).toBe(true);
+    expect(LETTER_CORPUS.some((c) => c.expect.kind === 'decline')).toBe(true);
+    const ids = LETTER_CORPUS.map((c) => c.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  for (const entry of LETTER_CORPUS) {
+    describe(entry.id, () => {
+      it('classifies to the expected letter kind', () => {
+        expect(classifyLetter(loadCorpusText(entry.file))).toBe(entry.expect.kind);
+      });
+
+      it('parses to the locked snapshot', () => {
+        const snapshot = corpusParseSnapshot(loadCorpusText(entry.file));
+        expect(snapshot).toMatchSnapshot();
+      });
+
+      it('extracts the expected key fields', async () => {
+        const text = loadCorpusText(entry.file);
+        const exp = entry.expect;
+
+        if (exp.kind === 'approval') {
+          const parsed = parseApprovalLetter(text);
+          expect(normalizeClaimNumber(parsed.claim.claimNumber)).toBe(exp.claimNumber);
+          if (exp.nhi) expect(parsed.patient.nhi).toBe(exp.nhi);
+          if (exp.patientName) expect(parsed.patient.name).toBe(exp.patientName);
+          if (exp.serviceRowCount !== undefined) {
+            expect(parsed.serviceRows.length).toBe(exp.serviceRowCount);
+          }
+          if (exp.serviceRowCodes) {
+            expect([...new Set(parsed.serviceRows.map((r) => r.serviceCode))].sort()).toEqual(
+              [...exp.serviceRowCodes].sort(),
+            );
+          }
+          if (exp.packageRowCodes) {
+            for (const code of exp.packageRowCodes) {
+              expect(parsed.packageRows.some((r) => r.serviceCode === code)).toBe(true);
+            }
+          }
+        } else if (exp.kind === 'decline') {
+          const parsed = parseDeclineLetter(text);
+          expect(parsed.claim.claimNumber).toBe(exp.claimNumber);
+          if (exp.nhi) expect(parsed.patient.nhi).toBe(exp.nhi);
+          if (exp.patientName) expect(parsed.patient.name).toBe(exp.patientName);
+          if (exp.serviceRequested) expect(parsed.serviceRequested).toBe(exp.serviceRequested);
+          if (exp.reasonMatch) {
+            expect(parsed.reason ?? '').toMatch(new RegExp(exp.reasonMatch, 'i'));
+          }
+          if (exp.reasonMissing) expect(parsed.reason?.trim()).toBeFalsy();
+          if (exp.hasAlternateClaims) {
+            expect(parsed.alternateClaimNumbers.length).toBeGreaterThan(0);
+          }
+        }
+      });
+
+      it('produces the expected scoring/issue outcome', async () => {
+        const text = loadCorpusText(entry.file);
+        const result = await parseLetterFromText(text, emptyData());
+        const exp = entry.expect;
+        expect(result.kind).toBe(exp.kind);
+        // Synthetic corpus never carries the dev auto-commit flag → always human-reviewed.
+        expect(result.autoCommit).toBe(false);
+        if (exp.expectBlockers) {
+          expect(result.blockers.length).toBeGreaterThan(0);
+        }
+        if (exp.expectNameMismatch) {
+          expect(result.issues.some((i) => i.id === 'name-mismatch')).toBe(true);
+        }
+      });
+    });
+  }
 });

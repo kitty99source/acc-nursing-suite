@@ -1,0 +1,10 @@
+NUR02
+Approval for nursing services
+14 May 2026
+Client's claim number: 10000334455 Purchase order number: 15091333 14 May 2026
+Client name: Ihaka Ngata Date of injury: 30/11/2023
+Date of birth: 03/03/1979
+ACC45 number: YN71234 NHI number: GHI9012 Injury(s): Complex catheter management Services approved
+NS05 Nursing Services 01/12/2023 29/02/2024 6 Units
+NS05 Nursing Services 01/03/2024 31/05/2024 6 Units
+Thank you for supporting this client.

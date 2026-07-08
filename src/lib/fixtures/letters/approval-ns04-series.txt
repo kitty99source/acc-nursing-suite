@@ -1,0 +1,11 @@
+NUR02
+Approval for nursing services
+2 April 2026
+Client's claim number: 10000221200 Purchase order number: 15090222 2 April 2026
+Client name: Harriet Windsor Date of injury: 05/01/2024
+Date of birth: 22/07/1958
+ACC45 number: YN70001 NHI number: DEF5678 Injury(s): Post-surgical wound care Services approved
+NS04 Nursing Services 01/02/2024 30/04/2024 12 Units
+NS04 Nursing Services 01/05/2024 31/07/2024 18 Units
+NS04 Nursing Services 01/08/2024 31/10/2024 24 Units
+Thank you for supporting this client.

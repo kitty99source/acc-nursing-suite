@@ -4,6 +4,8 @@
 // ============================================================================
 
 import { loadStagingQueue as idbLoadStaging, saveStagingQueue as idbSaveStaging } from './idb';
+import { hrqSlaLevel } from './hrqSla';
+import { hashBlob } from './letterImport';
 
 export type StagingItemType =
   | 'letter-import-pending'
@@ -113,16 +115,20 @@ export async function importStagingJsonText(text: string): Promise<number> {
   return importStagingSidecars([parsed]);
 }
 
-/** Hours before HRQ item escalates warn → danger (P8-013 preview). */
+/** Hours before an HRQ item breaches SLA and escalates to danger (P8-013). */
 export const HRQ_SLA_WARN_HOURS = 18;
 
 export type StagingSlaLevel = 'ok' | 'warn' | 'danger';
 
+/**
+ * Escalation level for a staging item. Thin wrapper over the canonical pure
+ * compute in hrqSla.ts (P8-013) so the queue and the util can't drift apart.
+ */
 export function stagingSlaLevel(createdAt: number, now = Date.now()): StagingSlaLevel {
-  const hours = (now - createdAt) / 3_600_000;
-  if (hours >= HRQ_SLA_WARN_HOURS) return 'danger';
-  if (hours >= HRQ_SLA_WARN_HOURS * 0.5) return 'warn';
-  return 'ok';
+  return hrqSlaLevel(createdAt, now, {
+    dangerHours: HRQ_SLA_WARN_HOURS,
+    warnHours: HRQ_SLA_WARN_HOURS * 0.5,
+  });
 }
 
 export function stagingAgeLabel(createdAt: number, now = Date.now()): string {
@@ -137,4 +143,79 @@ export function assertStagingIsolation(liveMutated: boolean, fromStaging: boolea
   if (fromStaging && liveMutated) {
     throw new Error('Staging ingress must not mutate live AppData without HRQ sign-off');
   }
+}
+
+// ============================================================================
+// P8-014 — attachment-hash idempotency.
+//
+// The same attachment ingested twice (same PDF re-dropped in the inbox, or the
+// same email re-processed) must yield ONE queue item, not two. We reuse the
+// SHA-256 attachment hash from letterImport (`hashBlob`, the same primitive
+// behind isDuplicateLetterImport) as the dedup key on `sourceHash`.
+// ============================================================================
+
+/** Existing staging item already holding this attachment hash (pending by default). */
+export function findStagingByHash(
+  items: StagingItem[],
+  sourceHash: string,
+  opts?: { includeResolved?: boolean },
+): StagingItem | undefined {
+  if (!sourceHash) return undefined;
+  return items.find(
+    (i) => i.sourceHash === sourceHash && (opts?.includeResolved || i.status === 'pending'),
+  );
+}
+
+/** Collapse duplicate-hash items, keeping the earliest-created one of each hash. */
+export function dedupeStagingByHash(items: StagingItem[]): StagingItem[] {
+  const seen = new Map<string, true>();
+  const out: StagingItem[] = [];
+  for (const item of [...items].sort((a, b) => a.createdAt - b.createdAt)) {
+    if (item.sourceHash) {
+      if (seen.has(item.sourceHash)) continue;
+      seen.set(item.sourceHash, true);
+    }
+    out.push(item);
+  }
+  return out;
+}
+
+export type StagingIngestOutcome = 'added' | 'duplicate';
+
+export interface StagingIngestResult {
+  outcome: StagingIngestOutcome;
+  /** The item now in the queue — the freshly-added one, or the pre-existing duplicate. */
+  item: StagingItem;
+  /** Set when outcome === 'duplicate': the id of the item this attachment already occupies. */
+  duplicateOfId?: string;
+}
+
+export type AttachmentHasher = (blob: Blob) => Promise<string>;
+
+/**
+ * Idempotently ingest an attachment into the staging queue (P8-014). Hashes the
+ * bytes, and if a pending item already carries that hash returns `duplicate`
+ * WITHOUT adding a second item. Otherwise appends a new item stamped with the
+ * hash so future re-ingests dedupe against it.
+ *
+ * `hash` is injectable for tests / non-crypto environments; defaults to the
+ * shared SHA-256 `hashBlob` used by letter-import duplicate detection.
+ */
+export async function ingestAttachment(
+  blob: Blob,
+  meta: Omit<StagingItem, 'id' | 'createdAt' | 'status' | 'sourceHash'> & {
+    id?: string;
+    status?: StagingItemStatus;
+  },
+  deps: { hash?: AttachmentHasher } = {},
+): Promise<StagingIngestResult> {
+  const hash = await (deps.hash ?? hashBlob)(blob);
+  const existing = await idbLoadStaging();
+  const dup = findStagingByHash(existing, hash);
+  if (dup) {
+    return { outcome: 'duplicate', item: dup, duplicateOfId: dup.id };
+  }
+  const item = createStagingItem({ ...meta, sourceHash: hash });
+  await idbSaveStaging([...existing, item]);
+  return { outcome: 'added', item };
 }

@@ -133,7 +133,7 @@ export function DataTable<T>({
   }
 
   return (
-    <div ref={parentRef} className="card overflow-auto" style={{ maxHeight }}>
+    <div ref={parentRef} data-testid="data-table-scroll" className="card overflow-auto" style={{ maxHeight }}>
       <table className="data-table">
         <thead>
           <tr>

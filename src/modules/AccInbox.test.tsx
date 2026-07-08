@@ -1,0 +1,106 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { act } from 'react';
+
+// React 18 requires this flag for act(...) to drive effects in a test env.
+(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+import { createRoot, type Root } from 'react-dom/client';
+import fixture from '../lib/__fixtures__/email-sync-status.sample.json';
+import { LOCAL_EMAIL_SYNC_STATUS_URL } from '../lib/emailSyncStatus';
+
+// Staging reads/writes IndexedDB, which jsdom lacks — stub it so the component
+// mounts. This does NOT edit staging.ts; it only isolates the render.
+vi.mock('../lib/staging', () => ({
+  loadStagingItems: vi.fn(async () => []),
+  addStagingItem: vi.fn(async () => {}),
+}));
+
+import { AccInbox } from './AccInbox';
+import { useStore } from '../state/store';
+import { emptyData } from '../lib/sampleData';
+
+let container: HTMLDivElement;
+let root: Root;
+
+async function flush() {
+  // Let the mount effect's fetch + setState settle.
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
+beforeEach(() => {
+  useStore.setState({ data: emptyData() });
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (String(url) === LOCAL_EMAIL_SYNC_STATUS_URL) {
+        return {
+          ok: true,
+          text: async () => JSON.stringify(fixture),
+        } as unknown as Response;
+      }
+      return { ok: false, text: async () => '' } as unknown as Response;
+    }),
+  );
+  container = document.createElement('div');
+  document.body.appendChild(container);
+  root = createRoot(container);
+});
+
+afterEach(() => {
+  act(() => root.unmount());
+  container.remove();
+  vi.unstubAllGlobals();
+  vi.clearAllMocks();
+});
+
+/** Subjects of the actual rendered letter rows (not the sync-status summary list). */
+function renderedRowSubjects(): string[] {
+  return Array.from(container.querySelectorAll('.font-medium.truncate')).map(
+    (el) => el.textContent ?? '',
+  );
+}
+
+describe('<AccInbox /> render from synthetic sync fixture', () => {
+  it('renders real synced ACC letters with Claim/ACCID badges', async () => {
+    await act(async () => {
+      root.render(<AccInbox />);
+    });
+    await flush();
+
+    const rowSubjects = renderedRowSubjects();
+    const text = container.textContent ?? '';
+    // (a) real rows render from savedFiles (two ACC letters, newsletter excluded)
+    expect(rowSubjects).toHaveLength(2);
+    expect(rowSubjects.some((s) => s.includes('Ms Fakey McTestface'))).toBe(true);
+    expect(rowSubjects.some((s) => s.includes('Mr Sample Q Public'))).toBe(true);
+    // (b) Claim/ACCID badges parse correctly (badge text "Claim 900…" has no colon,
+    // so it only appears on a rendered row, never in the raw savedFiles summary).
+    expect(text).toContain('Claim 90000000001');
+    expect(text).toContain('VEND-FAKE001');
+    // (c) non-ACC newsletter is filtered out of the row list
+    expect(rowSubjects.some((s) => s.includes('July team newsletter'))).toBe(false);
+    // (e) demo/no-sync stubs never appear when real data is present
+    expect(text).not.toContain('No sync yet');
+  });
+
+  it('shows the hidden-by-filters empty state when settings hide every synced file', async () => {
+    // Narrow the sender allowlist to something no fixture row matches; the merge
+    // keeps Claim:/ACCID: subject patterns but the sender gate hides everything.
+    useStore.getState().updateSettings({
+      accInboxSenderAllowlist: ['nobody@nowhere.invalid'],
+    });
+
+    await act(async () => {
+      root.render(<AccInbox />);
+    });
+    await flush();
+
+    const text = container.textContent ?? '';
+    expect(renderedRowSubjects()).toHaveLength(0);
+    expect(text).toContain('synced letter(s) hidden');
+    // The letters exist but are hidden — not the "no sync yet" state.
+    expect(text).not.toContain('No sync yet');
+  });
+});

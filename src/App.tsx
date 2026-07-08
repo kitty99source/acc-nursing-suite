@@ -277,7 +277,7 @@ export default function App() {
         </div>
       )}
       {concurrentTabWarning && (
-        <div className="shrink-0 px-4 py-2 text-sm text-center" style={{ background: 'var(--warn)', color: 'var(--warn-fg)' }}>
+        <div data-testid="concurrent-tab-warning" className="shrink-0 px-4 py-2 text-sm text-center" style={{ background: 'var(--warn)', color: 'var(--warn-fg)' }}>
           Another tab has this suite open — last write wins. Close the other tab to avoid conflicting saves.
         </div>
       )}

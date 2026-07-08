@@ -1,0 +1,142 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`letterImport — synthetic corpus (P5-001) > approval-missing-po > parses to the locked snapshot 1`] = `
+{
+  "claimNumber": "10000990011",
+  "kind": "approval",
+  "nhi": "PQR2345",
+  "packageRowCodes": [],
+  "patientName": "Selina Roberts",
+  "poNumber": undefined,
+  "serviceRowCodes": [
+    "NS04",
+  ],
+  "serviceRowCount": 1,
+}
+`;
+
+exports[`letterImport — synthetic corpus (P5-001) > approval-mixed-package > parses to the locked snapshot 1`] = `
+{
+  "claimNumber": "10000556677",
+  "kind": "approval",
+  "nhi": "JKL3456",
+  "packageRowCodes": [
+    "NS03",
+  ],
+  "patientName": "Tanya Fisher",
+  "poNumber": "15092444",
+  "serviceRowCodes": [
+    "NS04",
+    "NS05",
+  ],
+  "serviceRowCount": 2,
+}
+`;
+
+exports[`letterImport — synthetic corpus (P5-001) > approval-name-mismatch > parses to the locked snapshot 1`] = `
+{
+  "claimNumber": "10000778899",
+  "kind": "approval",
+  "nhi": "MNO7890",
+  "packageRowCodes": [],
+  "patientName": "Margaret Chen",
+  "poNumber": "15093555",
+  "serviceRowCodes": [
+    "NS04",
+  ],
+  "serviceRowCount": 1,
+}
+`;
+
+exports[`letterImport — synthetic corpus (P5-001) > approval-ns04-basic > parses to the locked snapshot 1`] = `
+{
+  "claimNumber": "10000000149",
+  "kind": "approval",
+  "nhi": "ABC1234",
+  "packageRowCodes": [],
+  "patientName": "George Bellingham",
+  "poNumber": "15089011",
+  "serviceRowCodes": [
+    "NS04",
+  ],
+  "serviceRowCount": 1,
+}
+`;
+
+exports[`letterImport — synthetic corpus (P5-001) > approval-ns04-series > parses to the locked snapshot 1`] = `
+{
+  "claimNumber": "10000221200",
+  "kind": "approval",
+  "nhi": "DEF5678",
+  "packageRowCodes": [],
+  "patientName": "Harriet Windsor",
+  "poNumber": "15090222",
+  "serviceRowCodes": [
+    "NS04",
+  ],
+  "serviceRowCount": 3,
+}
+`;
+
+exports[`letterImport — synthetic corpus (P5-001) > approval-ns05-consults > parses to the locked snapshot 1`] = `
+{
+  "claimNumber": "10000334455",
+  "kind": "approval",
+  "nhi": "GHI9012",
+  "packageRowCodes": [],
+  "patientName": "Ihaka Ngata",
+  "poNumber": "15091333",
+  "serviceRowCodes": [
+    "NS05",
+  ],
+  "serviceRowCount": 2,
+}
+`;
+
+exports[`letterImport — synthetic corpus (P5-001) > decline-alt-claims > parses to the locked snapshot 1`] = `
+{
+  "alternateClaimCount": 1,
+  "claimNumber": "10000512345",
+  "kind": "decline",
+  "nhi": "STU4567",
+  "patientName": "Derek Pohatu",
+  "reasonPresent": true,
+  "serviceRequested": "Extended Nursing",
+}
+`;
+
+exports[`letterImport — synthetic corpus (P5-001) > decline-community-nursing > parses to the locked snapshot 1`] = `
+{
+  "alternateClaimCount": 0,
+  "claimNumber": "10000744556",
+  "kind": "decline",
+  "nhi": "YZA1234",
+  "patientName": "Priya Naidu",
+  "reasonPresent": true,
+  "serviceRequested": "Extended Nursing",
+}
+`;
+
+exports[`letterImport — synthetic corpus (P5-001) > decline-missing-reason > parses to the locked snapshot 1`] = `
+{
+  "alternateClaimCount": 0,
+  "claimNumber": "10000633221",
+  "kind": "decline",
+  "nhi": "VWX8901",
+  "patientName": "Aroha Wiremu",
+  "reasonPresent": false,
+  "serviceRequested": "Extended Nursing",
+}
+`;
+
+exports[`letterImport — synthetic corpus (P5-001) > decline-standard > parses to the locked snapshot 1`] = `
+{
+  "alternateClaimCount": 0,
+  "claimNumber": "10000460000",
+  "kind": "decline",
+  "nhi": "XYZ9876",
+  "patientName": "Mille Butter",
+  "reasonPresent": true,
+  "serviceRequested": "Extended Nursing",
+}
+`;

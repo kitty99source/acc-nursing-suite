@@ -65,6 +65,42 @@ export function accInboxConfigFromSettings(
   };
 }
 
+/**
+ * Subject tokens that must survive the merge no matter what a user (or an
+ * imported office-config) puts in Settings. Removing these from the editable
+ * list is the exact 7cee0da regression that dropped John Bentley's letters, so
+ * DEFAULT_ACC_INBOX_FILTERS re-adds them during accInboxConfigFromSettings().
+ */
+export const ACC_INBOX_REQUIRED_SUBJECT_TOKENS = ['Claim:', 'ACCID:'] as const;
+
+/**
+ * Which required tokens are absent from a user's subject-pattern list, so the
+ * Settings UI can warn that defaults will still enforce them (P8-018 safeguard).
+ * The merge guarantees they are never actually dropped — this only surfaces a
+ * "we re-added these for you" notice.
+ */
+export function missingRequiredSubjectTokens(subjectPatternStrings: string[]): string[] {
+  const haystack = subjectPatternStrings.map((s) => s.trim().toLowerCase()).filter((s) => s.length > 0);
+  return ACC_INBOX_REQUIRED_SUBJECT_TOKENS.filter(
+    (token) => !haystack.some((s) => s.includes(token.toLowerCase())),
+  );
+}
+
+/** Split a textarea (one entry per line) into a trimmed, de-duplicated string list. */
+export function parseFilterLines(text: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (line.length === 0) continue;
+    const key = line.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(line);
+  }
+  return out;
+}
+
 /** Parse "Claim:10000003194" and "ACCID:VEND-K96655" from a real ACC subject line. */
 export function parseSubjectMetadata(subject: string): { claimNumber?: string; accId?: string } {
   const claim = /claim:\s*(\d{6,})/i.exec(subject);

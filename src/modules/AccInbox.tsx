@@ -75,7 +75,7 @@ export function AccInbox() {
       createdAt: Date.now(),
       severity: 'info',
       title: `ACC Inbox: ${row.attachmentName}`,
-      summary: `${row.subject} — awaiting HRQ review (stub; attach real PDF via folder watch).`,
+      summary: `${row.subject} — awaiting HRQ review (stub; attach real PDF or Word letter via folder watch).`,
       sourceFileName: row.attachmentName,
       runId: `acc-inbox-${new Date().toISOString().slice(0, 10)}`,
     };
@@ -87,7 +87,7 @@ export function AccInbox() {
 
   function openImportStub(row: AccInboxRow) {
     setMessage(
-      `Real PDF required: save ${row.attachmentName} to ACC-Inbox/ or use Review Queue after folder watch + email sync.`,
+      `Real letter required: save ${row.attachmentName} to ACC-Inbox/ or use Review Queue after folder watch + email sync.`,
     );
     setFocus({ module: 'patients' });
   }

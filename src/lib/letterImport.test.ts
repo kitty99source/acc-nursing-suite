@@ -47,6 +47,14 @@ describe('letterImport — Word (.docx) extract', () => {
     expect(text).toMatch(/NUR02/i);
   });
 
+  it('extractWordText passes arrayBuffer for browser mammoth bundle', async () => {
+    const bytes = loadDocx('approval-template.docx');
+    const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    const mammoth = await import('mammoth');
+    const { value } = await mammoth.extractRawText({ buffer, arrayBuffer: buffer });
+    expect(value.replace(/\s+/g, ' ')).toMatch(/NUR02/i);
+  });
+
   it('parses same claim/PO/NHI/rows as PDF approval template', async () => {
     const [wordText, pdfText] = await Promise.all([
       extractWordText(loadDocx('approval-template.docx')),

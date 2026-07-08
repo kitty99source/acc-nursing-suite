@@ -24,6 +24,10 @@ export default defineConfig({
       },
     },
   },
+  resolve: {
+    // mammoth package.json "browser" field maps lib/unzip.js → browser/unzip.js (arrayBuffer API).
+    conditions: ['browser', 'module', 'import', 'default'],
+  },
   test: {
     environment: 'jsdom',
     globals: true,

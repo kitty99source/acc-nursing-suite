@@ -12,6 +12,8 @@
       "acc.govt.nz"
     ],
     "subjectPatterns": [
+      "Claim:",
+      "ACCID:",
       "approv",
       "declin",
       "nur0[245]",
@@ -19,6 +21,12 @@
       "PO\\s*number",
       "ACC\\s+letter"
     ]
+  },
+  "emailSync": {
+    "batchSize": 50,
+    "workStartHour": 7,
+    "workEndHour": 18,
+    "skipCategories": ["actioned"]
   },
   "settings": {
     "theme": "clinical-light",

@@ -1,10 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { formatSyncOutcome, parseEmailSyncStatus } from './emailSyncStatus';
+import {
+  describeEmailSyncStatusRejectReason,
+  EMAIL_SYNC_STATUS_VERSION,
+  formatSyncOutcome,
+  parseEmailSyncStatus,
+  parseEmailSyncStatusFromText,
+  stripJsonBom,
+} from './emailSyncStatus';
 
 describe('emailSyncStatus', () => {
   it('parses valid sync report', () => {
     const parsed = parseEmailSyncStatus({
-      version: 1,
+      version: EMAIL_SYNC_STATUS_VERSION,
       lastRunAt: '2026-07-08T10:00:00.000Z',
       outcome: 'ok',
       savedCount: 2,
@@ -16,7 +23,37 @@ describe('emailSyncStatus', () => {
       sharedMailbox: '',
     });
     expect(parsed?.savedCount).toBe(2);
+    expect(parsed?.version).toBe(EMAIL_SYNC_STATUS_VERSION);
     expect(formatSyncOutcome(parsed!)).toContain('saved 2');
+  });
+
+  it('parses UTF-8 BOM prefixed JSON from PowerShell', () => {
+    const json = '\uFEFF{"version":1,"lastRunAt":"2026-07-08T10:00:00.000Z","outcome":"ok","savedCount":0,"skippedCount":0,"errorCount":0,"savedFiles":[],"errors":[],"inboxPath":"","sharedMailbox":""}';
+    const parsed = parseEmailSyncStatusFromText(json);
+    expect(parsed?.outcome).toBe('ok');
+    expect(stripJsonBom(json).startsWith('{')).toBe(true);
+  });
+
+  it('rejects email-sync-state.json mistaken for status report', () => {
+    const reason = describeEmailSyncStatusRejectReason(
+      {
+        version: 1,
+        processedEntryIds: ['abc'],
+        runStats: { lastRunAt: '2026-07-08T10:00:00.000Z' },
+      },
+      'email-sync-state.json',
+    );
+    expect(reason).toContain('email-sync-state.json');
+    expect(reason).toContain('email-sync-status.json');
+  });
+
+  it('detects state-shaped JSON without filename hint', () => {
+    const reason = describeEmailSyncStatusRejectReason({
+      version: 1,
+      processedEntryIds: ['abc'],
+      runStats: {},
+    });
+    expect(reason).toContain('processedEntryIds');
   });
 
   it('formats backlog sync outcome', () => {

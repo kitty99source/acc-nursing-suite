@@ -8,22 +8,41 @@ import { parseStagingSidecar, type StagingSidecar } from './staging';
 const STAGING_URL = '/_acc/staging';
 const INBOX_FILE_URL = '/_acc/inbox-file';
 
-/** Fetch folder-watch sidecars from the local launcher. Returns [] if unavailable. */
-export async function fetchLocalStagingSidecars(): Promise<StagingSidecar[]> {
+/** Result of probing launch.ps1 `/_acc/staging` (folder-watch sidecar list). */
+export type StagingBridgeStatus = 'ok' | 'empty' | 'unavailable';
+
+export interface StagingBridgeProbe {
+  status: StagingBridgeStatus;
+  sidecars: StagingSidecar[];
+}
+
+/**
+ * Probe the local launcher staging endpoint.
+ * - `ok` / `empty`: launch.ps1 answered with a JSON array (possibly empty).
+ * - `unavailable`: 404, network error, or non-array body — typical when the app
+ *   was opened via `npm run dev`, file://, or a static host without `/_acc/*`.
+ */
+export async function probeLocalStagingBridge(): Promise<StagingBridgeProbe> {
   try {
     const res = await fetch(STAGING_URL, { cache: 'no-store' });
-    if (!res.ok) return [];
+    if (!res.ok) return { status: 'unavailable', sidecars: [] };
     const raw = (await res.json()) as unknown;
-    if (!Array.isArray(raw)) return [];
-    const out: StagingSidecar[] = [];
+    if (!Array.isArray(raw)) return { status: 'unavailable', sidecars: [] };
+    const sidecars: StagingSidecar[] = [];
     for (const row of raw) {
       const parsed = parseStagingSidecar(row);
-      if (parsed) out.push(parsed);
+      if (parsed) sidecars.push(parsed);
     }
-    return out;
+    return { status: sidecars.length ? 'ok' : 'empty', sidecars };
   } catch {
-    return [];
+    return { status: 'unavailable', sidecars: [] };
   }
+}
+
+/** Fetch folder-watch sidecars from the local launcher. Returns [] if unavailable. */
+export async function fetchLocalStagingSidecars(): Promise<StagingSidecar[]> {
+  const probe = await probeLocalStagingBridge();
+  return probe.sidecars;
 }
 
 /** Resolve letter file bytes by SHA-256 via launch.ps1 (hash-index only). */

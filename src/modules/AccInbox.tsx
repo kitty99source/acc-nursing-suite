@@ -115,8 +115,8 @@ export function AccInbox() {
   }
 
   async function parseToStaging(row: AccInboxRow) {
-    // Legacy path kept for advanced/troubleshooting only — primary ingestion is folder-watch
-    // sidecars auto-imported into the Review Queue via /_acc/staging.
+    // Manual IndexedDB write — works without launch.ps1 /_acc/staging. Prefer folder-watch
+    // sidecars when the launcher bridge is up; this path is the reliable fallback when it is not.
     if (settings.automationPaused) {
       setMessage('Automation is paused — enable in Settings before parsing to staging.');
       return;
@@ -132,7 +132,7 @@ export function AccInbox() {
       createdAt: Date.now(),
       severity: 'info',
       title: `ACC Inbox: ${row.attachmentName}`,
-      summary: `${row.subject} — awaiting HRQ review after folder watch picks up ${row.attachmentName}.`,
+      summary: `${row.subject} — manually staged from ACC Inbox (IndexedDB). Prefer folder-watch + launch.ps1 auto-import when available.`,
       sourceFileName: row.attachmentName,
       patientName,
       claimNumber,
@@ -142,12 +142,20 @@ export function AccInbox() {
     };
     await addStagingItem(item);
     await refreshStaging();
-    showTopBarFlash(`Added "${row.attachmentName}" to the Review Queue — open it there to file the patient.`, 'good');
+    showTopBarFlash(
+      `Staged "${row.attachmentName}" into Review Queue (IndexedDB). This is the path that works without /_acc/staging.`,
+      'good',
+    );
     setFocus({ module: 'review' });
   }
 
   function goToReviewQueue() {
-    showTopBarFlash('Review Queue is the primary inbox — letters stage automatically from folder watch.', 'good');
+    // Navigation only — does NOT write staging. If Review is empty, auto-import needs
+    // launch.ps1 serving /_acc/staging, or use Advanced: stage / Import .staging folder.
+    showTopBarFlash(
+      'Opened Review Queue (navigation only). Letters appear there from folder-watch via launch.ps1, or after Advanced: stage / Import .staging.',
+      'good',
+    );
     setFocus({ module: 'review' });
   }
 
@@ -185,7 +193,7 @@ export function AccInbox() {
     <div>
       <SectionTitle
         title="ACC Inbox"
-        subtitle="Email sync status and saved-letter audit — file patients from the Review Queue (primary inbox)."
+        subtitle="Email sync status and saved-letter audit. Filing happens in Review Queue. Open Review Queue only navigates; Advanced: stage writes a queue row (works without launch.ps1)."
       />
 
       {settings.automationPaused && (
@@ -309,13 +317,18 @@ export function AccInbox() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">
-                  <button className="btn btn-sm btn-primary" type="button" onClick={goToReviewQueue}>
+                  <button
+                    className="btn btn-sm btn-primary"
+                    type="button"
+                    title="Navigate to Review Queue only — does not stage this letter"
+                    onClick={goToReviewQueue}
+                  >
                     Open Review Queue
                   </button>
                   <button
                     className="btn btn-sm"
                     type="button"
-                    title="Advanced: manually stage this sync row (prefer folder-watch auto-import)"
+                    title="Writes this sync row into Review Queue IndexedDB (works without /_acc/staging). Prefer folder-watch auto-import when launch.ps1 is serving."
                     onClick={() => void parseToStaging(row)}
                   >
                     Advanced: stage

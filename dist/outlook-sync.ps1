@@ -4,7 +4,9 @@
     [switch]$Recent,
     [int]$DaysBack = 14,
     [switch]$IgnoreWorkHours,
-    [switch]$Scheduled
+    [switch]$Scheduled,
+    [Alias('Backfill')]
+    [switch]$IncludeActioned
 )
 
 $bootstrapRoot = $PSScriptRoot
@@ -69,6 +71,9 @@ $DefaultSupportedExt = @('.pdf', '.docx', '.doc')
 $StateVersion = 1
 $StatusVersion = 1
 $MaxProcessedIds = 20000
+# Consecutive Exchange/COM read failures (e.g. Citrix VPN drop mid-scan) that trigger an early,
+# graceful abort so a dropped connection stops the run instead of spamming ~1000 error lines.
+$DefaultMaxConsecutiveComErrors = 10
 
 $script:ShutdownRequested = $false
 $script:SyncState = $null
@@ -355,8 +360,12 @@ function Register-GracefulShutdown {
 function Test-ShouldSkipMessage {
     param(
         [object]$Item,
-        [string[]]$SkipCategories
+        [string[]]$SkipCategories,
+        [switch]$IncludeActioned
     )
+    # One-time backfill: never skip on category or completed-flag so already-actioned/flagged
+    # historical letters are pulled into the Human Review Queue.
+    if ($IncludeActioned) { return $false }
     $cats = ''
     try { $cats = [string]$Item.Categories } catch {}
     if (-not [string]::IsNullOrWhiteSpace($cats)) {
@@ -369,6 +378,24 @@ function Test-ShouldSkipMessage {
     try {
         if ([int]$Item.FlagStatus -eq 1) { return $true }
     } catch {}
+    return $false
+}
+
+function Test-IsExchangeConnectionError {
+    param([System.Management.Automation.ErrorRecord]$ErrorRecord)
+    if (-not $ErrorRecord) { return $false }
+    $ex = $ErrorRecord.Exception
+    $cur = $ex
+    $depth = 0
+    while ($cur -and $depth -lt 5) {
+        if ($cur -is [System.Runtime.InteropServices.COMException]) { return $true }
+        $msg = [string]$cur.Message
+        if ($msg -match 'Network problems' -or $msg -match 'Microsoft Exchange' -or $msg -match 'server is not available' -or $msg -match 'connection is not available') {
+            return $true
+        }
+        $cur = $cur.InnerException
+        $depth++
+    }
     return $false
 }
 
@@ -550,6 +577,9 @@ if ($env:ACC_EMAIL_SYNC_RECENT -eq '1') { $useBacklog = $false }
 if ($env:ACC_EMAIL_SYNC_BACKLOG -eq '0') { $useBacklog = $false }
 
 $config = Load-SyncConfig
+# One-time backfill: clear the skip categories so "actioned" no longer excludes messages. The
+# completed-flag skip is bypassed separately via -IncludeActioned on Test-ShouldSkipMessage.
+if ($IncludeActioned) { $config.SkipCategories = @() }
 $syncState = Load-SyncState
 $script:SyncState = $syncState
 $script:StatePath = Get-StatePath
@@ -674,6 +704,9 @@ try {
     }
     Write-SyncLine ("Attachment types saved (case-insensitive): {0}" -f ($config.SupportedExt -join ', '))
     Write-SyncLine "Saving attachments to: $inbox"
+    if ($IncludeActioned) {
+        Write-SyncLine 'Backfill mode: INCLUDING already-actioned/flagged messages (one-time backfill)'
+    }
     if ($useBacklog) {
         Write-SyncLine ("Mode: backlog incremental  -  oldest first, up to {0} message(s) this run" -f $config.BatchSize)
         Write-SyncLine ("Skip categories/flags: {0}" -f ($config.SkipCategories -join ', '))
@@ -711,6 +744,8 @@ try {
     $scanned = 0
     $hitBatchLimit = $false
     $itemTotal = [int]$mailItems.Count
+    $consecutiveComErrors = 0
+    $connectionLost = $false
 
     for ($itemIndex = 1; $itemIndex -le $itemTotal; $itemIndex++) {
         if ($script:ShutdownRequested) { break }
@@ -722,6 +757,8 @@ try {
         $item = $null
         try {
             $item = $mailItems.Item($itemIndex)
+            # Successful COM read - the Exchange connection is alive, so clear the failure streak.
+            $consecutiveComErrors = 0
             if ($item.Class -ne 43) { continue }
 
             $received = $null
@@ -757,7 +794,7 @@ try {
                 continue
             }
 
-            if (Test-ShouldSkipMessage -Item $item -SkipCategories $config.SkipCategories) {
+            if (Test-ShouldSkipMessage -Item $item -SkipCategories $config.SkipCategories -IncludeActioned:$IncludeActioned) {
                 $status.skippedCount++
                 $status.scanStats.skippedCategory++
                 Add-NonMatchSample -Reason 'skipped category/flag' -Sender $from -Subject $subject
@@ -821,6 +858,18 @@ try {
             $syncState.runStats.totalErrors++
             $status.errors += $_.Exception.Message
             Write-SyncLine ("  ERROR: $($_.Exception.Message)")
+            # A single failed item is logged and skipped (streak stays isolated). A RUN of
+            # consecutive Exchange/COM read failures means the VPN/Exchange link dropped mid-scan,
+            # so abort early instead of spamming ~1000 identical connection errors.
+            if (Test-IsExchangeConnectionError -ErrorRecord $_) {
+                $consecutiveComErrors++
+                if ($consecutiveComErrors -ge $DefaultMaxConsecutiveComErrors) {
+                    $connectionLost = $true
+                    break
+                }
+            } else {
+                $consecutiveComErrors = 0
+            }
         } finally {
             if ($item) { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($item) }
             $scanned++
@@ -839,8 +888,17 @@ try {
     Save-SyncState -State $syncState
 
     $status.processedTotal = $syncState.processedEntryIds.Count
-    $status.outcome = if ($script:ShutdownRequested) { 'paused' } else { 'ok' }
+    if ($connectionLost) {
+        $status.outcome = 'connection-lost'
+    } elseif ($script:ShutdownRequested) {
+        $status.outcome = 'paused'
+    } else {
+        $status.outcome = 'ok'
+    }
     Write-SyncLine ''
+    if ($connectionLost) {
+        Write-SyncLine ("Outlook lost its connection to Exchange ({0} consecutive errors). Stopping. Reconnect the Citrix VPN and wait until Outlook shows 'Connected', then re-run. Tip: enable Cached Exchange Mode (File > Account Settings > double-click account > Use Cached Exchange Mode) so sync reads the local copy and survives VPN drops." -f $consecutiveComErrors)
+    }
     if ($script:ShutdownRequested) {
         Write-SyncLine 'Stopped early  -  state saved for resume on next run.'
     }

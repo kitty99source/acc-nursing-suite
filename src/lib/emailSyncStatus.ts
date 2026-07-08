@@ -29,7 +29,7 @@ export interface EmailSyncSavedFile {
 export interface EmailSyncStatus {
   version: number;
   lastRunAt: string;
-  outcome: 'running' | 'ok' | 'fail' | 'paused';
+  outcome: 'running' | 'ok' | 'fail' | 'paused' | 'connection-lost';
   mode?: 'backlog' | 'recent';
   batchSize?: number;
   savedCount: number;
@@ -48,7 +48,13 @@ export interface EmailSyncStatus {
   inferredFromState?: boolean;
 }
 
-const VALID_OUTCOMES = new Set<EmailSyncStatus['outcome']>(['running', 'ok', 'fail', 'paused']);
+const VALID_OUTCOMES = new Set<EmailSyncStatus['outcome']>([
+  'running',
+  'ok',
+  'fail',
+  'paused',
+  'connection-lost',
+]);
 
 function parseSavedFiles(raw: unknown): EmailSyncSavedFile[] {
   if (!Array.isArray(raw)) return [];
@@ -177,6 +183,13 @@ export function describeInboxEmptyState(
     return {
       title: 'Last sync failed',
       message: status.errors[0] ?? 'See email-sync-bootstrap.log on the work laptop.',
+    };
+  }
+  if (status.outcome === 'connection-lost') {
+    return {
+      title: 'Outlook lost its Exchange connection',
+      message:
+        'Sync stopped after repeated Microsoft Exchange connection errors (Citrix VPN likely dropped mid-scan). Reconnect the VPN, wait until Outlook shows "Connected", then re-run. Enable Cached Exchange Mode so sync reads the local copy and survives VPN drops.',
     };
   }
   if (status.outcome === 'paused') {
@@ -334,6 +347,9 @@ export function formatSyncOutcome(status: EmailSyncStatus): string {
   }
   if (status.outcome === 'fail') {
     return `Last sync failed ${when} — ${status.errors[0] ?? 'see log on work laptop'}.`;
+  }
+  if (status.outcome === 'connection-lost') {
+    return `Outlook lost its Exchange connection ${when} — reconnect the Citrix VPN and re-run. Enable Cached Exchange Mode for reliability.`;
   }
   return `Sync status from ${when}.`;
 }

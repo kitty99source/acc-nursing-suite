@@ -477,6 +477,24 @@ All patient data stays on the work laptop — do **not** run folder watch on the
 
 ---
 
+## Phase H — Outlook COM probe (optional, ~2 min)
+
+**Purpose:** Check whether IT allows PowerShell to read your **already-open Outlook desktop** — the "cherry on top" before full email sync (P8-017).
+
+**Prerequisite:** Outlook desktop open and logged in (not Outlook web, not Citrix).
+
+1. Confirm `Start Email Probe.cmd` and `outlook-probe.ps1` exist in your `dist/` folder (after rebuild).
+2. Double-click **`Start Email Probe.cmd`**.
+3. **PASS** if you see unread count + last 3 subjects + "PASS - Outlook COM read works".
+4. **FAIL** if programmatic access is blocked — keep using Phase G folder watch + manual Outlook rule (see [`EMAIL_AUTOMATION_FEASIBILITY.md`](EMAIL_AUTOMATION_FEASIBILITY.md)).
+5. Log: `%USERPROFILE%\ACC-Suite\logs\email-probe-bootstrap.log`
+
+**PHI:** Subjects may show patient names — do not screenshot for support; send log file only if asked.
+
+**Shared mailbox:** set `ACC_SHARED_MAILBOX=YourTeamMailbox` before running if ACC letters arrive there.
+
+---
+
 
 
 ## Phase E — Deploy to I: drive for coworkers
@@ -578,4 +596,4 @@ You are **done with the pilot** when:
 
 4. **You — pilot deploy last (Phase E):** Unzip to `I:\ACC-Suite\`, test `Start ACC Suite.cmd`, export your tested `.accdata` to the shared path, brief coworkers (one editor at a time).
 
-5. **Engineering — after pilot sign-off:** Outlook COM bridge (P8-017) on work PC when IT allows; portal read task (P8-2b) using your captured `portal-map.json`; overnight orchestrator last. **Blocked on you:** U-08 automation policy, real ACC sender/subject filters (B-04–B-07), and anonymised letter corpus (U-05) when ready.
+5. **Engineering — after pilot sign-off:** Run **Phase H** (`Start Email Probe.cmd`) to test Outlook COM; if PASS, ship full email sync (P8-017). Portal read task (P8-2b) using your captured `portal-map.json`; overnight orchestrator last. See [`EMAIL_AUTOMATION_FEASIBILITY.md`](EMAIL_AUTOMATION_FEASIBILITY.md). **Blocked on you:** IT answer B-11 (programmatic mailbox read), real ACC sender/subject filters (B-04–B-07), and anonymised letter corpus (U-05) when ready.

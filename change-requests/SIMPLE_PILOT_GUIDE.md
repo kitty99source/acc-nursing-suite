@@ -570,9 +570,22 @@ All patient data stays on the work laptop — do **not** run folder watch on the
 
 **Switches:** `-Recent` for last-14-days mode only; `-BatchSize 25` for smaller batches; `-Scheduled` marks a run as the future automated daemon (obeys the `accWorkHours` window if `enabled: true`); `-IgnoreWorkHours` forces a `-Scheduled` run even outside its window. Manual double-click runs need none of these — they always run.
 
+### Capture rule (what gets saved) — 2026-07-09 update
+
+**Plain English:** the sync now saves an email when it is **(a) from an allowlisted ACC sender AND (b) has at least one supported attachment (`.pdf` / `.docx` / `.doc`)** — **regardless of the subject line**. The old requirement that the subject contain `Claim:`/`ACCID:` is gone as a gate; the subject is still detected and **logged as a confidence hint** (`[capture] sender=… attachments=… subjectMatch=true/false`), but it no longer blocks capture. This fixes real letters that were being missed because their subject was a **name only** (e.g. `Steyn`, `Watson`) instead of containing a claim token, even though the PDF was attached.
+
+- **Why this is safe:** every captured attachment still flows to the **Human Review Queue (HRQ)** for **manual sign-off** — `autoCommit` stays **false**, nothing is auto-imported. Over-capturing (an extra letter to review) is safe; under-capturing (a missed letter) is the real harm.
+- **Configurable** via `emailSync.captureMode` in `office-config.json` (env override `ACC_EMAIL_SYNC_CAPTURE_MODE`):
+  - **`attachment`** (default): sender + supported attachment. Subject optional.
+  - **`sender+subject+attachment`**: legacy strict — also requires a subject-token match.
+  - **`subject-or-attachment`**: sender + (subject match OR supported attachment).
+- **Body-only emails** (no attachment) are **not** captured for now.
+- **ACC Inbox UI:** any letter the sync SAVED is now **shown** in ACC Inbox even if its subject has no `Claim:`/`ACCID:` — saved files are already vetted. The Claim/ACCID badges still appear when present; a missing token no longer hides the row.
+- **Diagnose match:** `Start Email Diagnose.cmd` now reports the **true capture count** (sender-matched emails with ≥1 supported attachment) and marks each previewed message `would match sync filters (sender + supported attachment)`, so the read-only diagnose verdict matches what the sync will actually save.
+
 ### Subject matching + attachment types (2026-07-08 update)
 
-The sync no longer needs a subject to contain the exact literal `Claim:`/`ACCID:`. It now uses a **subject match mode** (`emailSync.subjectMatchMode` in `office-config.json`):
+The sync no longer needs a subject to contain the exact literal `Claim:`/`ACCID:`. The subject is now only a **confidence hint** (see capture rule above). When it IS used (legacy `sender+subject+attachment` capture mode, or the logged hint), it uses a **subject match mode** (`emailSync.subjectMatchMode` in `office-config.json`):
 
 - **`tokens`** (default, safest): saves the email if the subject contains **EITHER `Claim` OR `ACCID`** — colon optional, case-insensitive (`Claim 123`, `Claim:123`, `ACCID` all match).
 - **`all`**: require **BOTH** `Claim` **AND** `ACCID` in the subject (stricter — only if a user wants it).

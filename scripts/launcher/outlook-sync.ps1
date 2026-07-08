@@ -51,8 +51,18 @@ $DefaultWorkHoursEnabled = $false
 $DefaultBatchSize = 50
 # Subject match mode: 'tokens' (default, EITHER Claim OR ACCID, colon-optional), 'any' (legacy OR
 # over subjectPatterns), 'all' (require BOTH Claim AND ACCID). See Test-AccSubjectMode.
+# NOTE: since captureMode 'attachment' (the new default) the subject match is only a CONFIDENCE
+# HINT that is logged; it no longer gates capture. It still gates capture in the legacy
+# 'sender+subject+attachment' captureMode.
 $DefaultSubjectMatchMode = 'tokens'
 $DefaultRequiredTokens = @('Claim', 'ACCID')
+# Capture decision mode. Controls what a sender-matched message must ALSO have to be captured:
+#   'attachment'                (NEW DEFAULT) - sender + >=1 supported attachment. Subject optional.
+#   'sender+subject+attachment' (legacy strict) - sender + subject token match + supported attachment.
+#   'subject-or-attachment'     - sender + (subject token match OR >=1 supported attachment).
+# Everything captured still flows to the Human Review Queue for MANUAL sign-off (nothing auto-commits),
+# so over-capturing is safe while under-capturing (a missed letter) is the real harm.
+$DefaultCaptureMode = 'attachment'
 # Attachment extensions saved to ACC-Inbox. Case-insensitive (.PDF / .Pdf / .pdf all accepted).
 # .doc is saved for HRQ review even though the app importer needs .docx (user Save-As to .docx).
 $DefaultSupportedExt = @('.pdf', '.docx', '.doc')
@@ -131,6 +141,7 @@ function Load-SyncConfig {
     $subjectMode = $DefaultSubjectMatchMode
     $requiredTokens = @($DefaultRequiredTokens)
     $supportedExt = @($DefaultSupportedExt)
+    $captureMode = $DefaultCaptureMode
 
     $configPath = Get-OfficeConfigPath
     if ($configPath) {
@@ -165,6 +176,9 @@ function Load-SyncConfig {
                 $batch = Get-ConfigInt -EnvName 'ACC_EMAIL_SYNC_BATCH_SIZE' -JsonValue $cfg.emailSync.batchSize -Default $batch
                 if (-not [string]::IsNullOrWhiteSpace([string]$cfg.emailSync.subjectMatchMode)) {
                     $subjectMode = [string]$cfg.emailSync.subjectMatchMode
+                }
+                if (-not [string]::IsNullOrWhiteSpace([string]$cfg.emailSync.captureMode)) {
+                    $captureMode = [string]$cfg.emailSync.captureMode
                 }
                 if ($cfg.emailSync.requiredTokens) {
                     $tokList = @($cfg.emailSync.requiredTokens | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
@@ -216,6 +230,14 @@ function Load-SyncConfig {
         $subjectMode = $DefaultSubjectMatchMode
     }
 
+    if (-not [string]::IsNullOrWhiteSpace($env:ACC_EMAIL_SYNC_CAPTURE_MODE)) {
+        $captureMode = $env:ACC_EMAIL_SYNC_CAPTURE_MODE.Trim()
+    }
+    $captureMode = $captureMode.Trim().ToLowerInvariant()
+    if ($captureMode -ne 'attachment' -and $captureMode -ne 'sender+subject+attachment' -and $captureMode -ne 'subject-or-attachment') {
+        $captureMode = $DefaultCaptureMode
+    }
+
     return @{
         Senders          = $senders
         Patterns         = $patterns
@@ -227,6 +249,7 @@ function Load-SyncConfig {
         SubjectMatchMode = $subjectMode
         RequiredTokens   = @($requiredTokens)
         SupportedExt     = @($supportedExt)
+        CaptureMode      = $captureMode
     }
 }
 
@@ -421,13 +444,13 @@ function Write-ScanBreakdownSummary {
         Write-SyncLine 'Scan: (no stats recorded)'
         return
     }
-    Write-SyncLine ("Scan: {0} mail item(s); {1} matched sender; {2} matched sender+subject; {3} skipped (category/flag); {4} already processed; {5} matched but no PDF/DOCX" -f $ss.mailItemsScanned, $ss.matchedSender, $ss.matchedBoth, $ss.skippedCategory, $ss.alreadyProcessed, $ss.noSupportedAttachment)
+    Write-SyncLine ("Scan: {0} mail item(s); {1} matched sender; {2} sender+subject (subject is a hint only); {3} skipped (category/flag); {4} already processed; {5} sender-matched but no PDF/DOCX/DOC" -f $ss.mailItemsScanned, $ss.matchedSender, $ss.matchedBoth, $ss.skippedCategory, $ss.alreadyProcessed, $ss.noSupportedAttachment)
     if ($Status.savedCount -eq 0 -and $ss.mailItemsScanned -eq 0) {
         Write-SyncLine 'Hint: inbox has no mail items in scan range - confirm ACCDistrictNursing is open in Outlook and you have delegate access.'
-    } else    if ($Status.savedCount -eq 0 -and $ss.matchedBoth -eq 0 -and $ss.matchedSender -eq 0) {
+    } else    if ($Status.savedCount -eq 0 -and $ss.matchedSender -eq 0) {
         Write-SyncLine 'Hint: no sender matches - letters may be in a shared mailbox or SenderEmailAddress differs from allowlist.'
-    } elseif ($Status.savedCount -eq 0 -and $ss.matchedBoth -eq 0) {
-        Write-SyncLine 'Hint: sender matched but subject did not - ensure Claim: and ACCID: are in subjectPatterns (office-config accInbox + settings).'
+    } elseif ($Status.savedCount -eq 0 -and $ss.noSupportedAttachment -gt 0) {
+        Write-SyncLine 'Hint: sender matched but no .pdf/.docx/.doc attachment found - body-only emails are not captured (capture rule = sender + supported attachment; subject optional).'
     }
     if ($script:NonMatchSamples -and $script:NonMatchSamples.Count -gt 0) {
         Write-SyncLine 'First non-match samples:'
@@ -635,12 +658,19 @@ try {
         Write-SyncLine "Mailbox resolved via: $resolution"
     }
     Write-SyncLine ("Sender allowlist: {0} sender(s), {1} subject pattern(s)" -f $config.Senders.Count, $config.Patterns.Count)
-    if ($config.SubjectMatchMode -eq 'any') {
-        Write-SyncLine ("Subject match mode: any (matches any of {0} pattern(s))" -f $config.Patterns.Count)
-    } elseif ($config.SubjectMatchMode -eq 'all') {
-        Write-SyncLine ("Subject match mode: all (requires ALL tokens: {0})" -f ($config.RequiredTokens -join ' + '))
+    if ($config.CaptureMode -eq 'sender+subject+attachment') {
+        Write-SyncLine 'Capture mode: sender+subject+attachment (legacy strict - requires sender AND subject match AND supported attachment)'
+    } elseif ($config.CaptureMode -eq 'subject-or-attachment') {
+        Write-SyncLine 'Capture mode: subject-or-attachment (sender AND (subject match OR supported attachment))'
     } else {
-        Write-SyncLine ("Subject match mode: tokens (matches ANY token, colon-optional: {0})" -f ($config.RequiredTokens -join ' or '))
+        Write-SyncLine 'Capture mode: attachment (default - captures sender + supported attachment; subject is only a logged confidence hint)'
+    }
+    if ($config.SubjectMatchMode -eq 'any') {
+        Write-SyncLine ("Subject match (hint) mode: any (matches any of {0} pattern(s))" -f $config.Patterns.Count)
+    } elseif ($config.SubjectMatchMode -eq 'all') {
+        Write-SyncLine ("Subject match (hint) mode: all (requires ALL tokens: {0})" -f ($config.RequiredTokens -join ' + '))
+    } else {
+        Write-SyncLine ("Subject match (hint) mode: tokens (matches ANY token, colon-optional: {0})" -f ($config.RequiredTokens -join ' or '))
     }
     Write-SyncLine ("Attachment types saved (case-insensitive): {0}" -f ($config.SupportedExt -join ', '))
     Write-SyncLine "Saving attachments to: $inbox"
@@ -709,11 +739,24 @@ try {
                 continue
             }
             $status.scanStats.matchedSender++
-            if (-not (Test-AccSubjectMode -Subject $subject -Patterns $config.Patterns -Mode $config.SubjectMatchMode -RequiredTokens $config.RequiredTokens)) {
-                Add-NonMatchSample -Reason 'subject mismatch' -Sender $from -Subject $subject
+
+            # Subject-token match is now only a CONFIDENCE HINT (computed + logged), NOT a required
+            # capture gate. Under the default 'attachment' captureMode a message is captured on
+            # sender + supported attachment REGARDLESS of subject, which fixes real letters that
+            # were missed because their subject was name-only (e.g. "Steyn"/"Watson") instead of
+            # containing Claim:/ACCID:. Everything captured still flows to the HRQ for manual sign-off.
+            $subjectMatch = $false
+            try {
+                $subjectMatch = Test-AccSubjectMode -Subject $subject -Patterns $config.Patterns -Mode $config.SubjectMatchMode -RequiredTokens $config.RequiredTokens
+            } catch {}
+            if ($subjectMatch) { $status.scanStats.matchedBoth++ }
+
+            # Legacy strict mode is the ONLY mode where a missing subject match stops capture.
+            if ($config.CaptureMode -eq 'sender+subject+attachment' -and -not $subjectMatch) {
+                Add-NonMatchSample -Reason 'subject mismatch (legacy sender+subject+attachment captureMode)' -Sender $from -Subject $subject
                 continue
             }
-            $status.scanStats.matchedBoth++
+
             if (Test-ShouldSkipMessage -Item $item -SkipCategories $config.SkipCategories) {
                 $status.skippedCount++
                 $status.scanStats.skippedCategory++
@@ -735,6 +778,9 @@ try {
             }
 
             $attachments = $item.Attachments
+            $attachmentCount = 0
+            try { $attachmentCount = [int]$attachments.Count } catch {}
+            Write-SyncLine ("  [capture] sender={0} attachments={1} subjectMatch={2} mode={3}" -f $from, $attachmentCount, $subjectMatch.ToString().ToLowerInvariant(), $config.CaptureMode)
             $savedAny = $false
             for ($i = 1; $i -le $attachments.Count; $i++) {
                 if ($script:ShutdownRequested) { break }

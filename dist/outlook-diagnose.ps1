@@ -252,15 +252,26 @@ try {
     $namespace = $outlook.GetNamespace('MAPI')
     [void]$namespace.Logon($null, $null, $false, $true)
 
-    Write-DiagLine 'Visible stores:'
+    # List stores using ONLY the fast, cached Store.DisplayName property. We deliberately do
+    # NOT call GetRootFolder()/GetDefaultFolder() or read PropertyAccessor SMTP here: on
+    # Exchange the "Public Folders" store can take ~20 MINUTES to open its root folder, which
+    # previously made this listing appear to hang before resolution even started. Sync never
+    # opens these stores - it resolves ACCDistrictNursing directly via CreateRecipient +
+    # GetSharedDefaultFolder - so this listing is purely informational and must stay cheap.
+    Write-DiagLine 'Visible stores (name only - not opened):'
     foreach ($store in $namespace.Stores) {
-        try {
-            $display = [string]$store.DisplayName
-            $hints = Get-StoreSmtpHint -Store $store
-            $hintText = if ($hints.Count -gt 0) { ($hints | Select-Object -Unique) -join ' / ' } else { '(no SMTP hint)' }
-            if (-not [string]::IsNullOrWhiteSpace($display)) { [void]$visibleStores.Add($display) }
-            Write-DiagLine ("  - {0} [{1}]" -f $display, $hintText)
-        } catch {
+        $display = ''
+        try { $display = [string]$store.DisplayName } catch {}
+        if ([string]::IsNullOrWhiteSpace($display)) {
+            Write-DiagLine '  - (unnamed store)'
+            continue
+        }
+        [void]$visibleStores.Add($display)
+        if ($display -match 'Public Folders') {
+            # Known-slow Exchange store: list the name but never open it for diagnostics.
+            Write-DiagLine ("  - {0} (skipped - not opened; known-slow store)" -f $display)
+        } else {
+            Write-DiagLine ("  - {0}" -f $display)
         }
     }
     Write-DiagLine ''

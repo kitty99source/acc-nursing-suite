@@ -1,5 +1,63 @@
 import fs from 'node:fs';
+import { createServer } from 'node:http';
+import { join, extname } from 'node:path';
 import ExcelJS from 'exceljs';
+
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.mjs': 'application/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json',
+  '.traineddata': 'application/octet-stream',
+};
+
+async function assertWorkerServedOverHttp() {
+  const dist = join(process.cwd(), 'dist');
+  const server = createServer((req, res) => {
+    const path = req.url === '/' || !req.url ? '/index.html' : req.url.split('?')[0];
+    const file = join(dist, path.replace(/^\//, ''));
+    if (!file.startsWith(dist) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+      res.writeHead(404);
+      res.end('Not found');
+      return;
+    }
+    const body = fs.readFileSync(file);
+    const type = MIME[extname(file)] ?? 'application/octet-stream';
+    res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+    res.end(body);
+  });
+
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+
+  const { port } = server.address();
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/pdf.worker.mjs`);
+    if (!res.ok) {
+      console.error(`FAIL: GET /pdf.worker.mjs returned ${res.status}`);
+      process.exitCode = 1;
+      return;
+    }
+    const ct = res.headers.get('content-type') ?? '';
+    if (!ct.includes('javascript')) {
+      console.error(`FAIL: pdf.worker.mjs Content-Type is "${ct}" (expected application/javascript)`);
+      process.exitCode = 1;
+      return;
+    }
+    const body = await res.arrayBuffer();
+    if (body.byteLength < 100_000) {
+      console.error(`FAIL: pdf.worker.mjs too small (${body.byteLength} bytes)`);
+      process.exitCode = 1;
+      return;
+    }
+    console.log('pdf worker HTTP OK     :', res.status, ct.split(';')[0]);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+}
 
 const html = fs.readFileSync('dist/index.html', 'utf8');
 const head = html.slice(0, html.indexOf('</head>'));
@@ -17,6 +75,8 @@ console.log('pdf worker in dist   :', fs.existsSync('dist/pdf.worker.mjs'));
 if (!fs.existsSync('dist/pdf.worker.mjs')) {
   console.error('FAIL: dist/pdf.worker.mjs missing — letter import will break');
   process.exitCode = 1;
+} else {
+  await assertWorkerServedOverHttp();
 }
 console.log('letter import class  :', html.includes('btn btn-outline btn-sm'));
 console.log('LETTER_IMPORT label  :', html.includes('Import ACC letter'));

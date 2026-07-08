@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p tsconfig.json --noEmit && vite build && node scripts/copy-launcher.mjs",
+    "build": "tsc -p tsconfig.json --noEmit && node scripts/copy-pdf-worker.mjs && vite build && node scripts/copy-launcher.mjs",
     "postinstall": "node scripts/copy-tessdata.mjs && node scripts/copy-pdf-worker.mjs",
     "preview": "vite preview",
     "launch": "node scripts/launch-built.mjs",

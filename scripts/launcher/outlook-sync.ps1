@@ -49,7 +49,13 @@ $DefaultWorkEndHour = 18
 # scheduled/automated daemon that passes -Scheduled AND opts in via accWorkHours.enabled=true.
 $DefaultWorkHoursEnabled = $false
 $DefaultBatchSize = 50
-$SupportedExt = @('.pdf', '.docx')
+# Subject match mode: 'tokens' (default, EITHER Claim OR ACCID, colon-optional), 'any' (legacy OR
+# over subjectPatterns), 'all' (require BOTH Claim AND ACCID). See Test-AccSubjectMode.
+$DefaultSubjectMatchMode = 'tokens'
+$DefaultRequiredTokens = @('Claim', 'ACCID')
+# Attachment extensions saved to ACC-Inbox. Case-insensitive (.PDF / .Pdf / .pdf all accepted).
+# .doc is saved for HRQ review even though the app importer needs .docx (user Save-As to .docx).
+$DefaultSupportedExt = @('.pdf', '.docx', '.doc')
 $StateVersion = 1
 $StatusVersion = 1
 $MaxProcessedIds = 20000
@@ -122,6 +128,9 @@ function Load-SyncConfig {
     $workEnd = $DefaultWorkEndHour
     $workEnabled = $DefaultWorkHoursEnabled
     $batch = $DefaultBatchSize
+    $subjectMode = $DefaultSubjectMatchMode
+    $requiredTokens = @($DefaultRequiredTokens)
+    $supportedExt = @($DefaultSupportedExt)
 
     $configPath = Get-OfficeConfigPath
     if ($configPath) {
@@ -154,6 +163,17 @@ function Load-SyncConfig {
                 $workStart = Get-ConfigInt -EnvName 'ACC_EMAIL_SYNC_WORK_START' -JsonValue $cfg.emailSync.workStartHour -Default $workStart
                 $workEnd = Get-ConfigInt -EnvName 'ACC_EMAIL_SYNC_WORK_END' -JsonValue $cfg.emailSync.workEndHour -Default $workEnd
                 $batch = Get-ConfigInt -EnvName 'ACC_EMAIL_SYNC_BATCH_SIZE' -JsonValue $cfg.emailSync.batchSize -Default $batch
+                if (-not [string]::IsNullOrWhiteSpace([string]$cfg.emailSync.subjectMatchMode)) {
+                    $subjectMode = [string]$cfg.emailSync.subjectMatchMode
+                }
+                if ($cfg.emailSync.requiredTokens) {
+                    $tokList = @($cfg.emailSync.requiredTokens | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+                    if ($tokList.Count -gt 0) { $requiredTokens = $tokList }
+                }
+                if ($cfg.emailSync.attachmentExtensions) {
+                    $extList = @($cfg.emailSync.attachmentExtensions | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+                    if ($extList.Count -gt 0) { $supportedExt = $extList }
+                }
             }
             # accWorkHours (structured window) takes precedence over legacy emailSync.workStartHour/EndHour.
             # It only affects a future scheduled/automated run (-Scheduled); manual runs ignore it.
@@ -188,6 +208,14 @@ function Load-SyncConfig {
         $skipCategories = @($env:ACC_EMAIL_SYNC_SKIP_CATEGORIES.Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ })
     }
 
+    if (-not [string]::IsNullOrWhiteSpace($env:ACC_EMAIL_SYNC_SUBJECT_MODE)) {
+        $subjectMode = $env:ACC_EMAIL_SYNC_SUBJECT_MODE.Trim()
+    }
+    $subjectMode = $subjectMode.Trim().ToLowerInvariant()
+    if ($subjectMode -ne 'any' -and $subjectMode -ne 'all' -and $subjectMode -ne 'tokens') {
+        $subjectMode = $DefaultSubjectMatchMode
+    }
+
     return @{
         Senders          = $senders
         Patterns         = $patterns
@@ -196,6 +224,9 @@ function Load-SyncConfig {
         WorkEndHour      = $workEnd
         WorkHoursEnabled = $workEnabled
         BatchSize        = [Math]::Max(1, [Math]::Min(500, $batch))
+        SubjectMatchMode = $subjectMode
+        RequiredTokens   = @($requiredTokens)
+        SupportedExt     = @($supportedExt)
     }
 }
 
@@ -604,6 +635,14 @@ try {
         Write-SyncLine "Mailbox resolved via: $resolution"
     }
     Write-SyncLine ("Sender allowlist: {0} sender(s), {1} subject pattern(s)" -f $config.Senders.Count, $config.Patterns.Count)
+    if ($config.SubjectMatchMode -eq 'any') {
+        Write-SyncLine ("Subject match mode: any (matches any of {0} pattern(s))" -f $config.Patterns.Count)
+    } elseif ($config.SubjectMatchMode -eq 'all') {
+        Write-SyncLine ("Subject match mode: all (requires ALL tokens: {0})" -f ($config.RequiredTokens -join ' + '))
+    } else {
+        Write-SyncLine ("Subject match mode: tokens (matches ANY token, colon-optional: {0})" -f ($config.RequiredTokens -join ' or '))
+    }
+    Write-SyncLine ("Attachment types saved (case-insensitive): {0}" -f ($config.SupportedExt -join ', '))
     Write-SyncLine "Saving attachments to: $inbox"
     if ($useBacklog) {
         Write-SyncLine ("Mode: backlog incremental  -  oldest first, up to {0} message(s) this run" -f $config.BatchSize)
@@ -670,7 +709,7 @@ try {
                 continue
             }
             $status.scanStats.matchedSender++
-            if (-not (Test-AccSubject -Subject $subject -Patterns $config.Patterns)) {
+            if (-not (Test-AccSubjectMode -Subject $subject -Patterns $config.Patterns -Mode $config.SubjectMatchMode -RequiredTokens $config.RequiredTokens)) {
                 Add-NonMatchSample -Reason 'subject mismatch' -Sender $from -Subject $subject
                 continue
             }
@@ -703,8 +742,7 @@ try {
                 try {
                     $att = $attachments.Item($i)
                     $fileName = Get-SafeFileName -Name ([string]$att.FileName)
-                    $ext = [System.IO.Path]::GetExtension($fileName).ToLowerInvariant()
-                    if ($SupportedExt -notcontains $ext) { continue }
+                    if (-not (Test-SupportedExtension -FileName $fileName -SupportedExt $config.SupportedExt)) { continue }
 
                     $dest = Get-UniquePath -Dir $inbox -FileName $fileName
                     $att.SaveAsFile($dest)

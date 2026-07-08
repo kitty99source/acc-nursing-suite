@@ -29,7 +29,11 @@
     "batchSize": 50,
     "workStartHour": 7,
     "workEndHour": 18,
-    "skipCategories": ["actioned"]
+    "skipCategories": ["actioned"],
+    "subjectMatchMode": "tokens",
+    "requiredTokens": ["Claim", "ACCID"],
+    "attachmentExtensions": [".pdf", ".docx", ".doc"],
+    "notes": "subjectMatchMode: 'tokens' (default) saves an email when the subject contains ANY required token (EITHER Claim OR ACCID), colon-optional and case-insensitive so 'Claim 123', 'Claim:123', 'ACCID' all match. 'all' requires BOTH Claim AND ACCID. 'any' falls back to the legacy behaviour of matching any of accInbox.subjectPatterns. Also overridable via env ACC_EMAIL_SYNC_SUBJECT_MODE. attachmentExtensions is case-insensitive (.PDF/.Pdf/.pdf all accepted); .doc is saved for review but the app importer needs .docx (Save As in Word first). Everything saved still lands in the Human Review Queue for manual sign-off - nothing auto-commits."
   },
   "accWorkHours": {
     "start": 7,

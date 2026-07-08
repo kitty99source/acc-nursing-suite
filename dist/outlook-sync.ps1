@@ -45,6 +45,7 @@ $DefaultWorkEndHour = 18
 $DefaultBatchSize = 50
 $SupportedExt = @('.pdf', '.docx')
 $StateVersion = 1
+$StatusVersion = 1
 $MaxProcessedIds = 20000
 
 $script:ShutdownRequested = $false
@@ -388,8 +389,11 @@ function Write-SyncStatus {
     $suite = Resolve-AccSuiteDir
     [void][System.IO.Directory]::CreateDirectory($suite)
     $path = Join-Path $suite 'email-sync-status.json'
-    $json = $Status | ConvertTo-Json -Depth 6
-    Set-Content -LiteralPath $path -Value $json -Encoding UTF8
+    $Status.version = $StatusVersion
+    $Status.lastRunAt = (Get-Date).ToUniversalTime().ToString('o')
+    $json = $Status | ConvertTo-Json -Depth 6 -Compress:$false
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($path, $json, $utf8NoBom)
     return $path
 }
 
@@ -416,7 +420,7 @@ $script:SyncState = $syncState
 $script:StatePath = Get-StatePath
 
 $status = @{
-    version            = 1
+    version            = $StatusVersion
     lastRunAt          = (Get-Date).ToUniversalTime().ToString('o')
     outcome            = 'running'
     mode               = if ($useBacklog) { 'backlog' } else { 'recent' }

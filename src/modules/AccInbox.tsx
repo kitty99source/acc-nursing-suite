@@ -9,11 +9,14 @@ import {
 } from '../lib/accInboxFilters';
 import { loadStagingItems, addStagingItem, type StagingItem } from '../lib/staging';
 import {
+  describeEmailSyncStatusRejectReason,
+  EMAIL_SYNC_STATUS_HINT_PATH,
   fetchLocalEmailSyncStatus,
   formatScanStatsSummary,
   formatSyncOutcome,
   inboxRowsFromSyncStatus,
-  parseEmailSyncStatus,
+  parseEmailSyncStatusFromText,
+  stripJsonBom,
   type EmailSyncStatus,
 } from '../lib/emailSyncStatus';
 
@@ -118,9 +121,17 @@ export function AccInbox() {
   async function loadSyncReport(file: File) {
     try {
       const text = await file.text();
-      const parsed = parseEmailSyncStatus(JSON.parse(text) as unknown);
+      let raw: unknown;
+      try {
+        raw = JSON.parse(stripJsonBom(text)) as unknown;
+      } catch {
+        throw new Error(
+          `Could not parse JSON. Pick ${EMAIL_SYNC_STATUS_HINT_PATH} (not email-sync-state.json or a log file).`,
+        );
+      }
+      const parsed = parseEmailSyncStatusFromText(text);
       if (!parsed) {
-        throw new Error('Not a valid email-sync-status.json from Start Email Sync.cmd');
+        throw new Error(describeEmailSyncStatusRejectReason(raw, file.name));
       }
       setSyncStatus(parsed);
       setMessage(null);
@@ -161,7 +172,7 @@ export function AccInbox() {
             No sync report loaded. On work laptop: run <span className="font-mono">Start Email Sync.cmd</span> or{' '}
             <span className="font-mono">Start WFH Mode.cmd</span> — status auto-loads when served by{' '}
             <span className="font-mono">launch.ps1</span>, or pick{' '}
-            <span className="font-mono">%USERPROFILE%\ACC-Suite\email-sync-status.json</span> below.
+            <span className="font-mono">{EMAIL_SYNC_STATUS_HINT_PATH}</span> below (not email-sync-state.json).
           </p>
         )}
         {syncStatus && syncStatus.savedFiles.length > 0 && (

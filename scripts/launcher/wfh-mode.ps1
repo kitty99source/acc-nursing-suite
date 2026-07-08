@@ -3,7 +3,21 @@ param()
 $bootstrapRoot = $PSScriptRoot
 if ([string]::IsNullOrEmpty($bootstrapRoot)) { $bootstrapRoot = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }
 . (Join-Path $bootstrapRoot 'bootstrap-log.ps1') -LogName 'wfh'
-. (Join-Path $bootstrapRoot 'mailbox-config.ps1')
+
+$mailboxConfig = Join-Path $bootstrapRoot 'mailbox-config.ps1'
+if (Test-Path -LiteralPath $mailboxConfig) {
+    . $mailboxConfig
+} else {
+    Write-Host "WARN - mailbox-config.ps1 not found; using ACCDistrictNursing default."
+    Write-BootstrapLog "WARN - missing mailbox-config.ps1 at $mailboxConfig"
+    function Resolve-SharedMailbox {
+        param([string]$Override = '')
+        if (-not [string]::IsNullOrWhiteSpace($Override)) { return $Override.Trim() }
+        if (-not [string]::IsNullOrWhiteSpace($env:ACC_SHARED_MAILBOX)) { return $env:ACC_SHARED_MAILBOX.Trim() }
+        return 'ACCDistrictNursing'
+    }
+}
+
 Write-BootstrapLog 'wfh-mode.ps1 started'
 
 $launcherDir = $bootstrapRoot
@@ -57,6 +71,7 @@ if (Test-AccSuitePortOpen -Port $accSuitePort) {
         '-File', $launchPs1
     ) -WindowStyle Minimized | Out-Null
     Write-BootstrapLog 'Started launch.ps1 (minimized)'
+    Start-Sleep -Seconds 2
 }
 
 Write-Host 'Opening Folder Watch (ACC-Inbox letter drops)...'
@@ -65,11 +80,15 @@ Start-Process -FilePath 'cmd.exe' -ArgumentList @(
     "cd /d `"$launcherDir`" && powershell -NoProfile -ExecutionPolicy Bypass -File `"$watchPs1`""
 ) -WindowStyle Normal | Out-Null
 Write-BootstrapLog 'Started folder-watch.ps1 (new cmd window)'
+Start-Sleep -Seconds 2
 
 $sharedMailbox = Resolve-SharedMailbox
+$statusPath = Join-Path $env:USERPROFILE 'ACC-Suite\email-sync-status.json'
+
 Write-Host ''
-Write-Host "Running Email Sync (Outlook COM, one backlog batch)..."
+Write-Host 'Running Email Sync (Outlook COM, one backlog batch)...'
 Write-Host "Using mailbox: $sharedMailbox"
+Write-Host 'Keep this window open until sync finishes.'
 Write-Host ''
 Write-BootstrapLog "Starting outlook-sync.ps1 in this window (mailbox: $sharedMailbox)"
 
@@ -82,11 +101,17 @@ Write-Host '----------------'
 Write-Host "  ACC Suite     = running (http://127.0.0.1:$accSuitePort or next free port if new launch)"
 Write-Host '  Folder Watch  = running (separate cmd window - leave open)'
 Write-Host '  Email Sync    = finished this run'
+if (Test-Path -LiteralPath $statusPath) {
+    Write-Host "  Sync report   = $statusPath"
+    Write-Host '  ACC Inbox     = auto-loads this file when served by launch.ps1'
+} else {
+    Write-Host "  WARN - sync report not found at $statusPath"
+}
 Write-Host ''
 Write-Host '  More backlog? Double-click Start Email Sync.cmd again during work hours.'
 Write-Host '  Logs: %USERPROFILE%\ACC-Suite\logs\'
 Write-Host ''
-Write-BootstrapLog "outlook-sync.ps1 finished exit=$syncExit"
+Write-BootstrapLog "outlook-sync.ps1 finished exit=$syncExit statusExists=$(Test-Path -LiteralPath $statusPath)"
 
 if ($syncExit -ne 0) { exit $syncExit }
 exit 0

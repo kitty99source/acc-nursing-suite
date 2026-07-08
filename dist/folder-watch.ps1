@@ -1,5 +1,6 @@
 ﻿param(
-    [string]$InboxDir = ''
+    [string]$InboxDir = '',
+    [switch]$VerboseSkips
 )
 
 $bootstrapRoot = $PSScriptRoot
@@ -17,6 +18,16 @@ Write-BootstrapLog 'folder-watch.ps1 started'
 $script:LauncherLogEnabled = $false
 $script:InboxPath = $null
 $script:SupportedExt = @('.pdf', '.docx')
+
+# Per-session cache of files already evaluated this run (path|length|mtime).
+# Lets each existing/already-staged file be hashed and announced at most once per
+# session, so the 2s polling re-scan never re-hashes or re-prints them.
+$script:SeenFileKeys = [System.Collections.Generic.HashSet[string]]::new()
+
+# Default: quiet (summarised skips). Enable per-file skip detail via -VerboseSkips
+# or ACC_FOLDER_WATCH_VERBOSE=1.
+$script:VerboseSkips = [bool]$VerboseSkips
+if ($env:ACC_FOLDER_WATCH_VERBOSE -eq '1') { $script:VerboseSkips = $true }
 
 function Write-LauncherLogSafe {
     param([string]$Message)
@@ -120,41 +131,55 @@ function New-FolderWatchSidecar {
     }
 }
 
+# Returns a status token so the scan can roll up a summary instead of spamming
+# one line per file: 'staged' | 'skipped' | 'paused' | 'error' | 'seen' | 'ignored'.
 function Invoke-ProcessLetterFile {
     param([string]$FilePath)
 
-    if (-not $script:InboxPath) { return }
+    if (-not $script:InboxPath) { return 'ignored' }
     $inbox = $script:InboxPath
 
-    if (Test-AutomationPaused -Inbox $inbox) {
-        Write-Host "[paused] automation hold - skipping $([System.IO.Path]::GetFileName($FilePath))" -ForegroundColor Yellow
-        return
-    }
-
-    if (-not (Test-Path -LiteralPath $FilePath)) { return }
+    if (-not (Test-Path -LiteralPath $FilePath)) { return 'ignored' }
 
     $ext = [System.IO.Path]::GetExtension($FilePath).ToLowerInvariant()
-    if ($script:SupportedExt -notcontains $ext) { return }
+    if ($script:SupportedExt -notcontains $ext) { return 'ignored' }
 
     try {
         $info = Get-Item -LiteralPath $FilePath
     } catch {
-        return
+        return 'ignored'
     }
-    if (-not $info.PSIsContainer -and $info.Length -le 0) { return }
+    if (-not $info.PSIsContainer -and $info.Length -le 0) { return 'ignored' }
+
+    # Cheap re-scan guard: if this exact file (path+size+mtime) was already
+    # evaluated this session, skip silently - no re-hash, no re-print. This is
+    # what stops the 2s polling loop from re-announcing already-staged files.
+    $cheapKey = '{0}|{1}|{2}' -f $FilePath, $info.Length, $info.LastWriteTimeUtc.Ticks
+    if ($script:SeenFileKeys.Contains($cheapKey)) { return 'seen' }
+
+    if (Test-AutomationPaused -Inbox $inbox) {
+        [void]$script:SeenFileKeys.Add($cheapKey)
+        if ($script:VerboseSkips) {
+            Write-Host "[paused] automation hold - skipping $([System.IO.Path]::GetFileName($FilePath))" -ForegroundColor Yellow
+        }
+        return 'paused'
+    }
 
     try {
         $hash = Get-Sha256Hex -FilePath $FilePath
     } catch {
         Write-Host "[warn] could not hash $FilePath" -ForegroundColor Yellow
-        return
+        return 'error'
     }
 
     $leafName = [System.IO.Path]::GetFileName($FilePath)
     if (Test-AlreadyStaged -Inbox $inbox -Hash $hash -FileName $leafName) {
-        $sidecarName = [System.IO.Path]::GetFileName((Get-SidecarPath -Inbox $inbox -Hash $hash -FileName $leafName))
-        Write-Host "[skip] re-scan: identical bytes for $leafName already staged (.staging\$sidecarName, SHA-256 $($hash.Substring(0, 8))...)" -ForegroundColor Gray
-        return
+        [void]$script:SeenFileKeys.Add($cheapKey)
+        if ($script:VerboseSkips) {
+            $sidecarName = [System.IO.Path]::GetFileName((Get-SidecarPath -Inbox $inbox -Hash $hash -FileName $leafName))
+            Write-Host "[skip] re-scan: identical bytes for $leafName already staged (.staging\$sidecarName, SHA-256 $($hash.Substring(0, 8))...)" -ForegroundColor Gray
+        }
+        return 'skipped'
     }
 
     $sidecar = New-FolderWatchSidecar -FilePath $FilePath -Hash $hash -Inbox $inbox
@@ -169,19 +194,31 @@ function Invoke-ProcessLetterFile {
         Write-Host "[warn] could not move to processed/: $($_.Exception.Message)" -ForegroundColor Yellow
     }
 
+    [void]$script:SeenFileKeys.Add($cheapKey)
     $relative = '.staging\' + [System.IO.Path]::GetFileName($outPath)
     Write-Host "[staged] $([System.IO.Path]::GetFileName($FilePath)) -> $relative" -ForegroundColor Green
     Write-LauncherLogSafe "Staged $([System.IO.Path]::GetFileName($FilePath)) as $relative"
+    return 'staged'
 }
 
+# Enumerate the inbox once and roll up per-file outcomes into a counts object.
 function Invoke-ScanInbox {
     param([string]$Inbox)
+    $counts = [ordered]@{ staged = 0; skipped = 0; paused = 0; errors = 0; seen = 0 }
     foreach ($name in [System.IO.Directory]::GetFileSystemEntries($Inbox)) {
         $leaf = [System.IO.Path]::GetFileName($name)
         if ($leaf.StartsWith('.') -or $leaf -eq 'processed') { continue }
         if (-not (Test-Path -LiteralPath $name -PathType Leaf)) { continue }
-        Invoke-ProcessLetterFile -FilePath $name
+        switch (Invoke-ProcessLetterFile -FilePath $name) {
+            'staged'  { $counts.staged++ }
+            'skipped' { $counts.skipped++ }
+            'paused'  { $counts.paused++ }
+            'error'   { $counts.errors++ }
+            'seen'    { $counts.seen++ }
+            default   { }
+        }
     }
+    return $counts
 }
 
 try {
@@ -202,17 +239,45 @@ try {
     Write-Host '  Drop PDF or Word (.docx) letters here.' -ForegroundColor Gray
     Write-Host '  Sidecars: ACC-Inbox\.staging\*.json' -ForegroundColor Gray
     Write-Host '  In the app: Review Queue -> Import folder-watch sidecars' -ForegroundColor Gray
+    if ($script:VerboseSkips) {
+        Write-Host '  Verbose skips: ON (per-file re-scan detail)' -ForegroundColor DarkGray
+    }
     Write-Host ''
     Write-LauncherLogSafe "Watching $($script:InboxPath)"
 
-    Invoke-ScanInbox -Inbox $script:InboxPath
-
+    # Initial enumeration of the existing folder. Skips are summarised (not one
+    # line per file) so a large backlog does not flood the console.
+    $initial = Invoke-ScanInbox -Inbox $script:InboxPath
+    $existing = $initial.staged + $initial.skipped + $initial.paused + $initial.errors
+    $summary = "  {0} existing file(s): {1} already staged, {2} newly staged, {3} error(s)" -f ('{0:N0}' -f $existing), ('{0:N0}' -f $initial.skipped), ('{0:N0}' -f $initial.staged), ('{0:N0}' -f $initial.errors)
+    if ($initial.paused -gt 0) {
+        $summary += (", {0} skipped (automation paused)" -f ('{0:N0}' -f $initial.paused))
+    }
+    Write-Host $summary -ForegroundColor Cyan
+    Write-LauncherLogSafe ("Startup scan:" + $summary.Trim())
+    if ($initial.skipped -gt 0 -and -not $script:VerboseSkips) {
+        Write-Host '  (re-run with -VerboseSkips or set ACC_FOLDER_WATCH_VERBOSE=1 for per-file detail)' -ForegroundColor DarkGray
+    }
+    Write-Host ''
     Write-Host '  Press Ctrl+C to stop.' -ForegroundColor Gray
     Write-Host ''
 
+    # Poll for genuinely new drops. Already-seen files are cached, so this loop
+    # is silent unless a new file arrives (or an occasional idle heartbeat).
+    $idleTicks = 0
+    $heartbeatEvery = 150  # ~5 min at 2s/tick
     while ($true) {
         Start-Sleep -Seconds 2
-        Invoke-ScanInbox -Inbox $script:InboxPath
+        $r = Invoke-ScanInbox -Inbox $script:InboxPath
+        if ($r.staged -gt 0 -or $r.errors -gt 0) {
+            $idleTicks = 0
+        } else {
+            $idleTicks++
+            if ($idleTicks -ge $heartbeatEvery) {
+                Write-Host ("[watch] idle - {0} file(s) tracked this session, still watching..." -f ('{0:N0}' -f $script:SeenFileKeys.Count)) -ForegroundColor DarkGray
+                $idleTicks = 0
+            }
+        }
     }
 } catch {
     Write-BootstrapLog "FATAL: $($_.Exception.Message)"

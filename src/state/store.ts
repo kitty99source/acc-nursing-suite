@@ -62,6 +62,7 @@ import { resolveWorkingCopyLoad } from '../lib/recovery';
 import { uid, todayISO, formatDateNZ } from '../lib/format';
 import { mergeImportIntoData, type ImportMode, type ImportResult } from '../lib/excelImport';
 import { formatStorageError } from '../lib/storageQuota';
+import type { EmailSyncStatus } from '../lib/emailSyncStatus';
 import { determinePackage } from '../lib/calculator';
 import { claimBillingState } from '../lib/compliance';
 import { PACKAGE_CODES, MAX_PACKAGE_CONSULTS, getRate } from '../lib/serviceCodes';
@@ -98,7 +99,7 @@ export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 // Cross-module navigation intent: lets one screen (e.g. the Flagged page) send
 // the user to another with enough context to auto-open the right, pre-filled
 // modal. `nonce` guarantees each request re-triggers even if the target repeats.
-export type FocusTarget = 'patients' | 'approvals' | 'billing';
+export type FocusTarget = 'patients' | 'approvals' | 'billing' | 'review';
 
 export interface FocusRequest {
   module: FocusTarget;
@@ -149,6 +150,13 @@ interface StoreState {
   fileHandle: FileSystemFileHandle | null;
   pendingEncryptedText?: string; // encrypted working copy awaiting passphrase
   focus?: FocusRequest; // pending cross-module navigation intent
+  /**
+   * Last ACC Inbox email-sync report shown to the user. Held in the store (not
+   * AccInbox local state) so navigating away from ACC Inbox and back does not
+   * drop the loaded rows to the "no sync yet" empty state. In-memory only —
+   * never persisted, since it can carry PHI from savedFiles.
+   */
+  accInboxSyncStatus?: EmailSyncStatus;
   /** Blocks main UI until user picks a recovery path (P0-001). */
   recovery?: RecoveryState;
   /** Non-fatal integrity warnings from last successful load (P0-007). */
@@ -181,6 +189,9 @@ interface StoreState {
   // cross-module navigation intent
   setFocus: (req: Omit<FocusRequest, 'nonce'>) => void;
   clearFocus: () => void;
+
+  // ACC Inbox loaded email-sync report (persists across module navigation)
+  setAccInboxSyncStatus: (status: EmailSyncStatus | undefined) => void;
 
   showTopBarFlash: (text: string, tone?: TopBarFlashTone) => void;
   clearTopBarFlash: () => void;
@@ -639,6 +650,8 @@ export const useStore = create<StoreState>((set, get) => ({
 
   setFocus: (req) => set({ focus: { ...req, nonce: Date.now() } }),
   clearFocus: () => set({ focus: undefined }),
+
+  setAccInboxSyncStatus: (status) => set({ accInboxSyncStatus: status }),
 
   showTopBarFlash: (text, tone = 'good') =>
     set({ topBarFlash: { text, tone, nonce: Date.now() } }),

@@ -30,7 +30,7 @@ async function flush() {
 }
 
 beforeEach(() => {
-  useStore.setState({ data: emptyData() });
+  useStore.setState({ data: emptyData(), accInboxSyncStatus: undefined });
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string) => {
@@ -128,6 +128,37 @@ describe('<AccInbox /> render from synthetic sync fixture', () => {
     expect(rowSubjects[0]).toBe('Steyn');
     const text = container.textContent ?? '';
     expect(text).not.toContain('synced letter(s) hidden');
+    expect(text).not.toContain('No sync yet');
+  });
+
+  it('keeps the loaded rows after navigating away and back (no "no sync yet")', async () => {
+    // First mount: report is served, rows render and get cached in the store.
+    await act(async () => {
+      root.render(<AccInbox />);
+    });
+    await flush();
+    expect(renderedRowSubjects()).toHaveLength(2);
+    expect(useStore.getState().accInboxSyncStatus).toBeTruthy();
+
+    // Simulate leaving ACC Inbox (unmount) — mirrors switching modules in App.
+    act(() => root.unmount());
+
+    // While away, launch.ps1 stops serving the report (fetch now 404s). Before
+    // the fix, the remount would clobber state with null → "No sync yet".
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: false, text: async () => '' }) as unknown as Response),
+    );
+
+    // Return to ACC Inbox: fresh component instance, same store.
+    root = createRoot(container);
+    await act(async () => {
+      root.render(<AccInbox />);
+    });
+    await flush();
+
+    const text = container.textContent ?? '';
+    expect(renderedRowSubjects()).toHaveLength(2);
     expect(text).not.toContain('No sync yet');
   });
 

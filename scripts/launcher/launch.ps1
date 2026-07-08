@@ -86,6 +86,63 @@ function Send-Response {
     }
 }
 
+function Get-RequestPath {
+    param([string]$RequestLine)
+    if (-not $RequestLine) { return '/' }
+    $parts = $RequestLine.Split(' ')
+    if ($parts.Length -lt 2) { return '/' }
+    $path = $parts[1]
+    $q = $path.IndexOf('?')
+    if ($q -ge 0) { $path = $path.Substring(0, $q) }
+    if ([string]::IsNullOrEmpty($path)) { return '/' }
+    return $path
+}
+
+function Get-StaticContentType {
+    param([string]$Extension)
+    switch ($Extension.ToLowerInvariant()) {
+        '.html' { return 'text/html; charset=utf-8' }
+        '.htm'  { return 'text/html; charset=utf-8' }
+        '.js'   { return 'application/javascript; charset=utf-8' }
+        '.mjs'  { return 'application/javascript; charset=utf-8' }
+        '.css'  { return 'text/css; charset=utf-8' }
+        '.json' { return 'application/json; charset=utf-8' }
+        '.txt'  { return 'text/plain; charset=utf-8' }
+        default { return 'application/octet-stream' }
+    }
+}
+
+function Resolve-StaticFile {
+    param(
+        [string]$Root,
+        [string]$RequestPath
+    )
+    if ($RequestPath -eq '/' -or $RequestPath -eq '/index.html') {
+        return Join-Path $Root 'index.html'
+    }
+    $rel = $RequestPath.TrimStart('/')
+    if ([string]::IsNullOrEmpty($rel)) {
+        return Join-Path $Root 'index.html'
+    }
+    foreach ($seg in $rel.Split('/')) {
+        if ($seg -eq '..' -or $seg -eq '.') { return $null }
+    }
+    $candidate = Join-Path $Root ($rel -replace '/', [System.IO.Path]::DirectorySeparatorChar)
+    try {
+        $full = [System.IO.Path]::GetFullPath($candidate)
+        $rootFull = [System.IO.Path]::GetFullPath($Root)
+        if (-not $full.StartsWith($rootFull, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $null
+        }
+        if (-not (Test-Path -LiteralPath $full -PathType Leaf)) {
+            return $null
+        }
+        return $full
+    } catch {
+        return $null
+    }
+}
+
 try {
     $ErrorActionPreference = 'Stop'
 
@@ -275,7 +332,20 @@ try {
                 }
 
                 if ($method -eq 'GET') {
-                    Send-Response -Client $client -StatusCode 200 -StatusText 'OK' -Body $htmlBytes
+                    $reqPath = Get-RequestPath -RequestLine $requestLine
+                    $filePath = Resolve-StaticFile -Root $root -RequestPath $reqPath
+                    if ($filePath) {
+                        if ($filePath -eq $indexPath) {
+                            $body = $htmlBytes
+                        } else {
+                            $body = [System.IO.File]::ReadAllBytes($filePath)
+                        }
+                        $ext = [System.IO.Path]::GetExtension($filePath)
+                        $ctype = Get-StaticContentType -Extension $ext
+                        Send-Response -Client $client -StatusCode 200 -StatusText 'OK' -Body $body -ContentType $ctype
+                    } else {
+                        Send-Response -Client $client -StatusCode 404 -StatusText 'Not Found' -Body $notFound -ContentType 'text/plain; charset=utf-8'
+                    }
                 } else {
                     Send-Response -Client $client -StatusCode 404 -StatusText 'Not Found' -Body $notFound -ContentType 'text/plain; charset=utf-8'
                 }

@@ -85,6 +85,52 @@ describe('<AccInbox /> render from synthetic sync fixture', () => {
     expect(text).not.toContain('No sync yet');
   });
 
+  it('renders a saved letter whose subject is name-only (no Claim/ACCID)', async () => {
+    // Real-world "Steyn"/"Watson" case: allowlisted sender + PDF, but the subject has no
+    // Claim:/ACCID: token. Under the capture-rule change this saved letter must still render.
+    const nameOnlyStatus = {
+      version: 1,
+      lastRunAt: '2026-07-08T10:00:00.000Z',
+      outcome: 'ok',
+      mode: 'backlog',
+      savedCount: 1,
+      skippedCount: 0,
+      errorCount: 0,
+      savedFiles: [
+        {
+          fileName: 'Steyn.pdf',
+          subject: 'Steyn',
+          sender: 'John.Bentley@acc.co.nz',
+          savedAt: '2026-07-08T10:00:00.000Z',
+        },
+      ],
+      errors: [],
+      inboxPath: '',
+      sharedMailbox: 'ACCDistrictNursing',
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (String(url) === LOCAL_EMAIL_SYNC_STATUS_URL) {
+          return { ok: true, text: async () => JSON.stringify(nameOnlyStatus) } as unknown as Response;
+        }
+        return { ok: false, text: async () => '' } as unknown as Response;
+      }),
+    );
+
+    await act(async () => {
+      root.render(<AccInbox />);
+    });
+    await flush();
+
+    const rowSubjects = renderedRowSubjects();
+    expect(rowSubjects).toHaveLength(1);
+    expect(rowSubjects[0]).toBe('Steyn');
+    const text = container.textContent ?? '';
+    expect(text).not.toContain('synced letter(s) hidden');
+    expect(text).not.toContain('No sync yet');
+  });
+
   it('shows the hidden-by-filters empty state when settings hide every synced file', async () => {
     // Narrow the sender allowlist to something no fixture row matches; the merge
     // keeps Claim:/ACCID: subject patterns but the sender gate hides everything.

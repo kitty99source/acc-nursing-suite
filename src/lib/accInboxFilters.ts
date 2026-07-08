@@ -133,3 +133,36 @@ export function isAccInboxCandidate(
 export function filterAccInboxRows(rows: AccInboxRow[], config?: AccInboxFilterConfig): AccInboxRow[] {
   return rows.filter((r) => isAccInboxCandidate(r, config));
 }
+
+/**
+ * Attachment types that outlook-sync.ps1 saves (kept in sync with emailSync.attachmentExtensions).
+ * `.doc` is saved for HRQ review even though the app importer needs `.docx`.
+ */
+export const ACC_INBOX_SAVED_EXTENSIONS = ['.pdf', '.docx', '.doc'] as const;
+
+/**
+ * Should a row that email sync ALREADY SAVED (present in email-sync-status.json savedFiles) be
+ * shown in the ACC Inbox?
+ *
+ * Principle (capture rule change): if sync saved a file, the ACC Inbox DISPLAYS it — saved files
+ * are already vetted (allowlisted sender + supported attachment) by outlook-sync.ps1. A missing
+ * Claim:/ACCID: subject token must NOT hide a legitimately saved letter (that was the regression
+ * that dropped name-only-subject letters like "Steyn"/"Watson"). We keep only a light sender +
+ * extension SANITY check; subject tokens are parsed for badges but never used to hide a row.
+ */
+export function isSavedAccInboxRow(
+  row: Pick<AccInboxRow, 'sender' | 'attachmentExt'>,
+  config: AccInboxFilterConfig = DEFAULT_ACC_INBOX_FILTERS,
+): boolean {
+  const ext = row.attachmentExt.toLowerCase();
+  if (!(ACC_INBOX_SAVED_EXTENSIONS as readonly string[]).includes(ext)) return false;
+  return matchesAccInboxSender(row.sender, config.senderAllowlist);
+}
+
+/** Filter saved-file rows for display: sender + supported extension only, subject NOT required. */
+export function filterSavedAccInboxRows(
+  rows: AccInboxRow[],
+  config?: AccInboxFilterConfig,
+): AccInboxRow[] {
+  return rows.filter((r) => isSavedAccInboxRow(r, config));
+}

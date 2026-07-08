@@ -4,7 +4,7 @@ import { SectionTitle, Card, Badge, EmptyState } from '../components/ui';
 import { IconFolder } from '../components/icons';
 import {
   accInboxConfigFromSettings,
-  filterAccInboxRows,
+  filterSavedAccInboxRows,
   type AccInboxRow,
 } from '../lib/accInboxFilters';
 import { loadStagingItems, addStagingItem, type StagingItem } from '../lib/staging';
@@ -48,11 +48,14 @@ export function AccInbox() {
 
   const rows = useMemo(() => {
     if (syncLoading || !syncStatus) return [];
-    return filterAccInboxRows(syncRows, filterConfig).filter((r) => !ignored.has(r.id));
+    // Saved files are already vetted by outlook-sync.ps1 (sender + supported attachment). We show
+    // them regardless of subject tokens — a name-only subject (no Claim:/ACCID:) must NOT hide a
+    // legitimately saved letter. Only a light sender/extension sanity check remains.
+    return filterSavedAccInboxRows(syncRows, filterConfig).filter((r) => !ignored.has(r.id));
   }, [filterConfig, ignored, syncRows, syncLoading, syncStatus]);
 
   // Only relevant when the list is empty: syncRows.length > 0 with rows empty
-  // means real synced letters exist but filters/Ignore hid them all.
+  // means real synced letters exist but the sender sanity check/Ignore hid them all.
   const emptyState = useMemo(
     () => describeInboxEmptyState(syncStatus, syncLoading, rows.length === 0 ? syncRows.length : 0),
     [rows.length, syncLoading, syncRows.length, syncStatus],

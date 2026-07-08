@@ -174,6 +174,36 @@ describe('emailSyncStatus', () => {
     expect(filterAccInboxRows(rows, DEFAULT_ACC_INBOX_FILTERS)).toHaveLength(1);
   });
 
+  it('shows a saved letter with a name-only subject (no Claim/ACCID) regardless of subject tokens', async () => {
+    const [{ inboxRowsFromSyncStatus }, { filterSavedAccInboxRows, filterAccInboxRows, DEFAULT_ACC_INBOX_FILTERS }] =
+      await Promise.all([import('./emailSyncStatus'), import('./accInboxFilters')]);
+    const rows = inboxRowsFromSyncStatus({
+      version: 1,
+      lastRunAt: '2026-07-08T10:00:00.000Z',
+      outcome: 'ok',
+      savedCount: 1,
+      skippedCount: 0,
+      errorCount: 0,
+      savedFiles: [
+        {
+          fileName: 'Steyn.pdf',
+          subject: 'Steyn',
+          sender: 'John.Bentley@acc.co.nz',
+          savedAt: '2026-07-08T10:00:00.000Z',
+        },
+      ],
+      errors: [],
+      inboxPath: '',
+      sharedMailbox: 'ACCDistrictNursing',
+    });
+    // No Claim/ACCID metadata (name-only subject) — badge parsing yields undefined, not a hide.
+    expect(rows[0].claimNumber).toBeUndefined();
+    expect(rows[0].accId).toBeUndefined();
+    // Saved-file display rule keeps it (sender + attachment); strict subject filter would drop it.
+    expect(filterSavedAccInboxRows(rows, DEFAULT_ACC_INBOX_FILTERS)).toHaveLength(1);
+    expect(filterAccInboxRows(rows, DEFAULT_ACC_INBOX_FILTERS)).toHaveLength(0);
+  });
+
   it('drops malformed savedFiles entries instead of crashing the inbox', () => {
     const parsed = parseEmailSyncStatus({
       version: 1,

@@ -203,7 +203,7 @@ export function describeInboxEmptyState(
     return {
       title: `${hiddenRowCount} synced letter(s) hidden`,
       message:
-        'Email sync saved attachments, but the ACC Inbox sender/subject filter rules (or Ignore) hid them all. Widen accInboxSenderAllowlist / accInboxSubjectPatterns via Settings office config, or open the ACC-Inbox folder directly.',
+        'Email sync saved attachments, but the ACC Inbox sender filter (or Ignore) hid them all. Saved letters are shown regardless of subject — a missing Claim:/ACCID: no longer hides them. Widen the accInboxSenderAllowlist filter via Settings office config, or open the ACC-Inbox folder directly.',
     };
   }
   return {

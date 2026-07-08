@@ -1,14 +1,29 @@
 import { describe, it, expect } from 'vitest';
 import {
   ACC_INBOX_REQUIRED_SUBJECT_TOKENS,
+  ACC_INBOX_SAVED_EXTENSIONS,
   DEFAULT_ACC_INBOX_FILTERS,
   accInboxConfigFromSettings,
   filterAccInboxRows,
+  filterSavedAccInboxRows,
   isAccInboxCandidate,
+  isSavedAccInboxRow,
   missingRequiredSubjectTokens,
   parseFilterLines,
   parseSubjectMetadata,
 } from './accInboxFilters';
+
+function row(overrides: Partial<import('./accInboxFilters').AccInboxRow> = {}) {
+  return {
+    id: overrides.id ?? 'r1',
+    sender: overrides.sender ?? 'John.Bentley@acc.co.nz',
+    subject: overrides.subject ?? 'Steyn',
+    receivedAt: overrides.receivedAt ?? Date.now(),
+    attachmentName: overrides.attachmentName ?? 'steyn.pdf',
+    attachmentExt: overrides.attachmentExt ?? '.pdf',
+    ...overrides,
+  };
+}
 
 describe('accInboxFilters', () => {
   it('accepts ACC approval PDF from allowlisted sender', () => {
@@ -121,7 +136,7 @@ describe('accInboxFilters — editable Settings rules (P8-018)', () => {
     expect(cfg.subjectPatterns.some((re) => re.source.toLowerCase().includes('accid'))).toBe(true);
   });
 
-  it('editable sender allowlist narrows matching (still merged for subjects)', () => {
+  it('editable sender allowlist narrows matching for the strict candidate (still merged for subjects)', () => {
     const cfg = accInboxConfigFromSettings(['John.Bentley@acc.co.nz'], []);
     expect(cfg.senderAllowlist).toEqual(['John.Bentley@acc.co.nz']);
     const realSubject = 'Ms Fakey McTestface - Claim:90000000001 ACCID:VEND-FAKE001';
@@ -137,5 +152,61 @@ describe('accInboxFilters — editable Settings rules (P8-018)', () => {
         cfg,
       ),
     ).toBe(true);
+  });
+});
+
+describe('accInboxFilters — saved-file display rule (capture rule change)', () => {
+  it('shows a saved letter with a NAME-ONLY subject (no Claim:/ACCID:)', () => {
+    // "Steyn" / "Watson" real-world case: allowlisted sender + PDF but no subject token.
+    const nameOnly = row({ subject: 'Steyn', attachmentName: 'Steyn.pdf', attachmentExt: '.pdf' });
+    // Strict candidate (subject-gated) would HIDE it — the exact regression we are fixing.
+    expect(isAccInboxCandidate(nameOnly)).toBe(false);
+    // Saved-file rule SHOWS it: sender + supported attachment is enough, subject not required.
+    expect(isSavedAccInboxRow(nameOnly)).toBe(true);
+  });
+
+  it('keeps a sender sanity check (non-ACC sender is still hidden)', () => {
+    const newsletter = row({
+      sender: 'comms@notacc.example.test',
+      subject: 'July team newsletter',
+      attachmentName: 'newsletter.pdf',
+      attachmentExt: '.pdf',
+    });
+    expect(isSavedAccInboxRow(newsletter)).toBe(false);
+  });
+
+  it('accepts .doc saved files (saved for HRQ review) as well as .pdf/.docx', () => {
+    expect(ACC_INBOX_SAVED_EXTENSIONS).toEqual(['.pdf', '.docx', '.doc']);
+    expect(isSavedAccInboxRow(row({ attachmentExt: '.doc', attachmentName: 'watson.doc' }))).toBe(true);
+    expect(isSavedAccInboxRow(row({ attachmentExt: '.docx', attachmentName: 'watson.docx' }))).toBe(true);
+    // Unsupported extensions are still filtered out.
+    expect(isSavedAccInboxRow(row({ attachmentExt: '.xlsx', attachmentName: 'sheet.xlsx' }))).toBe(false);
+  });
+
+  it('filterSavedAccInboxRows shows name-only ACC letters and drops the non-ACC newsletter', () => {
+    const rows = [
+      row({ id: '1', subject: 'Steyn', attachmentName: 'Steyn.pdf' }),
+      row({ id: '2', subject: 'Watson', attachmentName: 'Watson.docx', attachmentExt: '.docx' }),
+      row({
+        id: '3',
+        sender: 'comms@notacc.example.test',
+        subject: 'July team newsletter',
+        attachmentName: 'newsletter.pdf',
+      }),
+    ];
+    const visible = filterSavedAccInboxRows(rows, DEFAULT_ACC_INBOX_FILTERS);
+    expect(visible.map((r) => r.id)).toEqual(['1', '2']);
+  });
+
+  it('respects a narrowed sender allowlist from settings (but never subject)', () => {
+    const cfg = accInboxConfigFromSettings(['John.Bentley@acc.co.nz'], []);
+    // Different allowlisted-by-default sender, but not in the narrowed list -> hidden.
+    expect(
+      isSavedAccInboxRow({ sender: 'Becky.Tunnell@acc.co.nz', attachmentExt: '.pdf' }, cfg),
+    ).toBe(false);
+    // The narrowed sender with a name-only subject is still shown.
+    expect(isSavedAccInboxRow({ sender: 'John.Bentley@acc.co.nz', attachmentExt: '.pdf' }, cfg)).toBe(
+      true,
+    );
   });
 });

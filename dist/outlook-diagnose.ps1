@@ -4,8 +4,16 @@
     # can force Outlook to bind the slow Exchange "Public Folders" store (~20 min).
     # The default double-click run never iterates Stores; pass -ListStores only for
     # advanced diagnostics, and even then Public Folders is listed but never opened.
-    [switch]$ListStores
+    [switch]$ListStores,
+    # Bounded, newest-first histogram sample size. The diagnose does NOT need to scan
+    # every message: a representative newest-N sample produces the same token /
+    # attachment histograms while capping runtime AND hang exposure. A single toxic
+    # message (e.g. a cloud/online attachment whose FileName read blocks Outlook for
+    # minutes) can only ever stall the run if the scan reaches it - a small default
+    # keeps that window tiny. Pass a larger value to opt into a wider scan.
+    [int]$MaxScan = 400
 )
+if ($MaxScan -lt 1) { $MaxScan = 1 }
 
 $bootstrapRoot = $PSScriptRoot
 if ([string]::IsNullOrEmpty($bootstrapRoot)) { $bootstrapRoot = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }
@@ -40,9 +48,11 @@ $KnownSampleSender = 'John.Bentley@acc.co.nz'
 $KnownSampleSubject = 'Mr R... - Claim: ... ACCID:VEND-K96655'
 $DefaultSubjectMatchMode = 'tokens'
 $DefaultRequiredTokens = @('Claim', 'ACCID')
-# Bounded scan: cap message iteration so a huge shared mailbox can never make the
-# read-only diagnose appear to hang. Matches outlook-sync.ps1 backlog scope.
-$DefaultMaxScan = 2000
+# Attachment extensions treated as "supported" (same as outlook-sync.ps1). Case-insensitive.
+$DefaultSupportedExt = @('.pdf', '.docx', '.doc')
+# Capture decision mode (mirrors outlook-sync.ps1). Default 'attachment' = sender + supported
+# attachment (subject optional). See Explain-FilterResult / Test-CaptureVerdict.
+$DefaultCaptureMode = 'attachment'
 # Heartbeat cadence: log an "emails processed" progress line every N messages so a
 # truncated screenshot still shows "still working" vs "stopped/hung".
 $HeartbeatEvery = 100
@@ -103,6 +113,8 @@ function Load-DiagnoseFilterConfig {
     $skipCategories = @('actioned')
     $subjectMode = $DefaultSubjectMatchMode
     $requiredTokens = @($DefaultRequiredTokens)
+    $supportedExt = @($DefaultSupportedExt)
+    $captureMode = $DefaultCaptureMode
 
     $configPath = Get-OfficeConfigPath
     if ($configPath) {
@@ -140,6 +152,13 @@ function Load-DiagnoseFilterConfig {
                 $tokList = @($cfg.emailSync.requiredTokens | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
                 if ($tokList.Count -gt 0) { $requiredTokens = $tokList }
             }
+            if ($cfg.emailSync -and $cfg.emailSync.attachmentExtensions) {
+                $extList = @($cfg.emailSync.attachmentExtensions | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+                if ($extList.Count -gt 0) { $supportedExt = $extList }
+            }
+            if ($cfg.emailSync -and -not [string]::IsNullOrWhiteSpace([string]$cfg.emailSync.captureMode)) {
+                $captureMode = [string]$cfg.emailSync.captureMode
+            }
         } catch {
             Write-DiagLine "WARN - could not parse office config: $($_.Exception.Message)"
         }
@@ -153,35 +172,76 @@ function Load-DiagnoseFilterConfig {
         $subjectMode = $DefaultSubjectMatchMode
     }
 
+    if (-not [string]::IsNullOrWhiteSpace($env:ACC_EMAIL_SYNC_CAPTURE_MODE)) {
+        $captureMode = $env:ACC_EMAIL_SYNC_CAPTURE_MODE.Trim()
+    }
+    $captureMode = $captureMode.Trim().ToLowerInvariant()
+    if ($captureMode -ne 'attachment' -and $captureMode -ne 'sender+subject+attachment' -and $captureMode -ne 'subject-or-attachment') {
+        $captureMode = $DefaultCaptureMode
+    }
+
     return @{
         Senders          = $senders
         Patterns         = $patterns
         SkipCategories   = $skipCategories
         SubjectMatchMode = $subjectMode
         RequiredTokens   = @($requiredTokens)
+        SupportedExt     = @($supportedExt)
+        CaptureMode      = $captureMode
         ConfigPath       = $configPath
     }
 }
 
+# Does an extension-list string (e.g. ".pdf, .docx" or "(none)") contain a supported type?
+# Uses the same Test-SupportedExtension helper the sync save path uses (case-insensitive).
+function Test-ExtListHasSupported {
+    param(
+        [string]$ExtText,
+        [string[]]$SupportedExt
+    )
+    if ([string]::IsNullOrWhiteSpace($ExtText) -or $ExtText -eq '(none)') { return $false }
+    foreach ($e in ($ExtText -split ',\s*')) {
+        $k = $e.Trim()
+        if ([string]::IsNullOrWhiteSpace($k)) { continue }
+        if (-not $k.StartsWith('.')) { $k = '.' + $k }
+        if (Test-SupportedExtension -FileName ('file' + $k) -SupportedExt $SupportedExt) { return $true }
+    }
+    return $false
+}
+
+# Histogram-only attachment read: FILENAME METADATA ONLY. We read attachment.FileName
+# to get the extension and never call SaveAsFile / read attachment bytes, so no
+# content is downloaded (a cloud/online attachment can still block on the FileName
+# read, hence the per-attachment try/catch + the caller's bounded sample). One bad
+# message logs "attachment read skipped (item i)" and the scan continues.
 function Get-AttachmentExtensions {
-    param([object]$Item)
+    param(
+        [object]$Item,
+        [int]$ItemIndex = 0
+    )
     $exts = New-Object System.Collections.Generic.List[string]
     try {
         $attachments = $Item.Attachments
-        for ($i = 1; $i -le $attachments.Count; $i++) {
+        $attCount = 0
+        try { $attCount = [int]$attachments.Count } catch { $attCount = 0 }
+        for ($i = 1; $i -le $attCount; $i++) {
             $att = $null
             try {
                 $att = $attachments.Item($i)
+                # FileName is cheap metadata; never SaveAsFile / read bytes here.
                 $fileName = [string]$att.FileName
                 $ext = [System.IO.Path]::GetExtension($fileName).ToLowerInvariant()
                 if (-not [string]::IsNullOrWhiteSpace($ext) -and -not $exts.Contains($ext)) {
                     [void]$exts.Add($ext)
                 }
+            } catch {
+                Write-BootstrapLog ("WARN - attachment read skipped (item {0}, attachment {1}): {2}" -f $ItemIndex, $i, $_.Exception.Message)
             } finally {
                 if ($att) { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($att) }
             }
         }
     } catch {
+        Write-BootstrapLog ("WARN - attachment read skipped (item {0}): {1}" -f $ItemIndex, $_.Exception.Message)
     }
     if ($exts.Count -eq 0) { return '(none)' }
     return ($exts.ToArray() -join ', ')
@@ -201,6 +261,11 @@ function Get-MailItemsCollection {
     return $items
 }
 
+# Verdict that MATCHES what outlook-sync.ps1 will actually do (capture + save), so diagnose and
+# sync never disagree. New capture rule (default captureMode 'attachment'): sender + >=1 supported
+# attachment (.pdf/.docx/.doc); subject is only a confidence hint, NOT a required gate. Legacy
+# 'sender+subject+attachment' captureMode still requires the subject match. A file only ever SAVES
+# when a supported attachment exists, so "no supported attachment" always means "nothing to save".
 function Explain-FilterResult {
     param(
         [string]$Sender,
@@ -208,13 +273,16 @@ function Explain-FilterResult {
         [string[]]$Allowlist,
         [string[]]$Patterns,
         [string[]]$SkipCategories,
-        [string]$Categories
+        [string]$Categories,
+        [bool]$HasSupportedAttachment = $false,
+        [bool]$SubjectMatch = $false,
+        [string]$CaptureMode = 'attachment'
     )
     if (-not (Test-AccSender -FromAddress $Sender -Allowlist $Allowlist)) {
         return "sender mismatch ($Sender)"
     }
-    if (-not (Test-AccSubject -Subject $Subject -Patterns $Patterns)) {
-        return 'subject mismatch (needs Claim:/ACCID: or other pattern)'
+    if ($CaptureMode -eq 'sender+subject+attachment' -and -not $SubjectMatch) {
+        return 'subject mismatch (legacy sender+subject+attachment captureMode)'
     }
     if (-not [string]::IsNullOrWhiteSpace($Categories)) {
         foreach ($skip in $SkipCategories) {
@@ -224,7 +292,10 @@ function Explain-FilterResult {
             }
         }
     }
-    return 'would match sync filters'
+    if (-not $HasSupportedAttachment) {
+        return 'no supported attachment (.pdf/.docx/.doc) - nothing to save'
+    }
+    return 'would match sync filters (sender + supported attachment)'
 }
 
 Write-DiagLine ''
@@ -242,7 +313,9 @@ if ($config.ConfigPath) {
 }
 Write-DiagLine ("Merged filters: {0} sender(s), {1} subject pattern(s)" -f $config.Senders.Count, $config.Patterns.Count)
 Write-DiagLine ("Subject patterns: {0}" -f ($config.Patterns -join ' | '))
-Write-DiagLine ("Subject match mode: {0} (required tokens: {1})" -f $config.SubjectMatchMode, ($config.RequiredTokens -join ', '))
+Write-DiagLine ("Subject match mode (hint): {0} (required tokens: {1})" -f $config.SubjectMatchMode, ($config.RequiredTokens -join ', '))
+Write-DiagLine ("Capture mode: {0} (default 'attachment' = sender + supported attachment; subject optional)" -f $config.CaptureMode)
+Write-DiagLine ("Supported attachment types: {0}" -f ($config.SupportedExt -join ', '))
 Write-DiagLine ''
 
 $outlook = $null
@@ -342,11 +415,9 @@ try {
     Write-DiagLine ("Mail item count (IPM.Note / Restrict): {0}" -f $total)
     Write-DiagLine ("Unread count: {0}" -f $unread)
 
-    $scanTotal = if ($total -gt $DefaultMaxScan) { $DefaultMaxScan } else { $total }
-    if ($total -gt $DefaultMaxScan) {
-        Write-DiagLine ("NOTE - folder has {0} messages; scan capped at {1} (newest first)." -f $total, $DefaultMaxScan)
-        Write-BootstrapLog ("Scan capped: {0} of {1} messages will be scanned (newest first)" -f $DefaultMaxScan, $total)
-    }
+    $scanTotal = if ($total -gt $MaxScan) { $MaxScan } else { $total }
+    Write-DiagLine ("Sampling newest {0} of {1} messages for histograms (use -MaxScan to change)" -f $scanTotal, $total)
+    Write-BootstrapLog ("Sampling newest {0} of {1} messages for histograms (use -MaxScan to change)" -f $scanTotal, $total)
     Write-DiagLine ''
 
     # --- Single bounded pass: preview (first 5) + histograms + heartbeats ------
@@ -355,6 +426,9 @@ try {
     $matchCount = 0
     $senderOnlyCount = 0
     $modeMatchCount = 0
+    # True capture count under the new rule: sender-matched emails that ALSO have >=1 supported
+    # attachment (.pdf/.docx/.doc). This is what sync will actually save under default captureMode.
+    $senderWithAttachmentCount = 0
     # Token presence histogram (colon-optional) among sender-matched emails.
     $tokClaim = 0
     $tokAccid = 0
@@ -366,6 +440,11 @@ try {
     $rejectSamples = New-Object System.Collections.Generic.List[string]
     $maxRejectSamples = 6
 
+    # Time the bounded scan so we can confirm it stays fast (was ~0.5-0.9s/msg with
+    # a catastrophic multi-minute hang on one message's attachment access before the
+    # bounded-sample + cheap-read fix).
+    $scanStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
     Write-DiagLine 'First 5 mail items (newest first):'
     for ($idx = 1; $idx -le $scanTotal; $idx++) {
         $item = $null
@@ -373,23 +452,41 @@ try {
             $item = $mailItems.Item($idx)
             if ($item.Class -ne 43) { continue }
 
-            $from = Get-SenderAddress -Item $item
+            # Each per-message COM read is individually guarded and logs the item
+            # index on failure so one toxic message degrades to safe defaults and the
+            # scan keeps going (PS 5.1 has no per-COM-call timeout; the mitigation is
+            # bounded sample + cheapest-possible property reads + skip-on-error).
+            $from = ''
+            try { $from = Get-SenderAddress -Item $item } catch {
+                Write-BootstrapLog ("WARN - sender read skipped (item {0}): {1}" -f $idx, $_.Exception.Message)
+            }
             $subject = ''
-            try { $subject = [string]$item.Subject } catch {}
-            $senderOk = Test-AccSender -FromAddress $from -Allowlist $config.Senders
+            try { $subject = [string]$item.Subject } catch {
+                Write-BootstrapLog ("WARN - subject read skipped (item {0}): {1}" -f $idx, $_.Exception.Message)
+            }
+            $senderOk = $false
+            try { $senderOk = Test-AccSender -FromAddress $from -Allowlist $config.Senders } catch {}
 
             # Attachment extensions are needed for the preview (first 5) and for the
             # histogram (sender-matched). Compute once per item, only when needed.
+            # FILENAME METADATA ONLY - no content is downloaded (see Get-AttachmentExtensions).
             $extText = $null
-            if ($shown -lt 5 -or $senderOk) { $extText = Get-AttachmentExtensions -Item $item }
+            if ($shown -lt 5 -or $senderOk) { $extText = Get-AttachmentExtensions -Item $item -ItemIndex $idx }
+
+            # Supported-attachment presence drives the new capture verdict (sender + attachment).
+            # Computed from the already-read $extText (filename metadata only - no bytes downloaded).
+            $hasSupported = $false
+            if ($null -ne $extText) { $hasSupported = Test-ExtListHasSupported -ExtText $extText -SupportedExt $config.SupportedExt }
+            # Subject match for the CAPTURE verdict uses the same Test-AccSubjectMode as sync.
+            $subjectModeOk = $false
+            try { $subjectModeOk = Test-AccSubjectMode -Subject $subject -Patterns $config.Patterns -Mode $config.SubjectMatchMode -RequiredTokens $config.RequiredTokens } catch {}
 
             if ($shown -lt 5) {
                 $cats = ''
                 try { $cats = [string]$item.Categories } catch {}
                 if ([string]::IsNullOrWhiteSpace($cats)) { $cats = '(none)' }
-                $subjectOk = Test-AccSubject -Subject $subject -Patterns $config.Patterns
-                $matchTag = if ($senderOk -and $subjectOk) { 'MATCH' } else { 'no-match' }
-                $reason = Explain-FilterResult -Sender $from -Subject $subject -Allowlist $config.Senders -Patterns $config.Patterns -SkipCategories $config.SkipCategories -Categories $cats
+                $reason = Explain-FilterResult -Sender $from -Subject $subject -Allowlist $config.Senders -Patterns $config.Patterns -SkipCategories $config.SkipCategories -Categories $cats -HasSupportedAttachment $hasSupported -SubjectMatch $subjectModeOk -CaptureMode $config.CaptureMode
+                $matchTag = if ($reason -like 'would match*') { 'MATCH' } else { 'no-match' }
                 Write-DiagLine ("  {0}. [{1}] from={2}" -f ($shown + 1), $matchTag, $from)
                 Write-DiagLine ("     subject: {0}" -f (Get-TruncatedSubject -Subject $subject))
                 Write-DiagLine ("     attachments: {0}" -f $extText)
@@ -400,6 +497,7 @@ try {
 
             if ($senderOk) {
                 $senderOnlyCount++
+                if ($hasSupported) { $senderWithAttachmentCount++ }
 
                 $hasClaim = Get-SubjectTokenPresence -Subject $subject -Token 'Claim'
                 $hasAccid = Get-SubjectTokenPresence -Subject $subject -Token 'ACCID'
@@ -436,12 +534,15 @@ try {
             # Heartbeat: proves the script is still working (vs stopped/hung) even if
             # the report below fails. Written straight to the bootstrap log.
             if ($scanned % $HeartbeatEvery -eq 0) {
-                Write-BootstrapLog ("Processed {0}/{1} (sender-matched so far: {2}, subject-matched: {3})" -f $scanned, $scanTotal, $senderOnlyCount, $modeMatchCount)
+                Write-BootstrapLog ("Processed {0}/{1} (sender-matched: {2}, with supported attachment: {3}, subject-matched: {4})" -f $scanned, $scanTotal, $senderOnlyCount, $senderWithAttachmentCount, $modeMatchCount)
             }
         }
     }
-    Write-BootstrapLog ("Processed {0} messages total (sender-matched: {1}, subject-matched: {2})" -f $scanned, $senderOnlyCount, $modeMatchCount)
-    Write-DiagLine ("Scanned {0} of {1} message(s)." -f $scanned, $total)
+    $scanStopwatch.Stop()
+    $scanSeconds = [math]::Round($scanStopwatch.Elapsed.TotalSeconds, 1)
+    Write-BootstrapLog ("Processed {0} messages total (sender-matched: {1}, with supported attachment: {2}, subject-matched: {3})" -f $scanned, $senderOnlyCount, $senderWithAttachmentCount, $modeMatchCount)
+    Write-DiagLine ("Scanned {0} of {1} message(s) in {2}s." -f $scanned, $total, $scanSeconds)
+    Write-BootstrapLog ("Scan elapsed: {0}s for {1} message(s)" -f $scanSeconds, $scanned)
 
     if ($shown -eq 0) {
         Write-DiagLine '  (no mail items found - inbox scan is empty)'
@@ -462,7 +563,8 @@ try {
         }
         Write-DiagLine ''
         Write-DiagLine ("Inbox totals (of {0} scanned): {1} sender match(es), {2} sender+subject match(es) [legacy 'any' patterns]" -f $scanned, $senderOnlyCount, $matchCount)
-        Write-DiagLine ("Would match under current mode '{0}': {1} email(s)" -f $config.SubjectMatchMode, $modeMatchCount)
+        Write-DiagLine ("Subject-token match (hint) under mode '{0}': {1} email(s)" -f $config.SubjectMatchMode, $modeMatchCount)
+        Write-DiagLine ("TRUE CAPTURE COUNT under capture mode '{0}': {1} sender-matched email(s) with >=1 supported attachment (.pdf/.docx/.doc) - this is what sync will save (subject optional)" -f $config.CaptureMode, $senderWithAttachmentCount)
         Write-DiagLine ''
         Write-DiagLine 'Token presence among sender-matched emails (colon-optional, case-insensitive):'
         Write-DiagLine ("  Claim only: {0}  |  ACCID only: {1}  |  BOTH: {2}  |  NEITHER: {3}" -f $tokClaim, $tokAccid, $tokBoth, $tokNeither)

@@ -30,10 +30,11 @@
     "workStartHour": 7,
     "workEndHour": 18,
     "skipCategories": ["actioned"],
+    "captureMode": "attachment",
     "subjectMatchMode": "tokens",
     "requiredTokens": ["Claim", "ACCID"],
     "attachmentExtensions": [".pdf", ".docx", ".doc"],
-    "notes": "subjectMatchMode: 'tokens' (default) saves an email when the subject contains ANY required token (EITHER Claim OR ACCID), colon-optional and case-insensitive so 'Claim 123', 'Claim:123', 'ACCID' all match. 'all' requires BOTH Claim AND ACCID. 'any' falls back to the legacy behaviour of matching any of accInbox.subjectPatterns. Also overridable via env ACC_EMAIL_SYNC_SUBJECT_MODE. attachmentExtensions is case-insensitive (.PDF/.Pdf/.pdf all accepted); .doc is saved for review but the app importer needs .docx (Save As in Word first). Everything saved still lands in the Human Review Queue for manual sign-off - nothing auto-commits."
+    "notes": "captureMode decides what a sender-matched email must ALSO have to be captured/saved: 'attachment' (DEFAULT) = allowlisted ACC sender + at least one supported attachment (.pdf/.docx/.doc); the subject is NO LONGER required, it is only logged as a confidence hint (so name-only letters like 'Steyn'/'Watson' are captured). 'sender+subject+attachment' = legacy strict (also requires a subject-token match). 'subject-or-attachment' = sender + (subject match OR supported attachment). Body-only emails (no attachment) are not captured. Overridable via env ACC_EMAIL_SYNC_CAPTURE_MODE. subjectMatchMode (the hint only): 'tokens' (default) = subject contains EITHER Claim OR ACCID (colon-optional, case-insensitive so 'Claim 123', 'Claim:123', 'ACCID' all match); 'all' = BOTH Claim AND ACCID; 'any' = match any of accInbox.subjectPatterns. Overridable via env ACC_EMAIL_SYNC_SUBJECT_MODE. attachmentExtensions is case-insensitive (.PDF/.Pdf/.pdf all accepted); .doc is saved for review but the app importer needs .docx (Save As in Word first). Everything saved still lands in the Human Review Queue for MANUAL sign-off - nothing auto-commits, so over-capturing is safe."
   },
   "accWorkHours": {
     "start": 7,

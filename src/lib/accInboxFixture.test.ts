@@ -9,6 +9,7 @@ import {
   accInboxConfigFromSettings,
   DEFAULT_ACC_INBOX_FILTERS,
   filterAccInboxRows,
+  filterSavedAccInboxRows,
 } from './accInboxFilters';
 import { DEFAULT_SETTINGS } from '../types';
 
@@ -92,6 +93,30 @@ describe('AccInbox pipeline (synthetic email-sync fixture)', () => {
     const visible = filterAccInboxRows(rows, DEFAULT_ACC_INBOX_FILTERS);
     const copy = describeInboxEmptyState(status, false, visible.length === 0 ? rows.length : 0);
     expect(copy.title).not.toBe('No sync yet');
+  });
+
+  // (f) saved-file display rule: a name-only subject letter (no Claim/ACCID) still renders
+  it('(f) displays a saved letter with a name-only subject that the strict filter would hide', () => {
+    const rows = inboxRowsFromSyncStatus(status);
+    // Simulate a real "Steyn" letter appended to the saved rows: acc sender + PDF, name-only subject.
+    const nameOnly = {
+      id: 'sync-99-Steyn.pdf',
+      sender: 'John.Bentley@acc.co.nz',
+      subject: 'Steyn',
+      receivedAt: Date.now(),
+      attachmentName: 'Steyn.pdf',
+      attachmentExt: '.pdf',
+    };
+    const all = [...rows, nameOnly];
+
+    // Strict (subject-gated) filter DROPS the name-only letter (the regression we fixed) …
+    const strict = filterAccInboxRows(all, DEFAULT_ACC_INBOX_FILTERS);
+    expect(strict.some((r) => r.id === 'sync-99-Steyn.pdf')).toBe(false);
+    // … but the saved-file display rule KEEPS it (sender + attachment, subject not required).
+    const saved = filterSavedAccInboxRows(all, DEFAULT_ACC_INBOX_FILTERS);
+    expect(saved.some((r) => r.id === 'sync-99-Steyn.pdf')).toBe(true);
+    // The non-ACC newsletter from the fixture is still hidden by the sender sanity check.
+    expect(saved.some((r) => r.attachmentName === 'office-newsletter-july.pdf')).toBe(false);
   });
 
   it('fixture contains only obviously-fake identifiers (no real PHI)', () => {

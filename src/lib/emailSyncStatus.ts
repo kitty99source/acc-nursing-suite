@@ -110,10 +110,79 @@ export async function fetchLocalEmailSyncStatus(): Promise<EmailSyncStatus | nul
     const res = await fetch(LOCAL_EMAIL_SYNC_STATUS_URL, { cache: 'no-store' });
     if (!res.ok) return null;
     const text = await res.text();
-    return parseEmailSyncStatusFromText(text);
+    const parsed = parseEmailSyncStatusFromText(text);
+    if (parsed) return parsed;
+    try {
+      return parseEmailSyncStateFallback(JSON.parse(stripJsonBom(text)) as unknown);
+    } catch {
+      return null;
+    }
   } catch {
     return null;
   }
+}
+
+export interface InboxEmptyStateCopy {
+  title: string;
+  message: string;
+}
+
+/** ACC Inbox list empty state — distinct from demo stubs and from HRQ staging. */
+export function describeInboxEmptyState(
+  status: EmailSyncStatus | null,
+  loading: boolean,
+): InboxEmptyStateCopy {
+  if (loading) {
+    return {
+      title: 'Loading sync status…',
+      message:
+        'Reading email-sync-status.json from the work laptop. Demo rows stay hidden until this finishes.',
+    };
+  }
+  if (!status) {
+    return {
+      title: 'No sync yet',
+      message:
+        'Run Start Email Sync.cmd (or Start WFH Mode.cmd) on the work laptop during 7am–6pm NZ, then reopen ACC Inbox or click Refresh sync status.',
+    };
+  }
+  if (status.inferredFromState) {
+    return {
+      title: 'Checkpoint only — no letter list',
+      message:
+        'email-sync-state.json exists but email-sync-status.json is missing. Re-run Start Email Sync.cmd to write a full report with savedFiles and scan stats.',
+    };
+  }
+  if (status.outcome === 'fail') {
+    return {
+      title: 'Last sync failed',
+      message: status.errors[0] ?? 'See email-sync-bootstrap.log on the work laptop.',
+    };
+  }
+  if (status.outcome === 'paused') {
+    if (status.workHoursSkipped) {
+      return {
+        title: 'Outside work hours',
+        message: 'Email sync runs 7am–6pm NZ only. Re-run during work hours or use Start Email Sync.cmd with -IgnoreWorkHours.',
+      };
+    }
+    return {
+      title: 'Automation paused',
+      message: 'Turn off automation pause in Settings or remove .automation-paused from ACC-Inbox, then run sync again.',
+    };
+  }
+  if (status.savedCount === 0 && status.savedFiles.length === 0) {
+    const scan = status.scanStats ? formatScanStatsSummary(status.scanStats) : 'no scan stats in report';
+    const mailbox = status.sharedMailbox || 'ACCDistrictNursing (default)';
+    return {
+      title: 'Sync ran — 0 letters saved',
+      message: `Scan detail: ${scan}. Mailbox: ${mailbox}. Check ACC-Inbox folder for PDF/DOCX files; widen sender/subject filters in office-config.json if matches are zero.`,
+    };
+  }
+  return {
+    title: 'No ACC letters in inbox',
+    message: 'Filtered ACC correspondence will appear here after email sync saves attachments.',
+  };
 }
 
 export function parseEmailSyncStatusFromText(text: string): EmailSyncStatus | null {

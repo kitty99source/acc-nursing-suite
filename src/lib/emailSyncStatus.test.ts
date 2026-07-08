@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   describeEmailSyncStatusRejectReason,
+  describeInboxEmptyState,
   EMAIL_SYNC_STATUS_VERSION,
   formatSyncOutcome,
   parseEmailSyncStateFallback,
@@ -154,5 +155,32 @@ describe('emailSyncStatus', () => {
     expect(parsed?.inferredFromState).toBe(true);
     expect(parsed?.processedTotal).toBe(3);
     expect(formatSyncOutcome(parsed!)).toContain('Checkpoint only');
+  });
+
+  it('describes inbox empty states', () => {
+    expect(describeInboxEmptyState(null, true).title).toContain('Loading');
+    expect(describeInboxEmptyState(null, false).title).toBe('No sync yet');
+    const zeroSave = parseEmailSyncStatus({
+      version: 1,
+      lastRunAt: '2026-07-08T10:00:00.000Z',
+      outcome: 'ok',
+      savedCount: 0,
+      skippedCount: 0,
+      errorCount: 0,
+      savedFiles: [],
+      errors: [],
+      inboxPath: 'C:\\Users\\You\\ACC-Inbox',
+      sharedMailbox: 'ACCDistrictNursing',
+      scanStats: {
+        mailItemsScanned: 50,
+        matchedSender: 0,
+        matchedBoth: 0,
+        skippedCategory: 0,
+        alreadyProcessed: 0,
+        noSupportedAttachment: 0,
+      },
+    })!;
+    expect(describeInboxEmptyState(zeroSave, false).title).toContain('0 letters saved');
+    expect(describeInboxEmptyState(zeroSave, false).message).toContain('50 scanned');
   });
 });

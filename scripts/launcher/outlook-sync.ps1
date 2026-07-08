@@ -52,6 +52,7 @@ $script:ShutdownRequested = $false
 $script:SyncState = $null
 $script:StatePath = $null
 $script:LastSyncStatus = $null
+$script:ScanSkipReason = $null
 
 function Write-SyncLine {
     param([string]$Message)
@@ -389,6 +390,30 @@ function Get-UniquePath {
     }
 }
 
+function Write-ScanBreakdownSummary {
+    param(
+        [hashtable]$Status,
+        [string]$SkipReason = ''
+    )
+    if (-not [string]::IsNullOrWhiteSpace($SkipReason)) {
+        Write-SyncLine "Scan: not performed ($SkipReason)"
+        return
+    }
+    $ss = $Status.scanStats
+    if (-not $ss) {
+        Write-SyncLine 'Scan: (no stats recorded)'
+        return
+    }
+    Write-SyncLine ("Scan: {0} mail item(s); {1} matched sender; {2} matched sender+subject; {3} skipped (category/flag); {4} already processed; {5} matched but no PDF/DOCX" -f $ss.mailItemsScanned, $ss.matchedSender, $ss.matchedBoth, $ss.skippedCategory, $ss.alreadyProcessed, $ss.noSupportedAttachment)
+    if ($Status.savedCount -eq 0 -and $ss.mailItemsScanned -eq 0) {
+        Write-SyncLine 'Hint: inbox has no mail items in scan range - confirm ACCDistrictNursing is open in Outlook and you have delegate access.'
+    } elseif ($Status.savedCount -eq 0 -and $ss.matchedBoth -eq 0 -and $ss.matchedSender -eq 0) {
+        Write-SyncLine 'Hint: no sender matches - letters may be in a shared mailbox or SenderEmailAddress differs from allowlist.'
+    } elseif ($Status.savedCount -eq 0 -and $ss.matchedBoth -eq 0) {
+        Write-SyncLine 'Hint: sender matched but subject did not - widen subjectPatterns in office-config.json.'
+    }
+}
+
 function Write-SyncStatus {
     param(
         [hashtable]$Status
@@ -523,6 +548,7 @@ Write-SyncLine "Using mailbox: $SharedMailbox"
 if ($env:ACC_AUTOMATION_PAUSED -eq '1') {
     Write-SyncLine 'Automation paused (ACC_AUTOMATION_PAUSED=1). Exiting.'
     $status.outcome = 'paused'
+    $script:ScanSkipReason = 'automation paused (ACC_AUTOMATION_PAUSED=1)'
     $null = Write-SyncStatus -Status $status
     exit 0
 }
@@ -536,6 +562,7 @@ $pauseFile = Join-Path $inbox '.automation-paused'
 if (Test-Path -LiteralPath $pauseFile) {
     Write-SyncLine 'Automation paused (.automation-paused in ACC-Inbox). Exiting.'
     $status.outcome = 'paused'
+    $script:ScanSkipReason = 'automation paused (.automation-paused in ACC-Inbox)'
     $null = Write-SyncStatus -Status $status
     exit 0
 }
@@ -545,6 +572,7 @@ if ($useBacklog -and -not $IgnoreWorkHours -and -not (Test-WithinWorkHours -Star
     Write-SyncLine ("Outside work hours ({0:HH:mm} NZ)  -  sync runs {1}:00-{2}:00 only. Re-run during work hours or pass -IgnoreWorkHours." -f $nz, $config.WorkStartHour, $config.WorkEndHour)
     $status.outcome = 'paused'
     $status.workHoursSkipped = $true
+    $script:ScanSkipReason = 'outside work hours (7am-6pm NZ)'
     $null = Write-SyncStatus -Status $status
     exit 0
 }
@@ -691,15 +719,6 @@ try {
         Write-SyncLine 'Stopped early  -  state saved for resume on next run.'
     }
     Write-SyncLine ("Done - saved {0} attachment(s) this run, skipped {1}, errors {2}, {3} total processed in state" -f $status.savedCount, $status.skippedCount, $status.errorCount, $status.processedTotal)
-    $ss = $status.scanStats
-    Write-SyncLine ("Scan: {0} mail item(s); {1} matched sender; {2} matched sender+subject; {3} skipped (category/flag); {4} already processed; {5} matched but no PDF/DOCX" -f $ss.mailItemsScanned, $ss.matchedSender, $ss.matchedBoth, $ss.skippedCategory, $ss.alreadyProcessed, $ss.noSupportedAttachment)
-    if ($status.savedCount -eq 0 -and $ss.mailItemsScanned -eq 0) {
-        Write-SyncLine 'Hint: inbox has no mail items in scan range - confirm ACCDistrictNursing is open in Outlook and you have delegate access.'
-    } elseif ($status.savedCount -eq 0 -and $ss.matchedBoth -eq 0 -and $ss.matchedSender -eq 0) {
-        Write-SyncLine 'Hint: no sender matches - letters may be in a shared mailbox or SenderEmailAddress differs from allowlist.'
-    } elseif ($status.savedCount -eq 0 -and $ss.matchedBoth -eq 0) {
-        Write-SyncLine 'Hint: sender matched but subject did not - widen subjectPatterns in office-config.json.'
-    }
     if ($useBacklog -and $hitBatchLimit) {
         Write-SyncLine 'Backlog: batch limit reached  -  run again during work hours until saved count is 0.'
     }
@@ -727,6 +746,7 @@ finally {
     try {
         $statusPath = Write-SyncStatus -Status $status
         Write-SyncLine ''
+        Write-ScanBreakdownSummary -Status $status -SkipReason $script:ScanSkipReason
         if (Test-Path -LiteralPath $statusPath) {
             Write-SyncLine "Status: $statusPath"
         } else {

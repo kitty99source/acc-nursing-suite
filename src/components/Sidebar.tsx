@@ -39,6 +39,11 @@ interface NavEntry {
   icon: ReactNode;
 }
 
+interface NavSection {
+  label?: string;
+  entries: NavEntry[];
+}
+
 export function Sidebar({
   current,
   onNavigate,
@@ -55,21 +60,39 @@ export function Sidebar({
   const quickPasteEnabled = useStore((s) => s.data.settings.quickPasteInEnabled);
   const hasImportedTables = useStore((s) => (s.data.customSheets?.length ?? 0) > 0);
 
-  const entries: NavEntry[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: <IconDashboard /> },
-    { id: 'review', label: 'Review Queue', icon: <IconReview /> },
-    { id: 'accinbox', label: 'ACC Inbox', icon: <IconInbox /> },
-    { id: 'compliance', label: 'Flagged (Compliance)', icon: <IconShield /> },
-    { id: 'patients', label: 'Patients & Cases', icon: <IconPatients /> },
-    { id: 'calculator', label: 'Package Calculator', icon: <IconCalculator /> },
-    { id: 'approvals', label: 'Approvals (NS04/NS05)', icon: <IconApprovals /> },
-    { id: 'billing', label: 'Billing Log', icon: <IconBilling /> },
-    { id: 'complex', label: 'Complex Cases', icon: <IconComplex /> },
-    { id: 'declines', label: 'Decline Tracker', icon: <IconDecline /> },
-    ...(quickPasteEnabled ? [{ id: 'quickpaste' as ModuleId, label: 'Quick Paste-In', icon: <IconPaste /> }] : []),
-    { id: 'export', label: 'Export Center', icon: <IconExport /> },
-    ...(hasImportedTables ? [{ id: 'imported' as ModuleId, label: 'Imported Tables', icon: <IconFolder /> }] : []),
-    { id: 'settings', label: 'Settings', icon: <IconSettings /> },
+  // Grouped by daily workflow frequency: triage first, then records, then tools.
+  const sections: NavSection[] = [
+    {
+      entries: [{ id: 'dashboard', label: 'Dashboard', icon: <IconDashboard /> }],
+    },
+    {
+      label: 'Letters & triage',
+      entries: [
+        { id: 'review', label: 'Review Queue', icon: <IconReview /> },
+        { id: 'accinbox', label: 'ACC Inbox', icon: <IconInbox /> },
+        { id: 'compliance', label: 'Flagged (Compliance)', icon: <IconShield /> },
+      ],
+    },
+    {
+      label: 'Records',
+      entries: [
+        { id: 'patients', label: 'Patients & Cases', icon: <IconPatients /> },
+        { id: 'approvals', label: 'Approvals (NS04/NS05)', icon: <IconApprovals /> },
+        { id: 'declines', label: 'Decline Tracker', icon: <IconDecline /> },
+        { id: 'billing', label: 'Billing Log', icon: <IconBilling /> },
+        { id: 'complex', label: 'Complex Cases', icon: <IconComplex /> },
+      ],
+    },
+    {
+      label: 'Tools',
+      entries: [
+        { id: 'calculator', label: 'Package Calculator', icon: <IconCalculator /> },
+        ...(quickPasteEnabled ? [{ id: 'quickpaste' as ModuleId, label: 'Quick Paste-In', icon: <IconPaste /> }] : []),
+        ...(hasImportedTables ? [{ id: 'imported' as ModuleId, label: 'Imported Tables', icon: <IconFolder /> }] : []),
+        { id: 'export', label: 'Export Center', icon: <IconExport /> },
+        { id: 'settings', label: 'Settings', icon: <IconSettings /> },
+      ],
+    },
   ];
 
   return (
@@ -110,25 +133,40 @@ export function Sidebar({
           </button>
         )}
       </div>
-      <nav className="flex-1 overflow-y-auto p-2 space-y-0.5">
-        {entries.map((e) => (
-          <button
-            key={e.id}
-            className="nav-item w-full text-left"
-            data-active={current === e.id}
-            onClick={() => onNavigate(e.id)}
-          >
-            <span className="shrink-0">{e.icon}</span>
-            <span className="flex-1">{e.label}</span>
-            {badges[e.id] ? (
-              <span
-                className="badge"
-                style={{ background: 'var(--salmon)', color: 'var(--salmon-fg)' }}
+      <nav className="flex-1 overflow-y-auto p-2">
+        {sections.map((section, si) => (
+          <div key={section.label ?? `section-${si}`} className={si > 0 ? 'mt-3' : ''}>
+            {section.label && (
+              <div
+                className="px-3 pb-1 text-[0.65rem] font-semibold uppercase tracking-wider select-none"
+                style={{ color: 'var(--muted)' }}
               >
-                {badges[e.id]}
-              </span>
-            ) : null}
-          </button>
+                {section.label}
+              </div>
+            )}
+            <div className="space-y-0.5">
+              {section.entries.map((e) => (
+                <button
+                  key={e.id}
+                  className="nav-item w-full text-left"
+                  data-active={current === e.id}
+                  aria-current={current === e.id ? 'page' : undefined}
+                  onClick={() => onNavigate(e.id)}
+                >
+                  <span className="shrink-0">{e.icon}</span>
+                  <span className="flex-1">{e.label}</span>
+                  {badges[e.id] ? (
+                    <span
+                      className="badge"
+                      style={{ background: 'var(--salmon)', color: 'var(--salmon-fg)' }}
+                    >
+                      {badges[e.id]}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          </div>
         ))}
       </nav>
       <div className="p-3 text-xs border-t" style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}>

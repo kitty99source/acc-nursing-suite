@@ -51,9 +51,11 @@ export function AccInbox() {
     return filterAccInboxRows(syncRows, filterConfig).filter((r) => !ignored.has(r.id));
   }, [filterConfig, ignored, syncRows, syncLoading, syncStatus]);
 
+  // Only relevant when the list is empty: syncRows.length > 0 with rows empty
+  // means real synced letters exist but filters/Ignore hid them all.
   const emptyState = useMemo(
-    () => describeInboxEmptyState(syncStatus, syncLoading),
-    [syncLoading, syncStatus],
+    () => describeInboxEmptyState(syncStatus, syncLoading, rows.length === 0 ? syncRows.length : 0),
+    [rows.length, syncLoading, syncRows.length, syncStatus],
   );
 
   async function refreshSyncStatus() {
@@ -69,6 +71,7 @@ export function AccInbox() {
 
   useEffect(() => {
     void refreshSyncStatus();
+    void refreshStaging();
   }, []);
 
   async function refreshStaging() {
@@ -248,8 +251,10 @@ export function AccInbox() {
                   <div className="text-sm mt-1" style={{ color: 'var(--muted)' }}>
                     {row.sender} · {formatWhen(row.receivedAt)}
                   </div>
-                  <div className="text-xs mt-1 flex items-center gap-2">
+                  <div className="text-xs mt-1 flex flex-wrap items-center gap-2">
                     <Badge tone="accent">{row.attachmentName}</Badge>
+                    {row.claimNumber && <Badge tone="neutral">Claim {row.claimNumber}</Badge>}
+                    {row.accId && <Badge tone="neutral">{row.accId}</Badge>}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">

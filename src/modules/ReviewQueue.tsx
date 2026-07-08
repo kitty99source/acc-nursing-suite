@@ -17,6 +17,7 @@ import {
   stagingPatientNames,
 } from '../lib/hrqBatch';
 import { appendAudit } from '../lib/auditLog';
+import { LETTER_IMPORT_ACCEPT } from '../components/LetterImportButton';
 
 function slaTone(level: ReturnType<typeof stagingSlaLevel>): 'good' | 'warn' | 'danger' {
   if (level === 'danger') return 'danger';
@@ -55,7 +56,8 @@ export function ReviewQueue() {
 
   const refresh = useCallback(async () => {
     const pending = await loadStagingItems();
-    setItems(pending.sort((a, b) => b.createdAt - a.createdAt));
+    // Oldest first: items closest to the SLA limit surface at the top of the queue.
+    setItems(pending.sort((a, b) => a.createdAt - b.createdAt));
     setSelected(new Set());
   }, []);
 
@@ -71,6 +73,16 @@ export function ReviewQueue() {
     () => selectedItems.filter(isBatchApprovable).length,
     [selectedItems],
   );
+  const batchReadyItems = useMemo(() => sorted.filter(isBatchApprovable), [sorted]);
+  const overdueCount = useMemo(
+    () => sorted.filter((i) => stagingSlaLevel(i.createdAt) === 'danger').length,
+    [sorted],
+  );
+  const allSelected = sorted.length > 0 && selected.size === sorted.length;
+
+  function toggleSelectAll() {
+    setSelected((prev) => (prev.size === sorted.length ? new Set<string>() : new Set(sorted.map((i) => i.id))));
+  }
 
   async function importSidecars(files: FileList | null) {
     if (!files?.length) return;
@@ -266,17 +278,44 @@ export function ReviewQueue() {
     <div>
       <SectionTitle
         title="Human Review Queue"
-        subtitle="Folder-watch and automation drafts land here first — sign off before they touch live patient data."
+        subtitle="Folder-watch and automation drafts land here first — sign off before they touch live patient data. Oldest items are shown first."
+        actions={
+          sorted.length > 0 ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge tone={overdueCount ? 'danger' : 'good'}>{sorted.length} pending</Badge>
+              {overdueCount > 0 && <Badge tone="danger">{overdueCount} overdue</Badge>}
+              {batchReadyItems.length > 0 && <Badge tone="good">{batchReadyItems.length} batch ready</Badge>}
+            </div>
+          ) : undefined
+        }
       />
 
       <div className="flex flex-wrap gap-2 mb-4">
-        <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void importStagingFolder()}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={busy}
+          onClick={() => void importStagingFolder()}
+          title="Pick the ACC-Inbox\.staging folder written by Start Folder Watch.cmd"
+        >
           Import ACC-Inbox .staging folder
         </button>
-        <button type="button" className="btn" disabled={busy} onClick={() => sidecarInput.current?.click()}>
+        <button
+          type="button"
+          className="btn"
+          disabled={busy}
+          onClick={() => sidecarInput.current?.click()}
+          title="Pick individual .json sidecar files instead of the whole folder"
+        >
           Import sidecar JSON files
         </button>
-        <button type="button" className="btn btn-primary" disabled={busy || !canBatchApprove} onClick={() => void approveSelected()}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={busy || !canBatchApprove}
+          onClick={() => void approveSelected()}
+          title="File all selected high-confidence letters after confirming every patient name"
+        >
           Approve selected ({batchApprovableCount})
         </button>
         <button type="button" className="btn" disabled={busy || !selected.size} onClick={() => void rejectSelected()}>
@@ -296,7 +335,7 @@ export function ReviewQueue() {
         <input
           ref={letterInput}
           type="file"
-          accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          accept={LETTER_IMPORT_ACCEPT}
           className="hidden"
           onChange={(e) => handleLetterFile(e.target.files?.[0])}
         />
@@ -305,9 +344,34 @@ export function ReviewQueue() {
       {!sorted.length ? (
         <EmptyState
           title="No pending reviews"
-          message="Run Start Folder Watch.cmd, drop PDF or Word letters in ACC-Inbox, then click Import ACC-Inbox .staging folder above."
+          message="1. Run Start Folder Watch.cmd on the work laptop.  2. Drop PDF or Word letters into ACC-Inbox.  3. Click Import ACC-Inbox .staging folder above to bring the staged letters in for sign-off."
         />
       ) : (
+        <>
+        <label
+          className="flex items-center gap-2 mb-2 text-sm cursor-pointer select-none"
+          style={{ color: 'var(--muted)' }}
+        >
+          <input
+            type="checkbox"
+            checked={allSelected}
+            onChange={toggleSelectAll}
+            aria-label="Select all pending items"
+          />
+          Select all ({sorted.length})
+          {batchReadyItems.length > 0 && (
+            <button
+              type="button"
+              className="underline"
+              onClick={(e) => {
+                e.preventDefault();
+                setSelected(new Set(batchReadyItems.map((i) => i.id)));
+              }}
+            >
+              Select batch-ready only ({batchReadyItems.length})
+            </button>
+          )}
+        </label>
         <div className="space-y-3">
           {sorted.map((item) => {
             const sla = stagingSlaLevel(item.createdAt);
@@ -347,11 +411,21 @@ export function ReviewQueue() {
                     {(item.type === 'letter-import-pending' ||
                       item.type === 'letter-import-low-confidence' ||
                       item.type === 'letter-duplicate-suspect') && (
-                      <button type="button" className="btn btn-primary btn-sm" onClick={() => startReview(item)}>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={() => startReview(item)}
+                        title="Opens a file picker — choose the letter file (usually in ACC-Inbox\processed), then confirm before saving"
+                      >
                         Review & import
                       </button>
                     )}
-                    <button type="button" className="btn btn-sm" onClick={() => void deferItem(item)}>
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      onClick={() => void deferItem(item)}
+                      title="Set aside — removes this item from the pending queue without importing it"
+                    >
                       Defer
                     </button>
                     <button type="button" className="btn btn-sm btn-danger" onClick={() => void rejectItem(item)}>
@@ -363,6 +437,7 @@ export function ReviewQueue() {
             );
           })}
         </div>
+        </>
       )}
 
       {confirmDialog}

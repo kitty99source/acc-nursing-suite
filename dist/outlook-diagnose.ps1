@@ -59,7 +59,8 @@ function Load-DiagnoseFilterConfig {
             $raw = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8
             $cfg = $raw | ConvertFrom-Json
             $mergedSenders = @()
-            $mergedPatterns = @()
+            # Seed with defaults so a narrower office-config can never drop Claim:/ACCID: (7cee0da rule).
+            $mergedPatterns = @($DefaultSubjectPatterns)
             if ($cfg.accInbox -and $cfg.accInbox.senderAllowlist) {
                 $mergedSenders += @($cfg.accInbox.senderAllowlist)
             }

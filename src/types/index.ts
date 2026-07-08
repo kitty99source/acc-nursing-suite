@@ -284,6 +284,8 @@ export const DEFAULT_SETTINGS: Settings = {
     'acc.govt.nz',
   ],
   accInboxSubjectPatterns: [
+    'Claim:',
+    'ACCID:',
     'approv',
     'declin',
     'nur0[245]',

@@ -59,7 +59,7 @@ import {
 import { appendAudit } from '../lib/auditLog';
 import { validateReferentialIntegrity } from '../lib/integrity';
 import { resolveWorkingCopyLoad } from '../lib/recovery';
-import { uid, todayISO } from '../lib/format';
+import { uid, todayISO, formatDateNZ } from '../lib/format';
 import { mergeImportIntoData, type ImportMode, type ImportResult } from '../lib/excelImport';
 import { formatStorageError } from '../lib/storageQuota';
 import { determinePackage } from '../lib/calculator';
@@ -708,7 +708,7 @@ export const useStore = create<StoreState>((set, get) => ({
         fileName: file instanceof File ? file.name : 'approval-letter.pdf',
         mimeType: file.type || 'application/pdf',
         sizeBytes: file.size,
-        notes: parsed.letterDate ? `Letter dated ${parsed.letterDate}` : undefined,
+        notes: parsed.letterDate ? `Letter dated ${formatDateNZ(parsed.letterDate)}` : undefined,
       },
       file,
     );

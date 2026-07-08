@@ -17,7 +17,7 @@ import {
   TRAVEL_ELIGIBLE_CODES,
 } from './serviceCodes';
 import { determinePackage } from './calculator';
-import { daysBetween, todayISO } from './format';
+import { daysBetween, todayISO, formatDateNZ } from './format';
 import { isBillingApproval, isApprovalCurrent } from './approvals';
 
 // ============================================================================
@@ -545,7 +545,7 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
       if (lateNs04) {
         push(out, 'ns04-beyond-approval', `${a.id}:late`, rulesVersion, {
           ...base,
-          detail: `An NS04 invoice dated ${lateNs04.invoiceDate} is after the approval end date ${a.approvalEndDate} (PO ${a.poNumber || '—'}).`,
+          detail: `An NS04 invoice dated ${formatDateNZ(lateNs04.invoiceDate)} is after the approval end date ${formatDateNZ(a.approvalEndDate)} (PO ${a.poNumber || '—'}).`,
         });
       }
     }
@@ -559,7 +559,7 @@ export function runCompliance(data: AppData, claimFilter?: Set<string>): Complia
       if (ageDays >= 365 && !a.accEmailedRenewalDate) {
         push(out, 'ns05-annual-review', `${a.id}:review`, rulesVersion, {
           ...base,
-          detail: `Ongoing Nursing approved ${a.approvalStartDate} (${Math.floor(ageDays / 30)} months ago) — due for annual review${hasRecentCNA ? '' : ' and a Comprehensive Nursing Assessment'}.`,
+          detail: `Ongoing Nursing approved ${formatDateNZ(a.approvalStartDate)} (${Math.floor(ageDays / 30)} months ago) — due for annual review${hasRecentCNA ? '' : ' and a Comprehensive Nursing Assessment'}.`,
           fix: {
             action: 'review-ns05',
             module: 'approvals',

@@ -10,7 +10,7 @@
  *   node scripts/wfh/folder-watch.mjs [inboxDir]
  *   npm run wfh:folder-watch
  *
- * Default inbox: ~/ACC-Inbox (override with ACC_INBOX env or first arg)
+ * Default inbox: ~/ACC-Inbox (override with ACC_INBOX_PATH, ACC_INBOX env, office-config accInbox.inboxPath, or first arg)
  */
 
 import fs from 'node:fs';
@@ -28,8 +28,30 @@ const PROCESSED_DIR = 'processed';
 const STAGING_DIR = '.staging';
 const SUPPORTED_EXT = new Set(['.pdf', '.docx']);
 
+function readOfficeInboxPath() {
+  const home = process.env.USERPROFILE ?? process.env.HOME ?? '';
+  if (!home) return null;
+  const configPath = path.join(home, 'ACC-Suite', 'office-config.json');
+  if (!fs.existsSync(configPath)) return null;
+  try {
+    const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const inboxPath = cfg?.accInbox?.inboxPath;
+    if (typeof inboxPath === 'string' && inboxPath.trim()) {
+      return path.resolve(inboxPath.trim());
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
 function resolveInboxDir(arg) {
-  return path.resolve(arg ?? process.env.ACC_INBOX ?? DEFAULT_INBOX);
+  if (arg) return path.resolve(arg);
+  if (process.env.ACC_INBOX_PATH?.trim()) return path.resolve(process.env.ACC_INBOX_PATH.trim());
+  if (process.env.ACC_INBOX?.trim()) return path.resolve(process.env.ACC_INBOX.trim());
+  const fromOffice = readOfficeInboxPath();
+  if (fromOffice) return fromOffice;
+  return path.resolve(DEFAULT_INBOX);
 }
 
 function isAutomationPaused(inbox) {

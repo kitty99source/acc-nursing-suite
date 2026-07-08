@@ -21,6 +21,21 @@ $launchPs1 = Join-Path $launcherDir 'launch.ps1'
 $watchPs1 = Join-Path $launcherDir 'folder-watch.ps1'
 $syncPs1 = Join-Path $launcherDir 'outlook-sync.ps1'
 
+function Test-AccSuitePortOpen {
+    param([int]$Port = 8765)
+    $client = $null
+    try {
+        $client = New-Object System.Net.Sockets.TcpClient
+        $async = $client.BeginConnect('127.0.0.1', $Port, $null, $null)
+        $ok = $async.AsyncWaitHandle.WaitOne(500)
+        if ($ok -and $client.Connected) { return $true }
+    } catch {
+    } finally {
+        if ($client) { try { $client.Close() } catch {} }
+    }
+    return $false
+}
+
 foreach ($required in @($launchPs1, $watchPs1, $syncPs1)) {
     if (-not (Test-Path -LiteralPath $required)) {
         Write-Host "FAIL - missing launcher script: $required"
@@ -30,12 +45,18 @@ foreach ($required in @($launchPs1, $watchPs1, $syncPs1)) {
 }
 
 Write-Host 'Opening ACC Suite (local app server)...'
-Start-Process -FilePath 'powershell.exe' -ArgumentList @(
-    '-NoProfile',
-    '-ExecutionPolicy', 'Bypass',
-    '-File', $launchPs1
-) -WindowStyle Minimized | Out-Null
-Write-BootstrapLog 'Started launch.ps1 (minimized)'
+$accSuitePort = 8765
+if (Test-AccSuitePortOpen -Port $accSuitePort) {
+    Write-Host "  ACC Suite already running on http://127.0.0.1:$accSuitePort - skipping second launch."
+    Write-BootstrapLog "Skipped launch.ps1 - port $accSuitePort already open"
+} else {
+    Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+        '-NoProfile',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', $launchPs1
+    ) -WindowStyle Minimized | Out-Null
+    Write-BootstrapLog 'Started launch.ps1 (minimized)'
+}
 
 Write-Host 'Opening Folder Watch (ACC-Inbox letter drops)...'
 Start-Process -FilePath 'cmd.exe' -ArgumentList @(
@@ -55,7 +76,7 @@ $syncExit = if ($null -ne $LASTEXITCODE) { $LASTEXITCODE } else { 0 }
 Write-Host ''
 Write-Host 'WFH Mode summary'
 Write-Host '----------------'
-Write-Host '  ACC Suite     = running (minimized PowerShell, http://127.0.0.1)'
+Write-Host "  ACC Suite     = running (http://127.0.0.1:$accSuitePort or next free port if new launch)"
 Write-Host '  Folder Watch  = running (separate cmd window - leave open)'
 Write-Host '  Email Sync    = finished this run'
 Write-Host ''

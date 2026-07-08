@@ -51,6 +51,7 @@ $MaxProcessedIds = 20000
 $script:ShutdownRequested = $false
 $script:SyncState = $null
 $script:StatePath = $null
+$script:LastSyncStatus = $null
 
 function Write-SyncLine {
     param([string]$Message)
@@ -252,6 +253,12 @@ function Save-SyncState {
 
 function Register-GracefulShutdown {
     $null = Register-EngineEvent -SourceIdentifier PowerShell.Exiting -SupportEvent -Action {
+        if ($script:LastSyncStatus) {
+            if ($script:ShutdownRequested) {
+                $script:LastSyncStatus.outcome = 'paused'
+            }
+            try { $null = Write-SyncStatus -Status $script:LastSyncStatus } catch {}
+        }
         if ($script:SyncState) {
             Save-SyncState -State $script:SyncState
         }
@@ -389,11 +396,68 @@ function Write-SyncStatus {
     $suite = Resolve-AccSuiteDir
     [void][System.IO.Directory]::CreateDirectory($suite)
     $path = Join-Path $suite 'email-sync-status.json'
+    $tmpPath = Join-Path $suite 'email-sync-status.json.tmp'
+
     $Status.version = $StatusVersion
     $Status.lastRunAt = (Get-Date).ToUniversalTime().ToString('o')
-    $json = $Status | ConvertTo-Json -Depth 6 -Compress:$false
-    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-    [System.IO.File]::WriteAllText($path, $json, $utf8NoBom)
+    if ($Status.savedFiles -and $Status.savedFiles.Count -gt 200) {
+        $Status.savedFiles = @($Status.savedFiles | Select-Object -Last 200)
+        $Status.savedFilesTruncated = $true
+    }
+
+    $json = $null
+    try {
+        $json = $Status | ConvertTo-Json -Depth 6 -Compress:$false
+    } catch {
+        Write-BootstrapLog "WARN - ConvertTo-Json failed: $($_.Exception.Message); writing minimal status"
+        $minimal = @{
+            version       = $StatusVersion
+            lastRunAt     = $Status.lastRunAt
+            outcome       = if ($Status.outcome) { $Status.outcome } else { 'fail' }
+            savedCount    = 0
+            skippedCount  = 0
+            errorCount    = 1
+            savedFiles    = @()
+            errors        = @("Status JSON serialization failed: $($_.Exception.Message)")
+            inboxPath     = if ($Status.inboxPath) { [string]$Status.inboxPath } else { '' }
+            sharedMailbox = if ($Status.sharedMailbox) { [string]$Status.sharedMailbox } else { '' }
+        }
+        $json = $minimal | ConvertTo-Json -Depth 4 -Compress:$false
+    }
+
+    $written = $false
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        try {
+            $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+            [System.IO.File]::WriteAllText($tmpPath, $json, $utf8NoBom)
+            if (Test-Path -LiteralPath $path) {
+                Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+            }
+            Move-Item -LiteralPath $tmpPath -Destination $path -Force
+            $written = $true
+            Write-BootstrapLog "Wrote email-sync-status.json ($path)"
+            break
+        } catch {
+            Write-BootstrapLog "WARN - status WriteAllText attempt $attempt failed: $($_.Exception.Message)"
+            try {
+                Set-Content -LiteralPath $path -Value $json -Encoding UTF8 -Force
+                $written = $true
+                Write-BootstrapLog "Wrote email-sync-status.json via Set-Content fallback ($path)"
+                break
+            } catch {
+                Write-BootstrapLog "WARN - status Set-Content attempt $attempt failed: $($_.Exception.Message)"
+            }
+            if ($attempt -lt 3) { Start-Sleep -Milliseconds (50 * $attempt) }
+        }
+    }
+
+    if (-not $written) {
+        Write-BootstrapLog "FAIL - could not write email-sync-status.json to $path"
+    } elseif (Test-Path -LiteralPath $tmpPath) {
+        Remove-Item -LiteralPath $tmpPath -Force -ErrorAction SilentlyContinue
+    }
+
+    $script:LastSyncStatus = $Status
     return $path
 }
 
@@ -445,6 +509,8 @@ $status = @{
         noSupportedAttachment = 0
     }
 }
+$script:LastSyncStatus = $status
+$null = Write-SyncStatus -Status $status
 
 Write-SyncLine ''
 Write-SyncLine 'ACC Outlook COM email sync'
@@ -658,9 +724,19 @@ finally {
     if ($syncState) {
         Save-SyncState -State $syncState
     }
-    $statusPath = Write-SyncStatus -Status $status
-    Write-SyncLine ''
-    Write-SyncLine "Status: $statusPath"
+    try {
+        $statusPath = Write-SyncStatus -Status $status
+        Write-SyncLine ''
+        if (Test-Path -LiteralPath $statusPath) {
+            Write-SyncLine "Status: $statusPath"
+        } else {
+            Write-SyncLine "WARN - email-sync-status.json missing after write attempt: $statusPath"
+            Write-BootstrapLog "WARN - email-sync-status.json missing after finally write: $statusPath"
+        }
+    } catch {
+        Write-SyncLine "WARN - could not write email-sync-status.json: $($_.Exception.Message)"
+        Write-BootstrapLog "FAIL - finally Write-SyncStatus: $($_.Exception.Message)"
+    }
     Write-SyncLine "State:  $($script:StatePath)"
     Write-SyncLine "Log:    $env:USERPROFILE\ACC-Suite\logs\email-sync-bootstrap.log"
     Write-SyncLine ''

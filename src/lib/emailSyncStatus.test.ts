@@ -3,6 +3,7 @@ import {
   describeEmailSyncStatusRejectReason,
   EMAIL_SYNC_STATUS_VERSION,
   formatSyncOutcome,
+  parseEmailSyncStateFallback,
   parseEmailSyncStatus,
   parseEmailSyncStatusFromText,
   stripJsonBom,
@@ -142,5 +143,16 @@ describe('emailSyncStatus', () => {
     });
     expect(rows).toHaveLength(1);
     expect(rows[0].attachmentName).toBe('approval.pdf');
+  });
+
+  it('infers minimal status from email-sync-state.json', () => {
+    const parsed = parseEmailSyncStateFallback({
+      version: 1,
+      processedEntryIds: ['a', 'b', 'c'],
+      runStats: { lastRunAt: '2026-07-08T02:00:00.000Z', totalSaved: 12, runs: 3 },
+    });
+    expect(parsed?.inferredFromState).toBe(true);
+    expect(parsed?.processedTotal).toBe(3);
+    expect(formatSyncOutcome(parsed!)).toContain('Checkpoint only');
   });
 });

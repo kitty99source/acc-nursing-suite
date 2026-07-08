@@ -42,6 +42,8 @@ export interface EmailSyncStatus {
   workHoursSkipped?: boolean;
   backlogRemaining?: number | null;
   scanStats?: EmailSyncScanStats;
+  /** True when UI report was inferred from email-sync-state.json (status file missing). */
+  inferredFromState?: boolean;
 }
 
 const VALID_OUTCOMES = new Set<EmailSyncStatus['outcome']>(['running', 'ok', 'fail', 'paused']);
@@ -138,6 +140,33 @@ export function inboxRowsFromSyncStatus(
   });
 }
 
+export function parseEmailSyncStateFallback(raw: unknown): EmailSyncStatus | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  if (!Array.isArray(o.processedEntryIds)) return null;
+
+  const runStats =
+    o.runStats && typeof o.runStats === 'object' ? (o.runStats as Record<string, unknown>) : {};
+  const lastRunAt = pickString(runStats, 'lastRunAt', 'LastRunAt');
+  if (!lastRunAt) return null;
+
+  return {
+    version: EMAIL_SYNC_STATUS_VERSION,
+    lastRunAt,
+    outcome: 'ok',
+    mode: 'backlog',
+    savedCount: 0,
+    skippedCount: typeof runStats.totalSkipped === 'number' ? runStats.totalSkipped : 0,
+    errorCount: typeof runStats.totalErrors === 'number' ? runStats.totalErrors : 0,
+    savedFiles: [],
+    errors: [],
+    inboxPath: '',
+    sharedMailbox: '',
+    processedTotal: o.processedEntryIds.length,
+    inferredFromState: true,
+  };
+}
+
 export function parseEmailSyncStatus(raw: unknown): EmailSyncStatus | null {
   if (!raw || typeof raw !== 'object') return null;
   const o = raw as Record<string, unknown>;
@@ -168,6 +197,7 @@ export function parseEmailSyncStatus(raw: unknown): EmailSyncStatus | null {
     workHoursSkipped: o.workHoursSkipped === true,
     backlogRemaining: typeof o.backlogRemaining === 'number' ? o.backlogRemaining : undefined,
     scanStats: parseScanStats(o.scanStats),
+    inferredFromState: o.inferredFromState === true,
   };
 }
 
@@ -178,6 +208,13 @@ export function formatScanStatsSummary(stats: EmailSyncScanStats): string {
 export function formatSyncOutcome(status: EmailSyncStatus): string {
   const when = new Date(status.lastRunAt).toLocaleString('en-NZ');
   const mode = status.mode === 'backlog' ? 'backlog' : status.mode === 'recent' ? 'recent' : 'sync';
+  if (status.inferredFromState) {
+    const processed =
+      typeof status.processedTotal === 'number'
+        ? ` (${status.processedTotal} emails processed overall)`
+        : '';
+    return `Checkpoint only — last run ${when}${processed}. Re-run Start Email Sync.cmd to create email-sync-status.json with scan detail.`;
+  }
   if (status.outcome === 'ok') {
     const processed =
       typeof status.processedTotal === 'number' ? ` (${status.processedTotal} emails processed overall)` : '';

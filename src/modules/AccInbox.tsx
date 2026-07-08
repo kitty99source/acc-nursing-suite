@@ -16,6 +16,7 @@ import {
   formatSyncOutcome,
   inboxRowsFromSyncStatus,
   parseEmailSyncStatusFromText,
+  parseEmailSyncStateFallback,
   stripJsonBom,
   type EmailSyncStatus,
 } from '../lib/emailSyncStatus';
@@ -131,6 +132,12 @@ export function AccInbox() {
       }
       const parsed = parseEmailSyncStatusFromText(text);
       if (!parsed) {
+        const fallback = parseEmailSyncStateFallback(raw);
+        if (fallback) {
+          setSyncStatus(fallback);
+          setMessage(null);
+          return;
+        }
         throw new Error(describeEmailSyncStatusRejectReason(raw, file.name));
       }
       setSyncStatus(parsed);

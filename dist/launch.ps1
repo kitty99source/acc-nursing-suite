@@ -112,15 +112,49 @@ function Get-StaticContentType {
     }
 }
 
-function Resolve-LocalAccJson {
-    param([string]$RequestPath)
-    if ($RequestPath -eq '/_acc/email-sync-status.json') {
-        $candidate = Join-Path $env:USERPROFILE 'ACC-Suite\email-sync-status.json'
-        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
-            return $candidate
-        }
+function Get-EmailSyncStatusBody {
+    $statusPath = Join-Path $env:USERPROFILE 'ACC-Suite\email-sync-status.json'
+    if (Test-Path -LiteralPath $statusPath -PathType Leaf) {
+        return [System.IO.File]::ReadAllBytes($statusPath)
     }
-    return $null
+
+    $statePath = Join-Path $env:USERPROFILE 'ACC-Suite\email-sync-state.json'
+    if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
+        return $null
+    }
+
+    try {
+        $raw = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8
+        $obj = $raw | ConvertFrom-Json
+        $lastRunAt = $null
+        if ($obj.runStats -and $obj.runStats.lastRunAt) {
+            $lastRunAt = [string]$obj.runStats.lastRunAt
+        }
+        if (-not $lastRunAt) { return $null }
+
+        $ids = @()
+        if ($obj.processedEntryIds) { $ids = @($obj.processedEntryIds) }
+        $fallback = @{
+            version            = 1
+            lastRunAt          = $lastRunAt
+            outcome            = 'ok'
+            mode               = 'backlog'
+            savedCount         = 0
+            skippedCount       = if ($obj.runStats.totalSkipped) { [int]$obj.runStats.totalSkipped } else { 0 }
+            errorCount         = if ($obj.runStats.totalErrors) { [int]$obj.runStats.totalErrors } else { 0 }
+            savedFiles         = @()
+            errors             = @()
+            inboxPath          = ''
+            sharedMailbox      = ''
+            processedTotal     = $ids.Count
+            inferredFromState  = $true
+        }
+        $json = $fallback | ConvertTo-Json -Depth 4 -Compress:$false
+        $utf8 = New-Object System.Text.UTF8Encoding $false
+        return $utf8.GetBytes($json)
+    } catch {
+        return $null
+    }
 }
 
 function Resolve-StaticFile {
@@ -344,10 +378,13 @@ try {
 
                 if ($method -eq 'GET') {
                     $reqPath = Get-RequestPath -RequestLine $requestLine
-                    $localJson = Resolve-LocalAccJson -RequestPath $reqPath
-                    if ($localJson) {
-                        $body = [System.IO.File]::ReadAllBytes($localJson)
-                        Send-Response -Client $client -StatusCode 200 -StatusText 'OK' -Body $body -ContentType 'application/json; charset=utf-8'
+                    if ($reqPath -eq '/_acc/email-sync-status.json') {
+                        $body = Get-EmailSyncStatusBody
+                        if ($body) {
+                            Send-Response -Client $client -StatusCode 200 -StatusText 'OK' -Body $body -ContentType 'application/json; charset=utf-8'
+                        } else {
+                            Send-Response -Client $client -StatusCode 404 -StatusText 'Not Found' -Body $notFound -ContentType 'text/plain; charset=utf-8'
+                        }
                     } else {
                         $filePath = Resolve-StaticFile -Root $root -RequestPath $reqPath
                         if ($filePath) {

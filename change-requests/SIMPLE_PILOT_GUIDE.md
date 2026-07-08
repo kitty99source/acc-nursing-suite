@@ -554,11 +554,13 @@ All patient data stays on the work laptop — do **not** run folder watch on the
 
 ### Step 2 — Backlog sync (only if probe PASS)
 
-**What this does (plain English):** Each time you double-click **Start Email Sync.cmd** during work hours, it pulls the **oldest unactioned ACC emails** from Outlook (up to 50 per run), saves PDF or Word attachments into `ACC-Inbox`, and remembers where it stopped. It **never** auto-imports into the app — use **Start Folder Watch.cmd** → **Review Queue** to import manually. Emails tagged **actioned** in Outlook (or marked complete with a flag) are skipped.
+**What this does (plain English):** Each time you double-click **Start Email Sync.cmd** (any time of day — see note below), it pulls the **oldest unactioned ACC emails** from Outlook (up to 50 per run), saves PDF or Word attachments into `ACC-Inbox`, and remembers where it stopped. It **never** auto-imports into the app — use **Start Folder Watch.cmd** → **Review Queue** to import manually. Emails tagged **actioned** in Outlook (or marked complete with a flag) are skipped.
+
+> **Work hours (U-08 update):** Manual runs are **no longer clock-blocked**. Double-clicking **Start Email Sync.cmd** or **Start WFH Mode.cmd** always runs, even late at night — a manual launch is itself the signal you're working from home. The log will say `Manual run (HH:mm NZ) - work-hours gate skipped`. The 7am–6pm window is now only a configurable option for a *future* scheduled/automated daemon (`accWorkHours` in `office-config.json`, `enabled: false` by default).
 
 1. Confirm `Start Email Sync.cmd` and `outlook-sync.ps1` exist in `dist/`.
 2. Optional: copy `office-config.example.json` to `%USERPROFILE%\ACC-Suite\office-config.json` and tune ACC sender/subject filters or batch size (`emailSync.batchSize`, default 50). Default shared mailbox is **`ACCDistrictNursing`** (`emailSync.sharedMailbox`).
-3. Double-click **`Start Email Sync.cmd`** — runs **7am–6pm NZ only** (outside hours it exits safely; no overnight catch-up). Log should show **`Using mailbox: ACCDistrictNursing`**.
+3. Double-click **`Start Email Sync.cmd`** — runs **immediately, any time of day** (manual run; the old 7am–6pm block no longer applies to manual launches). Log should show **`Using mailbox: ACCDistrictNursing`** and **`Manual run ... work-hours gate skipped`**.
 4. Repeat during work hours until the log shows **saved 0** attachments (backlog cleared).
 5. Tag processed emails **actioned** in Outlook if you want them skipped on future runs.
 6. Status file: `%USERPROFILE%\ACC-Suite\email-sync-status.json` — load in **ACC Inbox** → **Load sync report**.
@@ -566,7 +568,7 @@ All patient data stays on the work laptop — do **not** run folder watch on the
 8. Double-click **`Start Folder Watch.cmd`** so new attachments stage for **Review Queue**.
 9. Log: `%USERPROFILE%\ACC-Suite\logs\email-sync-bootstrap.log`
 
-**Switches:** `-Recent` for last-14-days mode only; `-BatchSize 25` for smaller batches; `-IgnoreWorkHours` if IT requires off-hours test.
+**Switches:** `-Recent` for last-14-days mode only; `-BatchSize 25` for smaller batches; `-Scheduled` marks a run as the future automated daemon (obeys the `accWorkHours` window if `enabled: true`); `-IgnoreWorkHours` forces a `-Scheduled` run even outside its window. Manual double-click runs need none of these — they always run.
 
 **Shared mailbox:** District nursing ACC letters live in **`ACCDistrictNursing`**, not your personal inbox. Sync/probe use that mailbox by default. Override in `%USERPROFILE%\ACC-Suite\office-config.json` (`emailSync.sharedMailbox`) or env `ACC_SHARED_MAILBOX` only if IT gives a different name.
 

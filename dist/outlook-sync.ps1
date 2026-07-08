@@ -3,7 +3,8 @@
     [int]$BatchSize = 0,
     [switch]$Recent,
     [int]$DaysBack = 14,
-    [switch]$IgnoreWorkHours
+    [switch]$IgnoreWorkHours,
+    [switch]$Scheduled
 )
 
 $bootstrapRoot = $PSScriptRoot
@@ -43,6 +44,10 @@ $DefaultSubjectPatterns = @(
 $DefaultSkipCategories = @('actioned')
 $DefaultWorkStartHour = 7
 $DefaultWorkEndHour = 18
+# Enforcement of the work-hours window is OFF by default. Manual runs (Start Email Sync.cmd /
+# Start WFH Mode.cmd) are never clock-blocked; the window is only consulted by a future
+# scheduled/automated daemon that passes -Scheduled AND opts in via accWorkHours.enabled=true.
+$DefaultWorkHoursEnabled = $false
 $DefaultBatchSize = 50
 $SupportedExt = @('.pdf', '.docx')
 $StateVersion = 1
@@ -115,6 +120,7 @@ function Load-SyncConfig {
     $skipCategories = @($DefaultSkipCategories)
     $workStart = $DefaultWorkStartHour
     $workEnd = $DefaultWorkEndHour
+    $workEnabled = $DefaultWorkHoursEnabled
     $batch = $DefaultBatchSize
 
     $configPath = Get-OfficeConfigPath
@@ -149,6 +155,19 @@ function Load-SyncConfig {
                 $workEnd = Get-ConfigInt -EnvName 'ACC_EMAIL_SYNC_WORK_END' -JsonValue $cfg.emailSync.workEndHour -Default $workEnd
                 $batch = Get-ConfigInt -EnvName 'ACC_EMAIL_SYNC_BATCH_SIZE' -JsonValue $cfg.emailSync.batchSize -Default $batch
             }
+            # accWorkHours (structured window) takes precedence over legacy emailSync.workStartHour/EndHour.
+            # It only affects a future scheduled/automated run (-Scheduled); manual runs ignore it.
+            if ($cfg.accWorkHours) {
+                if ($null -ne $cfg.accWorkHours.start) {
+                    $workStart = Get-ConfigInt -EnvName 'ACC_EMAIL_SYNC_WORK_START' -JsonValue $cfg.accWorkHours.start -Default $workStart
+                }
+                if ($null -ne $cfg.accWorkHours.end) {
+                    $workEnd = Get-ConfigInt -EnvName 'ACC_EMAIL_SYNC_WORK_END' -JsonValue $cfg.accWorkHours.end -Default $workEnd
+                }
+                if ($null -ne $cfg.accWorkHours.enabled) {
+                    $workEnabled = [bool]$cfg.accWorkHours.enabled
+                }
+            }
         } catch {
             Write-SyncLine "WARN - could not parse office config: $($_.Exception.Message)"
         }
@@ -161,17 +180,22 @@ function Load-SyncConfig {
     $workStart = Get-ConfigInt -EnvName 'ACC_EMAIL_SYNC_WORK_START' -JsonValue $workStart -Default $workStart
     $workEnd = Get-ConfigInt -EnvName 'ACC_EMAIL_SYNC_WORK_END' -JsonValue $workEnd -Default $workEnd
 
+    $envEnabled = $env:ACC_EMAIL_SYNC_WORK_HOURS_ENABLED
+    if ($envEnabled -match '^(?i:1|true|yes|on)$') { $workEnabled = $true }
+    elseif ($envEnabled -match '^(?i:0|false|no|off)$') { $workEnabled = $false }
+
     if (-not [string]::IsNullOrWhiteSpace($env:ACC_EMAIL_SYNC_SKIP_CATEGORIES)) {
         $skipCategories = @($env:ACC_EMAIL_SYNC_SKIP_CATEGORIES.Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ })
     }
 
     return @{
-        Senders         = $senders
-        Patterns        = $patterns
-        SkipCategories  = $skipCategories
-        WorkStartHour   = $workStart
-        WorkEndHour     = $workEnd
-        BatchSize       = [Math]::Max(1, [Math]::Min(500, $batch))
+        Senders          = $senders
+        Patterns         = $patterns
+        SkipCategories   = $skipCategories
+        WorkStartHour    = $workStart
+        WorkEndHour      = $workEnd
+        WorkHoursEnabled = $workEnabled
+        BatchSize        = [Math]::Max(1, [Math]::Min(500, $batch))
     }
 }
 
@@ -536,14 +560,29 @@ if (Test-Path -LiteralPath $pauseFile) {
     exit 0
 }
 
-if ($useBacklog -and -not $IgnoreWorkHours -and -not (Test-WithinWorkHours -StartHour $config.WorkStartHour -EndHour $config.WorkEndHour)) {
-    $nz = Get-NzLocalTime
-    Write-SyncLine ("Outside work hours ({0:HH:mm} NZ)  -  sync runs {1}:00-{2}:00 only. Re-run during work hours or pass -IgnoreWorkHours." -f $nz, $config.WorkStartHour, $config.WorkEndHour)
-    $status.outcome = 'paused'
-    $status.workHoursSkipped = $true
-    $script:ScanSkipReason = 'outside work hours (7am-6pm NZ)'
-    $null = Write-SyncStatus -Status $status
-    exit 0
+# Work-hours gate (U-08 revision):
+#   Manual runs (double-clicking Start Email Sync.cmd / Start WFH Mode.cmd) are the signal that
+#   Prakriti is working from home, so they ALWAYS proceed regardless of the clock.
+#   The time window only ever applies to a future scheduled/automated daemon that passes -Scheduled
+#   AND has opted in via accWorkHours.enabled=true. -IgnoreWorkHours remains a hard override.
+$nzNow = Get-NzLocalTime
+$withinWorkHours = Test-WithinWorkHours -StartHour $config.WorkStartHour -EndHour $config.WorkEndHour
+if ($Scheduled) {
+    if ($useBacklog -and $config.WorkHoursEnabled -and -not $IgnoreWorkHours -and -not $withinWorkHours) {
+        Write-SyncLine ("Scheduled run outside {1:00}:00-{2:00}:00 NZ work-hours window (now {0:HH:mm} NZ), skipping. Pass -IgnoreWorkHours to force." -f $nzNow, $config.WorkStartHour, $config.WorkEndHour)
+        $status.outcome = 'paused'
+        $status.workHoursSkipped = $true
+        $script:ScanSkipReason = ("scheduled run outside work-hours window ({0}:00-{1}:00 NZ)" -f $config.WorkStartHour, $config.WorkEndHour)
+        $null = Write-SyncStatus -Status $status
+        exit 0
+    }
+    if ($config.WorkHoursEnabled) {
+        Write-SyncLine ("Scheduled run ({0:HH:mm} NZ) - work-hours window {1:00}:00-{2:00}:00 satisfied (or overridden), proceeding." -f $nzNow, $config.WorkStartHour, $config.WorkEndHour)
+    } else {
+        Write-SyncLine ("Scheduled run ({0:HH:mm} NZ) - work-hours window disabled in office-config (accWorkHours.enabled=false), proceeding." -f $nzNow)
+    }
+} else {
+    Write-SyncLine ("Manual run ({0:HH:mm} NZ) - work-hours gate skipped (manual launch is the signal you are working)." -f $nzNow)
 }
 
 $markerDir = Join-Path $inbox '.email-sync'

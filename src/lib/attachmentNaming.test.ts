@@ -2,8 +2,10 @@ import { describe, it, expect } from 'vitest';
 import {
   claimTokenFromSubject,
   descriptiveAttachmentName,
+  isDescriptiveName,
   limitFileNameLength,
   patientNameFromSubject,
+  stripDescriptivePrefix,
 } from './attachmentNaming';
 
 const REAL_SUBJECT = 'Mr Graham Wayne Reichenbach - Claim:P2222756868 ACCID:VEND-K96655';
@@ -71,6 +73,41 @@ describe('descriptiveAttachmentName', () => {
     const out = descriptiveAttachmentName(longSubject, 'x.docx');
     expect(out.length).toBeLessThanOrEqual(150);
     expect(out.endsWith('.docx')).toBe(true);
+  });
+});
+
+describe('isDescriptiveName / stripDescriptivePrefix', () => {
+  const descriptive = `Reichenbach-Graham_ClaimP2222756868_${ORIGINAL}`;
+
+  it('detects patient+claim, claim-only, and patient-only prefixes', () => {
+    expect(isDescriptiveName(descriptive)).toBe(true);
+    expect(isDescriptiveName('Claim10000003194_x.docx')).toBe(true);
+    expect(isDescriptiveName('Smith-Jane_x.docx')).toBe(true);
+  });
+
+  it('rejects legacy ACC / TMT / URL-encoded names', () => {
+    expect(isDescriptiveName(ORIGINAL)).toBe(false);
+    expect(isDescriptiveName('TMT10007019661-NUR02%20Nursing%20services.docx')).toBe(false);
+    expect(isDescriptiveName('1_NUR02_Nursing_services_approve_-_vendor.docx')).toBe(false);
+  });
+
+  it('strips the prefix back to the ACC original', () => {
+    expect(stripDescriptivePrefix(descriptive)).toBe(ORIGINAL);
+    expect(stripDescriptivePrefix('Claim10000003194_x.docx')).toBe('x.docx');
+    expect(stripDescriptivePrefix('Smith-Jane_x.docx')).toBe('x.docx');
+  });
+
+  it('leaves non-descriptive names unchanged (including %20)', () => {
+    const legacy = 'TMT10007019661-NUR02%20Nursing%20services%20approve.docx';
+    expect(stripDescriptivePrefix(legacy)).toBe(legacy);
+    expect(stripDescriptivePrefix(ORIGINAL)).toBe(ORIGINAL);
+  });
+
+  it('is idempotent: descriptiveAttachmentName never double-prefixes', () => {
+    const once = descriptiveAttachmentName(REAL_SUBJECT, ORIGINAL);
+    const twice = descriptiveAttachmentName(REAL_SUBJECT, once);
+    expect(once).toBe(`Reichenbach-Graham_ClaimP2222756868_${ORIGINAL}`);
+    expect(twice).toBe(once);
   });
 });
 

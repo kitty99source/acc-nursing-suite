@@ -3,6 +3,8 @@
 $bootstrapRoot = $PSScriptRoot
 if ([string]::IsNullOrEmpty($bootstrapRoot)) { $bootstrapRoot = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }
 . (Join-Path $bootstrapRoot 'bootstrap-log.ps1') -LogName 'acc'
+$inboxConfig = Join-Path $bootstrapRoot 'inbox-config.ps1'
+if (Test-Path -LiteralPath $inboxConfig) { . $inboxConfig }
 Write-BootstrapLog 'launch.ps1 started'
 
 # ACC District Nursing Admin Suite - local launcher
@@ -96,6 +98,101 @@ function Get-RequestPath {
     if ($q -ge 0) { $path = $path.Substring(0, $q) }
     if ([string]::IsNullOrEmpty($path)) { return '/' }
     return $path
+}
+
+function Get-RequestQueryValue {
+    # Extract a single query parameter from the raw request line (path?key=value).
+    param(
+        [string]$RequestLine,
+        [string]$Key
+    )
+    if (-not $RequestLine -or [string]::IsNullOrWhiteSpace($Key)) { return $null }
+    $parts = $RequestLine.Split(' ')
+    if ($parts.Length -lt 2) { return $null }
+    $raw = $parts[1]
+    $q = $raw.IndexOf('?')
+    if ($q -lt 0) { return $null }
+    $query = $raw.Substring($q + 1)
+    foreach ($pair in $query.Split('&')) {
+        $eq = $pair.IndexOf('=')
+        if ($eq -lt 0) { continue }
+        $k = $pair.Substring(0, $eq)
+        if ($k -ne $Key) { continue }
+        $v = $pair.Substring($eq + 1)
+        try { return [System.Uri]::UnescapeDataString($v) } catch { return $v }
+    }
+    return $null
+}
+
+function Get-StagingSidecarsBody {
+    # List ACC-Inbox\.staging\*.json as a JSON array for Review Queue auto-import.
+    if (-not (Get-Command Resolve-InboxPath -ErrorAction SilentlyContinue)) { return $null }
+    try {
+        $inbox = Resolve-InboxPath -ScriptRoot $bootstrapRoot
+        $staging = Join-Path $inbox '.staging'
+        if (-not (Test-Path -LiteralPath $staging -PathType Container)) {
+            $utf8Empty = New-Object System.Text.UTF8Encoding $false
+            return $utf8Empty.GetBytes('[]')
+        }
+        $items = New-Object System.Collections.Generic.List[object]
+        foreach ($path in [System.IO.Directory]::GetFiles($staging, '*.json')) {
+            try {
+                $raw = Get-Content -LiteralPath $path -Raw -Encoding UTF8
+                $obj = $raw | ConvertFrom-Json
+                if ($obj) { [void]$items.Add($obj) }
+            } catch {}
+        }
+        $json = ConvertTo-Json -InputObject @($items.ToArray()) -Depth 10 -Compress:$false
+        if ([string]::IsNullOrWhiteSpace($json)) { $json = '[]' }
+        $utf8 = New-Object System.Text.UTF8Encoding $false
+        return $utf8.GetBytes($json)
+    } catch {
+        return $null
+    }
+}
+
+function Resolve-InboxFileByHash {
+    # Hash-only lookup via .email-sync\hash-index.json (no arbitrary paths).
+    # Returns full path or $null. Restricts to .pdf/.docx under ACC-Inbox.
+    param([string]$Hash)
+    if ([string]::IsNullOrWhiteSpace($Hash)) { return $null }
+    $h = $Hash.Trim().ToLowerInvariant()
+    if ($h -notmatch '^[a-f0-9]{64}$') { return $null }
+    if (-not (Get-Command Resolve-InboxPath -ErrorAction SilentlyContinue)) { return $null }
+    try {
+        $inbox = Resolve-InboxPath -ScriptRoot $bootstrapRoot
+        $inboxFull = [System.IO.Path]::GetFullPath($inbox)
+        $indexPath = Join-Path $inbox (Join-Path '.email-sync' 'hash-index.json')
+        $rel = $null
+        if (Test-Path -LiteralPath $indexPath -PathType Leaf) {
+            $index = Get-Content -LiteralPath $indexPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($index) {
+                $prop = $index.PSObject.Properties[$h]
+                if ($prop) { $rel = [string]$prop.Value }
+            }
+        }
+        if ([string]::IsNullOrWhiteSpace($rel)) {
+            $metaPath = Join-Path $inbox (Join-Path '.email-sync' ("{0}.meta.json" -f $h))
+            if (Test-Path -LiteralPath $metaPath -PathType Leaf) {
+                $meta = Get-Content -LiteralPath $metaPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                if ($meta.relativePath) { $rel = [string]$meta.relativePath }
+            }
+        }
+        if ([string]::IsNullOrWhiteSpace($rel)) { return $null }
+        # Reject path traversal in the relative path.
+        foreach ($seg in ($rel -replace '\\', '/').Split('/')) {
+            if ($seg -eq '..' -or $seg -eq '.') { return $null }
+        }
+        $candidate = Join-Path $inboxFull ($rel -replace '/', [System.IO.Path]::DirectorySeparatorChar)
+        $full = [System.IO.Path]::GetFullPath($candidate)
+        if (-not $full.StartsWith($inboxFull, [System.StringComparison]::OrdinalIgnoreCase)) { return $null }
+        if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { return $null }
+        $ext = [System.IO.Path]::GetExtension($full).ToLowerInvariant()
+        if ($ext -ne '.pdf' -and $ext -ne '.docx' -and $ext -ne '.doc') { return $null }
+        return $full
+    } catch {
+        return $null
+    }
 }
 
 function Get-StaticContentType {
@@ -382,6 +479,24 @@ try {
                         $body = Get-EmailSyncStatusBody
                         if ($body) {
                             Send-Response -Client $client -StatusCode 200 -StatusText 'OK' -Body $body -ContentType 'application/json; charset=utf-8'
+                        } else {
+                            Send-Response -Client $client -StatusCode 404 -StatusText 'Not Found' -Body $notFound -ContentType 'text/plain; charset=utf-8'
+                        }
+                    } elseif ($reqPath -eq '/_acc/staging') {
+                        $body = Get-StagingSidecarsBody
+                        if ($null -ne $body) {
+                            Send-Response -Client $client -StatusCode 200 -StatusText 'OK' -Body $body -ContentType 'application/json; charset=utf-8'
+                        } else {
+                            Send-Response -Client $client -StatusCode 404 -StatusText 'Not Found' -Body $notFound -ContentType 'text/plain; charset=utf-8'
+                        }
+                    } elseif ($reqPath -eq '/_acc/inbox-file') {
+                        $hash = Get-RequestQueryValue -RequestLine $requestLine -Key 'hash'
+                        $filePath = Resolve-InboxFileByHash -Hash $hash
+                        if ($filePath) {
+                            $body = [System.IO.File]::ReadAllBytes($filePath)
+                            $ext = [System.IO.Path]::GetExtension($filePath)
+                            $ctype = Get-StaticContentType -Extension $ext
+                            Send-Response -Client $client -StatusCode 200 -StatusText 'OK' -Body $body -ContentType $ctype
                         } else {
                             Send-Response -Client $client -StatusCode 404 -StatusText 'Not Found' -Body $notFound -ContentType 'text/plain; charset=utf-8'
                         }

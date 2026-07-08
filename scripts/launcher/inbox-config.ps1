@@ -64,4 +64,5 @@ function Initialize-InboxDirs {
     [void][System.IO.Directory]::CreateDirectory($Inbox)
     [void][System.IO.Directory]::CreateDirectory((Join-Path $Inbox 'processed'))
     [void][System.IO.Directory]::CreateDirectory((Join-Path $Inbox '.staging'))
+    [void][System.IO.Directory]::CreateDirectory((Join-Path $Inbox '.email-sync'))
 }

@@ -36,6 +36,8 @@ export interface StagingItem {
   accId?: string;
   /** Descriptive on-disk filename outlook-sync saves the attachment as — the name to look for at Review & import. */
   expectedFileName?: string;
+  /** Original ACC email subject (from .email-sync meta / folder-watch enrichment). */
+  emailSubject?: string;
   /** SHA-256 hex of source PDF bytes — dedup key for folder/email ingress. */
   sourceHash?: string;
   /** Absolute path on work PC (folder watch only; not synced to IDB on other machines). */

@@ -503,9 +503,12 @@ export function LetterImportModal() {
   const [rows, setRows] = useState<ParsedServiceRow[]>([]);
   const [selectedClaimId, setSelectedClaimId] = useState('');
   const [selectedPatientId, setSelectedPatientId] = useState('');
+  /** When true, always show the full confirm form (user clicked Needs edits). */
+  const [forceFullForm, setForceFullForm] = useState(false);
 
   useEffect(() => {
     if (!letterImport) return;
+    setForceFullForm(false);
     let cancelled = false;
     setBusy(true);
     setError(null);
@@ -812,6 +815,92 @@ export function LetterImportModal() {
       : parsed.kind === 'approval'
         ? 'Confirm approval letter'
         : 'Confirm decline letter';
+
+  // Fast path: high confidence, no blockers, review-queue entry — single confirm card.
+  const useFinalCheck =
+    !forceFullForm &&
+    !letterImport.prefillOnly &&
+    !letterImport.onPrefill &&
+    letterImport.entryPoint === 'review-queue' &&
+    blockingIssues.length === 0 &&
+    (result?.overallConfidence ?? 0) >= 90 &&
+    !!patientName.trim() &&
+    !!claimNumber.trim();
+
+  if (useFinalCheck) {
+    const rowSummary =
+      parsed.kind === 'approval'
+        ? rows.length > 0
+          ? rows.map((r) => `${r.serviceCode} ×${r.approvedHoursOrConsults}`).join(', ')
+          : parsed.packageRows.length > 0
+            ? 'Historic NS03 package (no billing)'
+            : 'No service rows'
+        : `Decline: ${declineReason || '—'}`;
+    return (
+      <Modal
+        open
+        title="Final check — file to patient record?"
+        onClose={handleCloseRequest}
+        size="md"
+        footer={
+          <>
+            <button className="btn" onClick={handleCloseRequest} disabled={busy}>
+              Cancel
+            </button>
+            <button className="btn" onClick={() => setForceFullForm(true)} disabled={busy}>
+              Needs edits
+            </button>
+            <button className="btn btn-primary" onClick={() => void saveAll()} disabled={busy}>
+              File to patient record
+            </button>
+          </>
+        }
+      >
+        {error && (
+          <p className="text-sm mb-3" style={{ color: 'var(--danger-fg)' }}>
+            {error}
+          </p>
+        )}
+        <p className="text-xs mb-3 rounded-lg px-3 py-2" style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}>
+          Opened from Human Review Queue — one confirm files the letter. Click Needs edits for the full form.
+        </p>
+        <div className="space-y-2 text-sm">
+          <div>
+            <span style={{ color: 'var(--muted)' }}>Patient: </span>
+            <strong>{patientName}</strong>
+            {nhi ? ` · NHI ${nhi}` : ''}
+          </div>
+          <div>
+            <span style={{ color: 'var(--muted)' }}>Claim: </span>
+            <strong>{claimNumber}</strong>
+            {poNumber ? ` · PO ${poNumber}` : ''}
+          </div>
+          {matchedPatient && (
+            <div className="rounded-lg p-2 text-sm" style={{ background: 'var(--surface-2)', border: '1px solid var(--good-fg)' }}>
+              Linking to existing patient: <strong>{matchedPatient.name}</strong>
+            </div>
+          )}
+          {!matchedPatient && (
+            <div className="text-xs" style={{ color: 'var(--muted)' }}>
+              Will create a new patient / claim from this letter.
+            </div>
+          )}
+          <div>
+            <span style={{ color: 'var(--muted)' }}>Services: </span>
+            {rowSummary}
+          </div>
+          <div>
+            <span style={{ color: 'var(--muted)' }}>Attachment: </span>
+            <span className="font-mono text-xs">{letterImport.file.name}</span>
+          </div>
+          <div>
+            <Badge tone={result!.overallConfidence >= 100 ? 'good' : 'warn'}>{result!.overallConfidence}% confidence</Badge>
+          </div>
+        </div>
+        {confirmDialog}
+      </Modal>
+    );
+  }
 
   return (
     <Modal

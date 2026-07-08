@@ -5,6 +5,7 @@ import { useConfirm } from '../components/useConfirm';
 import {
   loadStagingItems,
   importStagingJsonText,
+  importStagingSidecars,
   updateStagingItem,
   stagingAgeLabel,
   type StagingItem,
@@ -24,6 +25,8 @@ import {
 } from '../lib/bulkImport';
 import { appendAudit, recordHrqResolution } from '../lib/auditLog';
 import { LETTER_IMPORT_ACCEPT } from '../components/LetterImportButton';
+import { fetchInboxFileForStaging, fetchLocalStagingSidecars } from '../lib/localAccBridge';
+import { enqueueStagingPreparse } from '../lib/stagingPreparse';
 
 const BULK_LETTER_TYPES: ReadonlySet<StagingItem['type']> = new Set([
   'letter-import-pending',
@@ -93,22 +96,52 @@ export function ReviewQueue() {
   const userName = useStore((s) => s.data.settings.userDisplayName?.trim() || undefined);
   const [items, setItems] = useState<StagingItem[]>([]);
   const [busy, setBusy] = useState(false);
+  const [autoImportNote, setAutoImportNote] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirm, confirmDialog] = useConfirm();
   const sidecarInput = useRef<HTMLInputElement>(null);
   const letterInput = useRef<HTMLInputElement>(null);
   const pendingReviewId = useRef<string | null>(null);
+  /** Sidecar ids already seen from /_acc/staging this session (avoid rework). */
+  const seenSidecarIds = useRef<Set<string>>(new Set());
 
   const refresh = useCallback(async () => {
     const pending = await loadStagingItems();
     // Oldest first: items closest to the SLA limit surface at the top of the queue.
     setItems(pending.sort((a, b) => a.createdAt - b.createdAt));
     setSelected(new Set());
+    enqueueStagingPreparse(pending);
   }, []);
+
+  const autoImportFromLauncher = useCallback(async () => {
+    const sidecars = await fetchLocalStagingSidecars();
+    if (!sidecars.length) return;
+    const fresh = sidecars.filter((sc) => {
+      if (seenSidecarIds.current.has(sc.item.id)) return false;
+      seenSidecarIds.current.add(sc.item.id);
+      return true;
+    });
+    if (!fresh.length) return;
+    const added = await importStagingSidecars(fresh);
+    if (added > 0) {
+      await appendAudit({
+        action: 'staging-import',
+        entityType: 'staging',
+        summary: `Auto-imported ${added} folder-watch sidecar(s) via /_acc/staging`,
+      });
+      setAutoImportNote(`Auto-imported ${added} letter(s) from ACC-Inbox staging.`);
+      await refresh();
+    }
+  }, [refresh]);
 
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+    void autoImportFromLauncher();
+    const id = window.setInterval(() => {
+      void autoImportFromLauncher();
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, [refresh, autoImportFromLauncher]);
 
   const sorted = useMemo(() => items, [items]);
 
@@ -203,7 +236,37 @@ export function ReviewQueue() {
     });
   }
 
-  function startReview(item: StagingItem) {
+  async function startReview(item: StagingItem) {
+    // Prefer loopback /_acc/inbox-file by SHA-256 — no per-letter file picker.
+    const resolved = await fetchInboxFileForStaging({
+      sourceHash: item.sourceHash,
+      sourceFileName: item.sourceFileName,
+      expectedFileName: item.expectedFileName,
+    });
+    if (resolved) {
+      openLetterImport(resolved, {
+        entryPoint: 'review-queue',
+        stagingItemId: item.id,
+        onImportComplete: () => {
+          void (async () => {
+            const before = items.find((i) => i.id === item.id);
+            await updateStagingItem(item.id, { status: 'approved' });
+            await recordHrqResolution({
+              action: 'hrq-sign-off',
+              stagingItemId: item.id,
+              title: before?.title ?? resolved.name,
+              beforeStatus: before?.status ?? 'pending',
+              afterStatus: 'approved',
+              user: userName,
+              runId: before?.runId,
+              detail: `filed letter import ${resolved.name}`,
+            });
+            await refresh();
+          })();
+        },
+      });
+      return;
+    }
     pendingReviewId.current = item.id;
     letterInput.current?.click();
   }
@@ -443,7 +506,7 @@ export function ReviewQueue() {
     <div>
       <SectionTitle
         title="Human Review Queue"
-        subtitle="Folder-watch and automation drafts land here first — sign off before they touch live patient data. Oldest items are shown first."
+        subtitle="Primary inbox for ACC letters — folder-watch stages them automatically via the local suite server. Sign off before they touch live patient data. Oldest items first."
         actions={
           sorted.length > 0 ? (
             <div className="flex items-center gap-2 flex-wrap">
@@ -456,13 +519,19 @@ export function ReviewQueue() {
         }
       />
 
+      {autoImportNote && (
+        <p className="text-sm mb-3" style={{ color: 'var(--good-fg, var(--muted))' }}>
+          {autoImportNote}
+        </p>
+      )}
+
       <div className="flex flex-wrap gap-2 mb-4">
         <button
           type="button"
-          className="btn btn-primary"
+          className="btn"
           disabled={busy}
           onClick={() => void importStagingFolder()}
-          title="Pick the ACC-Inbox\.staging folder written by Start Folder Watch.cmd"
+          title="Fallback: pick the ACC-Inbox\.staging folder if auto-import via launch.ps1 is unavailable"
         >
           Import ACC-Inbox .staging folder
         </button>
@@ -519,7 +588,7 @@ export function ReviewQueue() {
       {!sorted.length ? (
         <EmptyState
           title="No pending reviews"
-          message="1. Run Start Folder Watch.cmd on the work laptop.  2. Drop PDF or Word letters into ACC-Inbox.  3. Click Import ACC-Inbox .staging folder above to bring the staged letters in for sign-off."
+          message="1. Run Start WFH Mode.cmd (or Start Folder Watch.cmd).  2. Letters stage into ACC-Inbox\.staging and appear here automatically when the suite is served by launch.ps1.  3. If nothing appears, use Import ACC-Inbox .staging folder as a fallback."
         />
       ) : (
         <>
@@ -614,8 +683,8 @@ export function ReviewQueue() {
                       <button
                         type="button"
                         className="btn btn-primary btn-sm"
-                        onClick={() => startReview(item)}
-                        title="Opens a file picker — choose the letter file (usually in ACC-Inbox\processed), then confirm before saving"
+                        onClick={() => void startReview(item)}
+                        title="Opens the letter (auto-attaches from ACC-Inbox when available) for final check before filing"
                       >
                         Review & import
                       </button>

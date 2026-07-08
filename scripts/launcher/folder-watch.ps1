@@ -56,20 +56,40 @@ function Get-Sha256Hex {
     return $hash.Hash.ToLowerInvariant()
 }
 
+function Get-SidecarFileStem {
+    param([string]$FileName)
+    $base = [System.IO.Path]::GetFileName($FileName)
+    if ([string]::IsNullOrWhiteSpace($base)) { $base = 'attachment' }
+    $invalid = [System.IO.Path]::GetInvalidFileNameChars() -join ''
+    $safe = [regex]::Replace($base, "[$([regex]::Escape($invalid))]", '_')
+    if ($safe.Length -gt 120) {
+        $ext = [System.IO.Path]::GetExtension($safe)
+        $stem = [System.IO.Path]::GetFileNameWithoutExtension($safe)
+        if ($stem.Length -gt (120 - $ext.Length)) {
+            $stem = $stem.Substring(0, 120 - $ext.Length)
+        }
+        $safe = $stem + $ext
+    }
+    return $safe
+}
+
 function Get-SidecarPath {
     param(
         [string]$Inbox,
-        [string]$Hash
+        [string]$Hash,
+        [string]$FileName
     )
-    return Join-Path $Inbox (Join-Path '.staging' ($Hash + '.json'))
+    $stem = Get-SidecarFileStem -FileName $FileName
+    return Join-Path $Inbox (Join-Path '.staging' ("{0}_{1}.json" -f $Hash, $stem))
 }
 
 function Test-AlreadyStaged {
     param(
         [string]$Inbox,
-        [string]$Hash
+        [string]$Hash,
+        [string]$FileName
     )
-    return Test-Path -LiteralPath (Get-SidecarPath -Inbox $Inbox -Hash $Hash)
+    return Test-Path -LiteralPath (Get-SidecarPath -Inbox $Inbox -Hash $Hash -FileName $FileName)
 }
 
 function New-FolderWatchSidecar {
@@ -130,13 +150,15 @@ function Invoke-ProcessLetterFile {
         return
     }
 
-    if (Test-AlreadyStaged -Inbox $inbox -Hash $hash) {
-        Write-Host "[skip] duplicate hash $($hash.Substring(0, 8))... $([System.IO.Path]::GetFileName($FilePath))" -ForegroundColor Gray
+    $leafName = [System.IO.Path]::GetFileName($FilePath)
+    if (Test-AlreadyStaged -Inbox $inbox -Hash $hash -FileName $leafName) {
+        $sidecarName = [System.IO.Path]::GetFileName((Get-SidecarPath -Inbox $inbox -Hash $hash -FileName $leafName))
+        Write-Host "[skip] re-scan: identical bytes for $leafName already staged (.staging\$sidecarName, SHA-256 $($hash.Substring(0, 8))...)" -ForegroundColor Gray
         return
     }
 
     $sidecar = New-FolderWatchSidecar -FilePath $FilePath -Hash $hash -Inbox $inbox
-    $outPath = Get-SidecarPath -Inbox $inbox -Hash $hash
+    $outPath = Get-SidecarPath -Inbox $inbox -Hash $hash -FileName $leafName
     $json = $sidecar | ConvertTo-Json -Depth 6 -Compress:$false
     [System.IO.File]::WriteAllText($outPath, $json, [Text.Encoding]::UTF8)
 

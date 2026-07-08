@@ -72,12 +72,18 @@ function sha256File(filePath) {
   return hash.digest('hex');
 }
 
-function sidecarPath(inbox, hash) {
-  return path.join(inbox, STAGING_DIR, `${hash}.json`);
+function sidecarFileStem(fileName) {
+  const base = path.basename(fileName || 'attachment');
+  const safe = base.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_');
+  return safe.length > 120 ? safe.slice(0, 120) : safe;
 }
 
-function alreadyStaged(inbox, hash) {
-  return fs.existsSync(sidecarPath(inbox, hash));
+function sidecarPath(inbox, hash, fileName) {
+  return path.join(inbox, STAGING_DIR, `${hash}_${sidecarFileStem(fileName)}.json`);
+}
+
+function alreadyStaged(inbox, hash, fileName) {
+  return fs.existsSync(sidecarPath(inbox, hash, fileName));
 }
 
 function createSidecar({ filePath, hash, inbox }) {
@@ -120,13 +126,17 @@ function processPdf(inbox, filePath) {
   if (!stat.isFile() || stat.size === 0) return;
 
   const hash = sha256File(filePath);
-  if (alreadyStaged(inbox, hash)) {
-    console.log(`[skip] duplicate hash ${hash.slice(0, 8)}… ${path.basename(filePath)}`);
+  const leafName = path.basename(filePath);
+  if (alreadyStaged(inbox, hash, leafName)) {
+    const sidecarName = path.basename(sidecarPath(inbox, hash, leafName));
+    console.log(
+      `[skip] re-scan: identical bytes for ${leafName} already staged (.staging/${sidecarName}, SHA-256 ${hash.slice(0, 8)}…)`,
+    );
     return;
   }
 
   const sidecar = createSidecar({ filePath, hash, inbox });
-  const outPath = sidecarPath(inbox, hash);
+  const outPath = sidecarPath(inbox, hash, leafName);
   fs.writeFileSync(outPath, JSON.stringify(sidecar, null, 2), 'utf8');
 
   const dest = path.join(inbox, PROCESSED_DIR, path.basename(filePath));

@@ -33,7 +33,7 @@ describe('folder-watch sidecar format', () => {
     fs.mkdirSync(stagingDir);
     const hash = crypto.createHash('sha256').update('fake-pdf').digest('hex');
     const sidecar = createSidecar('test.pdf', hash);
-    const out = path.join(stagingDir, `${hash}.json`);
+    const out = path.join(stagingDir, `${hash}_test.pdf.json`);
     fs.writeFileSync(out, JSON.stringify(sidecar));
     const loaded = JSON.parse(fs.readFileSync(out, 'utf8'));
     expect(loaded.version).toBe(1);

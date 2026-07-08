@@ -527,6 +527,7 @@ function Write-EmailSyncMeta {
     $index[$Hash] = $RelativePath
     $indexTmp = $indexPath + '.tmp'
     $indexJson = ($index | ConvertTo-Json -Depth 3 -Compress:$false)
+    if ([string]::IsNullOrWhiteSpace($indexJson) -or $indexJson -eq 'null') { $indexJson = '{}' }
     [System.IO.File]::WriteAllText($indexTmp, $indexJson, [Text.Encoding]::UTF8)
     Move-Item -LiteralPath $indexTmp -Destination $indexPath -Force
 }

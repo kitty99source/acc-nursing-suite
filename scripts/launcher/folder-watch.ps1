@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]$InboxDir = '',
     [switch]$VerboseSkips
 )
@@ -178,6 +178,7 @@ function Update-HashIndexRelativePath {
     $index[$Hash] = $RelativePath
     $tmp = $indexPath + '.tmp'
     $json = ($index | ConvertTo-Json -Depth 3 -Compress:$false)
+    if ([string]::IsNullOrWhiteSpace($json) -or $json -eq 'null') { $json = '{}' }
     [System.IO.File]::WriteAllText($tmp, $json, [Text.Encoding]::UTF8)
     Move-Item -LiteralPath $tmp -Destination $indexPath -Force
 

@@ -305,7 +305,7 @@ try {
     Write-Host "  Watching: $($script:InboxPath)" -ForegroundColor Green
     Write-Host '  Drop PDF or Word (.docx) letters here.' -ForegroundColor Gray
     Write-Host '  Sidecars: ACC-Inbox\.staging\*.json' -ForegroundColor Gray
-    Write-Host '  In the app: Review Queue -> Import folder-watch sidecars' -ForegroundColor Gray
+    Write-Host '  In the app: open Review Queue (auto-imports via launch.ps1; Import .staging is fallback)' -ForegroundColor Gray
     if ($script:VerboseSkips) {
         Write-Host '  Verbose skips: ON (per-file re-scan detail)' -ForegroundColor DarkGray
     }

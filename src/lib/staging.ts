@@ -28,6 +28,14 @@ export interface StagingItem {
   title: string;
   summary: string;
   sourceFileName?: string;
+  /** Patient display name parsed from the ACC email subject (Review Queue hint). */
+  patientName?: string;
+  /** ACC claim number parsed from the subject (e.g. "P2222756868"). */
+  claimNumber?: string;
+  /** ACC vendor/ACCID token parsed from the subject (e.g. "VEND-K96655"). */
+  accId?: string;
+  /** Descriptive on-disk filename outlook-sync saves the attachment as — the name to look for at Review & import. */
+  expectedFileName?: string;
   /** SHA-256 hex of source PDF bytes — dedup key for folder/email ingress. */
   sourceHash?: string;
   /** Absolute path on work PC (folder watch only; not synced to IDB on other machines). */

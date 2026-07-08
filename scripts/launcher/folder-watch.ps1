@@ -125,9 +125,72 @@ function New-FolderWatchSidecar {
         sourcePath     = $FilePath
         runId          = "folder-watch-$today"
     }
+
+    # Enrich from outlook-sync SHA-256 meta when present (patient/claim/subject).
+    $metaPath = Join-Path $Inbox (Join-Path '.email-sync' ("{0}.meta.json" -f $Hash))
+    if (Test-Path -LiteralPath $metaPath -PathType Leaf) {
+        try {
+            $meta = Get-Content -LiteralPath $metaPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($meta.patientName) { $item.patientName = [string]$meta.patientName }
+            if ($meta.claimNumber) { $item.claimNumber = [string]$meta.claimNumber }
+            if ($meta.accId) { $item.accId = [string]$meta.accId }
+            if ($meta.descriptiveFileName) { $item.expectedFileName = [string]$meta.descriptiveFileName }
+            elseif ($meta.fileName) { $item.expectedFileName = [string]$meta.fileName }
+            if ($meta.subject) {
+                $item.emailSubject = [string]$meta.subject
+                if ($meta.patientName -or $meta.claimNumber) {
+                    $bits = @()
+                    if ($meta.patientName) { $bits += [string]$meta.patientName }
+                    if ($meta.claimNumber) { $bits += ("Claim:{0}" -f $meta.claimNumber) }
+                    if ($meta.accId) { $bits += ("ACCID:{0}" -f $meta.accId) }
+                    $item.summary = ("{0} - awaiting HRQ review." -f ($bits -join ' / '))
+                    $item.title = ("Letter: {0}" -f $fileName)
+                }
+            }
+        } catch {}
+    }
+
     return @{
         version = 1
         item    = $item
+    }
+}
+
+function Update-HashIndexRelativePath {
+    # After moving a file to processed/, keep hash-index.json pointing at the new relative path.
+    param(
+        [string]$Inbox,
+        [string]$Hash,
+        [string]$RelativePath
+    )
+    $metaDir = Join-Path $Inbox '.email-sync'
+    [void][System.IO.Directory]::CreateDirectory($metaDir)
+    $indexPath = Join-Path $metaDir 'hash-index.json'
+    $index = @{}
+    if (Test-Path -LiteralPath $indexPath -PathType Leaf) {
+        try {
+            $existing = Get-Content -LiteralPath $indexPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($existing) {
+                $existing.PSObject.Properties | ForEach-Object { $index[$_.Name] = [string]$_.Value }
+            }
+        } catch {}
+    }
+    $index[$Hash] = $RelativePath
+    $tmp = $indexPath + '.tmp'
+    $json = ($index | ConvertTo-Json -Depth 3 -Compress:$false)
+    [System.IO.File]::WriteAllText($tmp, $json, [Text.Encoding]::UTF8)
+    Move-Item -LiteralPath $tmp -Destination $indexPath -Force
+
+    $metaPath = Join-Path $metaDir ("{0}.meta.json" -f $Hash)
+    if (Test-Path -LiteralPath $metaPath -PathType Leaf) {
+        try {
+            $meta = Get-Content -LiteralPath $metaPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $meta | Add-Member -NotePropertyName relativePath -NotePropertyValue $RelativePath -Force
+            $metaTmp = $metaPath + '.tmp'
+            $metaJson = ($meta | ConvertTo-Json -Depth 4 -Compress:$false)
+            [System.IO.File]::WriteAllText($metaTmp, $metaJson, [Text.Encoding]::UTF8)
+            Move-Item -LiteralPath $metaTmp -Destination $metaPath -Force
+        } catch {}
     }
 }
 
@@ -190,6 +253,9 @@ function Invoke-ProcessLetterFile {
     $dest = Join-Path $inbox (Join-Path 'processed' ([System.IO.Path]::GetFileName($FilePath)))
     try {
         Move-Item -LiteralPath $FilePath -Destination $dest -Force -ErrorAction Stop
+        try {
+            Update-HashIndexRelativePath -Inbox $inbox -Hash $hash -RelativePath ("processed\{0}" -f $leafName)
+        } catch {}
     } catch {
         Write-Host "[warn] could not move to processed/: $($_.Exception.Message)" -ForegroundColor Yellow
     }

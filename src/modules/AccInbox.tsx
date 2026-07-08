@@ -115,6 +115,8 @@ export function AccInbox() {
   }
 
   async function parseToStaging(row: AccInboxRow) {
+    // Legacy path kept for advanced/troubleshooting only — primary ingestion is folder-watch
+    // sidecars auto-imported into the Review Queue via /_acc/staging.
     if (settings.automationPaused) {
       setMessage('Automation is paused — enable in Settings before parsing to staging.');
       return;
@@ -140,18 +142,12 @@ export function AccInbox() {
     };
     await addStagingItem(item);
     await refreshStaging();
-    // Use the cross-module TopBar flash (not local `message`) because we are
-    // about to navigate away — a local message would unmount with ACC Inbox and
-    // the user would "see nothing happen".
     showTopBarFlash(`Added "${row.attachmentName}" to the Review Queue — open it there to file the patient.`, 'good');
     setFocus({ module: 'review' });
   }
 
-  function openImportStub(row: AccInboxRow) {
-    showTopBarFlash(
-      `Save ${row.attachmentName} to ACC-Inbox, run folder watch, then Import staging here in the Review Queue.`,
-      'warn',
-    );
+  function goToReviewQueue() {
+    showTopBarFlash('Review Queue is the primary inbox — letters stage automatically from folder watch.', 'good');
     setFocus({ module: 'review' });
   }
 
@@ -189,7 +185,7 @@ export function AccInbox() {
     <div>
       <SectionTitle
         title="ACC Inbox"
-        subtitle="Filtered ACC letters only — run Start Email Sync.cmd on work laptop, then folder watch."
+        subtitle="Email sync status and saved-letter audit — file patients from the Review Queue (primary inbox)."
       />
 
       {settings.automationPaused && (
@@ -199,7 +195,13 @@ export function AccInbox() {
       )}
 
       <Card className="mb-4 p-4">
-        <h3 className="font-semibold mb-2 text-sm">Email sync status</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <h3 className="font-semibold text-sm">Email sync status</h3>
+          <button className="btn btn-sm btn-primary" type="button" onClick={goToReviewQueue}>
+            Open Review Queue
+            {stagingCount > 0 ? ` (${stagingCount})` : ''}
+          </button>
+        </div>
         {syncLoading ? (
           <p className="text-sm mb-2" style={{ color: 'var(--muted)' }}>
             Loading sync report from <span className="font-mono">launch.ps1</span>…
@@ -270,8 +272,11 @@ export function AccInbox() {
 
       {!syncLoading && syncStatus && (
         <div className="card mb-4 p-3 text-xs" style={{ color: 'var(--muted)' }}>
-          Rows from last email sync. Run folder watch, then import staging in Review Queue.
-          {stagingCount > 0 && ` · ${stagingCount} item(s) already in HRQ staging.`}
+          Audit list of letters saved by the last email sync. Staging and filing happen in the{' '}
+          <button type="button" className="underline" onClick={goToReviewQueue}>
+            Review Queue
+          </button>
+          {stagingCount > 0 && ` · ${stagingCount} item(s) already in HRQ staging`}.
         </div>
       )}
 
@@ -304,14 +309,19 @@ export function AccInbox() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">
-                  <button className="btn btn-sm btn-primary" type="button" onClick={() => void parseToStaging(row)}>
-                    Parse → staging
+                  <button className="btn btn-sm btn-primary" type="button" onClick={goToReviewQueue}>
+                    Open Review Queue
                   </button>
-                  <button className="btn btn-sm" type="button" onClick={() => openImportStub(row)}>
-                    Open import
+                  <button
+                    className="btn btn-sm"
+                    type="button"
+                    title="Advanced: manually stage this sync row (prefer folder-watch auto-import)"
+                    onClick={() => void parseToStaging(row)}
+                  >
+                    Advanced: stage
                   </button>
                   <button className="btn btn-sm" type="button" onClick={() => setIgnored((s) => new Set(s).add(row.id))}>
-                    Ignore
+                    Hide
                   </button>
                 </div>
               </div>

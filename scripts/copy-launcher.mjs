@@ -75,6 +75,8 @@ const launcherFiles = [
   'Start Email Sync.cmd',
   'Start Email Backfill.cmd',
   'Start Email Diagnose.cmd',
+  'Rename-AccInboxAttachments.ps1',
+  'Start Rename Inbox Files.cmd',
   'Start WFH Mode.cmd',
   'wfh-mode.ps1',
   'Start Portal Discover.cmd',

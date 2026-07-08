@@ -5,7 +5,7 @@
 
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('acc', 'portal', 'folder-watch', 'email-probe', 'email-sync', 'wfh', 'email-diagnose')]
+    [ValidateSet('acc', 'portal', 'folder-watch', 'email-probe', 'email-sync', 'wfh', 'email-diagnose', 'inbox-rename')]
     [string]$LogName
 )
 

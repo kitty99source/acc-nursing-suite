@@ -441,6 +441,96 @@ function Get-SafeFileName {
     return $safe
 }
 
+function Get-FileSha256Hex {
+    param([string]$FilePath)
+    $hash = Get-FileHash -LiteralPath $FilePath -Algorithm SHA256
+    return $hash.Hash.ToLowerInvariant()
+}
+
+function Get-PatientNameFromSubject {
+    # Title-stripped display name before " - Claim" (for meta / sidecar enrichment).
+    param([string]$Subject)
+    if ([string]::IsNullOrWhiteSpace($Subject)) { return $null }
+    $sepIndex = $Subject.IndexOf(' - Claim', [System.StringComparison]::OrdinalIgnoreCase)
+    if ($sepIndex -lt 0) { return $null }
+    $nameSource = $Subject.Substring(0, $sepIndex)
+    $nameSource = ($nameSource -replace '\s+', ' ').Trim()
+    $nameSource = [regex]::Replace($nameSource, '^(?i:mr|mrs|ms|miss|dr)\.?\s+', '')
+    if ([string]::IsNullOrWhiteSpace($nameSource)) { return $null }
+    return $nameSource
+}
+
+function Get-ClaimTokenFromSubject {
+    param([string]$Subject)
+    if ([string]::IsNullOrWhiteSpace($Subject)) { return $null }
+    $claimMatch = [regex]::Match($Subject, '(?i:claim)\s*[:#]?\s*([A-Za-z0-9]+)')
+    if (-not $claimMatch.Success) { return $null }
+    $token = [regex]::Replace($claimMatch.Groups[1].Value, '[^A-Za-z0-9]', '')
+    if ([string]::IsNullOrWhiteSpace($token)) { return $null }
+    return $token
+}
+
+function Get-AccIdTokenFromSubject {
+    param([string]$Subject)
+    if ([string]::IsNullOrWhiteSpace($Subject)) { return $null }
+    $m = [regex]::Match($Subject, '(?i:accid)\s*[:#]?\s*([A-Za-z0-9\-]+)')
+    if (-not $m.Success) { return $null }
+    return $m.Groups[1].Value.Trim()
+}
+
+function Write-EmailSyncMeta {
+    # Atomic per-file metadata keyed by SHA-256 so folder-watch / launch.ps1 can
+    # look up patient/claim without fragile filename matching.
+    param(
+        [string]$Inbox,
+        [string]$Hash,
+        [string]$EntryId,
+        [string]$Subject,
+        [string]$Sender,
+        [string]$FileName,
+        [string]$DescriptiveFileName,
+        [string]$RelativePath
+    )
+    $metaDir = Join-Path $Inbox '.email-sync'
+    [void][System.IO.Directory]::CreateDirectory($metaDir)
+    $metaPath = Join-Path $metaDir ("{0}.meta.json" -f $Hash)
+    $tmpPath = $metaPath + '.tmp'
+    $meta = [ordered]@{
+        version            = 1
+        hash               = $Hash
+        entryId            = $EntryId
+        subject            = $Subject
+        sender             = $Sender
+        savedAt            = (Get-Date).ToUniversalTime().ToString('o')
+        fileName           = $FileName
+        descriptiveFileName = $DescriptiveFileName
+        patientName        = (Get-PatientNameFromSubject -Subject $Subject)
+        claimNumber        = (Get-ClaimTokenFromSubject -Subject $Subject)
+        accId              = (Get-AccIdTokenFromSubject -Subject $Subject)
+        relativePath       = $RelativePath
+    }
+    $json = $meta | ConvertTo-Json -Depth 4 -Compress:$false
+    [System.IO.File]::WriteAllText($tmpPath, $json, [Text.Encoding]::UTF8)
+    Move-Item -LiteralPath $tmpPath -Destination $metaPath -Force
+
+    # Maintain hash-index.json (hash -> relative path under ACC-Inbox) for /_acc/inbox-file.
+    $indexPath = Join-Path $metaDir 'hash-index.json'
+    $index = @{}
+    if (Test-Path -LiteralPath $indexPath -PathType Leaf) {
+        try {
+            $existing = Get-Content -LiteralPath $indexPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($existing) {
+                $existing.PSObject.Properties | ForEach-Object { $index[$_.Name] = [string]$_.Value }
+            }
+        } catch {}
+    }
+    $index[$Hash] = $RelativePath
+    $indexTmp = $indexPath + '.tmp'
+    $indexJson = ($index | ConvertTo-Json -Depth 3 -Compress:$false)
+    [System.IO.File]::WriteAllText($indexTmp, $indexJson, [Text.Encoding]::UTF8)
+    Move-Item -LiteralPath $indexTmp -Destination $indexPath -Force
+}
+
 function Get-UniquePath {
     param(
         [string]$Dir,
@@ -477,6 +567,33 @@ function Limit-FileNameLength {
     return ($stem.Substring(0, $keep) + $ext)
 }
 
+function Test-IsDescriptiveFileName {
+    # Mirrors isDescriptiveName in src/lib/attachmentNaming.ts - KEEP IN SYNC.
+    param([string]$FileName)
+    $leaf = [System.IO.Path]::GetFileName($FileName)
+    if ([string]::IsNullOrWhiteSpace($leaf)) { return $false }
+    if ($leaf -match '^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)?_Claim[A-Za-z0-9]+_') { return $true }
+    if ($leaf -match '^Claim[A-Za-z0-9]+_') { return $true }
+    if ($leaf -match '^[A-Za-z0-9]+-[A-Za-z0-9]+_') { return $true }
+    return $false
+}
+
+function Strip-DescriptivePrefix {
+    # Mirrors stripDescriptivePrefix in src/lib/attachmentNaming.ts - KEEP IN SYNC.
+    # Prevents double-prefix when rename / re-save runs on an already-descriptive name.
+    param([string]$FileName)
+    $leaf = [System.IO.Path]::GetFileName($FileName)
+    if ([string]::IsNullOrWhiteSpace($leaf)) { return $leaf }
+    if (-not (Test-IsDescriptiveFileName -FileName $leaf)) { return $leaf }
+    $m = [regex]::Match($leaf, '^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)?_Claim[A-Za-z0-9]+_(.+)$')
+    if ($m.Success) { return $m.Groups[1].Value }
+    $m = [regex]::Match($leaf, '^Claim[A-Za-z0-9]+_(.+)$')
+    if ($m.Success) { return $m.Groups[1].Value }
+    $m = [regex]::Match($leaf, '^[A-Za-z0-9]+-[A-Za-z0-9]+_(.+)$')
+    if ($m.Success) { return $m.Groups[1].Value }
+    return $leaf
+}
+
 function New-DescriptiveFileName {
     # Build a patient/claim-identifiable filename from the email SUBJECT so the
     # reviewer can tell letters apart WITHOUT opening them. Bytes are untouched
@@ -491,13 +608,16 @@ function New-DescriptiveFileName {
     # FALLBACK: if neither a patient name nor a claim can be parsed, the ORIGINAL
     # filename is returned unchanged (never an empty/garbage prefix). If only one
     # of the two is present, only that part is used.
+    # IDEMPOTENT: strips an existing descriptive prefix first so re-runs never
+    # double-prefix (mirrors descriptiveAttachmentName in attachmentNaming.ts).
     param(
         [string]$Subject,
         [string]$OriginalFileName
     )
 
-    $original = [System.IO.Path]::GetFileName($OriginalFileName)
-    if ([string]::IsNullOrWhiteSpace($original)) { return $OriginalFileName }
+    $leaf = [System.IO.Path]::GetFileName($OriginalFileName)
+    if ([string]::IsNullOrWhiteSpace($leaf)) { return $OriginalFileName }
+    $original = Strip-DescriptivePrefix -FileName $leaf
     if ([string]::IsNullOrWhiteSpace($Subject)) { return $original }
 
     # --- Patient name: text BEFORE " - Claim" (the reliable ACC format signal).
@@ -923,13 +1043,21 @@ try {
                     $att.SaveAsFile($dest)
                     $savedAny = $true
                     $status.savedCount++
+                    $savedLeaf = [System.IO.Path]::GetFileName($dest)
                     $status.savedFiles += @{
-                        fileName = [System.IO.Path]::GetFileName($dest)
+                        fileName = $savedLeaf
                         subject  = $subject
                         sender   = $from
                         savedAt  = (Get-Date).ToUniversalTime().ToString('o')
                     }
-                    Write-SyncLine ("  [capture] saved as {0} <- {1}" -f ([System.IO.Path]::GetFileName($dest)), (Get-TruncatedSubject $subject))
+                    # SHA-256 meta for folder-watch enrichment + launch.ps1 /_acc/inbox-file.
+                    try {
+                        $fileHash = Get-FileSha256Hex -FilePath $dest
+                        Write-EmailSyncMeta -Inbox $inbox -Hash $fileHash -EntryId $entryId -Subject $subject -Sender $from -FileName $fileName -DescriptiveFileName $savedLeaf -RelativePath $savedLeaf
+                    } catch {
+                        Write-SyncLine ("  WARN - could not write .email-sync meta: {0}" -f $_.Exception.Message)
+                    }
+                    Write-SyncLine ("  [capture] saved as {0} <- {1}" -f $savedLeaf, (Get-TruncatedSubject $subject))
                 } finally {
                     if ($att) { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($att) }
                 }

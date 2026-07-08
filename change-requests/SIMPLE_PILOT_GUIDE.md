@@ -555,7 +555,19 @@ All patient data stays on the work laptop — do **not** run folder watch on the
 
 ### Step 2 — Backlog sync (only if probe PASS)
 
-**What this does (plain English):** Each time you double-click **Start Email Sync.cmd** (any time of day — see note below), it pulls the **oldest ACC emails** from Outlook (up to 50 per run), saves PDF or Word attachments into `ACC-Inbox`, and remembers where it stopped. It **never** auto-imports into the app — use **Start Folder Watch.cmd** → **Review Queue** to import manually. Outlook category **actioned** means you saved the letter locally — it does **not** exclude capture; those letters are included and still flow to the Human Review Queue for real processing.
+**What this does (plain English):** Each time you double-click **Start Email Sync.cmd** (any time of day — see note below), it pulls the **oldest ACC emails** from Outlook (up to 50 per run), saves PDF or Word attachments into `ACC-Inbox`, and remembers where it stopped. **Start Folder Watch.cmd** (or WFH Mode) stages those files; when the suite is open via `launch.ps1`, the **Review Queue auto-imports** new staging sidecars — no manual “Import .staging folder” click for the happy path. You still **confirm** each letter before it becomes a live patient record. Outlook category **actioned** means you saved the letter locally — it does **not** exclude capture.
+
+### One-time: rename older ACC-Inbox filenames (uniform patient+claim names)
+
+Older files in `ACC-Inbox` / `processed` may still use generic ACC names (`TMT…`, `%20`, `1_NUR02_…_vendor.docx`). New syncs already use `Surname-First_Claim…_original.ext`.
+
+1. **Stop** `Start Folder Watch.cmd` (leave it closed).
+2. Double-click **`Start Rename Inbox Files.cmd`** — default is **dry-run** (prints old → new, changes nothing).
+3. Review the list. When happy, run again with **`-Apply`** (or pass `apply` as the first argument).
+4. Log: `%USERPROFILE%\ACC-Suite\logs\inbox-rename-YYYYMMDD.log` (reversible record of renames).
+5. Restart **Folder Watch** / WFH Mode.
+
+Files without a subject in `email-sync-status.json` are listed and left unchanged (status may truncate to the last 200 saves).
 
 > **Work hours (U-08 update):** Manual runs are **no longer clock-blocked**. Double-clicking **Start Email Sync.cmd** or **Start WFH Mode.cmd** always runs, even late at night — a manual launch is itself the signal you're working from home. The log will say `Manual run (HH:mm NZ) - work-hours gate skipped`. The 7am–6pm window is now only a configurable option for a *future* scheduled/automated daemon (`accWorkHours` in `office-config.json`, `enabled: false` by default).
 
@@ -564,10 +576,12 @@ All patient data stays on the work laptop — do **not** run folder watch on the
 3. Double-click **`Start Email Sync.cmd`** — runs **immediately, any time of day** (manual run; the old 7am–6pm block no longer applies to manual launches). Log should show **`Using mailbox: ACCDistrictNursing`** and **`Manual run ... work-hours gate skipped`**.
 4. Repeat during work hours until the log shows **saved 0** attachments (backlog cleared).
 5. Tag emails **actioned** in Outlook after you save the attachment locally (optional personal workflow marker — sync still captures them for HRQ review).
-6. Status file: `%USERPROFILE%\ACC-Suite\email-sync-status.json` — load in **ACC Inbox** → **Load sync report**.
+6. Status file: `%USERPROFILE%\ACC-Suite\email-sync-status.json` — **ACC Inbox** shows sync health / audit list (optional **Load sync report**).
 7. Checkpoint file: `%USERPROFILE%\ACC-Suite\email-sync-state.json` — resume after close or Ctrl+C.
-8. Double-click **`Start Folder Watch.cmd`** so new attachments stage for **Review Queue**.
+8. Double-click **`Start Folder Watch.cmd`** (or use **Start WFH Mode.cmd**). Open the app → **Review Queue** — new letters should appear automatically; click **Review & import** / **File to patient record**.
 9. Log: `%USERPROFILE%\ACC-Suite\logs\email-sync-bootstrap.log`
+
+**Primary click-path (after rebuild):** `Start WFH Mode.cmd` → open suite → **Review Queue** → confirm & file. **ACC Inbox** is for sync status / troubleshooting only (not the main filing path).
 
 **Switches:** `-Recent` for last-14-days mode only; `-BatchSize 25` for smaller batches; `-Scheduled` marks a run as the future automated daemon (obeys the `accWorkHours` window if `enabled: true`); `-IgnoreWorkHours` forces a `-Scheduled` run even outside its window. Manual double-click runs need none of these — they always run.
 

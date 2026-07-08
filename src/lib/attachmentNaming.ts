@@ -67,13 +67,50 @@ export function claimTokenFromSubject(subject: string): string | undefined {
 }
 
 /**
+ * True when the filename already starts with a descriptive patient/claim prefix
+ * produced by descriptiveAttachmentName / New-DescriptiveFileName.
+ * Patterns: Surname-First_ClaimN_…, ClaimN_…, or Surname-First_… (before ACC original).
+ */
+export function isDescriptiveName(fileName: string): boolean {
+  const leaf = (fileName.split(/[\\/]/).pop() ?? fileName).trim();
+  if (!leaf) return false;
+  // Surname-First_ClaimTOKEN_rest  OR  ClaimTOKEN_rest
+  if (/^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)?_Claim[A-Za-z0-9]+_/.test(leaf)) return true;
+  if (/^Claim[A-Za-z0-9]+_/.test(leaf)) return true;
+  // Surname-First_rest (patient-only prefix; require hyphenated surname-first form)
+  if (/^[A-Za-z0-9]+-[A-Za-z0-9]+_/.test(leaf)) return true;
+  return false;
+}
+
+/**
+ * Strip a leading descriptive prefix so rename / re-save is idempotent.
+ * "Reichenbach-Graham_ClaimP1_vendor.docx" -> "vendor.docx"
+ * Leaves non-descriptive names (TMT…, %20, generic vendor) unchanged.
+ */
+export function stripDescriptivePrefix(fileName: string): string {
+  const leaf = (fileName.split(/[\\/]/).pop() ?? fileName).trim();
+  if (!leaf || !isDescriptiveName(leaf)) return leaf;
+
+  let rest = leaf;
+  const withClaim = rest.match(/^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)?_Claim[A-Za-z0-9]+_(.+)$/);
+  if (withClaim) return withClaim[1];
+  const claimOnly = rest.match(/^Claim[A-Za-z0-9]+_(.+)$/);
+  if (claimOnly) return claimOnly[1];
+  const patientOnly = rest.match(/^[A-Za-z0-9]+-[A-Za-z0-9]+_(.+)$/);
+  if (patientOnly) return patientOnly[1];
+  return leaf;
+}
+
+/**
  * Build the patient/claim-identifiable filename outlook-sync saves attachments as.
  * Falls back to the original filename when neither a patient name nor a claim can
  * be parsed (never an empty/garbage prefix). Uses whichever of the two is present.
+ * Strips an existing descriptive prefix first so re-runs never double-prefix.
  */
 export function descriptiveAttachmentName(subject: string, originalFileName: string): string {
-  const original = (originalFileName.split(/[\\/]/).pop() ?? originalFileName).trim();
-  if (!original) return originalFileName;
+  const leaf = (originalFileName.split(/[\\/]/).pop() ?? originalFileName).trim();
+  if (!leaf) return originalFileName;
+  const original = stripDescriptivePrefix(leaf);
   if (!subject) return original;
 
   const patient = patientNameFromSubject(subject);

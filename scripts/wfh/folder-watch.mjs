@@ -20,10 +20,13 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const DEFAULT_INBOX = path.join(process.env.HOME ?? process.cwd(), 'ACC-Inbox');
+const DEFAULT_INBOX = path.join(
+  process.env.USERPROFILE ?? process.env.HOME ?? process.cwd(),
+  'ACC-Inbox',
+);
 const PROCESSED_DIR = 'processed';
 const STAGING_DIR = '.staging';
-const SUPPORTED_EXT = new Set(['.pdf']);
+const SUPPORTED_EXT = new Set(['.pdf', '.docx']);
 
 function resolveInboxDir(arg) {
   return path.resolve(arg ?? process.env.ACC_INBOX ?? DEFAULT_INBOX);
@@ -68,7 +71,7 @@ function createSidecar({ filePath, hash, inbox }) {
       createdAt: Date.now(),
       severity: 'info',
       title: `Folder: ${fileName}`,
-      summary: `PDF dropped in ACC-Inbox — awaiting HRQ review and letter parse.`,
+      summary: `Letter dropped in ACC-Inbox — awaiting HRQ review and letter parse.`,
       sourceFileName: fileName,
       sourceHash: hash,
       sourcePath: filePath,
@@ -131,7 +134,7 @@ function watch(inbox) {
   if (isAutomationPaused(inbox)) {
     console.log(`[paused] ${inbox} — create .automation-paused or unset ACC_AUTOMATION_PAUSED to resume`);
   }
-  console.log(`Watching ${inbox} for PDF drops (Ctrl+C to stop)`);
+  console.log(`Watching ${inbox} for PDF/Word drops (Ctrl+C to stop)`);
   scanExisting(inbox);
 
   fs.watch(inbox, { persistent: true }, (_event, filename) => {

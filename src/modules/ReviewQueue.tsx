@@ -101,6 +101,40 @@ export function ReviewQueue() {
     }
   }
 
+  async function importStagingFolder() {
+    if (!('showDirectoryPicker' in window)) {
+      sidecarInput.current?.click();
+      return;
+    }
+    setBusy(true);
+    try {
+      const handle = await window.showDirectoryPicker({ mode: 'read' });
+      let added = 0;
+      for await (const entry of handle.values()) {
+        if (entry.kind !== 'file' || !entry.name.endsWith('.json')) continue;
+        const file = await (entry as FileSystemFileHandle).getFile();
+        added += await importStagingJsonText(await file.text());
+      }
+      if (added > 0) {
+        await appendAudit({
+          action: 'staging-import',
+          entityType: 'staging',
+          summary: `Imported ${added} folder-watch sidecar(s) from .staging folder`,
+        });
+      }
+      await refresh();
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') return;
+      await confirm({
+        title: 'Import failed',
+        message: (err as Error).message,
+        confirmLabel: 'OK',
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function toggleSelect(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -236,8 +270,11 @@ export function ReviewQueue() {
       />
 
       <div className="flex flex-wrap gap-2 mb-4">
-        <button type="button" className="btn btn-primary" disabled={busy} onClick={() => sidecarInput.current?.click()}>
-          Import folder-watch sidecars
+        <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void importStagingFolder()}>
+          Import ACC-Inbox .staging folder
+        </button>
+        <button type="button" className="btn" disabled={busy} onClick={() => sidecarInput.current?.click()}>
+          Import sidecar JSON files
         </button>
         <button type="button" className="btn btn-primary" disabled={busy || !canBatchApprove} onClick={() => void approveSelected()}>
           Approve selected ({batchApprovableCount})
@@ -268,7 +305,7 @@ export function ReviewQueue() {
       {!sorted.length ? (
         <EmptyState
           title="No pending reviews"
-          message="Drop PDFs in ACC-Inbox with folder-watch running, then import the .staging/*.json sidecars here."
+          message="Run Start Folder Watch.cmd, drop PDF or Word letters in ACC-Inbox, then click Import ACC-Inbox .staging folder above."
         />
       ) : (
         <div className="space-y-3">

@@ -88,8 +88,10 @@ const launcherRequired = [
   'launch.ps1',
   'launcher-log.ps1',
   'portal-discover.ps1',
+  'folder-watch.ps1',
   'Start ACC Suite.cmd',
   'Start Portal Discover.cmd',
+  'Start Folder Watch.cmd',
   'TROUBLESHOOT.txt',
 ];
 console.log('\n--- Launcher files in dist ---');

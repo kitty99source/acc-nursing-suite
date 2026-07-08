@@ -16,7 +16,7 @@ interface FileSystemWritableFileStream extends WritableStream {
   close(): Promise<void>;
 }
 
-interface FileSystemFileHandle {
+interface FileSystemFileHandle extends FileSystemHandle {
   readonly kind: 'file';
   readonly name: string;
   getFile(): Promise<File>;
@@ -41,7 +41,27 @@ interface OpenFilePickerOptions {
   excludeAcceptAllOption?: boolean;
 }
 
+interface FileSystemHandle {
+  readonly kind: 'file' | 'directory';
+  readonly name: string;
+}
+
+interface FileSystemDirectoryHandle extends FileSystemHandle {
+  readonly kind: 'directory';
+  readonly name: string;
+  values(): AsyncIterableIterator<FileSystemHandle>;
+  queryPermission(descriptor?: FileSystemHandlePermissionDescriptor): Promise<PermissionState>;
+  requestPermission(descriptor?: FileSystemHandlePermissionDescriptor): Promise<PermissionState>;
+}
+
+interface DirectoryPickerOptions {
+  id?: string;
+  mode?: 'read' | 'readwrite';
+  startIn?: 'desktop' | 'documents' | 'downloads' | FileSystemHandle;
+}
+
 interface Window {
   showSaveFilePicker(options?: SaveFilePickerOptions): Promise<FileSystemFileHandle>;
   showOpenFilePicker(options?: OpenFilePickerOptions): Promise<FileSystemFileHandle[]>;
+  showDirectoryPicker(options?: DirectoryPickerOptions): Promise<FileSystemDirectoryHandle>;
 }

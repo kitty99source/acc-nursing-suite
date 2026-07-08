@@ -1,47 +1,224 @@
-﻿# ACC Folder Watch - coming soon (work laptop)
-#
-# This tool watches ~/ACC-Inbox for PDF drops. It is not yet available
-# without Node.js on the work laptop.
+﻿param(
+    [string]$InboxDir = ''
+)
 
 $bootstrapRoot = $PSScriptRoot
 if ([string]::IsNullOrEmpty($bootstrapRoot)) { $bootstrapRoot = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }
 . (Join-Path $bootstrapRoot 'bootstrap-log.ps1') -LogName 'folder-watch'
 Write-BootstrapLog 'folder-watch.ps1 started'
 
-try { [void][System.IO.Directory]::CreateDirectory((Join-Path $env:USERPROFILE 'ACC-Suite\logs')) } catch {}
+# ACC Folder Watch - work laptop (PowerShell only, no Node.js)
+#
+# Watches %USERPROFILE%\ACC-Inbox for PDF and Word letter drops.
+# Writes staging sidecar JSON to ACC-Inbox\.staging\ for Human Review Queue.
+# Moves originals to ACC-Inbox\processed\ after staging.
 
-$script:LauncherDir = $env:ACC_LAUNCHER_DIR
-if ([string]::IsNullOrWhiteSpace($script:LauncherDir)) { $script:LauncherDir = $PSScriptRoot }
-if ([string]::IsNullOrWhiteSpace($script:LauncherDir)) { $script:LauncherDir = Split-Path -Parent $MyInvocation.MyCommand.Path }
-$script:LauncherDir = $script:LauncherDir.TrimEnd('\', '/')
-try { Set-Location -LiteralPath $script:LauncherDir -ErrorAction Stop } catch {}
+$script:LauncherLogEnabled = $false
+$script:InboxPath = $null
+$script:SupportedExt = @('.pdf', '.docx')
 
-$script:LauncherHadError = $false
-$script:LauncherLogPath = $null
-
-try {
-    $logHelper = Join-Path $script:LauncherDir 'launcher-log.ps1'
-    . $logHelper
-    Initialize-LauncherLog -Prefix 'folder-watch' | Out-Null
-    Write-LauncherLog 'Step: folder watch is not yet available on work laptops'
-
-    Show-LauncherMessageBox -Title 'ACC Folder Watch' -Icon Information -Message @"
-Folder Watch is coming soon for work laptops.
-
-Today it still requires Node.js (dev machine only).
-Use the main app with Start ACC Suite.cmd - no extra software needed.
-
-Portal discovery works now: double-click Start Portal Discover.cmd
-"@
-} catch {
-    $script:LauncherHadError = $true
-    if (Get-Command Write-LauncherLogException -ErrorAction SilentlyContinue) {
-        Write-LauncherLogException $_
-    }
-} finally {
-    if (Get-Command Complete-LauncherLog -ErrorAction SilentlyContinue) {
-        Complete-LauncherLog -Title 'ACC Folder Watch'
+function Write-LauncherLogSafe {
+    param([string]$Message)
+    try {
+        if ($script:LauncherLogEnabled -and (Get-Command Write-LauncherLog -ErrorAction SilentlyContinue)) {
+            Write-LauncherLog $Message
+        } else {
+            Write-BootstrapLog $Message
+        }
+    } catch {
+        try { Write-BootstrapLog $Message } catch {}
     }
 }
 
-exit 0
+try {
+    [void][System.IO.Directory]::CreateDirectory((Join-Path $env:USERPROFILE 'ACC-Suite\logs'))
+} catch {}
+
+try {
+    $logHelper = Join-Path $bootstrapRoot 'launcher-log.ps1'
+    if (Test-Path -LiteralPath $logHelper) {
+        . $logHelper
+        Initialize-LauncherLog -Prefix 'folder-watch' -ShowSuccessOnExit:$false | Out-Null
+        $script:LauncherLogEnabled = $true
+    }
+} catch {}
+
+function Resolve-InboxPath {
+    param([string]$Override)
+    if (-not [string]::IsNullOrWhiteSpace($Override)) {
+        return [System.IO.Path]::GetFullPath($Override)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($env:ACC_INBOX)) {
+        return [System.IO.Path]::GetFullPath($env:ACC_INBOX)
+    }
+    return Join-Path $env:USERPROFILE 'ACC-Inbox'
+}
+
+function Test-AutomationPaused {
+    param([string]$Inbox)
+    if ($env:ACC_AUTOMATION_PAUSED -eq '1') { return $true }
+    return Test-Path -LiteralPath (Join-Path $Inbox '.automation-paused')
+}
+
+function Initialize-InboxDirs {
+    param([string]$Inbox)
+    [void][System.IO.Directory]::CreateDirectory($Inbox)
+    [void][System.IO.Directory]::CreateDirectory((Join-Path $Inbox 'processed'))
+    [void][System.IO.Directory]::CreateDirectory((Join-Path $Inbox '.staging'))
+}
+
+function Get-Sha256Hex {
+    param([string]$FilePath)
+    $hash = Get-FileHash -LiteralPath $FilePath -Algorithm SHA256
+    return $hash.Hash.ToLowerInvariant()
+}
+
+function Get-SidecarPath {
+    param(
+        [string]$Inbox,
+        [string]$Hash
+    )
+    return Join-Path $Inbox (Join-Path '.staging' ($Hash + '.json'))
+}
+
+function Test-AlreadyStaged {
+    param(
+        [string]$Inbox,
+        [string]$Hash
+    )
+    return Test-Path -LiteralPath (Get-SidecarPath -Inbox $Inbox -Hash $Hash)
+}
+
+function New-FolderWatchSidecar {
+    param(
+        [string]$FilePath,
+        [string]$Hash,
+        [string]$Inbox
+    )
+    $fileName = [System.IO.Path]::GetFileName($FilePath)
+    $today = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd')
+    $item = [ordered]@{
+        id             = [guid]::NewGuid().ToString()
+        type           = 'letter-import-pending'
+        status         = 'pending'
+        source         = 'folder'
+        createdAt      = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+        severity       = 'info'
+        title          = "Folder: $fileName"
+        summary        = 'Letter dropped in ACC-Inbox - awaiting HRQ review and letter parse.'
+        sourceFileName = $fileName
+        sourceHash     = $Hash
+        sourcePath     = $FilePath
+        runId          = "folder-watch-$today"
+    }
+    return @{
+        version = 1
+        item    = $item
+    }
+}
+
+function Invoke-ProcessLetterFile {
+    param([string]$FilePath)
+
+    if (-not $script:InboxPath) { return }
+    $inbox = $script:InboxPath
+
+    if (Test-AutomationPaused -Inbox $inbox) {
+        Write-Host "[paused] automation hold - skipping $([System.IO.Path]::GetFileName($FilePath))" -ForegroundColor Yellow
+        return
+    }
+
+    if (-not (Test-Path -LiteralPath $FilePath)) { return }
+
+    $ext = [System.IO.Path]::GetExtension($FilePath).ToLowerInvariant()
+    if ($script:SupportedExt -notcontains $ext) { return }
+
+    try {
+        $info = Get-Item -LiteralPath $FilePath
+    } catch {
+        return
+    }
+    if (-not $info.PSIsContainer -and $info.Length -le 0) { return }
+
+    try {
+        $hash = Get-Sha256Hex -FilePath $FilePath
+    } catch {
+        Write-Host "[warn] could not hash $FilePath" -ForegroundColor Yellow
+        return
+    }
+
+    if (Test-AlreadyStaged -Inbox $inbox -Hash $hash) {
+        Write-Host "[skip] duplicate hash $($hash.Substring(0, 8))... $([System.IO.Path]::GetFileName($FilePath))" -ForegroundColor Gray
+        return
+    }
+
+    $sidecar = New-FolderWatchSidecar -FilePath $FilePath -Hash $hash -Inbox $inbox
+    $outPath = Get-SidecarPath -Inbox $inbox -Hash $hash
+    $json = $sidecar | ConvertTo-Json -Depth 6 -Compress:$false
+    [System.IO.File]::WriteAllText($outPath, $json, [Text.Encoding]::UTF8)
+
+    $dest = Join-Path $inbox (Join-Path 'processed' ([System.IO.Path]::GetFileName($FilePath)))
+    try {
+        Move-Item -LiteralPath $FilePath -Destination $dest -Force -ErrorAction Stop
+    } catch {
+        Write-Host "[warn] could not move to processed/: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+
+    $relative = '.staging\' + [System.IO.Path]::GetFileName($outPath)
+    Write-Host "[staged] $([System.IO.Path]::GetFileName($FilePath)) -> $relative" -ForegroundColor Green
+    Write-LauncherLogSafe "Staged $([System.IO.Path]::GetFileName($FilePath)) as $relative"
+}
+
+function Invoke-ScanInbox {
+    param([string]$Inbox)
+    foreach ($name in [System.IO.Directory]::GetFileSystemEntries($Inbox)) {
+        $leaf = [System.IO.Path]::GetFileName($name)
+        if ($leaf.StartsWith('.') -or $leaf -eq 'processed') { continue }
+        if (-not (Test-Path -LiteralPath $name -PathType Leaf)) { continue }
+        Invoke-ProcessLetterFile -FilePath $name
+    }
+}
+
+try {
+    $ErrorActionPreference = 'Stop'
+    $script:InboxPath = Resolve-InboxPath -Override $InboxDir
+    Initialize-InboxDirs -Inbox $script:InboxPath
+
+    if (Test-AutomationPaused -Inbox $script:InboxPath) {
+        Write-Host "[paused] $($script:InboxPath) - remove .automation-paused or unset ACC_AUTOMATION_PAUSED to resume" -ForegroundColor Yellow
+    }
+
+    Write-Host ''
+    Write-Host '  ACC Folder Watch' -ForegroundColor Cyan
+    Write-Host '  ----------------' -ForegroundColor Cyan
+    Write-Host '  (PowerShell only - no extra software)' -ForegroundColor Gray
+    Write-Host ''
+    Write-Host "  Watching: $($script:InboxPath)" -ForegroundColor Green
+    Write-Host '  Drop PDF or Word (.docx) letters here.' -ForegroundColor Gray
+    Write-Host '  Sidecars: ACC-Inbox\.staging\*.json' -ForegroundColor Gray
+    Write-Host '  In the app: Review Queue -> Import folder-watch sidecars' -ForegroundColor Gray
+    Write-Host ''
+    Write-LauncherLogSafe "Watching $($script:InboxPath)"
+
+    Invoke-ScanInbox -Inbox $script:InboxPath
+
+    Write-Host '  Press Ctrl+C to stop.' -ForegroundColor Gray
+    Write-Host ''
+
+    while ($true) {
+        Start-Sleep -Seconds 2
+        Invoke-ScanInbox -Inbox $script:InboxPath
+    }
+} catch {
+    Write-BootstrapLog "FATAL: $($_.Exception.Message)"
+    Write-Host $_.Exception.Message -ForegroundColor Red
+    if ($script:LauncherLogEnabled -and (Get-Command Write-LauncherLogException -ErrorAction SilentlyContinue)) {
+        Write-LauncherLogException $_
+    }
+    Read-Host 'Press Enter to close'
+    exit 1
+} finally {
+    if ($script:LauncherLogEnabled -and (Get-Command Complete-LauncherLog -ErrorAction SilentlyContinue)) {
+        Complete-LauncherLog -Title 'ACC Folder Watch'
+    }
+}

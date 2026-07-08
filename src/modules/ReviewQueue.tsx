@@ -435,9 +435,31 @@ export function ReviewQueue() {
                     <p className="text-sm" style={{ color: 'var(--muted)' }}>
                       {item.summary}
                     </p>
+                    {(item.patientName || item.claimNumber || item.accId) && (
+                      <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+                        {item.patientName && (
+                          <>
+                            Patient: <strong>{item.patientName}</strong>
+                          </>
+                        )}
+                        {item.patientName && item.claimNumber && ' · '}
+                        {item.claimNumber && (
+                          <>
+                            Claim: <strong>{item.claimNumber}</strong>
+                          </>
+                        )}
+                        {(item.patientName || item.claimNumber) && item.accId && ' · '}
+                        {item.accId && <>{item.accId}</>}
+                      </p>
+                    )}
                     {item.sourceFileName && (
                       <p className="text-xs mt-1 font-mono" style={{ color: 'var(--muted)' }}>
                         File: {item.sourceFileName}
+                      </p>
+                    )}
+                    {item.expectedFileName && item.expectedFileName !== item.sourceFileName && (
+                      <p className="text-xs mt-1 font-mono" style={{ color: 'var(--muted)' }}>
+                        Look for: {item.expectedFileName}
                       </p>
                     )}
                   </div>

@@ -459,6 +459,207 @@ function Get-UniquePath {
     }
 }
 
+# Collapse an arbitrary string into a single filesystem-safe token (used for the patient/claim
+# identity segments). Illegal filename chars and control chars become spaces, whitespace runs
+# collapse to '_', repeated '_' collapse to one, and leading/trailing '_' are trimmed. Returns ''
+# for blank input. Kept ASCII-only for PowerShell 5.1 / hospital-PC compatibility.
+function ConvertTo-SafeNameToken {
+    param([string]$Value)
+    if ([string]::IsNullOrWhiteSpace($Value)) { return '' }
+    $t = [regex]::Replace($Value, '[\\/:*?"<>|]', ' ')
+    $t = [regex]::Replace($t, '[\x00-\x1F]', ' ')
+    $t = $t.Trim()
+    $t = [regex]::Replace($t, '\s+', '_')
+    $t = [regex]::Replace($t, '_+', '_')
+    $t = $t.Trim('_')
+    return $t
+}
+
+# Extract the patient name from an ACC message subject and reorder it surname-first so files sort
+# and scan by family name. Example:
+#   'Mr Graham John Dawson - Claim:10065457407 ACCID:VEND-K96655' -> 'Dawson_Graham_John'
+# The name is the text BEFORE the first Claim/ACCID token (an optional separating dash/colon is
+# dropped). A single leading honorific (Mr/Mrs/Ms/Miss/Master/Dr/Prof) is stripped. Returns '' when
+# no usable name can be parsed (caller then falls back to Claim-/ACCID-/unidentified).
+function Get-PatientNameFromSubject {
+    param([string]$Subject)
+    if ([string]::IsNullOrWhiteSpace($Subject)) { return '' }
+    $s = ([regex]::Replace($Subject, '\s+', ' ')).Trim()
+    # Cut everything from the first Claim/ACCID token onward (incl. a leading dash/colon separator).
+    # \u2013 / \u2014 are en/em dashes; written as ASCII escapes so the source stays ASCII-only.
+    $name = [regex]::Replace($s, '(?is)\s*[-\u2013\u2014:]*\s*(Claim|ACCID)\b.*$', '')
+    $name = ($name.Trim()).Trim('-').Trim()
+    if ([string]::IsNullOrWhiteSpace($name)) { return '' }
+    $name = [regex]::Replace($name, '(?i)^(Mr|Mrs|Ms|Miss|Master|Dr|Prof)\.?\s+', '')
+    $name = $name.Trim()
+    if ([string]::IsNullOrWhiteSpace($name)) { return '' }
+    $words = @($name -split '\s+' | Where-Object { $_ -ne '' })
+    if ($words.Count -ge 2) {
+        $surname = $words[-1]
+        $given = $words[0..($words.Count - 2)]
+        $ordered = @($surname) + $given
+    } else {
+        $ordered = $words
+    }
+    return (ConvertTo-SafeNameToken -Value ($ordered -join ' '))
+}
+
+# Digits after a 'Claim' token (colon/space/# optional). ACC claim numbers are long; require >=4
+# digits to avoid catching stray numbers. Returns '' when absent.
+function Get-ClaimFromSubject {
+    param([string]$Subject)
+    if ([string]::IsNullOrWhiteSpace($Subject)) { return '' }
+    $m = [regex]::Match($Subject, '(?i)Claim[:#\s]*([0-9]{4,})')
+    if ($m.Success) { return $m.Groups[1].Value }
+    return ''
+}
+
+# Token after an 'ACCID' token (e.g. VEND-K96655). Returns '' when absent.
+function Get-AccidFromSubject {
+    param([string]$Subject)
+    if ([string]::IsNullOrWhiteSpace($Subject)) { return '' }
+    $m = [regex]::Match($Subject, '(?i)ACCID[:#\s]*([A-Za-z0-9][A-Za-z0-9\-]{1,})')
+    if ($m.Success) { return ($m.Groups[1].Value).TrimEnd('-') }
+    return ''
+}
+
+# Build the on-disk filename: patient identity FIRST, original ACC name preserved as a suffix so
+# nothing is lost. Shape: '<Patient>__Claim-<n>__<original-name>.<ext>', e.g.
+#   Dawson_Graham_John__Claim-10065457407__1_NUR02_Nursing_services_approve_-_vendor.docx
+# Fallbacks when the subject has no patient name: 'Claim-<n>__...', then 'ACCID-<x>__...', then
+# 'unidentified__...'. Total length is capped (default 180) to stay well under Windows MAX_PATH;
+# ONLY the original-name portion is truncated - the patient/claim identity and the extension are
+# never dropped. $OriginalFileName is expected to already be Get-SafeFileName-sanitized.
+function Format-AccAttachmentName {
+    param(
+        [string]$OriginalFileName,
+        [string]$Subject,
+        [int]$MaxLength = 180
+    )
+    $origFull = Get-SafeFileName -Name $OriginalFileName
+    $ext = [System.IO.Path]::GetExtension($origFull)
+    $stem = [System.IO.Path]::GetFileNameWithoutExtension($origFull)
+    # Preserve the original ACC name (its own '_' / '-' kept intact); only collapse whitespace.
+    $stemClean = ([regex]::Replace($stem, '\s+', '_')).Trim('_')
+    if ([string]::IsNullOrWhiteSpace($stemClean)) { $stemClean = 'attachment' }
+
+    $patient = Get-PatientNameFromSubject -Subject $Subject
+    $claim = Get-ClaimFromSubject -Subject $Subject
+    $accid = Get-AccidFromSubject -Subject $Subject
+
+    $idSegments = @()
+    if (-not [string]::IsNullOrWhiteSpace($patient)) { $idSegments += $patient }
+    if (-not [string]::IsNullOrWhiteSpace($claim)) {
+        $idSegments += ('Claim-' + (ConvertTo-SafeNameToken -Value $claim))
+    } elseif (-not [string]::IsNullOrWhiteSpace($accid)) {
+        $idSegments += ('ACCID-' + (ConvertTo-SafeNameToken -Value $accid))
+    }
+
+    if ($idSegments.Count -eq 0) {
+        $prefix = 'unidentified'
+    } else {
+        $prefix = ($idSegments -join '__')
+    }
+
+    $sep = '__'
+    $avail = $MaxLength - ($prefix.Length + $sep.Length + $ext.Length)
+    if ($avail -lt 1) {
+        # Identity + extension alone already reach the cap: keep them, drop the original stem.
+        return ($prefix + $ext)
+    }
+    if ($stemClean.Length -gt $avail) {
+        $stemClean = ($stemClean.Substring(0, $avail)).TrimEnd('_')
+        if ([string]::IsNullOrWhiteSpace($stemClean)) { return ($prefix + $ext) }
+    }
+    return ($prefix + $sep + $stemClean + $ext)
+}
+
+function Limit-FileNameLength {
+    # Cap a filename to a safe length while preserving its extension. Prevents the
+    # descriptive prefix (patient + claim) from pushing paths past Windows limits.
+    param(
+        [string]$FileName,
+        [int]$MaxLength = 150
+    )
+    if ([string]::IsNullOrEmpty($FileName)) { return $FileName }
+    if ($FileName.Length -le $MaxLength) { return $FileName }
+    $ext = [System.IO.Path]::GetExtension($FileName)
+    $stem = [System.IO.Path]::GetFileNameWithoutExtension($FileName)
+    $keep = $MaxLength - $ext.Length
+    if ($keep -lt 1) {
+        return $FileName.Substring(0, $MaxLength)
+    }
+    return ($stem.Substring(0, $keep) + $ext)
+}
+
+function New-DescriptiveFileName {
+    # Build a patient/claim-identifiable filename from the email SUBJECT so the
+    # reviewer can tell letters apart WITHOUT opening them. Bytes are untouched
+    # (SaveAsFile writes the same content), so the content SHA-256 that folder
+    # watch dedups on is unchanged - only the on-disk name differs.
+    #
+    # Subject format (real ACC): "Mr Graham Wayne Reichenbach - Claim:P2222756868 ACCID:VEND-K96655"
+    #   patient = text before " - Claim" (title stripped, formatted Surname-First)
+    #   claim   = alphanumerics after "Claim:"
+    # Result:  "Reichenbach-Graham_ClaimP2222756868_<original>.docx"
+    #
+    # FALLBACK: if neither a patient name nor a claim can be parsed, the ORIGINAL
+    # filename is returned unchanged (never an empty/garbage prefix). If only one
+    # of the two is present, only that part is used.
+    param(
+        [string]$Subject,
+        [string]$OriginalFileName
+    )
+
+    $original = [System.IO.Path]::GetFileName($OriginalFileName)
+    if ([string]::IsNullOrWhiteSpace($original)) { return $OriginalFileName }
+    if ([string]::IsNullOrWhiteSpace($Subject)) { return $original }
+
+    # --- Patient name: text BEFORE " - Claim" (the reliable ACC format signal).
+    # No separator => don't guess a name from a free-text subject; fall through.
+    $patientPart = ''
+    $sepIndex = $Subject.IndexOf(' - Claim', [System.StringComparison]::OrdinalIgnoreCase)
+    if ($sepIndex -ge 0) {
+        $nameSource = $Subject.Substring(0, $sepIndex)
+        $nameSource = ($nameSource -replace '\s+', ' ').Trim()
+        # Strip a leading title (Mr/Mrs/Ms/Miss/Dr, optional trailing dot).
+        $nameSource = [regex]::Replace($nameSource, '^(?i:mr|mrs|ms|miss|dr)\.?\s+', '')
+        # Reduce each word to filesystem-safe ASCII alphanumerics.
+        $words = @()
+        foreach ($w in ($nameSource -split '\s+')) {
+            $clean = [regex]::Replace($w, '[^A-Za-z0-9]', '')
+            if ($clean.Length -gt 0) { $words += $clean }
+        }
+        if ($words.Count -ge 2) {
+            $patientPart = ('{0}-{1}' -f $words[$words.Count - 1], $words[0])
+        } elseif ($words.Count -eq 1) {
+            $patientPart = $words[0]
+        }
+    }
+
+    # --- Claim number: alphanumerics after "Claim:" (keeps the "P" prefix).
+    $claimPart = ''
+    $claimMatch = [regex]::Match($Subject, '(?i:claim)\s*[:#]?\s*([A-Za-z0-9]+)')
+    if ($claimMatch.Success) {
+        $claimPart = [regex]::Replace($claimMatch.Groups[1].Value, '[^A-Za-z0-9]', '')
+    }
+
+    # --- Assemble whatever we parsed into a prefix.
+    $prefix = ''
+    if ($patientPart -and $claimPart) {
+        $prefix = ('{0}_Claim{1}' -f $patientPart, $claimPart)
+    } elseif ($patientPart) {
+        $prefix = $patientPart
+    } elseif ($claimPart) {
+        $prefix = ('Claim{0}' -f $claimPart)
+    }
+
+    if ([string]::IsNullOrWhiteSpace($prefix)) { return $original }
+
+    $descriptive = ('{0}_{1}' -f $prefix, $original)
+    return (Limit-FileNameLength -FileName $descriptive -MaxLength 150)
+}
+
 function Write-ScanBreakdownSummary {
     param(
         [hashtable]$Status,
@@ -826,7 +1027,14 @@ try {
                     $fileName = Get-SafeFileName -Name ([string]$att.FileName)
                     if (-not (Test-SupportedExtension -FileName $fileName -SupportedExt $config.SupportedExt)) { continue }
 
-                    $dest = Get-UniquePath -Dir $inbox -FileName $fileName
+                    # Name the saved file by patient + claim (identity first) so the reviewer can tell
+                    # who a letter belongs to from the filename alone; the original ACC name is kept as
+                    # a suffix and the extension is preserved. Bytes are unchanged (SaveAsFile writes
+                    # the same content), so the folder-watch content SHA-256 dedup is unaffected. Still
+                    # pass through Get-UniquePath so two genuinely different letters for the same
+                    # patient/claim both survive (-1/-2) and nothing is overwritten.
+                    $patientFileName = Format-AccAttachmentName -OriginalFileName $fileName -Subject $subject
+                    $dest = Get-UniquePath -Dir $inbox -FileName $patientFileName
                     $att.SaveAsFile($dest)
                     $savedAny = $true
                     $status.savedCount++
@@ -836,7 +1044,7 @@ try {
                         sender   = $from
                         savedAt  = (Get-Date).ToUniversalTime().ToString('o')
                     }
-                    Write-SyncLine ("  saved: {0} <- {1}" -f ([System.IO.Path]::GetFileName($dest)), (Get-TruncatedSubject $subject))
+                    Write-SyncLine ("  [capture] saved as {0} <- {1}" -f ([System.IO.Path]::GetFileName($dest)), (Get-TruncatedSubject $subject))
                 } finally {
                     if ($att) { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($att) }
                 }

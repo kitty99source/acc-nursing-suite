@@ -9,6 +9,11 @@ import {
 } from '../lib/accInboxFilters';
 import { loadStagingItems, addStagingItem, type StagingItem } from '../lib/staging';
 import {
+  claimTokenFromSubject,
+  descriptiveAttachmentName,
+  patientNameFromSubject,
+} from '../lib/attachmentNaming';
+import {
   describeEmailSyncStatusRejectReason,
   describeInboxEmptyState,
   EMAIL_SYNC_STATUS_HINT_PATH,
@@ -114,6 +119,9 @@ export function AccInbox() {
       setMessage('Automation is paused — enable in Settings before parsing to staging.');
       return;
     }
+    const patientName = patientNameFromSubject(row.subject);
+    const claimNumber = row.claimNumber ?? claimTokenFromSubject(row.subject);
+    const expectedFileName = descriptiveAttachmentName(row.subject, row.attachmentName);
     const item: StagingItem = {
       id: crypto.randomUUID(),
       type: 'letter-import-pending',
@@ -124,6 +132,10 @@ export function AccInbox() {
       title: `ACC Inbox: ${row.attachmentName}`,
       summary: `${row.subject} — awaiting HRQ review after folder watch picks up ${row.attachmentName}.`,
       sourceFileName: row.attachmentName,
+      patientName,
+      claimNumber,
+      accId: row.accId,
+      expectedFileName,
       runId: `acc-inbox-${new Date().toISOString().slice(0, 10)}`,
     };
     await addStagingItem(item);

@@ -1127,7 +1127,7 @@ try {
     if ($useBacklog -and $hitBatchLimit) {
         Write-SyncLine 'Backlog: batch limit reached  -  run again during work hours until saved count is 0.'
     }
-    Write-SyncLine 'Next: Start Folder Watch.cmd picks up new files -> Review Queue (no auto-import).'
+    Write-SyncLine 'Next: Start Folder Watch.cmd stages new files -> Review Queue auto-imports (nothing auto-files to patients).'
 }
 catch {
     $status.outcome = 'fail'

@@ -103,11 +103,12 @@ Write-Host '  Folder Watch  = running (separate cmd window - leave open)'
 Write-Host '  Email Sync    = finished this run'
 if (Test-Path -LiteralPath $statusPath) {
     Write-Host "  Sync report   = $statusPath"
-    Write-Host '  ACC Inbox     = auto-loads this file when served by launch.ps1'
+    Write-Host '  ACC Inbox     = optional audit of saved letters (not required to stage)'
 } else {
     Write-Host "  WARN - sync report not found at $statusPath"
 }
 Write-Host ''
+Write-Host '  Next: open Review Queue in the suite — folder-watch sidecars auto-import there.'
 Write-Host '  More backlog? Double-click Start Email Sync.cmd again during work hours.'
 Write-Host '  Logs: %USERPROFILE%\ACC-Suite\logs\'
 Write-Host ''

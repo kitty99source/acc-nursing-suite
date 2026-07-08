@@ -128,13 +128,19 @@ function Get-SharedInboxFolder {
         }
     }
 
+    # Fallback store enumeration. This path only runs when CreateRecipient+GetSharedDefaultFolder
+    # above did NOT resolve - i.e. it is NOT the working ACCDistrictNursing path that sync uses
+    # (sync resolves via the recipient path and returns before reaching here), so nothing here can
+    # regress sync. We skip the "Public Folders" Exchange store: opening its default folder /
+    # root can block for ~20 minutes and it is never an ACC letter mailbox.
     foreach ($store in $Namespace.Stores) {
+        $display = ''
+        try { $display = [string]$store.DisplayName } catch {}
+        if ($display -match 'Public Folders') { continue }
         try {
             if (Test-StoreMatchesSharedName -Store $store -SharedName $SharedName) {
                 $folder = $store.GetDefaultFolder(6)
                 if ($folder) {
-                    $display = ''
-                    try { $display = [string]$store.DisplayName } catch {}
                     $script:LastMailboxResolution = "store match ($display)"
                     return $folder
                 }

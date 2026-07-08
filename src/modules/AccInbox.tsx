@@ -19,7 +19,6 @@ import {
   parseEmailSyncStatusFromText,
   parseEmailSyncStateFallback,
   stripJsonBom,
-  type EmailSyncStatus,
 } from '../lib/emailSyncStatus';
 
 function formatWhen(ts: number): string {
@@ -29,11 +28,18 @@ function formatWhen(ts: number): string {
 export function AccInbox() {
   const settings = useStore((s) => s.data.settings);
   const setFocus = useStore((s) => s.setFocus);
+  const showTopBarFlash = useStore((s) => s.showTopBarFlash);
+  // Sync status lives in the store so it survives leaving/returning to ACC Inbox
+  // (see setAccInboxSyncStatus). Local component state reset on every mount was
+  // the cause of the "no sync yet" flash after navigating away.
+  const syncStatus = useStore((s) => s.accInboxSyncStatus) ?? null;
+  const setSyncStatus = useStore((s) => s.setAccInboxSyncStatus);
   const [ignored, setIgnored] = useState<Set<string>>(() => new Set());
   const [stagingCount, setStagingCount] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
-  const [syncStatus, setSyncStatus] = useState<EmailSyncStatus | null>(null);
-  const [syncLoading, setSyncLoading] = useState(true);
+  // Only show the blocking "Loading…" state when nothing is cached yet; a cached
+  // report stays visible while we refresh in the background.
+  const [syncLoading, setSyncLoading] = useState(() => !useStore.getState().accInboxSyncStatus);
   const syncInputRef = useRef<HTMLInputElement>(null);
 
   const filterConfig = useMemo(
@@ -65,15 +71,36 @@ export function AccInbox() {
     setSyncLoading(true);
     try {
       const local = await fetchLocalEmailSyncStatus();
-      setSyncStatus(local);
-      setMessage(null);
+      if (local) {
+        setSyncStatus(local);
+        setMessage(null);
+      } else if (useStore.getState().accInboxSyncStatus) {
+        // launch.ps1 isn't serving a report right now, but we already have one
+        // loaded — keep it rather than dropping to the "no sync yet" state.
+        setMessage('No served sync report found — showing the last loaded status. Click "Load sync report" to update it.');
+      } else {
+        setSyncStatus(undefined);
+      }
     } finally {
       setSyncLoading(false);
     }
   }
 
+  // On mount, refresh from the locally served report. If nothing is served
+  // (e.g. status was loaded manually via the file picker), keep the cached
+  // status already in the store so the rows persist across navigation.
+  async function initialLoadSyncStatus() {
+    const cached = useStore.getState().accInboxSyncStatus;
+    if (!cached) {
+      await refreshSyncStatus();
+      return;
+    }
+    const local = await fetchLocalEmailSyncStatus();
+    if (local) setSyncStatus(local);
+  }
+
   useEffect(() => {
-    void refreshSyncStatus();
+    void initialLoadSyncStatus();
     void refreshStaging();
   }, []);
 
@@ -101,15 +128,19 @@ export function AccInbox() {
     };
     await addStagingItem(item);
     await refreshStaging();
-    setMessage(`Staged "${row.attachmentName}" for Human Review Queue.`);
-    setFocus({ module: 'patients' });
+    // Use the cross-module TopBar flash (not local `message`) because we are
+    // about to navigate away — a local message would unmount with ACC Inbox and
+    // the user would "see nothing happen".
+    showTopBarFlash(`Added "${row.attachmentName}" to the Review Queue — open it there to file the patient.`, 'good');
+    setFocus({ module: 'review' });
   }
 
   function openImportStub(row: AccInboxRow) {
-    setMessage(
-      `Real letter required: save ${row.attachmentName} to ACC-Inbox/ or use Review Queue after folder watch + email sync.`,
+    showTopBarFlash(
+      `Save ${row.attachmentName} to ACC-Inbox, run folder watch, then Import staging here in the Review Queue.`,
+      'warn',
     );
-    setFocus({ module: 'patients' });
+    setFocus({ module: 'review' });
   }
 
   async function loadSyncReport(file: File) {

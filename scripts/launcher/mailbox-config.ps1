@@ -167,19 +167,73 @@ function Get-LastMailboxResolution {
 
 function Get-SenderAddress {
     param([object]$Item)
+
+    # Raw sender address. For Exchange-internal senders this is an X.500 legacyExchangeDN
+    # (e.g. /O=EXCHANGELABS/OU=.../CN=RECIPIENTS/CN=...), NOT a real SMTP address, so it can
+    # never match the SMTP-only allowlist. We resolve those to the primary SMTP address below.
     $from = ''
     try { $from = [string]$Item.SenderEmailAddress } catch {}
-    if (-not [string]::IsNullOrWhiteSpace($from) -and $from -notmatch '^/O=') {
-        return $from
+
+    # Is this an Exchange-internal sender whose address is not usable SMTP?
+    $senderType = ''
+    try { $senderType = [string]$Item.SenderEmailType } catch {}
+    $looksExchange = $false
+    if ($senderType -eq 'EX') { $looksExchange = $true }
+    if ($from -match '^/[oO]=') { $looksExchange = $true }
+
+    # Fast path: already a normal SMTP sender (e.g. John.Bentley@acc.co.nz). Preserves existing
+    # behaviour and makes ZERO extra COM/directory calls for the common case.
+    if (-not [string]::IsNullOrWhiteSpace($from) -and -not $looksExchange -and $from.Contains('@')) {
+        return $from.Trim().ToLowerInvariant()
     }
+
+    # Exchange-internal (or empty/unknown) sender: resolve to primary SMTP.
+    # Order is tuned for SPEED and no-stall safety: cheap MAPI property reads that are already on
+    # the item come first; the directory-backed GetExchangeUser() (which can be a slow lookup) is
+    # only attempted if the property reads fail. Every step is isolated in try/catch and never
+    # throws - on total failure we return the original address unchanged.
+
+    # PR_SENDER_SMTP_ADDRESS (unicode) - cheap MAPI property on the item itself.
     try {
-        $smtp = [string]$Item.Sender.EmailAddress
-        if (-not [string]::IsNullOrWhiteSpace($smtp)) { return $smtp }
+        $smtp = [string]$Item.PropertyAccessor.GetProperty('http://schemas.microsoft.com/mapi/proptag/0x5D01001F')
+        if (-not [string]::IsNullOrWhiteSpace($smtp) -and $smtp.Contains('@')) {
+            return $smtp.Trim().ToLowerInvariant()
+        }
     } catch {}
+
+    # PR_SENT_REPRESENTING_SMTP_ADDRESS (unicode) - covers send-on-behalf / shared mailbox sends.
     try {
-        $smtp = [string]$Item.PropertyAccessor.GetProperty('http://schemas.microsoft.com/mapi/proptag/0x39FE001E')
-        if (-not [string]::IsNullOrWhiteSpace($smtp)) { return $smtp }
+        $smtp = [string]$Item.PropertyAccessor.GetProperty('http://schemas.microsoft.com/mapi/proptag/0x5D02001F')
+        if (-not [string]::IsNullOrWhiteSpace($smtp) -and $smtp.Contains('@')) {
+            return $smtp.Trim().ToLowerInvariant()
+        }
     } catch {}
+
+    # Sender.GetExchangeUser().PrimarySmtpAddress - directory-backed, tried after cheap reads.
+    # Sender may be null; GetExchangeUser() returns null for non-user senders (distribution
+    # lists, public folders), so guard every hop.
+    try {
+        $sender = $Item.Sender
+        if ($sender) {
+            $exUser = $sender.GetExchangeUser()
+            if ($exUser) {
+                $smtp = [string]$exUser.PrimarySmtpAddress
+                if (-not [string]::IsNullOrWhiteSpace($smtp) -and $smtp.Contains('@')) {
+                    return $smtp.Trim().ToLowerInvariant()
+                }
+            }
+        }
+    } catch {}
+
+    # Sender.Address if it already looks like SMTP.
+    try {
+        $addr = [string]$Item.Sender.Address
+        if (-not [string]::IsNullOrWhiteSpace($addr) -and $addr.Contains('@')) {
+            return $addr.Trim().ToLowerInvariant()
+        }
+    } catch {}
+
+    # Fallback: original SenderEmailAddress unchanged so nothing regresses.
     return $from
 }
 

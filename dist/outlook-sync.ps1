@@ -9,6 +9,7 @@
 $bootstrapRoot = $PSScriptRoot
 if ([string]::IsNullOrEmpty($bootstrapRoot)) { $bootstrapRoot = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }
 . (Join-Path $bootstrapRoot 'bootstrap-log.ps1') -LogName 'email-sync'
+. (Join-Path $bootstrapRoot 'mailbox-config.ps1')
 Write-BootstrapLog 'outlook-sync.ps1 started'
 
 # ACC Outlook COM sync - work laptop only
@@ -353,21 +354,6 @@ function Mark-Processed {
     Set-Content -LiteralPath $marker -Value (Get-Date).ToUniversalTime().ToString('o') -Encoding ASCII
 }
 
-function Get-InboxFolder {
-    param(
-        [object]$Namespace,
-        [string]$SharedName
-    )
-    if (-not [string]::IsNullOrWhiteSpace($SharedName)) {
-        $recipient = $Namespace.CreateRecipient($SharedName)
-        if (-not $recipient.Resolve()) {
-            throw "Shared mailbox not found: $SharedName"
-        }
-        return $Namespace.GetSharedDefaultFolder($recipient, 6)
-    }
-    return $Namespace.GetDefaultFolder(6)
-}
-
 function Get-SafeFileName {
     param([string]$Name)
     $base = [System.IO.Path]::GetFileName($Name)
@@ -461,9 +447,8 @@ Write-SyncLine 'ACC Outlook COM email sync'
 Write-SyncLine '=========================='
 Write-SyncLine ''
 
-if (-not [string]::IsNullOrWhiteSpace($env:ACC_SHARED_MAILBOX)) {
-    $SharedMailbox = $env:ACC_SHARED_MAILBOX
-}
+$SharedMailbox = Resolve-SharedMailbox -Override $SharedMailbox
+Write-SyncLine "Using mailbox: $SharedMailbox"
 
 if ($env:ACC_AUTOMATION_PAUSED -eq '1') {
     Write-SyncLine 'Automation paused (ACC_AUTOMATION_PAUSED=1). Exiting.'
@@ -506,9 +491,8 @@ try {
     $namespace = $outlook.GetNamespace('MAPI')
     [void]$namespace.Logon($null, $null, $false, $true)
 
-    $folder = Get-InboxFolder -Namespace $namespace -SharedName $SharedMailbox
-    $label = if ([string]::IsNullOrWhiteSpace($SharedMailbox)) { 'Default inbox' } else { "Shared inbox: $SharedMailbox" }
-    Write-SyncLine "OK - COM connected ($label)"
+    $folder = Get-SharedInboxFolder -Namespace $namespace -SharedName $SharedMailbox
+    Write-SyncLine "OK - COM connected (shared inbox: $SharedMailbox)"
     Write-SyncLine ("Sender allowlist: {0} pattern(s), {1} sender(s)" -f $config.Patterns.Count, $config.Senders.Count)
     Write-SyncLine "Saving attachments to: $inbox"
     if ($useBacklog) {
@@ -640,7 +624,7 @@ try {
     $ss = $status.scanStats
     Write-SyncLine ("Scan: {0} mail item(s); {1} matched sender; {2} matched sender+subject; {3} skipped (category/flag); {4} already processed; {5} matched but no PDF/DOCX" -f $ss.mailItemsScanned, $ss.matchedSender, $ss.matchedBoth, $ss.skippedCategory, $ss.alreadyProcessed, $ss.noSupportedAttachment)
     if ($status.savedCount -eq 0 -and $ss.mailItemsScanned -eq 0) {
-        Write-SyncLine 'Hint: inbox has no mail items in scan range - check shared mailbox (ACC_SHARED_MAILBOX) or Outlook folder.'
+        Write-SyncLine 'Hint: inbox has no mail items in scan range - confirm ACCDistrictNursing is open in Outlook and you have delegate access.'
     } elseif ($status.savedCount -eq 0 -and $ss.matchedBoth -eq 0 -and $ss.matchedSender -eq 0) {
         Write-SyncLine 'Hint: no sender matches - letters may be in a shared mailbox or SenderEmailAddress differs from allowlist.'
     } elseif ($status.savedCount -eq 0 -and $ss.matchedBoth -eq 0) {

@@ -23,6 +23,7 @@
     ]
   },
   "emailSync": {
+    "sharedMailbox": "ACCDistrictNursing",
     "batchSize": 50,
     "workStartHour": 7,
     "workEndHour": 18,

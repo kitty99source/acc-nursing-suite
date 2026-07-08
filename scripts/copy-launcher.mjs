@@ -58,6 +58,7 @@ mkdirSync(WFH_DIST, { recursive: true });
 
 const launcherFiles = [
   'bootstrap-log.ps1',
+  'mailbox-config.ps1',
   'launcher-log.ps1',
   'launch.ps1',
   'Start ACC Suite.cmd',

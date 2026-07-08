@@ -151,8 +151,8 @@ export function AccInbox() {
               <p className="text-xs mb-2" style={{ color: 'var(--muted)' }}>
                 Scan detail: {formatScanStatsSummary(syncStatus.scanStats)}
                 {syncStatus.sharedMailbox
-                  ? ` · shared mailbox: ${syncStatus.sharedMailbox}`
-                  : ' · default inbox (set ACC_SHARED_MAILBOX if letters live elsewhere)'}
+                  ? ` · mailbox: ${syncStatus.sharedMailbox}`
+                  : ' · mailbox: ACCDistrictNursing (default)'}
               </p>
             )}
           </>

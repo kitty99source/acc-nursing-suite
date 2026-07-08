@@ -63,13 +63,13 @@ flowchart TD
 
 **Steps (~2 minutes):**
 
-1. Open **Outlook desktop** and confirm you see ACC mail (personal and/or shared mailbox).
+1. Open **Outlook desktop** and confirm you see ACC mail in the **ACCDistrictNursing** shared mailbox (not only your personal inbox).
 2. Double-click **`Start Email Probe.cmd`** from your `dist/` folder.
 3. Read the black window:
-   - **PASS** — shows unread count, last 3 subjects, ACC sender count.
-   - **FAIL** — error about programmatic access, Outlook not running, or COM blocked.
+   - **PASS** — shows `Using mailbox: ACCDistrictNursing`, unread count, last 3 subjects, ACC sender count.
+   - **FAIL** — error about programmatic access, Outlook not running, shared mailbox not found, or COM blocked.
 4. Check log: `%USERPROFILE%\ACC-Suite\logs\email-probe-bootstrap.log`
-5. Optional shared mailbox: set env `ACC_SHARED_MAILBOX=TeamMailboxName` before running, or pass as script argument.
+5. Override mailbox only if needed: `%USERPROFILE%\ACC-Suite\office-config.json` → `"emailSync": { "sharedMailbox": "OtherName" }`, or set env `ACC_SHARED_MAILBOX` before running.
 
 **What it does NOT do:** read bodies, save attachments, move/delete mail, send mail, or call the network.
 
@@ -77,21 +77,23 @@ flowchart TD
 
 ---
 
-## Future: Start Email Sync.cmd (P8-017 outline)
+## Start Email Sync.cmd (P8-017 — shipped)
 
-Not built yet — this is the minimal full bridge after probe passes.
+**Default shared mailbox:** `ACCDistrictNursing` (district nursing ACC letters — not personal Default inbox).
+
+**Resolution order:** `%USERPROFILE%\ACC-Suite\office-config.json` → `emailSync.sharedMailbox` → env `ACC_SHARED_MAILBOX` → default `ACCDistrictNursing`.
 
 | Step | Action |
 |------|--------|
 | 1 | Connect `Outlook.Application` COM (same as probe) |
-| 2 | Open default + shared inbox if configured |
-| 3 | Restrict items: ACC allowlist senders, subject `Claim:` + `ACCID:`, has attachment |
-| 4 | For each match: save `.pdf`/`.docx` to `%USERPROFILE%\ACC-Inbox\` (skip if hash exists) |
-| 5 | Optionally mark read or move to `ACC/Processed` **only if B-12 = Yes** |
-| 6 | Folder watch (or inline staging) writes `.staging/*.json` |
+| 2 | Open **ACCDistrictNursing** inbox via `GetSharedDefaultFolder` (Stores fallback if needed) |
+| 3 | Restrict items: ACC allowlist senders, subject patterns, has PDF/DOCX attachment |
+| 4 | For each match: save `.pdf`/`.docx` to `%USERPROFILE%\ACC-Inbox\` (checkpoint resume via state file) |
+| 5 | Optionally tag **actioned** in Outlook to skip on future runs |
+| 6 | Folder watch writes `.staging/*.json` |
 | 7 | User imports in **Review Queue** — never auto-commit |
 
-Trigger: double-click `Start Email Sync.cmd` at start of day, or hook from `Start ACC Suite.cmd` when U-08 working-hours poll is wired.
+Log line to verify: **`Using mailbox: ACCDistrictNursing`**. Trigger: double-click `Start Email Sync.cmd` or `Start WFH Mode.cmd` during work hours.
 
 ---
 

@@ -102,6 +102,8 @@ const launcherRequired = [
   'Start Folder Watch.cmd',
   'Start Email Probe.cmd',
   'Start Email Sync.cmd',
+  'Start WFH Mode.cmd',
+  'wfh-mode.ps1',
   'TROUBLESHOOT.txt',
 ];
 console.log('\n--- Launcher files in dist ---');

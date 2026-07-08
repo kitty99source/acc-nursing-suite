@@ -110,7 +110,7 @@ function Get-TruncatedSubject {
 function Load-DiagnoseFilterConfig {
     $senders = @($DefaultSenders)
     $patterns = @($DefaultSubjectPatterns)
-    $skipCategories = @('actioned')
+    $skipCategories = @()
     $subjectMode = $DefaultSubjectMatchMode
     $requiredTokens = @($DefaultRequiredTokens)
     $supportedExt = @($DefaultSupportedExt)

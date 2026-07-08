@@ -257,6 +257,24 @@ function Register-GracefulShutdown {
     [Console]::TreatControlCAsInput = $false
 }
 
+function Get-SenderAddress {
+    param([object]$Item)
+    $from = ''
+    try { $from = [string]$Item.SenderEmailAddress } catch {}
+    if (-not [string]::IsNullOrWhiteSpace($from) -and $from -notmatch '^/O=') {
+        return $from
+    }
+    try {
+        $smtp = [string]$Item.Sender.EmailAddress
+        if (-not [string]::IsNullOrWhiteSpace($smtp)) { return $smtp }
+    } catch {}
+    try {
+        $smtp = [string]$Item.PropertyAccessor.GetProperty('http://schemas.microsoft.com/mapi/proptag/0x39FE001E')
+        if (-not [string]::IsNullOrWhiteSpace($smtp)) { return $smtp }
+    } catch {}
+    return $from
+}
+
 function Test-AccSender {
     param(
         [string]$FromAddress,
@@ -428,6 +446,14 @@ $status = @{
     processedTotal     = $syncState.processedEntryIds.Count
     workHoursSkipped   = $false
     backlogRemaining   = $null
+    scanStats          = @{
+        mailItemsScanned      = 0
+        matchedSender         = 0
+        matchedBoth           = 0
+        skippedCategory       = 0
+        alreadyProcessed      = 0
+        noSupportedAttachment = 0
+    }
 }
 
 Write-SyncLine ''
@@ -483,6 +509,7 @@ try {
     $folder = Get-InboxFolder -Namespace $namespace -SharedName $SharedMailbox
     $label = if ([string]::IsNullOrWhiteSpace($SharedMailbox)) { 'Default inbox' } else { "Shared inbox: $SharedMailbox" }
     Write-SyncLine "OK - COM connected ($label)"
+    Write-SyncLine ("Sender allowlist: {0} pattern(s), {1} sender(s)" -f $config.Patterns.Count, $config.Senders.Count)
     Write-SyncLine "Saving attachments to: $inbox"
     if ($useBacklog) {
         Write-SyncLine ("Mode: backlog incremental  -  oldest first, up to {0} message(s) this run" -f $config.BatchSize)
@@ -517,15 +544,19 @@ try {
             try { $received = [datetime]$item.ReceivedTime } catch {}
             if (-not $useBacklog -and $received -and $received -lt $cutoff) { continue }
 
-            $from = ''
-            try { $from = [string]$item.SenderEmailAddress } catch {}
+            $status.scanStats.mailItemsScanned++
+
+            $from = Get-SenderAddress -Item $item
             $subject = ''
             try { $subject = [string]$item.Subject } catch {}
 
             if (-not (Test-AccSender -FromAddress $from -Allowlist $config.Senders)) { continue }
+            $status.scanStats.matchedSender++
             if (-not (Test-AccSubject -Subject $subject -Patterns $config.Patterns)) { continue }
+            $status.scanStats.matchedBoth++
             if (Test-ShouldSkipMessage -Item $item -SkipCategories $config.SkipCategories) {
                 $status.skippedCount++
+                $status.scanStats.skippedCategory++
                 continue
             }
 
@@ -537,6 +568,7 @@ try {
 
             if (Test-AlreadyProcessed -State $syncState -MarkerDir $markerDir -EntryId $entryId) {
                 $status.skippedCount++
+                $status.scanStats.alreadyProcessed++
                 continue
             }
 
@@ -573,6 +605,7 @@ try {
                 $processedThisRun++
             } else {
                 $status.skippedCount++
+                $status.scanStats.noSupportedAttachment++
                 $syncState.runStats.totalSkipped++
             }
         } catch {
@@ -604,6 +637,15 @@ try {
         Write-SyncLine 'Stopped early  -  state saved for resume on next run.'
     }
     Write-SyncLine ("Done - saved {0} attachment(s) this run, skipped {1}, errors {2}, {3} total processed in state" -f $status.savedCount, $status.skippedCount, $status.errorCount, $status.processedTotal)
+    $ss = $status.scanStats
+    Write-SyncLine ("Scan: {0} mail item(s); {1} matched sender; {2} matched sender+subject; {3} skipped (category/flag); {4} already processed; {5} matched but no PDF/DOCX" -f $ss.mailItemsScanned, $ss.matchedSender, $ss.matchedBoth, $ss.skippedCategory, $ss.alreadyProcessed, $ss.noSupportedAttachment)
+    if ($status.savedCount -eq 0 -and $ss.mailItemsScanned -eq 0) {
+        Write-SyncLine 'Hint: inbox has no mail items in scan range - check shared mailbox (ACC_SHARED_MAILBOX) or Outlook folder.'
+    } elseif ($status.savedCount -eq 0 -and $ss.matchedBoth -eq 0 -and $ss.matchedSender -eq 0) {
+        Write-SyncLine 'Hint: no sender matches - letters may be in a shared mailbox or SenderEmailAddress differs from allowlist.'
+    } elseif ($status.savedCount -eq 0 -and $ss.matchedBoth -eq 0) {
+        Write-SyncLine 'Hint: sender matched but subject did not - widen subjectPatterns in office-config.json.'
+    }
     if ($useBacklog -and $hitBatchLimit) {
         Write-SyncLine 'Backlog: batch limit reached  -  run again during work hours until saved count is 0.'
     }

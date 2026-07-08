@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { SectionTitle, Card, Badge, EmptyState } from '../components/ui';
 import { IconFolder } from '../components/icons';
@@ -9,7 +9,10 @@ import {
 } from '../lib/accInboxFilters';
 import { loadStagingItems, addStagingItem, type StagingItem } from '../lib/staging';
 import {
+  fetchLocalEmailSyncStatus,
+  formatScanStatsSummary,
   formatSyncOutcome,
+  inboxRowsFromSyncStatus,
   parseEmailSyncStatus,
   type EmailSyncStatus,
 } from '../lib/emailSyncStatus';
@@ -52,10 +55,30 @@ export function AccInbox() {
     [settings.accInboxSenderAllowlist, settings.accInboxSubjectPatterns],
   );
 
-  const rows = useMemo(
-    () => filterAccInboxRows(DEMO_ROWS, filterConfig).filter((r) => !ignored.has(r.id)),
-    [filterConfig, ignored],
+  const syncRows = useMemo(
+    () => (syncStatus ? inboxRowsFromSyncStatus(syncStatus) : []),
+    [syncStatus],
   );
+
+  const useLiveRows = syncStatus !== null;
+
+  const rows = useMemo(() => {
+    const source = syncStatus ? syncRows : DEMO_ROWS;
+    return filterAccInboxRows(source, filterConfig).filter((r) => !ignored.has(r.id));
+  }, [filterConfig, ignored, syncRows, syncStatus]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const local = await fetchLocalEmailSyncStatus();
+      if (!cancelled && local) {
+        setSyncStatus(local);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function refreshStaging() {
     const items = await loadStagingItems();
@@ -122,10 +145,22 @@ export function AccInbox() {
       <Card className="mb-4 p-4">
         <h3 className="font-semibold mb-2 text-sm">Email sync status</h3>
         {syncStatus ? (
-          <p className="text-sm mb-2">{formatSyncOutcome(syncStatus)}</p>
+          <>
+            <p className="text-sm mb-2">{formatSyncOutcome(syncStatus)}</p>
+            {syncStatus.scanStats && syncStatus.savedCount === 0 && (
+              <p className="text-xs mb-2" style={{ color: 'var(--muted)' }}>
+                Scan detail: {formatScanStatsSummary(syncStatus.scanStats)}
+                {syncStatus.sharedMailbox
+                  ? ` · shared mailbox: ${syncStatus.sharedMailbox}`
+                  : ' · default inbox (set ACC_SHARED_MAILBOX if letters live elsewhere)'}
+              </p>
+            )}
+          </>
         ) : (
           <p className="text-sm mb-2" style={{ color: 'var(--muted)' }}>
-            No sync report loaded. On work laptop: double-click <span className="font-mono">Start Email Sync.cmd</span>, then load{' '}
+            No sync report loaded. On work laptop: run <span className="font-mono">Start Email Sync.cmd</span> or{' '}
+            <span className="font-mono">Start WFH Mode.cmd</span> — status auto-loads when served by{' '}
+            <span className="font-mono">launch.ps1</span>, or pick{' '}
             <span className="font-mono">%USERPROFILE%\ACC-Suite\email-sync-status.json</span> below.
           </p>
         )}
@@ -164,7 +199,9 @@ export function AccInbox() {
       )}
 
       <div className="card mb-4 p-3 text-xs" style={{ color: 'var(--muted)' }}>
-        Demo rows until live COM feed lands. After probe PASS: run email sync, then folder watch, then import staging in Review Queue.
+        {useLiveRows
+          ? 'Rows from last email sync (demo hidden). Run folder watch, then import staging in Review Queue.'
+          : 'Demo rows until email sync runs. After sync: folder watch, then Review Queue.'}
         {stagingCount > 0 && ` · ${stagingCount} item(s) already in HRQ staging.`}
       </div>
 
@@ -186,7 +223,7 @@ export function AccInbox() {
                   </div>
                   <div className="text-xs mt-1 flex items-center gap-2">
                     <Badge tone="accent">{row.attachmentName}</Badge>
-                    <span style={{ color: 'var(--muted)' }}>demo</span>
+                    {!useLiveRows && <span style={{ color: 'var(--muted)' }}>demo</span>}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">

@@ -112,6 +112,17 @@ function Get-StaticContentType {
     }
 }
 
+function Resolve-LocalAccJson {
+    param([string]$RequestPath)
+    if ($RequestPath -eq '/_acc/email-sync-status.json') {
+        $candidate = Join-Path $env:USERPROFILE 'ACC-Suite\email-sync-status.json'
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return $candidate
+        }
+    }
+    return $null
+}
+
 function Resolve-StaticFile {
     param(
         [string]$Root,
@@ -333,18 +344,24 @@ try {
 
                 if ($method -eq 'GET') {
                     $reqPath = Get-RequestPath -RequestLine $requestLine
-                    $filePath = Resolve-StaticFile -Root $root -RequestPath $reqPath
-                    if ($filePath) {
-                        if ($filePath -eq $indexPath) {
-                            $body = $htmlBytes
-                        } else {
-                            $body = [System.IO.File]::ReadAllBytes($filePath)
-                        }
-                        $ext = [System.IO.Path]::GetExtension($filePath)
-                        $ctype = Get-StaticContentType -Extension $ext
-                        Send-Response -Client $client -StatusCode 200 -StatusText 'OK' -Body $body -ContentType $ctype
+                    $localJson = Resolve-LocalAccJson -RequestPath $reqPath
+                    if ($localJson) {
+                        $body = [System.IO.File]::ReadAllBytes($localJson)
+                        Send-Response -Client $client -StatusCode 200 -StatusText 'OK' -Body $body -ContentType 'application/json; charset=utf-8'
                     } else {
-                        Send-Response -Client $client -StatusCode 404 -StatusText 'Not Found' -Body $notFound -ContentType 'text/plain; charset=utf-8'
+                        $filePath = Resolve-StaticFile -Root $root -RequestPath $reqPath
+                        if ($filePath) {
+                            if ($filePath -eq $indexPath) {
+                                $body = $htmlBytes
+                            } else {
+                                $body = [System.IO.File]::ReadAllBytes($filePath)
+                            }
+                            $ext = [System.IO.Path]::GetExtension($filePath)
+                            $ctype = Get-StaticContentType -Extension $ext
+                            Send-Response -Client $client -StatusCode 200 -StatusText 'OK' -Body $body -ContentType $ctype
+                        } else {
+                            Send-Response -Client $client -StatusCode 404 -StatusText 'Not Found' -Body $notFound -ContentType 'text/plain; charset=utf-8'
+                        }
                     }
                 } else {
                     Send-Response -Client $client -StatusCode 404 -StatusText 'Not Found' -Body $notFound -ContentType 'text/plain; charset=utf-8'

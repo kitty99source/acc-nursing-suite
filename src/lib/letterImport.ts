@@ -388,7 +388,8 @@ export async function extractWordText(
   report(onProgress, { stage: 'open', message: 'Opening Word document…', progress: 5, extractPreview: '' });
   const buffer = await toWordBuffer(input);
   const mammoth = await import('mammoth');
-  const { value } = await mammoth.extractRawText({ buffer });
+  // Browser build (vite dist) uses mammoth's browser unzip — expects arrayBuffer, not buffer.
+  const { value } = await mammoth.extractRawText({ buffer, arrayBuffer: buffer });
   const text = value.replace(/\r\n/g, '\n').trim();
   report(onProgress, {
     stage: 'extract-done',

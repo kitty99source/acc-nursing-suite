@@ -491,18 +491,39 @@ All patient data stays on the work laptop — do **not** run folder watch on the
 4. **FAIL** if programmatic access is blocked — keep using Phase G folder watch + manual Outlook rule (see [`EMAIL_AUTOMATION_FEASIBILITY.md`](EMAIL_AUTOMATION_FEASIBILITY.md)).
 5. Log: `%USERPROFILE%\ACC-Suite\logs\email-probe-bootstrap.log`
 
-### Step 2 — Full sync (only if probe PASS)
+### Step 2 — Backlog sync (only if probe PASS)
+
+**What this does (plain English):** Each time you double-click **Start Email Sync.cmd** during work hours, it pulls the **oldest unactioned ACC emails** from Outlook (up to 50 per run), saves PDF or Word attachments into `ACC-Inbox`, and remembers where it stopped. It **never** auto-imports into the app — use **Start Folder Watch.cmd** → **Review Queue** to import manually. Emails tagged **actioned** in Outlook (or marked complete with a flag) are skipped.
 
 1. Confirm `Start Email Sync.cmd` and `outlook-sync.ps1` exist in `dist/`.
-2. Optional: copy `office-config.example.json` to `%USERPROFILE%\ACC-Suite\office-config.json` and tune ACC sender/subject filters.
-3. Double-click **`Start Email Sync.cmd`** — saves PDF/DOCX attachments to `%USERPROFILE%\ACC-Inbox`.
-4. Status file: `%USERPROFILE%\ACC-Suite\email-sync-status.json` — load this in **ACC Inbox** → **Load sync report**.
-5. Double-click **`Start Folder Watch.cmd`** so new attachments stage for **Review Queue**.
-6. Log: `%USERPROFILE%\ACC-Suite\logs\email-sync-bootstrap.log`
+2. Optional: copy `office-config.example.json` to `%USERPROFILE%\ACC-Suite\office-config.json` and tune ACC sender/subject filters or batch size (`emailSync.batchSize`, default 50).
+3. Double-click **`Start Email Sync.cmd`** — runs **7am–6pm NZ only** (outside hours it exits safely; no overnight catch-up).
+4. Repeat during work hours until the log shows **saved 0** attachments (backlog cleared).
+5. Tag processed emails **actioned** in Outlook if you want them skipped on future runs.
+6. Status file: `%USERPROFILE%\ACC-Suite\email-sync-status.json` — load in **ACC Inbox** → **Load sync report**.
+7. Checkpoint file: `%USERPROFILE%\ACC-Suite\email-sync-state.json` — resume after close or Ctrl+C.
+8. Double-click **`Start Folder Watch.cmd`** so new attachments stage for **Review Queue**.
+9. Log: `%USERPROFILE%\ACC-Suite\logs\email-sync-bootstrap.log`
+
+**Switches:** `-Recent` for last-14-days mode only; `-BatchSize 25` for smaller batches; `-IgnoreWorkHours` if IT requires off-hours test.
+
+**Shared mailbox:** set `ACC_SHARED_MAILBOX=YourTeamMailbox` before running if ACC letters arrive there.
 
 **PHI:** Subjects may show patient names — do not screenshot for support; send log file only if asked.
 
-**Shared mailbox:** set `ACC_SHARED_MAILBOX=YourTeamMailbox` before running if ACC letters arrive there.
+---
+
+## Phase I — Word letter import (verify after rebuild)
+
+**Purpose:** Confirm `.docx` ACC letters import the same as PDF (UAT Bug 1 fix).
+
+1. Rebuild on dev machine: `npm test` → `npm run build` → `npm run verify-build`.
+2. Copy fresh `dist/` to work laptop (replace old build — old dist showed "PDF only" label).
+3. In app: **Import ACC letter (PDF or Word)** — pick `approval-template.docx` or a real ACC Word letter.
+4. **Pass if:** parser fills claim/PO/NHI fields like PDF; no "Could not find file in options" error.
+5. Also test drag-drop `.docx` onto the app window.
+
+**Cause of old bug:** production bundle uses mammoth's browser API (`arrayBuffer`), but code passed `buffer` only — fixed in current build.
 
 ---
 

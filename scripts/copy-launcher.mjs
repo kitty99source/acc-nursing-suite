@@ -73,6 +73,7 @@ const launcherFiles = [
   'Start Folder Watch.cmd',
   'Start Email Probe.cmd',
   'Start Email Sync.cmd',
+  'Start Email Backfill.cmd',
   'Start Email Diagnose.cmd',
   'Start WFH Mode.cmd',
   'wfh-mode.ps1',

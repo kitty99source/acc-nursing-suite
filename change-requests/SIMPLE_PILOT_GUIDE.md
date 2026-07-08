@@ -570,6 +570,16 @@ All patient data stays on the work laptop — do **not** run folder watch on the
 
 **Switches:** `-Recent` for last-14-days mode only; `-BatchSize 25` for smaller batches; `-Scheduled` marks a run as the future automated daemon (obeys the `accWorkHours` window if `enabled: true`); `-IgnoreWorkHours` forces a `-Scheduled` run even outside its window. Manual double-click runs need none of these — they always run.
 
+### One-time backfill (pull historical actioned letters)
+
+Normal **Start Email Sync.cmd** skips any email already tagged **actioned** or marked complete with a flag. If your mailbox is already worked through, a first sync may save almost nothing. To pull the **historical** letters in once for the pilot:
+
+1. Double-click **`Start Email Backfill.cmd`** (same as Email Sync but passes `-IncludeActioned`, so it **includes** already-actioned/flagged messages). The log shows `Backfill mode: INCLUDING already-actioned/flagged messages (one-time backfill)`.
+2. Run it a **few times** until it reports **saved 0** (it still batches ~50 per run). Everything still lands in the **Human Review Queue** — nothing auto-imports.
+3. After the backfill, go back to the normal **Start Email Sync.cmd** for day-to-day incremental sync.
+
+**VPN reliability tip:** enable **Cached Exchange Mode** in Outlook (File > Account Settings > double-click the account > tick *Use Cached Exchange Mode*) so sync reads Outlook's local copy and survives Citrix VPN drops. If the VPN drops mid-scan, the sync now **stops early** with a clear "Outlook lost its connection to Exchange" message instead of spamming ~1000 errors — reconnect the VPN, wait until Outlook shows *Connected*, then re-run.
+
 ### Capture rule (what gets saved) — 2026-07-09 update
 
 **Plain English:** the sync now saves an email when it is **(a) from an allowlisted ACC sender AND (b) has at least one supported attachment (`.pdf` / `.docx` / `.doc`)** — **regardless of the subject line**. The old requirement that the subject contain `Claim:`/`ACCID:` is gone as a gate; the subject is still detected and **logged as a confidence hint** (`[capture] sender=… attachments=… subjectMatch=true/false`), but it no longer blocks capture. This fixes real letters that were being missed because their subject was a **name only** (e.g. `Steyn`, `Watson`) instead of containing a claim token, even though the PDF was attached.

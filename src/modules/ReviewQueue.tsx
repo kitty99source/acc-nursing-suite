@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/store';
-import { SectionTitle, Badge, Card, EmptyState } from '../components/ui';
+import {
+  SectionTitle,
+  Badge,
+  Card,
+  EmptyState,
+  Field,
+  TextInput,
+  DateInput,
+  TextArea,
+} from '../components/ui';
+import { PdfPreview } from '../components/PdfPreview';
 import { useConfirm } from '../components/useConfirm';
 import {
   loadStagingItems,
@@ -11,18 +21,6 @@ import {
   type StagingItem,
 } from '../lib/staging';
 import { hrqSlaStatus, hrqSlaLabel, summarizeQueueSla, type SlaLevel } from '../lib/hrqSla';
-import {
-  allSelectedBatchApprovable,
-  commitBatchStagingItems,
-  isBatchApprovable,
-  stagingPatientNames,
-} from '../lib/hrqBatch';
-import {
-  candidateFileNames,
-  normalizeMatchName,
-  runBulkImport,
-  type BulkImportOutcome,
-} from '../lib/bulkImport';
 import { appendAudit, recordHrqResolution } from '../lib/auditLog';
 import { LETTER_IMPORT_ACCEPT } from '../components/LetterImportButton';
 import {
@@ -31,12 +29,17 @@ import {
   type StagingBridgeStatus,
 } from '../lib/localAccBridge';
 import { enqueueStagingPreparse } from '../lib/stagingPreparse';
-
-const BULK_LETTER_TYPES: ReadonlySet<StagingItem['type']> = new Set([
-  'letter-import-pending',
-  'letter-import-low-confidence',
-  'letter-duplicate-suspect',
-]);
+import {
+  commitLetterForm,
+  emptyLetterCommitForm,
+  fileFromStagingPreview,
+  formFieldsFromParsed,
+  formFieldsFromPreview,
+  stagingPreviewOf,
+  type LetterCommitFormFields,
+} from '../lib/letterCommit';
+import type { LetterParseResult, ParsedLetter, ParsedServiceRow } from '../lib/letterImport';
+import type { ApprovalServiceCode } from '../types';
 
 function slaTone(level: SlaLevel): 'good' | 'warn' | 'danger' {
   if (level === 'danger') return 'danger';
@@ -61,61 +64,55 @@ function typeLabel(type: StagingItem['type']): string {
   }
 }
 
-function BulkImportSummary({ outcomes }: { outcomes: BulkImportOutcome[] }) {
-  const committed = outcomes.filter((o) => o.committed);
-  const skipped = outcomes.filter((o) => !o.committed);
+function listTitle(item: StagingItem): string {
+  const preview = stagingPreviewOf(item);
   return (
-    <div className="space-y-3">
-      <p>
-        Filed <strong>{committed.length}</strong> letter{committed.length === 1 ? '' : 's'} to live data.{' '}
-        {skipped.length > 0 ? (
-          <>
-            <strong>{skipped.length}</strong> left in the queue for manual review.
-          </>
-        ) : (
-          'Nothing needed manual review.'
-        )}
-      </p>
-      {skipped.length > 0 && (
-        <div>
-          <p className="text-sm font-medium mb-1">Still needs you (left in queue):</p>
-          <ul className="list-disc pl-5 space-y-1 text-sm max-h-48 overflow-y-auto">
-            {skipped.map((o) => (
-              <li key={o.stagingId}>
-                <strong>{o.title}</strong> — {o.detail}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
+    preview?.patientName?.trim() ||
+    item.patientName?.trim() ||
+    item.title
   );
 }
 
 export function ReviewQueue() {
-  const openLetterImport = useStore((s) => s.openLetterImport);
   const commitParsedApproval = useStore((s) => s.commitParsedApproval);
   const commitParsedDecline = useStore((s) => s.commitParsedDecline);
   const parseLetterFile = useStore((s) => s.parseLetterFile);
+  const data = useStore((s) => s.data);
+  const setFocus = useStore((s) => s.setFocus);
   const userName = useStore((s) => s.data.settings.userDisplayName?.trim() || undefined);
+
   const [items, setItems] = useState<StagingItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [autoImportNote, setAutoImportNote] = useState<string | null>(null);
   const [bridgeStatus, setBridgeStatus] = useState<StagingBridgeStatus | null>(null);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
+
+  const [file, setFile] = useState<File | null>(null);
+  const [fields, setFields] = useState<LetterCommitFormFields>(emptyLetterCommitForm());
+  const [parsed, setParsed] = useState<ParsedLetter | null>(null);
+  const [parseMeta, setParseMeta] = useState<{
+    confidence?: number;
+    blockers: string[];
+    loading: boolean;
+    error: string | null;
+  }>({ blockers: [], loading: false, error: null });
+
   const [confirm, confirmDialog] = useConfirm();
   const sidecarInput = useRef<HTMLInputElement>(null);
   const letterInput = useRef<HTMLInputElement>(null);
-  const pendingReviewId = useRef<string | null>(null);
-  /** Sidecar ids already seen from /_acc/staging this session (avoid rework). */
   const seenSidecarIds = useRef<Set<string>>(new Set());
+  const loadGen = useRef(0);
 
   const refresh = useCallback(async () => {
     const pending = await loadStagingItems();
-    // Oldest first: items closest to the SLA limit surface at the top of the queue.
-    setItems(pending.sort((a, b) => a.createdAt - b.createdAt));
-    setSelected(new Set());
+    const sorted = pending.sort((a, b) => a.createdAt - b.createdAt);
+    setItems(sorted);
     enqueueStagingPreparse(pending);
+    setSelectedId((prev) => {
+      if (prev && sorted.some((i) => i.id === prev)) return prev;
+      return sorted[0]?.id ?? null;
+    });
   }, []);
 
   const autoImportFromLauncher = useCallback(async () => {
@@ -150,33 +147,135 @@ export function ReviewQueue() {
   }, [refresh, autoImportFromLauncher]);
 
   const sorted = useMemo(() => items, [items]);
-
-  const selectedItems = useMemo(() => sorted.filter((i) => selected.has(i.id)), [sorted, selected]);
-  const bulkSelectableItems = useMemo(
-    () => selectedItems.filter((i) => BULK_LETTER_TYPES.has(i.type)),
-    [selectedItems],
+  const selected = useMemo(
+    () => sorted.find((i) => i.id === selectedId) ?? null,
+    [sorted, selectedId],
   );
-  const canBatchApprove = useMemo(() => allSelectedBatchApprovable(selectedItems), [selectedItems]);
-  const batchApprovableCount = useMemo(
-    () => selectedItems.filter(isBatchApprovable).length,
-    [selectedItems],
-  );
-  const batchReadyItems = useMemo(() => sorted.filter(isBatchApprovable), [sorted]);
   const slaSummary = useMemo(() => summarizeQueueSla(sorted), [sorted]);
   const overdueCount = slaSummary.breached;
-  const allSelected = sorted.length > 0 && selected.size === sorted.length;
 
-  function toggleSelectAll() {
-    setSelected((prev) => (prev.size === sorted.length ? new Set<string>() : new Set(sorted.map((i) => i.id))));
-  }
+  const matchedPatient = useMemo(() => {
+    if (!fields.selectedPatientId) return undefined;
+    return data.patients.find((p) => p.id === fields.selectedPatientId);
+  }, [data.patients, fields.selectedPatientId]);
+
+  const matchedClaim = useMemo(() => {
+    if (!fields.selectedClaimId) return undefined;
+    return data.claims.find((c) => c.id === fields.selectedClaimId);
+  }, [data.claims, fields.selectedClaimId]);
+
+  const loadSelected = useCallback(
+    async (item: StagingItem) => {
+      const gen = ++loadGen.current;
+      setFile(null);
+      setParsed(null);
+      setFields(emptyLetterCommitForm());
+      setParseMeta({ blockers: [], loading: true, error: null });
+
+      const preview = stagingPreviewOf(item);
+      let resolved = fileFromStagingPreview(item) ?? null;
+      if (!resolved) {
+        resolved =
+          (await fetchInboxFileForStaging({
+            sourceHash: item.sourceHash,
+            sourceFileName: item.sourceFileName,
+            expectedFileName: item.expectedFileName,
+          })) ?? null;
+      }
+      if (gen !== loadGen.current) return;
+
+      if (preview) {
+        setFields(formFieldsFromPreview(preview));
+        setParsed(preview.parsed);
+        setFile(resolved);
+        setParseMeta({
+          confidence: preview.confidence,
+          blockers: [],
+          loading: false,
+          error: resolved ? null : 'Attachment not found — pick the letter file to continue.',
+        });
+        return;
+      }
+
+      if (!resolved) {
+        setFields({
+          ...emptyLetterCommitForm(),
+          patientName: item.patientName ?? '',
+          claimNumber: item.claimNumber ?? '',
+        });
+        setParseMeta({
+          blockers: [],
+          loading: false,
+          error: 'Attachment not found — pick the letter file to parse and review.',
+        });
+        return;
+      }
+
+      setFile(resolved);
+      try {
+        const result: LetterParseResult = await parseLetterFile(resolved);
+        if (gen !== loadGen.current) return;
+        if (!result.parsed) {
+          setFields({
+            ...emptyLetterCommitForm(),
+            patientName: item.patientName ?? '',
+            claimNumber: item.claimNumber ?? '',
+          });
+          setParseMeta({
+            confidence: result.overallConfidence,
+            blockers: result.blockers,
+            loading: false,
+            error: 'Could not parse this letter — fill the form manually, then Accept.',
+          });
+          return;
+        }
+        setParsed(result.parsed);
+        setFields(
+          formFieldsFromParsed(result.parsed, {
+            patientId: result.match.patientId,
+            claimId: result.match.claimId,
+            patientName: result.match.patient?.name,
+          }),
+        );
+        const blockers = result.issues
+          .filter((i) => i.blocking !== false)
+          .map((i) => i.message);
+        setParseMeta({
+          confidence: result.overallConfidence,
+          blockers: blockers.length ? blockers : result.blockers,
+          loading: false,
+          error: null,
+        });
+      } catch (err) {
+        if (gen !== loadGen.current) return;
+        setParseMeta({
+          blockers: [],
+          loading: false,
+          error: err instanceof Error ? err.message : 'Failed to read letter',
+        });
+      }
+    },
+    [parseLetterFile],
+  );
+
+  useEffect(() => {
+    if (!selected) {
+      setFile(null);
+      setParsed(null);
+      setFields(emptyLetterCommitForm());
+      setParseMeta({ blockers: [], loading: false, error: null });
+      return;
+    }
+    void loadSelected(selected);
+  }, [selected, loadSelected]);
 
   async function importSidecars(files: FileList | null) {
     if (!files?.length) return;
     setBusy(true);
     try {
       let added = 0;
-      for (const file of [...files]) {
-        const text = await file.text();
+      for (const f of [...files]) {
+        const text = await f.text();
         added += await importStagingJsonText(text);
       }
       if (added > 0) {
@@ -210,8 +309,8 @@ export function ReviewQueue() {
       let added = 0;
       for await (const entry of handle.values()) {
         if (entry.kind !== 'file' || !entry.name.endsWith('.json')) continue;
-        const file = await (entry as FileSystemFileHandle).getFile();
-        added += await importStagingJsonText(await file.text());
+        const f = await (entry as FileSystemFileHandle).getFile();
+        added += await importStagingJsonText(await f.text());
       }
       if (added > 0) {
         await appendAudit({
@@ -233,86 +332,184 @@ export function ReviewQueue() {
     }
   }
 
-  function toggleSelect(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  function patchField<K extends keyof LetterCommitFormFields>(key: K, value: LetterCommitFormFields[K]) {
+    setFields((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function startReview(item: StagingItem) {
-    // Prefer loopback /_acc/inbox-file by SHA-256 — no per-letter file picker.
-    const resolved = await fetchInboxFileForStaging({
-      sourceHash: item.sourceHash,
-      sourceFileName: item.sourceFileName,
-      expectedFileName: item.expectedFileName,
-    });
-    if (resolved) {
-      openLetterImport(resolved, {
-        entryPoint: 'review-queue',
-        stagingItemId: item.id,
-        onImportComplete: () => {
-          void (async () => {
-            const before = items.find((i) => i.id === item.id);
-            await updateStagingItem(item.id, { status: 'approved' });
-            await recordHrqResolution({
-              action: 'hrq-sign-off',
-              stagingItemId: item.id,
-              title: before?.title ?? resolved.name,
-              beforeStatus: before?.status ?? 'pending',
-              afterStatus: 'approved',
-              user: userName,
-              runId: before?.runId,
-              detail: `filed letter import ${resolved.name}`,
-            });
-            await refresh();
-          })();
-        },
+  function updateRow(index: number, patch: Partial<ParsedServiceRow>) {
+    setFields((prev) => ({
+      ...prev,
+      rows: prev.rows.map((r, i) => (i === index ? { ...r, ...patch } : r)),
+    }));
+  }
+
+  function removeRow(index: number) {
+    setFields((prev) => ({
+      ...prev,
+      rows: prev.rows.filter((_, i) => i !== index),
+    }));
+  }
+
+  function setCurrentRow(index: number) {
+    setFields((prev) => ({
+      ...prev,
+      rows: prev.rows.map((r, i) => ({
+        ...r,
+        recordStatus: i === index ? 'current' : 'historical',
+      })),
+    }));
+  }
+
+  async function handlePickedLetter(picked: File | undefined) {
+    if (!picked || !selected) return;
+    setFile(picked);
+    setParseMeta({ blockers: [], loading: true, error: null });
+    try {
+      const result = await parseLetterFile(picked);
+      if (!result.parsed) {
+        setParseMeta({
+          confidence: result.overallConfidence,
+          blockers: result.blockers,
+          loading: false,
+          error: 'Could not parse this letter — fill the form manually, then Accept.',
+        });
+        return;
+      }
+      setParsed(result.parsed);
+      setFields(
+        formFieldsFromParsed(result.parsed, {
+          patientId: result.match.patientId,
+          claimId: result.match.claimId,
+          patientName: result.match.patient?.name,
+        }),
+      );
+      const blockers = result.issues
+        .filter((i) => i.blocking !== false)
+        .map((i) => i.message);
+      setParseMeta({
+        confidence: result.overallConfidence,
+        blockers: blockers.length ? blockers : result.blockers,
+        loading: false,
+        error: null,
+      });
+    } catch (err) {
+      setParseMeta({
+        blockers: [],
+        loading: false,
+        error: err instanceof Error ? err.message : 'Failed to read letter',
+      });
+    } finally {
+      if (letterInput.current) letterInput.current.value = '';
+    }
+  }
+
+  function nextAfter(id: string): string | null {
+    const idx = sorted.findIndex((i) => i.id === id);
+    if (idx < 0) return sorted[0]?.id ?? null;
+    return sorted[idx + 1]?.id ?? sorted[idx - 1]?.id ?? null;
+  }
+
+  async function acceptItem() {
+    if (!selected || !parsed || !file) {
+      await confirm({
+        title: 'Cannot accept yet',
+        message: !file
+          ? 'Load or pick the letter attachment first.'
+          : 'Letter has not been parsed into a patient form yet.',
+        confirmLabel: 'OK',
       });
       return;
     }
-    pendingReviewId.current = item.id;
-    letterInput.current?.click();
-  }
+    if (!fields.patientName.trim()) {
+      await confirm({
+        title: 'Patient name required',
+        message: 'Enter the patient name before accepting this case.',
+        confirmLabel: 'OK',
+      });
+      return;
+    }
 
-  function handleLetterFile(file: File | undefined) {
-    const stagingId = pendingReviewId.current;
-    pendingReviewId.current = null;
-    if (!file || !stagingId) return;
-    openLetterImport(file, {
-      entryPoint: 'review-queue',
-      stagingItemId: stagingId,
-      onImportComplete: () => {
-        void (async () => {
-          const before = items.find((i) => i.id === stagingId);
-          await updateStagingItem(stagingId, { status: 'approved' });
-          await recordHrqResolution({
-            action: 'hrq-sign-off',
-            stagingItemId: stagingId,
-            title: before?.title ?? file.name,
-            beforeStatus: before?.status ?? 'pending',
-            afterStatus: 'approved',
-            user: userName,
-            runId: before?.runId,
-            detail: `filed letter import ${file.name}`,
-          });
-          await refresh();
-        })();
-      },
+    const ok = await confirm({
+      title: 'Accept → create patient case?',
+      message: (
+        <div className="space-y-2 text-sm">
+          <p>
+            This will create (or update) the live patient and claim for{' '}
+            <strong>{fields.patientName.trim()}</strong>
+            {fields.claimNumber.trim() ? (
+              <>
+                {' '}
+                / claim <strong>{fields.claimNumber.trim()}</strong>
+              </>
+            ) : null}
+            , attach the letter, and remove this item from the review queue. It will then appear in
+            Patients &amp; Cases and count toward metrics.
+          </p>
+        </div>
+      ),
+      confirmLabel: 'Accept → create patient case',
     });
-    if (letterInput.current) letterInput.current.value = '';
+    if (!ok) return;
+
+    setBusy(true);
+    try {
+      const result = await commitLetterForm(parsed, file, fields, {
+        commitParsedApproval,
+        commitParsedDecline,
+      });
+      await updateStagingItem(selected.id, { status: 'approved' });
+      await recordHrqResolution({
+        action: 'hrq-sign-off',
+        stagingItemId: selected.id,
+        title: selected.title,
+        beforeStatus: selected.status,
+        afterStatus: 'approved',
+        user: userName,
+        runId: selected.runId,
+        detail: `filed ${result.kind} → claim ${result.claimId}`,
+      });
+      const name = fields.patientName.trim();
+      const advanceTo = nextAfter(selected.id);
+      setFlash(`Patient case created for ${name}.`);
+      window.setTimeout(() => setFlash(null), 5000);
+      await refresh();
+      setSelectedId(advanceTo);
+      const openPatient = await confirm({
+        title: 'Patient case created',
+        message: (
+          <p className="text-sm">
+            <strong>{name}</strong> is now in Patients &amp; Cases and counts toward metrics.
+          </p>
+        ),
+        confirmLabel: 'Open in Patients & Cases',
+      });
+      if (openPatient) {
+        setFocus({
+          module: 'patients',
+          patientId: result.patientId,
+          claimId: result.claimId,
+        });
+      }
+    } catch (err) {
+      await confirm({
+        title: 'Accept failed',
+        message: (err as Error).message,
+        confirmLabel: 'OK',
+      });
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function rejectItem(item: StagingItem) {
     const ok = await confirm({
       title: 'Reject staged item?',
-      message: `"${item.title}" will be removed from the pending queue.`,
+      message: `"${item.title}" will be removed from the pending queue without creating a patient case.`,
       confirmLabel: 'Reject',
       destructive: true,
     });
     if (!ok) return;
+    const advanceTo = nextAfter(item.id);
     await updateStagingItem(item.id, { status: 'rejected' });
     await recordHrqResolution({
       action: 'hrq-reject',
@@ -324,9 +521,11 @@ export function ReviewQueue() {
       runId: item.runId,
     });
     await refresh();
+    setSelectedId(advanceTo);
   }
 
   async function deferItem(item: StagingItem) {
+    const advanceTo = nextAfter(item.id);
     await updateStagingItem(item.id, { status: 'deferred' });
     await recordHrqResolution({
       action: 'hrq-defer',
@@ -338,190 +537,28 @@ export function ReviewQueue() {
       runId: item.runId,
     });
     await refresh();
+    setSelectedId(advanceTo);
   }
 
-  async function rejectSelected() {
-    if (!selected.size) return;
-    const ok = await confirm({
-      title: `Reject ${selected.size} item(s)?`,
-      message: 'Selected items will leave the pending queue.',
-      confirmLabel: 'Reject all',
-      destructive: true,
-    });
-    if (!ok) return;
-    for (const id of selected) {
-      const item = sorted.find((i) => i.id === id);
-      await updateStagingItem(id, { status: 'rejected' });
-      await recordHrqResolution({
-        action: 'hrq-reject',
-        stagingItemId: id,
-        title: item?.title ?? id,
-        beforeStatus: item?.status ?? 'pending',
-        afterStatus: 'rejected',
-        user: userName,
-        runId: item?.runId,
-      });
-    }
-    await refresh();
-  }
-
-  async function approveSelected() {
-    if (!canBatchApprove) return;
-    const names = stagingPatientNames(selectedItems);
-    const ok = await confirm({
-      title: `Approve ${selectedItems.length} letter(s)?`,
-      message: (
-        <div>
-          <p className="mb-2">
-            You are about to file <strong>{selectedItems.length}</strong> high-confidence letter
-            {selectedItems.length === 1 ? '' : 's'} to live patient data. Confirm every patient name:
-          </p>
-          <ul className="list-disc pl-5 space-y-1">
-            {names.map((name) => (
-              <li key={name}>
-                <strong>{name}</strong>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ),
-      confirmLabel: `Approve ${selectedItems.length}`,
-    });
-    if (!ok) return;
-
-    setBusy(true);
-    try {
-      const results = await commitBatchStagingItems(selectedItems, {
-        commitParsedApproval,
-        commitParsedDecline,
-      });
-      for (const result of results) {
-        const item = selectedItems.find((i) => i.id === result.stagingId);
-        await updateStagingItem(result.stagingId, { status: 'approved' });
-        await recordHrqResolution({
-          action: 'hrq-batch-sign-off',
-          stagingItemId: result.stagingId,
-          title: item?.title ?? result.stagingId,
-          beforeStatus: item?.status ?? 'pending',
-          afterStatus: 'approved',
-          user: userName,
-          runId: item?.runId,
-          detail: `filed ${result.kind} → claim ${result.claimId}`,
-        });
-      }
-      await refresh();
-    } catch (err) {
-      await confirm({
-        title: 'Batch approve failed',
-        message: (err as Error).message,
-        confirmLabel: 'OK',
-      });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function bulkImportSelected() {
-    const letterItems = bulkSelectableItems;
-    if (!letterItems.length) {
-      await confirm({
-        title: 'Select queue letters first',
-        message:
-          'Tick one or more rows in this Review Queue (IndexedDB staging), then run Bulk import. You are not selecting files from ACC-Inbox\\processed/ — that folder is only searched later for matching letter bytes after you pick ACC-Inbox.',
-        confirmLabel: 'OK',
-      });
-      return;
-    }
-    if (!('showDirectoryPicker' in window)) {
-      await confirm({
-        title: 'Folder access needed',
-        message:
-          'Bulk import reads the letter files from a folder (Chrome/Edge only). Use “Review & import” on each item instead.',
-        confirmLabel: 'OK',
-      });
-      return;
-    }
-
-    let dir: FileSystemDirectoryHandle;
-    try {
-      dir = await window.showDirectoryPicker({ mode: 'read' });
-    } catch (err) {
-      if ((err as Error).name === 'AbortError') return;
-      await confirm({ title: 'Bulk import failed', message: (err as Error).message, confirmLabel: 'OK' });
-      return;
-    }
-
-    setBusy(true);
-    try {
-      // Index files in the chosen folder (root + one level deep, e.g. processed/).
-      // Pick ACC-Inbox (the parent), not processed/ alone — otherwise root-only names miss.
-      const fileIndex = new Map<string, FileSystemFileHandle>();
-      const indexDir = async (handle: FileSystemDirectoryHandle, depth: number): Promise<void> => {
-        for await (const entry of handle.values()) {
-          if (entry.kind === 'file') {
-            const key = normalizeMatchName(entry.name);
-            if (!fileIndex.has(key)) fileIndex.set(key, entry as FileSystemFileHandle);
-          } else if (entry.kind === 'directory' && depth > 0) {
-            await indexDir(entry as FileSystemDirectoryHandle, depth - 1);
-          }
-        }
-      };
-      await indexDir(dir, 1);
-
-      const outcomes = await runBulkImport(letterItems, {
-        resolveFile: async (item) => {
-          for (const name of candidateFileNames(item)) {
-            const handle = fileIndex.get(name);
-            if (handle) return handle.getFile();
-          }
-          return undefined;
-        },
-        parse: (file) => parseLetterFile(file),
-        commitApproval: (parsed, file, opts) => commitParsedApproval(parsed, file, opts),
-        commitDecline: (parsed, file, opts) => commitParsedDecline(parsed, file, opts),
-      });
-
-      for (const outcome of outcomes) {
-        if (!outcome.committed) continue;
-        const item = letterItems.find((i) => i.id === outcome.stagingId);
-        await updateStagingItem(outcome.stagingId, { status: 'approved' });
-        await recordHrqResolution({
-          action: 'hrq-batch-sign-off',
-          stagingItemId: outcome.stagingId,
-          title: item?.title ?? outcome.stagingId,
-          beforeStatus: item?.status ?? 'pending',
-          afterStatus: 'approved',
-          user: userName,
-          runId: item?.runId,
-          detail: `bulk-filed ${outcome.kind} → claim ${outcome.claimId}`,
-        });
-      }
-
-      await refresh();
-      await confirm({
-        title: 'Bulk import complete',
-        message: <BulkImportSummary outcomes={outcomes} />,
-        confirmLabel: 'Done',
-      });
-    } catch (err) {
-      await confirm({ title: 'Bulk import failed', message: (err as Error).message, confirmLabel: 'OK' });
-    } finally {
-      setBusy(false);
-    }
-  }
+  const canAccept =
+    !!selected &&
+    !!parsed &&
+    !!file &&
+    !!fields.patientName.trim() &&
+    !parseMeta.loading &&
+    !busy;
 
   return (
     <div>
       <SectionTitle
-        title="Human Review Queue"
-        subtitle="Primary inbox for ACC letters — folder-watch writes JSON sidecars to ACC-Inbox\.staging; launch.ps1 serves them at /_acc/staging so they land here automatically. Sign off before they touch live patient data. Oldest items first."
+        title="Review final patient form"
+        subtitle="Under review = not yet a live patient case and not in metrics. Select a letter, check the attachment and the pre-filled form, then Accept to create the patient case."
         actions={
           sorted.length > 0 ? (
             <div className="flex items-center gap-2 flex-wrap">
-              <Badge tone={overdueCount ? 'danger' : 'good'}>{sorted.length} pending</Badge>
+              <Badge tone={overdueCount ? 'danger' : 'good'}>{sorted.length} under review</Badge>
               {slaSummary.warn > 0 && <Badge tone="warn">{slaSummary.warn} approaching SLA</Badge>}
               {overdueCount > 0 && <Badge tone="danger">{overdueCount} overdue</Badge>}
-              {batchReadyItems.length > 0 && <Badge tone="good">{batchReadyItems.length} batch ready</Badge>}
             </div>
           ) : undefined
         }
@@ -539,8 +576,6 @@ export function ReviewQueue() {
           without <span className="font-mono">launch.ps1</span>). Use{' '}
           <strong>Start ACC Suite.cmd</strong> so the launcher serves the app, or use the Import
           buttons below to pick <span className="font-mono">ACC-Inbox\.staging</span> manually.
-          AccInbox &quot;Advanced: stage&quot; also writes directly into this queue (IndexedDB) and
-          does not need the bridge.
         </div>
       )}
 
@@ -557,6 +592,12 @@ export function ReviewQueue() {
       {autoImportNote && (
         <p className="text-sm mb-3" style={{ color: 'var(--good-fg, var(--muted))' }}>
           {autoImportNote}
+        </p>
+      )}
+
+      {flash && (
+        <p className="text-sm mb-3 font-medium" style={{ color: 'var(--good-fg)' }} role="status">
+          {flash}
         </p>
       )}
 
@@ -579,27 +620,6 @@ export function ReviewQueue() {
         >
           Import sidecar JSON files
         </button>
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={busy || !canBatchApprove}
-          onClick={() => void approveSelected()}
-          title="File all selected high-confidence letters after confirming every patient name"
-        >
-          Approve selected ({batchApprovableCount})
-        </button>
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={busy || !bulkSelectableItems.length}
-          onClick={() => void bulkImportSelected()}
-          title="Select queue rows first, then pick ACC-Inbox (root). Bulk matches letter files by name in the root and one level deep (e.g. processed/) — it does not select files from processed/ itself."
-        >
-          Bulk import selected ({bulkSelectableItems.length})
-        </button>
-        <button type="button" className="btn" disabled={busy || !selected.size} onClick={() => void rejectSelected()}>
-          Reject selected ({selected.size})
-        </button>
         <button type="button" className="btn" disabled={busy} onClick={() => void refresh()}>
           Refresh
         </button>
@@ -616,136 +636,343 @@ export function ReviewQueue() {
           type="file"
           accept={LETTER_IMPORT_ACCEPT}
           className="hidden"
-          onChange={(e) => handleLetterFile(e.target.files?.[0])}
+          onChange={(e) => void handlePickedLetter(e.target.files?.[0])}
         />
       </div>
 
       {!sorted.length ? (
         <EmptyState
-          title="No pending reviews"
+          title="No letters under review"
           message={
             bridgeStatus === 'unavailable'
-              ? 'Auto-import needs launch.ps1 (/_acc/staging). Until then: Import ACC-Inbox .staging folder, or use AccInbox → Advanced: stage (writes IndexedDB directly). processed/ PDFs alone never appear here.'
-              : '1. Run Start WFH Mode.cmd (or Start Folder Watch.cmd). 2. Sidecars land in ACC-Inbox\\.staging and auto-import here when launch.ps1 is serving. 3. If the queue stays empty, use Import ACC-Inbox .staging folder. You select queue rows here — not files in processed/.'
+              ? 'Auto-import needs launch.ps1 (/_acc/staging). Until then: Import ACC-Inbox .staging folder. processed/ PDFs alone never appear here.'
+              : '1. Run Start WFH Mode.cmd (or Start Folder Watch.cmd). 2. Sidecars land in ACC-Inbox\\.staging and auto-import here when launch.ps1 is serving. 3. If the queue stays empty, use Import ACC-Inbox .staging folder.'
           }
         />
       ) : (
-        <>
-        <label
-          className="flex items-center gap-2 mb-2 text-sm cursor-pointer select-none"
-          style={{ color: 'var(--muted)' }}
+        <div
+          className="grid gap-4"
+          style={{ gridTemplateColumns: 'minmax(240px, 320px) minmax(0, 1fr)' }}
         >
-          <input
-            type="checkbox"
-            checked={allSelected}
-            onChange={toggleSelectAll}
-            aria-label="Select all pending queue items"
-          />
-          Select all queue rows ({sorted.length}) — not files in processed/
-          {batchReadyItems.length > 0 && (
-            <button
-              type="button"
-              className="underline"
-              onClick={(e) => {
-                e.preventDefault();
-                setSelected(new Set(batchReadyItems.map((i) => i.id)));
-              }}
-            >
-              Select batch-ready only ({batchReadyItems.length})
-            </button>
-          )}
-        </label>
-        <div className="space-y-3">
-          {sorted.map((item) => {
-            const sla = hrqSlaStatus(item.createdAt);
-            return (
-              <Card key={item.id} className="p-4">
-                <div className="flex flex-wrap items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(item.id)}
-                    onChange={() => toggleSelect(item.id)}
-                    aria-label={`Select ${item.title}`}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <span className="font-semibold">{item.title}</span>
-                      <Badge tone={item.severity === 'danger' ? 'danger' : item.severity === 'warn' ? 'warn' : 'good'}>
-                        {typeLabel(item.type)}
-                      </Badge>
-                      <Badge tone={slaTone(sla.level)}>{stagingAgeLabel(item.createdAt)}</Badge>
-                      {sla.level !== 'ok' && (
-                        <Badge tone={slaTone(sla.level)}>{hrqSlaLabel(sla)}</Badge>
-                      )}
-                      {isBatchApprovable(item) && (
-                        <Badge tone="good">Batch ready</Badge>
-                      )}
-                      <span className="text-xs" style={{ color: 'var(--muted)' }}>
-                        via {item.source}
+          {/* Left: pending list */}
+          <div className="space-y-2" style={{ maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}>
+            {sorted.map((item) => {
+              const sla = hrqSlaStatus(item.createdAt);
+              const preview = stagingPreviewOf(item);
+              const active = item.id === selectedId;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setSelectedId(item.id)}
+                  className="w-full text-left rounded-card p-3 transition-colors"
+                  style={{
+                    border: active ? '2px solid var(--accent)' : '1px solid var(--border)',
+                    background: active ? 'var(--accent-soft)' : 'var(--surface)',
+                  }}
+                >
+                  <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                    <span className="font-semibold text-sm truncate">{listTitle(item)}</span>
+                    <Badge tone={item.severity === 'danger' ? 'danger' : item.severity === 'warn' ? 'warn' : 'good'}>
+                      {typeLabel(item.type)}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 text-xs" style={{ color: 'var(--muted)' }}>
+                    <Badge tone={slaTone(sla.level)}>{stagingAgeLabel(item.createdAt)}</Badge>
+                    {sla.level !== 'ok' && <Badge tone={slaTone(sla.level)}>{hrqSlaLabel(sla)}</Badge>}
+                    {preview && <Badge tone="good">{Math.round(preview.confidence)}%</Badge>}
+                    {(item.claimNumber || preview?.claimNumber) && (
+                      <span className="font-mono">
+                        {item.claimNumber || preview?.claimNumber}
                       </span>
-                    </div>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Right: detail pane */}
+          <Card className="p-4">
+            {!selected ? (
+              <EmptyState title="Select a letter" message="Choose an item on the left to review the attachment and patient form." />
+            ) : (
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <h2 className="text-lg font-bold">{listTitle(selected)}</h2>
                     <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                      {item.summary}
+                      {selected.summary}
                     </p>
-                    {(item.patientName || item.claimNumber || item.accId) && (
-                      <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
-                        {item.patientName && (
-                          <>
-                            Patient: <strong>{item.patientName}</strong>
-                          </>
-                        )}
-                        {item.patientName && item.claimNumber && ' · '}
-                        {item.claimNumber && (
-                          <>
-                            Claim: <strong>{item.claimNumber}</strong>
-                          </>
-                        )}
-                        {(item.patientName || item.claimNumber) && item.accId && ' · '}
-                        {item.accId && <>{item.accId}</>}
-                      </p>
-                    )}
-                    {item.sourceFileName && (
+                    {selected.sourceFileName && (
                       <p className="text-xs mt-1 font-mono" style={{ color: 'var(--muted)' }}>
-                        File: {item.sourceFileName}
-                      </p>
-                    )}
-                    {item.expectedFileName && item.expectedFileName !== item.sourceFileName && (
-                      <p className="text-xs mt-1 font-mono" style={{ color: 'var(--muted)' }}>
-                        Look for: {item.expectedFileName}
+                        {selected.sourceFileName}
                       </p>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-2 shrink-0">
-                    {(item.type === 'letter-import-pending' ||
-                      item.type === 'letter-import-low-confidence' ||
-                      item.type === 'letter-duplicate-suspect') && (
-                      <button
-                        type="button"
-                        className="btn btn-primary btn-sm"
-                        onClick={() => void startReview(item)}
-                        title="Opens the letter (auto-attaches from ACC-Inbox when available) for final check before filing"
-                      >
-                        Review & import
-                      </button>
+                  <div className="flex flex-wrap gap-2">
+                    {typeof parseMeta.confidence === 'number' && (
+                      <Badge tone={parseMeta.confidence >= 90 ? 'good' : 'warn'}>
+                        {Math.round(parseMeta.confidence)}% confidence
+                      </Badge>
                     )}
-                    <button
-                      type="button"
-                      className="btn btn-sm"
-                      onClick={() => void deferItem(item)}
-                      title="Set aside — removes this item from the pending queue without importing it"
-                    >
-                      Defer
-                    </button>
-                    <button type="button" className="btn btn-sm btn-danger" onClick={() => void rejectItem(item)}>
-                      Reject
-                    </button>
+                    <Badge tone="neutral">via {selected.source}</Badge>
                   </div>
                 </div>
-              </Card>
-            );
-          })}
+
+                {matchedPatient ? (
+                  <div
+                    className="text-sm p-2 rounded-card"
+                    style={{ background: 'var(--accent-soft)', color: 'var(--text)' }}
+                  >
+                    Links to existing patient <strong>{matchedPatient.name}</strong>
+                    {matchedClaim ? (
+                      <>
+                        {' '}
+                        / claim <strong>{matchedClaim.claimNumber || matchedClaim.id}</strong>
+                      </>
+                    ) : (
+                      ' — will create a new claim if needed'
+                    )}
+                    .
+                  </div>
+                ) : (
+                  <div
+                    className="text-sm p-2 rounded-card"
+                    style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}
+                  >
+                    Will create a <strong>new patient</strong> and claim when you Accept.
+                  </div>
+                )}
+
+                {parseMeta.blockers.length > 0 && (
+                  <div
+                    className="text-sm p-3 rounded-card"
+                    style={{ border: '1px solid var(--warn-fg)', background: 'var(--surface-2)' }}
+                  >
+                    <strong>Check before accepting:</strong>
+                    <ul className="list-disc pl-5 mt-1">
+                      {parseMeta.blockers.map((b) => (
+                        <li key={b}>{b}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {parseMeta.error && (
+                  <div className="text-sm" style={{ color: 'var(--danger-fg)' }}>
+                    {parseMeta.error}{' '}
+                    <button
+                      type="button"
+                      className="btn btn-sm ml-2"
+                      onClick={() => letterInput.current?.click()}
+                    >
+                      Pick letter file
+                    </button>
+                  </div>
+                )}
+
+                <div
+                  className="grid gap-4"
+                  style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-semibold">Attachment</h3>
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        onClick={() => letterInput.current?.click()}
+                      >
+                        {file ? 'Replace file' : 'Pick letter file'}
+                      </button>
+                    </div>
+                    {parseMeta.loading ? (
+                      <div
+                        className="flex items-center justify-center text-sm rounded-card"
+                        style={{
+                          height: 480,
+                          color: 'var(--muted)',
+                          border: '1px dashed var(--border)',
+                        }}
+                      >
+                        Loading letter…
+                      </div>
+                    ) : (
+                      <PdfPreview file={file} title={selected.sourceFileName || selected.title} />
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold">Patient &amp; case form</h3>
+                    <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                      <Field label="Patient name" required>
+                        <TextInput
+                          value={fields.patientName}
+                          onChange={(e) => patchField('patientName', e.target.value)}
+                        />
+                      </Field>
+                      <Field label="NHI">
+                        <TextInput value={fields.nhi} onChange={(e) => patchField('nhi', e.target.value)} />
+                      </Field>
+                      <Field label="Date of birth">
+                        <DateInput value={fields.dob} onChange={(e) => patchField('dob', e.target.value)} />
+                      </Field>
+                      <Field label="Claim number" required={parsed?.kind === 'approval'}>
+                        <TextInput
+                          value={fields.claimNumber}
+                          onChange={(e) => patchField('claimNumber', e.target.value)}
+                        />
+                      </Field>
+                      <Field label="ACC45">
+                        <TextInput value={fields.acc45} onChange={(e) => patchField('acc45', e.target.value)} />
+                      </Field>
+                      <Field label="PO number">
+                        <TextInput
+                          value={fields.poNumber}
+                          onChange={(e) => patchField('poNumber', e.target.value)}
+                        />
+                      </Field>
+                      <Field label="Day 1 / date of injury">
+                        <DateInput value={fields.day1} onChange={(e) => patchField('day1', e.target.value)} />
+                      </Field>
+                      <Field label="Letter date">
+                        <DateInput
+                          value={fields.letterDate}
+                          onChange={(e) => patchField('letterDate', e.target.value)}
+                        />
+                      </Field>
+                    </div>
+                    <Field label="Injury description">
+                      <TextArea
+                        rows={2}
+                        value={fields.injury}
+                        onChange={(e) => patchField('injury', e.target.value)}
+                      />
+                    </Field>
+
+                    {parsed?.kind === 'decline' && (
+                      <>
+                        <Field label="Decline reason">
+                          <TextArea
+                            rows={2}
+                            value={fields.declineReason}
+                            onChange={(e) => patchField('declineReason', e.target.value)}
+                          />
+                        </Field>
+                        <Field label="Service period declined">
+                          <TextInput
+                            value={fields.servicePeriodDeclined}
+                            onChange={(e) => patchField('servicePeriodDeclined', e.target.value)}
+                          />
+                        </Field>
+                      </>
+                    )}
+
+                    {parsed?.kind === 'approval' && fields.rows.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold mb-2" style={{ color: 'var(--muted)' }}>
+                          Service rows
+                        </h4>
+                        <div className="space-y-2">
+                          {fields.rows.map((row, i) => (
+                            <div
+                              key={`${row.serviceCode}-${i}`}
+                              className="grid gap-2 items-end p-2 rounded-card"
+                              style={{
+                                gridTemplateColumns: '80px 1fr 1fr 70px auto auto',
+                                background: 'var(--surface-2)',
+                              }}
+                            >
+                              <Field label="Code">
+                                <TextInput
+                                  value={row.serviceCode}
+                                  onChange={(e) =>
+                                    updateRow(i, {
+                                      serviceCode: e.target.value as ApprovalServiceCode,
+                                    })
+                                  }
+                                />
+                              </Field>
+                              <Field label="Start">
+                                <DateInput
+                                  value={row.approvalStartDate}
+                                  onChange={(e) => updateRow(i, { approvalStartDate: e.target.value })}
+                                />
+                              </Field>
+                              <Field label="End">
+                                <DateInput
+                                  value={row.approvalEndDate}
+                                  onChange={(e) => updateRow(i, { approvalEndDate: e.target.value })}
+                                />
+                              </Field>
+                              <Field label="Qty">
+                                <TextInput
+                                  type="number"
+                                  value={String(row.approvedHoursOrConsults)}
+                                  onChange={(e) =>
+                                    updateRow(i, {
+                                      approvedHoursOrConsults: Number(e.target.value) || 0,
+                                    })
+                                  }
+                                />
+                              </Field>
+                              <button
+                                type="button"
+                                className="btn btn-sm"
+                                onClick={() => setCurrentRow(i)}
+                                title="Mark as current billing period"
+                              >
+                                {row.recordStatus === 'current' ? 'Current' : 'Make current'}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-danger"
+                                onClick={() => removeRow(i)}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div
+                  className="flex flex-wrap gap-2 pt-3"
+                  style={{ borderTop: '1px solid var(--border)' }}
+                >
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={!canAccept}
+                    onClick={() => void acceptItem()}
+                  >
+                    Accept → create patient case
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={busy}
+                    onClick={() => void deferItem(selected)}
+                  >
+                    Defer
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    disabled={busy}
+                    onClick={() => void rejectItem(selected)}
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            )}
+          </Card>
         </div>
-        </>
       )}
 
       {confirmDialog}

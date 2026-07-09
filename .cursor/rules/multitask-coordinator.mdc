@@ -1,0 +1,47 @@
+---
+description: Operating model for when to use Multitask Mode / parallel or background Task subagents vs. staying single-threaded, how to construct subagent dispatch prompts (metaprompting), and how to judge/escalate subagent results. Apply when planning multi-step work, deciding whether to parallelize or delegate, or writing a Task tool call.
+alwaysApply: false
+---
+
+# Multitask & Subagent Coordination
+
+## When to parallelize vs. stay single-threaded
+
+- Default to a single coherent agent (yourself, working through steps in order) for anything that shares context, requires sequential judgment calls, or touches the same files across steps. That covers most ACCAdminsuite feature work.
+- Only reach for Multitask Mode, background subagents, or parallel Task calls when subtasks are genuinely independent (separate files/modules, no shared decisions) **and** at least one of:
+  - the work is read-only/investigative and doesn't need to block you;
+  - the workstreams truly don't depend on each other's output;
+  - you want the foreground free for follow-ups while something long-running happens in the background.
+- Treat heavy fan-out as the exception, not the default. Cursor's own guidance and 2026 community consensus both warn that `/multitask` and aggressive auto-decomposition are frequently overkill for a single coherent task, and that uncapped decomposition can quietly spawn many subagents and burn quota with no cost ceiling. If one agent can do the work cleanly in order, do that instead of splitting it "for speed."
+- If you notice yourself defaulting to parallel dispatch for simple, single-file, or "I already know the fix" work, that's over-delegation — pull back to direct work. A subagent's isolated context is a cost (startup time, tokens, a lossy summary), not a free win.
+- When subagents will edit overlapping files, prefer worktree isolation over a shared checkout — context isolation alone does not prevent merge conflicts.
+
+## Subagent specialization: prompts, not new tool types
+
+- The Task tool's `subagent_type` is a fixed set (`generalPurpose`, `explore`, `shell`, `browser-use`, `cursor-guide`, `ci-investigator`, `bugbot`, `security-review`, `best-of-n-runner`), plus any custom subagents defined in this project's `.cursor/agents/*.md` (none exist yet here). There is no way to invent a new type — specialization comes entirely from a detailed, role-specific persona/prompt passed into one of these types, usually `generalPurpose`.
+- See `prompt-templates.mdc` for ready-made persona templates (planner, implementer, debugger, reviewer, tester, docs writer). Reuse and adapt them instead of freehand-writing a new persona each time.
+- If a role gets reused constantly across sessions (e.g. a "verifier" that always runs after work is marked done), consider graduating it to a real `.cursor/agents/<name>.md` file so it's discoverable by name via `/name` — more durable than re-pasting a prompt.
+
+## Metaprompting: constructing a subagent dispatch prompt
+
+Subagents start with zero conversation history — every dispatch prompt must be self-contained. Build it in this order:
+
+1. **Persona/role** — one sentence naming the expertise ("You are a debugging specialist focused on root cause analysis").
+2. **Context** — the concrete facts the subagent needs: files/paths, prior findings, constraints already decided. Never "see above."
+3. **Task** — the specific, bounded ask. Avoid vague asks like "fix the codebase."
+4. **Success criteria** — what "done" looks like, ideally a command/test the subagent can run itself.
+5. **Output format** — the shape the final message should take.
+6. **Constraints** — what not to touch, and whether it should be read-only.
+
+Iterate the template, not the instance: if a persona keeps producing the wrong shape of output, fix it in `prompt-templates.mdc` so every future dispatch benefits, instead of re-explaining the same correction ad hoc each time.
+
+## Handoffs, escalation, and reviewing subagent output
+
+- Treat a subagent's final message as a claim, not a fact. For anything non-trivial, verify it yourself (run the test/command) or dispatch a short, skeptical verification pass before treating the work as done — don't accept "done" at face value.
+- When a subagent reports a blocker, escalate it to the user with: what it was trying to do, what blocked it, and the most likely next step — rather than guessing past it or silently retrying in a loop.
+- This rule doesn't change existing multitask reporting behavior (e.g. not restating a completed background subagent's summary unless asked, or unless synthesis/action is needed) — it's about how you build the dispatch prompt and judge the result, not how you narrate it to the user.
+
+## Keep this lean
+
+- Reserve custom `.cursor/agents/` files and template-library entries for roles you'll reuse repeatedly; don't build ceremony around a one-off task.
+- If you keep correcting the same mistake across sessions, that's a signal to update a rule or template — not to keep re-explaining it in chat.

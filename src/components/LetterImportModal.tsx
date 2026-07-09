@@ -14,6 +14,7 @@ import type {
   FieldConfidence,
 } from '../lib/letterImport';
 import { prefillFromParsed } from '../lib/letterImport';
+import { commitLetterForm } from '../lib/letterCommit';
 import { formatDateNZ } from '../lib/format';
 
 function issueForField(issues: LetterIssue[], field: LetterFormField): LetterIssue | undefined {
@@ -696,32 +697,30 @@ export function LetterImportModal() {
     setBusy(true);
     setError(null);
     try {
-      if (parsed.kind === 'approval') {
-        const commitRes = await commitParsedApproval(parsed, letterImport.file, {
-          patientId: selectedPatientId || undefined,
-          claimId: selectedClaimId || undefined,
-          patientPatch: { name: patientName, nhi, dob },
-          claimPatch: { claimNumber, acc45Number: acc45, poNumber, injuryDescription: injury, day1Date: day1 },
-          rows,
-          historicRows: parsed.kind === 'approval' ? parsed.packageRows : undefined,
-        });
-        setCommitResult(commitRes);
-        announceLetterImportSuccess(commitRes);
-        letterImport.onImportComplete?.();
-      } else {
-        const commitRes = await commitParsedDecline(parsed, letterImport.file, {
+      const commitRes = await commitLetterForm(
+        parsed,
+        letterImport.file,
+        {
           patientName,
+          nhi,
+          dob,
           claimNumber,
-          reason: declineReason,
+          acc45,
+          poNumber,
+          injury,
+          day1,
+          declineReason,
           servicePeriodDeclined,
-          declineReceivedDate: letterDate,
-          patientId: selectedPatientId || undefined,
-          claimId: selectedClaimId || undefined,
-        });
-        setCommitResult(commitRes);
-        announceLetterImportSuccess(commitRes);
-        letterImport.onImportComplete?.();
-      }
+          letterDate,
+          rows,
+          selectedPatientId,
+          selectedClaimId,
+        },
+        { commitParsedApproval, commitParsedDecline },
+      );
+      setCommitResult(commitRes);
+      announceLetterImportSuccess(commitRes);
+      letterImport.onImportComplete?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Save failed');
     } finally {

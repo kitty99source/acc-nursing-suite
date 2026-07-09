@@ -27,6 +27,13 @@ const DEFAULT_INBOX = path.join(
 const PROCESSED_DIR = 'processed';
 const STAGING_DIR = '.staging';
 const SUPPORTED_EXT = new Set(['.pdf', '.docx']);
+const MAX_EMBED_BYTES = 4 * 1024 * 1024;
+
+function mimeForExt(ext) {
+  if (ext === '.pdf') return 'application/pdf';
+  if (ext === '.docx') return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  return 'application/octet-stream';
+}
 
 function readOfficeInboxPath() {
   const home = process.env.USERPROFILE ?? process.env.HOME ?? '';
@@ -89,7 +96,7 @@ function alreadyStaged(inbox, hash, fileName) {
 function createSidecar({ filePath, hash, inbox }) {
   const fileName = path.basename(filePath);
   const id = crypto.randomUUID();
-  return {
+  const sidecar = {
     version: 1,
     item: {
       id,
@@ -99,13 +106,24 @@ function createSidecar({ filePath, hash, inbox }) {
       createdAt: Date.now(),
       severity: 'info',
       title: `Folder: ${fileName}`,
-      summary: `Letter dropped in ACC-Inbox — awaiting HRQ review and letter parse.`,
+      summary: `Letter dropped in ACC-Inbox - awaiting HRQ review and letter parse.`,
       sourceFileName: fileName,
       sourceHash: hash,
       sourcePath: filePath,
       runId: `folder-watch-${new Date().toISOString().slice(0, 10)}`,
     },
   };
+  try {
+    const stat = fs.statSync(filePath);
+    if (stat.size > 0 && stat.size <= MAX_EMBED_BYTES) {
+      const ext = path.extname(filePath).toLowerCase();
+      sidecar.fileBase64 = fs.readFileSync(filePath).toString('base64');
+      sidecar.fileMimeType = mimeForExt(ext);
+    }
+  } catch {
+    /* omit embedded bytes */
+  }
+  return sidecar;
 }
 
 function processPdf(inbox, filePath) {

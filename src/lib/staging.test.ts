@@ -16,7 +16,18 @@ vi.mock('./idb', () => ({
   saveStagingQueue: vi.fn(async () => {}),
 }));
 
+vi.mock('./letterCache', () => ({
+  putCachedLetterBlob: vi.fn(async () => {}),
+  base64ToBlob: vi.fn((base64: string, mime: string) => {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+  }),
+}));
+
 import { loadStagingQueue, saveStagingQueue } from './idb';
+import { putCachedLetterBlob } from './letterCache';
 
 describe('staging', () => {
   beforeEach(() => {
@@ -108,6 +119,36 @@ describe('staging', () => {
     const added = await importStagingSidecars([{ version: 1, item }]);
     expect(added).toBe(1);
     expect(saveStagingQueue).toHaveBeenCalled();
+  });
+
+  it('caches embedded sidecar bytes and keeps the staging item lean', async () => {
+    const hash = 'f'.repeat(64);
+    const item = createStagingItem({
+      type: 'letter-import-pending',
+      source: 'folder',
+      severity: 'info',
+      title: 'Embedded letter',
+      summary: 'From folder watch',
+      sourceHash: hash,
+      sourceFileName: 'letter.pdf',
+    });
+    const added = await importStagingSidecars([
+      {
+        version: 1,
+        item,
+        fileBase64: btoa('pdf-bytes'),
+        fileMimeType: 'application/pdf',
+      },
+    ]);
+    expect(added).toBe(1);
+    expect(putCachedLetterBlob).toHaveBeenCalledWith(
+      hash,
+      expect.objectContaining({ type: 'application/pdf' }),
+    );
+    const saved = vi.mocked(saveStagingQueue).mock.calls.at(-1)?.[0] as StagingItem[];
+    const row = saved.find((r) => r.sourceHash === hash);
+    expect(row).toBeTruthy();
+    expect((row as unknown as { fileBase64?: string }).fileBase64).toBeUndefined();
   });
 
   it('assertStagingIsolation throws if live data mutated from staging', () => {

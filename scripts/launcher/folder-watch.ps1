@@ -156,6 +156,29 @@ function New-FolderWatchSidecar {
     }
 }
 
+function Add-SidecarEmbeddedBytes {
+    param(
+        [hashtable]$Sidecar,
+        [string]$FilePath
+    )
+    $MAX_EMBED_BYTES = 4194304
+    try {
+        $info = Get-Item -LiteralPath $FilePath
+        if ($info.Length -le 0 -or $info.Length -gt $MAX_EMBED_BYTES) { return $Sidecar }
+        $bytes = [System.IO.File]::ReadAllBytes($FilePath)
+        $Sidecar.fileBase64 = [Convert]::ToBase64String($bytes)
+        $ext = [System.IO.Path]::GetExtension($FilePath).ToLowerInvariant()
+        if ($ext -eq '.pdf') {
+            $Sidecar.fileMimeType = 'application/pdf'
+        } elseif ($ext -eq '.docx') {
+            $Sidecar.fileMimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        } else {
+            $Sidecar.fileMimeType = 'application/octet-stream'
+        }
+    } catch {}
+    return $Sidecar
+}
+
 function Update-HashIndexRelativePath {
     # After moving a file to processed/, keep hash-index.json pointing at the new relative path.
     param(
@@ -247,6 +270,7 @@ function Invoke-ProcessLetterFile {
     }
 
     $sidecar = New-FolderWatchSidecar -FilePath $FilePath -Hash $hash -Inbox $inbox
+    $sidecar = Add-SidecarEmbeddedBytes -Sidecar $sidecar -FilePath $FilePath
     $outPath = Get-SidecarPath -Inbox $inbox -Hash $hash -FileName $leafName
     $json = $sidecar | ConvertTo-Json -Depth 6 -Compress:$false
     [System.IO.File]::WriteAllText($outPath, $json, [Text.Encoding]::UTF8)

@@ -12,7 +12,11 @@ const STORE = 'kv';
 // Keeping bytes out of the `kv` working-copy blob is what lets the app scale to
 // large numbers of attachments without slowing every autosave.
 const DOC_STORE = 'documents';
-const DB_VERSION = 2;
+// Dedicated store for staged letter bytes (Blobs), keyed by SHA-256 hash. Lets
+// the Review Queue show + parse a letter fully offline (no launcher bridge) and
+// keeps these potentially large bytes out of the staging-queue array.
+const LETTER_BLOB_STORE = 'letterBlobs';
+const DB_VERSION = 3;
 
 const WORKING_COPY_KEY = 'workingCopy';
 const FILE_HANDLE_KEY = 'fileHandle';
@@ -59,6 +63,7 @@ function openDB(): Promise<IDBDatabase> {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
       if (!db.objectStoreNames.contains(DOC_STORE)) db.createObjectStore(DOC_STORE);
+      if (!db.objectStoreNames.contains(LETTER_BLOB_STORE)) db.createObjectStore(LETTER_BLOB_STORE);
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -192,6 +197,74 @@ export async function listDocumentIds(): Promise<string[]> {
         }),
     );
   });
+}
+
+// ----------------------------------------------------------------------------
+// Staged letter bytes, keyed by SHA-256 hash. Populated when a letter's bytes
+// are first obtained (folder-watch sidecar embed, or a one-off bridge fetch) so
+// the Review Queue can render + parse the letter offline forever after.
+// ----------------------------------------------------------------------------
+
+export async function saveLetterBlob(hash: string, blob: Blob): Promise<void> {
+  return withIdbRetry(() => {
+    return openDB().then(
+      (db) =>
+        new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(LETTER_BLOB_STORE, 'readwrite');
+          tx.objectStore(LETTER_BLOB_STORE).put(blob, hash);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        }),
+    );
+  });
+}
+
+export async function loadLetterBlob(hash: string): Promise<Blob | undefined> {
+  return withIdbRetry(() => {
+    return openDB().then(
+      (db) =>
+        new Promise<Blob | undefined>((resolve, reject) => {
+          const tx = db.transaction(LETTER_BLOB_STORE, 'readonly');
+          const req = tx.objectStore(LETTER_BLOB_STORE).get(hash);
+          req.onsuccess = () => resolve(req.result as Blob | undefined);
+          req.onerror = () => reject(req.error);
+        }),
+    );
+  });
+}
+
+export async function deleteLetterBlob(hash: string): Promise<void> {
+  return withIdbRetry(() => {
+    return openDB().then(
+      (db) =>
+        new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(LETTER_BLOB_STORE, 'readwrite');
+          tx.objectStore(LETTER_BLOB_STORE).delete(hash);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        }),
+    );
+  });
+}
+
+// ----------------------------------------------------------------------------
+// Letter parse cache — one entry per letter hash, holding the parsed preview so
+// a letter is parsed exactly once and hot-loaded on every subsequent open.
+// Stored in the kv store under a namespaced key to avoid a schema bump.
+// ----------------------------------------------------------------------------
+
+const LETTER_PARSE_PREFIX = 'letterParse:';
+
+export async function loadLetterParse<T = unknown>(hash: string): Promise<T | undefined> {
+  return idbGet<T>(`${LETTER_PARSE_PREFIX}${hash}`);
+}
+
+export async function saveLetterParse(hash: string, record: unknown): Promise<void> {
+  return idbSet(`${LETTER_PARSE_PREFIX}${hash}`, record);
+}
+
+export async function deleteLetterParse(hash: string): Promise<void> {
+  return idbDelete(`${LETTER_PARSE_PREFIX}${hash}`);
 }
 
 export async function loadAuditLog(): Promise<AuditEntry[]> {

@@ -4,6 +4,7 @@
 // ============================================================================
 
 import { loadStagingQueue as idbLoadStaging, saveStagingQueue as idbSaveStaging } from './idb';
+import { base64ToBlob, putCachedLetterBlob } from './letterCache';
 import { hrqSlaLevel } from './hrqSla';
 import { hashBlob } from './letterImport';
 
@@ -50,6 +51,9 @@ export interface StagingItem {
 export interface StagingSidecar {
   version: 1;
   item: StagingItem;
+  /** Optional embedded letter bytes (base64) for offline import without the launcher bridge. */
+  fileBase64?: string;
+  fileMimeType?: string;
 }
 
 export function createStagingItem(
@@ -71,7 +75,9 @@ export function parseStagingSidecar(raw: unknown): StagingSidecar | null {
   if (!item || typeof item !== 'object') return null;
   const row = item as StagingItem;
   if (!row.id || !row.type || !row.title) return null;
-  return { version: 1, item: row };
+  const fileBase64 = typeof obj.fileBase64 === 'string' ? obj.fileBase64 : undefined;
+  const fileMimeType = typeof obj.fileMimeType === 'string' ? obj.fileMimeType : undefined;
+  return { version: 1, item: row, fileBase64, fileMimeType };
 }
 
 export async function loadStagingItems(): Promise<StagingItem[]> {
@@ -123,6 +129,12 @@ export async function removeStagingItem(id: string): Promise<void> {
   await idbSaveStaging(existing.filter((i) => i.id !== id));
 }
 
+async function cacheSidecarBytes(sc: StagingSidecar): Promise<void> {
+  if (!sc.fileBase64?.trim() || !sc.item.sourceHash) return;
+  const blob = base64ToBlob(sc.fileBase64, sc.fileMimeType || 'application/octet-stream');
+  await putCachedLetterBlob(sc.item.sourceHash, blob);
+}
+
 /** Import one or more folder-watch JSON sidecars into IDB staging (never live data). */
 export async function importStagingSidecars(sidecars: StagingSidecar[]): Promise<number> {
   let added = 0;
@@ -130,6 +142,7 @@ export async function importStagingSidecars(sidecars: StagingSidecar[]): Promise
     const before = await idbLoadStaging();
     const dup = before.some((e) => isStagingIngressDuplicate(e, sc.item));
     if (dup) continue;
+    await cacheSidecarBytes(sc);
     await addStagingItem({ ...sc.item, status: 'pending' });
     added++;
   }

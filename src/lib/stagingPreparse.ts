@@ -1,5 +1,5 @@
 // ============================================================================
-// Background pre-parse of staged letters into parsedPreview (HRQ batch shape).
+// Background pre-parse of staged letters into the hash-keyed parse cache.
 // Concurrency-capped and lazy — never blocks the UI; skips large/OCR-heavy files.
 // ============================================================================
 
@@ -10,31 +10,29 @@ import {
   type StagingParsedPreview,
 } from './hrqBatch';
 import { prefillFromParsed, type LetterParseResult } from './letterImport';
+import {
+  blobToBase64,
+  getCachedLetterBlob,
+  getCachedLetterParse,
+  putCachedLetterBlob,
+  putCachedLetterParse,
+} from './letterCache';
 import { updateStagingItem, type StagingItem } from './staging';
 
+export const MAX_PREPARSE_BYTES = 4 * 1024 * 1024;
+
 const MAX_CONCURRENT = 2;
-/** Skip pre-parse for very large files (likely scanned OCR) to keep the UI snappy. */
-const MAX_PREPARSE_BYTES = 4 * 1024 * 1024;
 
 let active = 0;
 const queue: StagingItem[] = [];
 const inFlight = new Set<string>();
 const done = new Set<string>();
 
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result ?? '');
-      const comma = dataUrl.indexOf(',');
-      resolve(comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl);
-    };
-    reader.onerror = () => reject(reader.error ?? new Error('FileReader failed'));
-    reader.readAsDataURL(blob);
-  });
-}
-
-function buildPreview(result: LetterParseResult, file: File, base64: string): StagingParsedPreview | null {
+export function buildStagingPreview(
+  result: LetterParseResult,
+  file: File,
+  base64: string,
+): StagingParsedPreview | null {
   if (!result.parsed) return null;
   if (result.overallConfidence < HRQ_BATCH_MIN_CONFIDENCE) return null;
   const blocking = result.issues.filter((i) => i.blocking !== false);
@@ -75,33 +73,61 @@ function buildPreview(result: LetterParseResult, file: File, base64: string): St
   };
 }
 
+async function denormalizeHints(item: StagingItem, preview: StagingParsedPreview): Promise<void> {
+  const patch: Partial<StagingItem> = {};
+  if (preview.patientName?.trim()) patch.patientName = preview.patientName.trim();
+  if (preview.claimNumber?.trim()) patch.claimNumber = preview.claimNumber.trim();
+  if (!Object.keys(patch).length) return;
+  if (item.patientName === patch.patientName && item.claimNumber === patch.claimNumber) return;
+  await updateStagingItem(item.id, patch);
+}
+
 async function processOne(item: StagingItem): Promise<void> {
   if (!item.sourceHash || inFlight.has(item.id) || done.has(item.id)) return;
-  if (item.parsedPreview) {
-    done.add(item.id);
-    return;
-  }
   inFlight.add(item.id);
   try {
-    const file = await fetchInboxFileForStaging({
-      sourceHash: item.sourceHash,
-      sourceFileName: item.sourceFileName,
-      expectedFileName: item.expectedFileName,
-    });
+    const hash = item.sourceHash;
+    const cached = await getCachedLetterParse(hash);
+    if (cached) {
+      await denormalizeHints(item, cached);
+      done.add(item.id);
+      return;
+    }
+
+    let file =
+      (await getCachedLetterBlob(hash))?.size
+        ? await (async () => {
+            const blob = await getCachedLetterBlob(hash);
+            if (!blob?.size) return undefined;
+            const preferred = (item.expectedFileName || item.sourceFileName || 'letter.bin').trim();
+            return new File([blob], preferred, { type: blob.type || 'application/octet-stream' });
+          })()
+        : undefined;
+
+    if (!file) {
+      file = await fetchInboxFileForStaging({
+        sourceHash: hash,
+        sourceFileName: item.sourceFileName,
+        expectedFileName: item.expectedFileName,
+      });
+      if (file) await putCachedLetterBlob(hash, file);
+    }
+
     if (!file || file.size > MAX_PREPARSE_BYTES) {
       done.add(item.id);
       return;
     }
+
     const parse = useStore.getState().parseLetterFile;
     const result = await parse(file);
     const base64 = await blobToBase64(file);
-    const preview = buildPreview(result, file, base64);
+    const preview = buildStagingPreview(result, file, base64);
     if (preview) {
-      await updateStagingItem(item.id, { parsedPreview: preview as unknown as Record<string, unknown> });
+      await putCachedLetterParse(hash, preview);
+      await denormalizeHints(item, preview);
     }
     done.add(item.id);
   } catch {
-    // Leave item without preview — Review & import still works.
     done.add(item.id);
   } finally {
     inFlight.delete(item.id);
@@ -125,7 +151,7 @@ export function enqueueStagingPreparse(items: StagingItem[]): void {
   for (const item of items) {
     if (item.status !== 'pending') continue;
     if (!item.sourceHash) continue;
-    if (item.parsedPreview || done.has(item.id) || inFlight.has(item.id)) continue;
+    if (done.has(item.id) || inFlight.has(item.id)) continue;
     if (queue.some((q) => q.id === item.id)) continue;
     queue.push(item);
   }

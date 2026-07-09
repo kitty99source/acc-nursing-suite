@@ -1,0 +1,22 @@
+If Start ACC Suite.cmd or Start Portal Discover.cmd closes immediately:
+
+1. Check bootstrap logs FIRST (always created):
+   %USERPROFILE%\ACC-Suite\logs\acc-bootstrap.log       (ACC Suite)
+   %USERPROFILE%\ACC-Suite\logs\portal-bootstrap.log  (Portal Discover)
+
+2. Double-click again - the window should pause on error so you can read red text.
+
+3. Check detailed run logs (if launcher-log.ps1 is present in your dist folder):
+   %USERPROFILE%\ACC-Suite\logs\acc-suite-*.log
+   %USERPROFILE%\ACC-Suite\logs\portal-discover-*.log
+
+4. If acc-bootstrap.log says "CMD started" but nothing after "launch.ps1 started",
+   PowerShell may be blocked by group policy - contact IT.
+   If you see a parse error in portal-bootstrap.log, re-download the latest dist
+   (scripts must be UTF-8 with BOM and ASCII-only for Windows PowerShell 5.1).
+
+5. If bootstrap logs are empty, the .cmd file may be from an old download.
+   Re-download the latest dist from GitHub main and confirm bootstrap-log.ps1
+   and launcher-log.ps1 are in the same folder as launch.ps1 / portal-discover.ps1.
+
+6. Email acc-bootstrap.log or portal-bootstrap.log (and any acc-suite-*.log) to Prakriti.

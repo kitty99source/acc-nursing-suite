@@ -18,9 +18,10 @@ alwaysApply: false
 
 ## Subagent specialization: prompts, not new tool types
 
-- The Task tool's `subagent_type` is a fixed set (`generalPurpose`, `explore`, `shell`, `browser-use`, `cursor-guide`, `ci-investigator`, `bugbot`, `security-review`, `best-of-n-runner`), plus any custom subagents defined in this project's `.cursor/agents/*.md` (none exist yet here). There is no way to invent a new type — specialization comes entirely from a detailed, role-specific persona/prompt passed into one of these types, usually `generalPurpose`.
-- See `prompt-templates.mdc` for ready-made persona templates (planner, implementer, debugger, reviewer, tester, docs writer). Reuse and adapt them instead of freehand-writing a new persona each time.
-- If a role gets reused constantly across sessions (e.g. a "verifier" that always runs after work is marked done), consider graduating it to a real `.cursor/agents/<name>.md` file so it's discoverable by name via `/name` — more durable than re-pasting a prompt.
+- The Task tool's `subagent_type` is a fixed set (`generalPurpose`, `explore`, `shell`, `browser-use`, `cursor-guide`, `ci-investigator`, `bugbot`, `security-review`, `best-of-n-runner`). There is no way to invent a new value for that param — specialization comes entirely from a detailed, role-specific persona/prompt passed into one of these types, usually `generalPurpose`.
+- This project also has durable custom subagents checked in at `.cursor/agents/*.md` (`debugger`, `reviewer`, `tester`, `docs-writer`), invoked by name (`/debugger`, etc.) or by natural-language mention — a separate mechanism from the `subagent_type` param above. See each file's `description` frontmatter for exactly when to use it.
+- See `prompt-templates.mdc` for ready-made persona templates (planner, implementer, debugger, reviewer, tester, docs writer) to paste into a `generalPurpose` Task call for one-off or less-frequent roles. Reuse and adapt them instead of freehand-writing a new persona each time.
+- If a role gets reused constantly across sessions (e.g. a new role not yet in `.cursor/agents/`), consider graduating it to a real `.cursor/agents/<name>.md` file so it's discoverable by name via `/name` — more durable than re-pasting a prompt.
 
 ## Metaprompting: constructing a subagent dispatch prompt
 

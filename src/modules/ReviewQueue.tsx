@@ -28,7 +28,14 @@ import {
   probeLocalStagingBridge,
   type StagingBridgeStatus,
 } from '../lib/localAccBridge';
-import { enqueueStagingPreparse } from '../lib/stagingPreparse';
+import { enqueueStagingPreparse, buildStagingPreview } from '../lib/stagingPreparse';
+import {
+  blobToBase64,
+  getCachedLetterFile,
+  getCachedLetterParse,
+  putCachedLetterBlob,
+  putCachedLetterParse,
+} from '../lib/letterCache';
 import {
   commitLetterForm,
   emptyLetterCommitForm,
@@ -39,6 +46,7 @@ import {
   type LetterCommitFormFields,
 } from '../lib/letterCommit';
 import type { LetterParseResult, ParsedLetter, ParsedServiceRow } from '../lib/letterImport';
+import { hashBlob } from '../lib/letterImport';
 import type { ApprovalServiceCode } from '../types';
 
 function slaTone(level: SlaLevel): 'good' | 'warn' | 'danger' {
@@ -172,19 +180,15 @@ export function ReviewQueue() {
       setFields(emptyLetterCommitForm());
       setParseMeta({ blockers: [], loading: true, error: null });
 
-      const preview = stagingPreviewOf(item);
-      let resolved = fileFromStagingPreview(item) ?? null;
-      if (!resolved) {
-        resolved =
-          (await fetchInboxFileForStaging({
-            sourceHash: item.sourceHash,
-            sourceFileName: item.sourceFileName,
-            expectedFileName: item.expectedFileName,
-          })) ?? null;
-      }
-      if (gen !== loadGen.current) return;
+      const legacyPreview = stagingPreviewOf(item);
+      const hash = item.sourceHash?.trim().toLowerCase();
+      const preferredName = (item.expectedFileName || item.sourceFileName || 'letter.bin').trim();
 
-      if (preview) {
+      const applyPreview = async (
+        preview: NonNullable<ReturnType<typeof stagingPreviewOf>>,
+        resolved: File | null,
+      ) => {
+        if (gen !== loadGen.current) return;
         setFields(formFieldsFromPreview(preview));
         setParsed(preview.parsed);
         setFile(resolved);
@@ -192,10 +196,52 @@ export function ReviewQueue() {
           confidence: preview.confidence,
           blockers: [],
           loading: false,
-          error: resolved ? null : 'Attachment not found — pick the letter file to continue.',
+          error: resolved ? null : 'Attachment not found - pick the letter file to continue.',
         });
+      };
+
+      if (legacyPreview) {
+        let resolved = fileFromStagingPreview(item) ?? null;
+        if (!resolved && hash) {
+          resolved =
+            (await getCachedLetterFile(hash, preferredName, legacyPreview.mimeType)) ?? null;
+        }
+        if (!resolved) {
+          resolved =
+            (await fetchInboxFileForStaging({
+              sourceHash: item.sourceHash,
+              sourceFileName: item.sourceFileName,
+              expectedFileName: item.expectedFileName,
+            })) ?? null;
+          if (resolved && hash) await putCachedLetterBlob(hash, resolved);
+        }
+        await applyPreview(legacyPreview, resolved);
         return;
       }
+
+      if (hash) {
+        const cached = await getCachedLetterParse(hash);
+        if (cached) {
+          const resolved =
+            (await getCachedLetterFile(hash, preferredName, cached.mimeType)) ?? null;
+          await applyPreview(cached, resolved);
+          return;
+        }
+      }
+
+      let resolved =
+        hash
+          ? (await getCachedLetterFile(hash, preferredName)) ??
+            (await fetchInboxFileForStaging({
+              sourceHash: item.sourceHash,
+              sourceFileName: item.sourceFileName,
+              expectedFileName: item.expectedFileName,
+            })) ??
+            null
+          : null;
+
+      if (gen !== loadGen.current) return;
+      if (resolved && hash) await putCachedLetterBlob(hash, resolved);
 
       if (!resolved) {
         setFields({
@@ -206,7 +252,7 @@ export function ReviewQueue() {
         setParseMeta({
           blockers: [],
           loading: false,
-          error: 'Attachment not found — pick the letter file to parse and review.',
+          error: 'Attachment not found - pick the letter file to parse and review.',
         });
         return;
       }
@@ -225,7 +271,7 @@ export function ReviewQueue() {
             confidence: result.overallConfidence,
             blockers: result.blockers,
             loading: false,
-            error: 'Could not parse this letter — fill the form manually, then Accept.',
+            error: 'Could not parse this letter - fill the form manually, then Accept.',
           });
           return;
         }
@@ -246,6 +292,17 @@ export function ReviewQueue() {
           loading: false,
           error: null,
         });
+        if (hash) {
+          const base64 = await blobToBase64(resolved);
+          const preview = buildStagingPreview(result, resolved, base64);
+          if (preview) {
+            await putCachedLetterParse(hash, preview);
+            const hints: Partial<StagingItem> = {};
+            if (preview.patientName?.trim()) hints.patientName = preview.patientName.trim();
+            if (preview.claimNumber?.trim()) hints.claimNumber = preview.claimNumber.trim();
+            if (Object.keys(hints).length) await updateStagingItem(item.id, hints);
+          }
+        }
       } catch (err) {
         if (gen !== loadGen.current) return;
         setParseMeta({
@@ -365,13 +422,18 @@ export function ReviewQueue() {
     setFile(picked);
     setParseMeta({ blockers: [], loading: true, error: null });
     try {
+      const fileHash = await hashBlob(picked);
+      await putCachedLetterBlob(fileHash, picked);
+      if (!selected.sourceHash) {
+        await updateStagingItem(selected.id, { sourceHash: fileHash });
+      }
       const result = await parseLetterFile(picked);
       if (!result.parsed) {
         setParseMeta({
           confidence: result.overallConfidence,
           blockers: result.blockers,
           loading: false,
-          error: 'Could not parse this letter — fill the form manually, then Accept.',
+          error: 'Could not parse this letter - fill the form manually, then Accept.',
         });
         return;
       }
@@ -392,6 +454,16 @@ export function ReviewQueue() {
         loading: false,
         error: null,
       });
+      const base64 = await blobToBase64(picked);
+      const preview = buildStagingPreview(result, picked, base64);
+      if (preview) {
+        await putCachedLetterParse(fileHash, preview);
+        const hints: Partial<StagingItem> = {};
+        if (preview.patientName?.trim()) hints.patientName = preview.patientName.trim();
+        if (preview.claimNumber?.trim()) hints.claimNumber = preview.claimNumber.trim();
+        if (Object.keys(hints).length) await updateStagingItem(selected.id, hints);
+        await refresh();
+      }
     } catch (err) {
       setParseMeta({
         blockers: [],
@@ -607,21 +679,21 @@ export function ReviewQueue() {
           className="btn"
           disabled={busy}
           onClick={() => void importStagingFolder()}
-          title="Fallback: pick the ACC-Inbox\.staging folder if auto-import via launch.ps1 is unavailable"
+          title="Pick your ACC-Inbox folder if letters are not loading automatically"
         >
-          Import ACC-Inbox .staging folder
+          Import letters from folder
         </button>
         <button
           type="button"
           className="btn"
           disabled={busy}
           onClick={() => sidecarInput.current?.click()}
-          title="Pick individual .json sidecar files instead of the whole folder"
+          title="Pick individual letter files from your inbox staging folder"
         >
-          Import sidecar JSON files
+          Import letter files
         </button>
         <button type="button" className="btn" disabled={busy} onClick={() => void refresh()}>
-          Refresh
+          Refresh review list
         </button>
         <input
           ref={sidecarInput}
@@ -652,10 +724,13 @@ export function ReviewQueue() {
       ) : (
         <div
           className="grid gap-4"
-          style={{ gridTemplateColumns: 'minmax(240px, 320px) minmax(0, 1fr)' }}
+          style={{ gridTemplateColumns: 'minmax(220px, 280px) minmax(0, 1fr)' }}
         >
           {/* Left: pending list */}
-          <div className="space-y-2" style={{ maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}>
+          <div
+            className="space-y-2 pr-1"
+            style={{ maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}
+          >
             {sorted.map((item) => {
               const sla = hrqSlaStatus(item.createdAt);
               const preview = stagingPreviewOf(item);
@@ -693,7 +768,8 @@ export function ReviewQueue() {
           </div>
 
           {/* Right: detail pane */}
-          <Card className="p-4">
+          <div style={{ maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}>
+            <Card className="p-4">
             {!selected ? (
               <EmptyState title="Select a letter" message="Choose an item on the left to review the attachment and patient form." />
             ) : (
@@ -774,14 +850,17 @@ export function ReviewQueue() {
 
                 <div
                   className="grid gap-4"
-                  style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}
+                  style={{
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                    alignItems: 'start',
+                  }}
                 >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center justify-between mb-2 gap-2">
                       <h3 className="text-sm font-semibold">Attachment</h3>
                       <button
                         type="button"
-                        className="btn btn-sm"
+                        className="btn btn-sm shrink-0"
                         onClick={() => letterInput.current?.click()}
                       >
                         {file ? 'Replace file' : 'Pick letter file'}
@@ -791,19 +870,20 @@ export function ReviewQueue() {
                       <div
                         className="flex items-center justify-center text-sm rounded-card"
                         style={{
-                          height: 480,
+                          minHeight: 360,
+                          height: 'min(480px, 50vh)',
                           color: 'var(--muted)',
                           border: '1px dashed var(--border)',
                         }}
                       >
-                        Loading letter…
+                        Loading letter...
                       </div>
                     ) : (
                       <PdfPreview file={file} title={selected.sourceFileName || selected.title} />
                     )}
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-3 min-w-0" style={{ maxHeight: 'min(70vh, 640px)', overflowY: 'auto' }}>
                     <h3 className="text-sm font-semibold">Patient &amp; case form</h3>
                     <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1fr' }}>
                       <Field label="Patient name" required>
@@ -972,6 +1052,7 @@ export function ReviewQueue() {
               </div>
             )}
           </Card>
+          </div>
         </div>
       )}
 

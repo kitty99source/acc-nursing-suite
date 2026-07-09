@@ -383,24 +383,24 @@ Focus: import, save, errors, layout.
 
 
 
-#### J-25 — HRQ sign-off
+#### J-25 — Review final patient form (sign-off)
 
-*Partial on work laptop* — folder-watch needs dev machine Node.js today.
+*Partial on work laptop* — folder-watch needs the work laptop (PHI stays there).
 
-1. On work laptop: Sidebar → **Review Queue** — confirm module loads and shows empty/help text.
-2. For full test: on dev machine run folder-watch, drop PDF, import sidecar in Review Queue, approve.
-3. **Pass/Fail:** ____We need to rethink this part all patient info needs to stay on work laptop so we need the work from home to be on the work laptop which is at the location of home but is the work laptop_______ (note: partial OK)
+1. On work laptop: Sidebar → **Review Queue** (title: **Review final patient form**) — confirm module loads.
+2. With WFH / folder-watch + `Start ACC Suite.cmd`: a staged letter appears in the left list.
+3. Select it → attachment PDF + editable patient/case form appear on the right.
+4. Click **Accept → create patient case** → patient appears in **Patients & Cases** and counts toward metrics.
+5. **Pass/Fail:** _____
 
 
 
-#### J-26 — Batch approve HRQ
+#### J-26 — Bulk approve HRQ (removed)
 
-*Same as J-25* — needs folder-watch sidecars on dev machine.
+Bulk multi-select / **Approve selected** / **Bulk import selected** were removed. Sign off one letter at a time via **Accept → create patient case** on the Review page. A future bulk redesign may return later.
 
-1. Stage 3 letters in HRQ.
-2. Select all → **Approve selected** → confirm patient names listed.
-3. All three commit.
-4. **Pass/Fail:** _____We need to rethink this part all patient info needs to stay on work laptop so we need the work from home to be on the work laptop which is at the location of home but is the work laptop______ (note: partial OK)
+1. Confirm the Review toolbar has **Import .staging** / **Import sidecar** / **Refresh** only (no bulk buttons).
+2. **Pass/Fail:** _____
 
 
 
@@ -462,8 +462,8 @@ Use this when the letter arrives as an **email attachment** in Outlook.
    - Default: `C:\Users\YourName\ACC-Inbox\`
    - Quick open: double-click **`Start ACC-Inbox Folder.cmd`** in your `dist\` folder (creates the folder if missing).
 4. With **`Start Folder Watch.cmd`** running, the file is picked up automatically and a `.staging\*.json` sidecar is written.
-5. In the app: **Review Queue** → **Import ACC-Inbox .staging folder** → pick the **`.staging` folder** (JSON sidecars only — **not** the PDF/DOCX here).
-6. Click **Review & import** on the staged item → **now** pick the letter file (PDF or `.docx`) from `ACC-Inbox\processed\`.
+5. Open the suite via **`Start ACC Suite.cmd`** / WFH → **Review Queue** — letters auto-import from `.staging` (fallback: **Import ACC-Inbox .staging folder**).
+6. Select the letter → check the attachment + pre-filled patient/case form → **Accept → create patient case**.
 
 **Do not** use the app's import buttons to "submit" straight from Outlook — save the attachment to disk first.
 
@@ -485,8 +485,8 @@ Use this when you already have the letter file on disk (USB, Downloads, `ACC-Inb
 | 1 | Email from `John.Bentley@acc.co.nz` arrives in **ACCDistrictNursing** mailbox |
 | 2 | Right-click attachment → **Save As** → `C:\Users\YourName\ACC-Inbox\approval.docx` |
 | 3 | Folder watch window shows `[staged] approval.docx -> .staging\....json` |
-| 4 | App → **Review Queue** → **Import ACC-Inbox .staging folder** → select `ACC-Inbox\.staging` |
-| 5 | **Review & import** → pick `ACC-Inbox\processed\approval.docx` → confirm → **Save** |
+| 4 | App → **Review Queue** (auto-import, or **Import ACC-Inbox .staging folder**) |
+| 5 | Select letter → review PDF + form → **Accept → create patient case** |
 
 Or skip steps 3–5: **Approvals** → **Import ACC letter (PDF or Word)** → pick the `.docx` directly.
 
@@ -526,12 +526,11 @@ All patient data stays on the work laptop — do **not** run folder watch on the
 9. The letter file moves to `ACC-Inbox\processed\`.
 10. **Dedup note:** Folder watch hashes **file bytes** (SHA-256), not filenames alone. Re-scanning the same file is skipped (`[skip] re-scan: identical bytes for …`). Different emails that share a generic ACC filename (e.g. `1_NUR02_…_vendor.docx` and `…_vendor-1.docx` after email sync uniquifies) are staged separately even when the bytes match — each saved name gets its own `.staging\{hash}_{filename}.json` sidecar.
 11. Double-click **`Start ACC Suite.cmd`** (separate window — keep both open).
-12. In the app sidebar, click **Review Queue**.
-13. Click **Import ACC-Inbox .staging folder** → pick `C:\Users\YourName\ACC-Inbox\.staging`.
-14. The staged letter appears in the queue.
-15. Click **Review & import** → pick the letter from `ACC-Inbox\processed\` (or your original copy).
-16. Confirm fields (dates show **dd/mm/yyyy**) → **Save**.
-17. **Pass if:** sidecar imports, letter parses, data saves.
+12. In the app sidebar, click **Review Queue** (**Review final patient form**).
+13. The staged letter should auto-appear (if not: **Import ACC-Inbox .staging folder** → pick `C:\Users\YourName\ACC-Inbox\.staging`).
+14. Select the letter — attachment + pre-filled patient/case form load on the right.
+15. Edit fields if needed → **Accept → create patient case**.
+16. **Pass if:** patient appears in Patients & Cases, letter is attached, item leaves the review queue.
 
 **Pause automation:** create an empty file `ACC-Inbox\.automation-paused` or set env `ACC_AUTOMATION_PAUSED=1`.
 
@@ -578,10 +577,10 @@ Files without a subject in `email-sync-status.json` are listed and left unchange
 5. Tag emails **actioned** in Outlook after you save the attachment locally (optional personal workflow marker — sync still captures them for HRQ review).
 6. Status file: `%USERPROFILE%\ACC-Suite\email-sync-status.json` — **ACC Inbox** shows sync health / audit list (optional **Load sync report**).
 7. Checkpoint file: `%USERPROFILE%\ACC-Suite\email-sync-state.json` — resume after close or Ctrl+C.
-8. Double-click **`Start Folder Watch.cmd`** (or use **Start WFH Mode.cmd**). Open the app → **Review Queue** — new letters should appear automatically; click **Review & import** / **File to patient record**.
+8. Double-click **`Start Folder Watch.cmd`** (or use **Start WFH Mode.cmd**). Open the app → **Review Queue** — new letters should appear automatically; select one → **Accept → create patient case**.
 9. Log: `%USERPROFILE%\ACC-Suite\logs\email-sync-bootstrap.log`
 
-**Primary click-path (after rebuild):** `Start WFH Mode.cmd` → open suite → **Review Queue** → confirm & file. **ACC Inbox** is for sync status / troubleshooting only (not the main filing path).
+**Primary click-path (after rebuild):** `Start WFH Mode.cmd` → open suite → **Review Queue** → select letter → review attachment + form → **Accept → create patient case**. **ACC Inbox** is for sync status / troubleshooting only (not the main filing path). Bulk multi-select was removed — one letter at a time.
 
 **Switches:** `-Recent` for last-14-days mode only; `-BatchSize 25` for smaller batches; `-Scheduled` marks a run as the future automated daemon (obeys the `accWorkHours` window if `enabled: true`); `-IgnoreWorkHours` forces a `-Scheduled` run even outside its window. Manual double-click runs need none of these — they always run.
 
@@ -624,7 +623,7 @@ Reichenbach-Graham_ClaimP2222756868_1_NUR02_Nursing_services_approve_-_vendor.do
 - The **original ACC filename is kept** as a suffix (nothing is lost) and the extension (`.pdf`/`.docx`/`.doc`) is preserved. Length is capped (~150 chars) with the extension protected.
 - **Fallback:** if the subject has no parseable patient name or claim, the **original ACC filename is used unchanged** (never an empty/garbage prefix); if only one of the two is present, only that part is used.
 - Bytes are untouched, so folder-watch SHA-256 dedup, `Get-UniquePath` collision handling (`-1`/`-2`), and the flat `processed/` folder are all unaffected — two genuinely different letters for the same patient/claim are both kept.
-- The **Review Queue** card shows the patient, claim, ACCID, and the **expected descriptive filename** to look for when you click **Review & import**, so the name in `processed/` matches what the app tells you to pick.
+- The **Review Queue** list shows the patient/claim; selecting an item loads the attachment and the editable patient/case form so you can **Accept → create patient case** without a separate import modal for the happy path.
 
 ### Subject matching + attachment types (2026-07-08 update)
 

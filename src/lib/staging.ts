@@ -4,7 +4,7 @@
 // ============================================================================
 
 import { loadStagingQueue as idbLoadStaging, saveStagingQueue as idbSaveStaging } from './idb';
-import { base64ToBlob, putCachedLetterBlob } from './letterCache';
+import { base64ToBlob, getCachedLetterParse, putCachedLetterBlob } from './letterCache';
 import { hrqSlaLevel } from './hrqSla';
 import { hashBlob } from './letterImport';
 
@@ -195,6 +195,78 @@ export function assertStagingIsolation(liveMutated: boolean, fromStaging: boolea
 // that save the same generic filename with different uniquified names (vendor.docx,
 // vendor-1.docx) or byte-identical templates for different patients each get a row.
 // ============================================================================
+
+// ============================================================================
+// One-time reconcile — dedupe the queue and backfill patient/claim names from
+// the persisted parse cache. Fixes legacy items still titled "Folder: file.pdf"
+// and collapses duplicate imports. Idempotent: only persists when it changes
+// something, so it is safe to run on every mount.
+// ============================================================================
+
+export type StagingEnricher = (
+  item: StagingItem,
+) => Promise<{ patientName?: string; claimNumber?: string } | undefined>;
+
+const defaultEnricher: StagingEnricher = async (item) => {
+  if (!item.sourceHash) return undefined;
+  const preview = await getCachedLetterParse(item.sourceHash);
+  if (!preview) return undefined;
+  return {
+    patientName: preview.patientName?.trim() || undefined,
+    claimNumber: preview.claimNumber?.trim() || undefined,
+  };
+};
+
+export interface StagingReconcileResult {
+  removed: number;
+  renamed: number;
+  total: number;
+}
+
+export async function reconcileStagingQueue(
+  enrich: StagingEnricher = defaultEnricher,
+): Promise<StagingReconcileResult> {
+  const all = await idbLoadStaging();
+
+  // Collapse duplicate imports on the canonical ingress key (hash + filename),
+  // keeping the earliest-created entry so history/audit points stay stable.
+  const seen = new Set<string>();
+  const kept: StagingItem[] = [];
+  let removed = 0;
+  for (const item of [...all].sort((a, b) => a.createdAt - b.createdAt)) {
+    const key = stagingIngressDedupKey(item);
+    if (key) {
+      if (seen.has(key)) {
+        removed++;
+        continue;
+      }
+      seen.add(key);
+    }
+    kept.push(item);
+  }
+
+  let renamed = 0;
+  for (let i = 0; i < kept.length; i++) {
+    const item = kept[i];
+    if (item.status !== 'pending') continue;
+    const hint = await enrich(item);
+    if (!hint) continue;
+    let next = item;
+    if (hint.patientName && item.patientName !== hint.patientName) {
+      next = { ...next, patientName: hint.patientName };
+      renamed++;
+    }
+    if (hint.claimNumber && item.claimNumber !== hint.claimNumber) {
+      next = { ...next, claimNumber: hint.claimNumber };
+    }
+    if (next !== item) kept[i] = next;
+  }
+
+  if (removed > 0 || renamed > 0) {
+    await idbSaveStaging(kept);
+  }
+  return { removed, renamed, total: kept.length };
+}
 
 /** Existing staging item already holding this attachment hash (pending by default). */
 export function findStagingByHash(

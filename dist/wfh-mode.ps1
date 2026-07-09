@@ -1,4 +1,4 @@
-param()
+﻿param()
 
 $bootstrapRoot = $PSScriptRoot
 if ([string]::IsNullOrEmpty($bootstrapRoot)) { $bootstrapRoot = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }

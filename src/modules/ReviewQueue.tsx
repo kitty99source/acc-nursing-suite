@@ -28,7 +28,12 @@ import {
   probeLocalStagingBridge,
   type StagingBridgeStatus,
 } from '../lib/localAccBridge';
-import { enqueueStagingPreparse, buildStagingPreview } from '../lib/stagingPreparse';
+import {
+  enqueueStagingPreparse,
+  buildStagingPreview,
+  retryUnnamedStagingPreparse,
+  stagingPreparseStats,
+} from '../lib/stagingPreparse';
 import {
   blobToBase64,
   getCachedLetterFile,
@@ -96,6 +101,7 @@ export function ReviewQueue() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [fixProgress, setFixProgress] = useState<string | null>(null);
 
   const [file, setFile] = useState<File | null>(null);
   const [fields, setFields] = useState<LetterCommitFormFields>(emptyLetterCommitForm());
@@ -148,6 +154,13 @@ export function ReviewQueue() {
 
   const reconciledOnce = useRef(false);
 
+  const sorted = useMemo(() => items, [items]);
+  const readyCount = useMemo(
+    () => sorted.filter((i) => Boolean(i.patientName?.trim())).length,
+    [sorted],
+  );
+  const unnamedCount = sorted.length - readyCount;
+
   useEffect(() => {
     void (async () => {
       if (!reconciledOnce.current) {
@@ -172,7 +185,15 @@ export function ReviewQueue() {
     return () => window.clearInterval(id);
   }, [refresh, autoImportFromLauncher]);
 
-  const sorted = useMemo(() => items, [items]);
+  // Keep the list titles live while background pre-parse fills patient names.
+  useEffect(() => {
+    if (unnamedCount <= 0 || busy) return;
+    const id = window.setInterval(() => {
+      void refresh();
+    }, 2500);
+    return () => window.clearInterval(id);
+  }, [unnamedCount, busy, refresh]);
+
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return sorted;
@@ -196,10 +217,63 @@ export function ReviewQueue() {
   );
   const slaSummary = useMemo(() => summarizeQueueSla(sorted), [sorted]);
   const overdueCount = slaSummary.breached;
-  const readyCount = useMemo(
-    () => sorted.filter((i) => Boolean(i.patientName?.trim())).length,
-    [sorted],
-  );
+
+  async function fixNamesNow() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const probe = await probeLocalStagingBridge();
+      setBridgeStatus(probe.status);
+      if (probe.status === 'unavailable') {
+        await confirm({
+          title: 'Cannot reach letter files',
+          message:
+            'Start WFH Mode (or Start ACC Suite) so the app can read letters from ACC-Inbox. Without that bridge, old filename-only rows cannot be renamed.',
+          confirmLabel: 'OK',
+        });
+        return;
+      }
+      const pending = await loadStagingItems();
+      const targets = retryUnnamedStagingPreparse(pending);
+      if (targets === 0) {
+        setFixProgress(null);
+        setFlash('All letters already have patient names.');
+        window.setTimeout(() => setFlash(null), 4000);
+        return;
+      }
+      setFixProgress(`Reading letters to fix names… 0/${targets}`);
+      const started = Date.now();
+      while (Date.now() - started < 10 * 60_000) {
+        await new Promise((r) => setTimeout(r, 1500));
+        await refresh();
+        const stats = stagingPreparseStats();
+        const still = (await loadStagingItems()).filter(
+          (i) => i.status === 'pending' && !i.patientName?.trim(),
+        ).length;
+        const doneCount = Math.max(0, targets - still);
+        setFixProgress(
+          `Reading letters to fix names… ${doneCount}/${targets}` +
+            (stats.queued + stats.active > 0 ? ` (${stats.queued + stats.active} in flight)` : ''),
+        );
+        if (stats.queued === 0 && stats.active === 0) break;
+      }
+      const after = await loadStagingItems();
+      const named = after.filter((i) => i.status === 'pending' && i.patientName?.trim()).length;
+      const stillUnnamed = after.filter(
+        (i) => i.status === 'pending' && !i.patientName?.trim(),
+      ).length;
+      setFixProgress(null);
+      setFlash(
+        stillUnnamed > 0
+          ? `Named ${named} letters. ${stillUnnamed} still need a file (bridge/hash miss or unreadable).`
+          : `Named ${named} letters. Review list is ready.`,
+      );
+      window.setTimeout(() => setFlash(null), 8000);
+    } finally {
+      setBusy(false);
+      setFixProgress(null);
+    }
+  }
 
   const matchedPatient = useMemo(() => {
     if (!fields.selectedPatientId) return undefined;
@@ -714,6 +788,12 @@ export function ReviewQueue() {
         </p>
       )}
 
+      {fixProgress && (
+        <p className="text-sm mb-3" style={{ color: 'var(--muted)' }} role="status">
+          {fixProgress}
+        </p>
+      )}
+
       <div className="flex flex-wrap items-center gap-2 mb-4">
         {sorted.length > 0 && (
           <div className="relative" style={{ minWidth: 220, flex: '1 1 260px', maxWidth: 380 }}>
@@ -753,6 +833,17 @@ export function ReviewQueue() {
           </div>
         )}
         <div className="flex flex-wrap gap-2 ml-auto">
+          {unnamedCount > 0 && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => void fixNamesNow()}
+              title="Re-read letter files via the local bridge and fill patient names on filename-only rows"
+            >
+              Fix names now ({unnamedCount})
+            </button>
+          )}
           <button
             type="button"
             className="btn"

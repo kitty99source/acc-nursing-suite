@@ -8,6 +8,7 @@ import {
   ingestAttachment,
   findStagingByHash,
   dedupeStagingByHash,
+  reconcileStagingQueue,
   type StagingItem,
 } from './staging';
 
@@ -18,6 +19,7 @@ vi.mock('./idb', () => ({
 
 vi.mock('./letterCache', () => ({
   putCachedLetterBlob: vi.fn(async () => {}),
+  getCachedLetterParse: vi.fn(async () => undefined),
   base64ToBlob: vi.fn((base64: string, mime: string) => {
     const binary = atob(base64);
     const bytes = new Uint8Array(binary.length);
@@ -264,5 +266,69 @@ describe('staging — hash helpers (P8-014)', () => {
     const out = dedupeStagingByHash([a, b, c, d]);
     const ids = out.map((i) => i.id).sort();
     expect(ids).toEqual(['b', 'c', 'd']);
+  });
+});
+
+describe('staging — reconcileStagingQueue', () => {
+  let queue: StagingItem[];
+
+  beforeEach(() => {
+    vi.mocked(loadStagingQueue).mockImplementation(async () => queue);
+    vi.mocked(saveStagingQueue).mockImplementation(async (items) => {
+      queue = items;
+    });
+  });
+
+  const mk = (
+    id: string,
+    opts: Partial<StagingItem> & { createdAt?: number } = {},
+  ): StagingItem =>
+    createStagingItem({
+      id,
+      type: 'letter-import-pending',
+      source: 'folder',
+      severity: 'info',
+      title: `Folder: ${id}.pdf`,
+      summary: '',
+      ...opts,
+    });
+
+  it('removes duplicate imports on hash + filename, keeping the earliest', async () => {
+    queue = [
+      { ...mk('a', { sourceHash: 'h1', sourceFileName: 'x.pdf' }), createdAt: 100 },
+      { ...mk('b', { sourceHash: 'h1', sourceFileName: 'x.pdf' }), createdAt: 50 },
+      { ...mk('c', { sourceHash: 'h2', sourceFileName: 'x.pdf' }), createdAt: 10 },
+    ];
+    const res = await reconcileStagingQueue(async () => undefined);
+    expect(res.removed).toBe(1);
+    expect(queue.map((i) => i.id).sort()).toEqual(['b', 'c']);
+  });
+
+  it('backfills patient and claim names from the enricher', async () => {
+    queue = [mk('a', { sourceHash: 'h1', sourceFileName: 'x.pdf' })];
+    const res = await reconcileStagingQueue(async () => ({
+      patientName: 'Jane Doe',
+      claimNumber: 'P123',
+    }));
+    expect(res.renamed).toBe(1);
+    expect(queue[0].patientName).toBe('Jane Doe');
+    expect(queue[0].claimNumber).toBe('P123');
+  });
+
+  it('does not persist when nothing changes', async () => {
+    queue = [mk('a', { sourceHash: 'h1', sourceFileName: 'x.pdf', patientName: 'Jane Doe' })];
+    vi.mocked(saveStagingQueue).mockClear();
+    const res = await reconcileStagingQueue(async () => ({ patientName: 'Jane Doe' }));
+    expect(res.removed).toBe(0);
+    expect(res.renamed).toBe(0);
+    expect(saveStagingQueue).not.toHaveBeenCalled();
+  });
+
+  it('skips enrichment for non-pending items', async () => {
+    queue = [mk('a', { sourceHash: 'h1', sourceFileName: 'x.pdf', status: 'approved' })];
+    const enrich = vi.fn(async () => ({ patientName: 'Should Not Apply' }));
+    const res = await reconcileStagingQueue(enrich);
+    expect(enrich).not.toHaveBeenCalled();
+    expect(res.renamed).toBe(0);
   });
 });

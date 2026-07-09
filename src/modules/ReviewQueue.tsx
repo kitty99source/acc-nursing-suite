@@ -3,7 +3,6 @@ import { useStore } from '../state/store';
 import {
   SectionTitle,
   Badge,
-  Card,
   EmptyState,
   Field,
   TextInput,
@@ -17,6 +16,7 @@ import {
   importStagingJsonText,
   importStagingSidecars,
   updateStagingItem,
+  reconcileStagingQueue,
   stagingAgeLabel,
   type StagingItem,
 } from '../lib/staging';
@@ -95,6 +95,7 @@ export function ReviewQueue() {
   const [bridgeStatus, setBridgeStatus] = useState<StagingBridgeStatus | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
   const [file, setFile] = useState<File | null>(null);
   const [fields, setFields] = useState<LetterCommitFormFields>(emptyLetterCommitForm());
@@ -145,9 +146,26 @@ export function ReviewQueue() {
     }
   }, [refresh]);
 
+  const reconciledOnce = useRef(false);
+
   useEffect(() => {
-    void refresh();
-    void autoImportFromLauncher();
+    void (async () => {
+      if (!reconciledOnce.current) {
+        reconciledOnce.current = true;
+        try {
+          const res = await reconcileStagingQueue();
+          if (res.removed > 0 || res.renamed > 0) {
+            setAutoImportNote(
+              `Tidied the review list: ${res.renamed} renamed from the letter, ${res.removed} duplicate(s) removed.`,
+            );
+          }
+        } catch {
+          /* non-fatal — list still loads below */
+        }
+      }
+      await refresh();
+      await autoImportFromLauncher();
+    })();
     const id = window.setInterval(() => {
       void autoImportFromLauncher();
     }, 30_000);
@@ -155,12 +173,33 @@ export function ReviewQueue() {
   }, [refresh, autoImportFromLauncher]);
 
   const sorted = useMemo(() => items, [items]);
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return sorted;
+    return sorted.filter((item) => {
+      const haystack = [
+        listTitle(item),
+        item.patientName,
+        item.claimNumber,
+        item.sourceFileName,
+        item.accId,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [sorted, query]);
   const selected = useMemo(
     () => sorted.find((i) => i.id === selectedId) ?? null,
     [sorted, selectedId],
   );
   const slaSummary = useMemo(() => summarizeQueueSla(sorted), [sorted]);
   const overdueCount = slaSummary.breached;
+  const readyCount = useMemo(
+    () => sorted.filter((i) => Boolean(i.patientName?.trim())).length,
+    [sorted],
+  );
 
   const matchedPatient = useMemo(() => {
     if (!fields.selectedPatientId) return undefined;
@@ -476,9 +515,10 @@ export function ReviewQueue() {
   }
 
   function nextAfter(id: string): string | null {
-    const idx = sorted.findIndex((i) => i.id === id);
-    if (idx < 0) return sorted[0]?.id ?? null;
-    return sorted[idx + 1]?.id ?? sorted[idx - 1]?.id ?? null;
+    const list = visible.length ? visible : sorted;
+    const idx = list.findIndex((i) => i.id === id);
+    if (idx < 0) return list[0]?.id ?? null;
+    return list[idx + 1]?.id ?? list[idx - 1]?.id ?? null;
   }
 
   async function acceptItem() {
@@ -624,11 +664,12 @@ export function ReviewQueue() {
     <div>
       <SectionTitle
         title="Review final patient form"
-        subtitle="Under review = not yet a live patient case and not in metrics. Select a letter, check the attachment and the pre-filled form, then Accept to create the patient case."
+        subtitle="Check the letter and the pre-filled form, then Accept to create the patient case. Items under review do not count toward metrics until accepted."
         actions={
           sorted.length > 0 ? (
             <div className="flex items-center gap-2 flex-wrap">
-              <Badge tone={overdueCount ? 'danger' : 'good'}>{sorted.length} under review</Badge>
+              <Badge tone="accent">{sorted.length} under review</Badge>
+              {readyCount > 0 && <Badge tone="good">{readyCount} ready</Badge>}
               {slaSummary.warn > 0 && <Badge tone="warn">{slaSummary.warn} approaching SLA</Badge>}
               {overdueCount > 0 && <Badge tone="danger">{overdueCount} overdue</Badge>}
             </div>
@@ -673,28 +714,67 @@ export function ReviewQueue() {
         </p>
       )}
 
-      <div className="flex flex-wrap gap-2 mb-4">
-        <button
-          type="button"
-          className="btn"
-          disabled={busy}
-          onClick={() => void importStagingFolder()}
-          title="Pick your ACC-Inbox folder if letters are not loading automatically"
-        >
-          Import letters from folder
-        </button>
-        <button
-          type="button"
-          className="btn"
-          disabled={busy}
-          onClick={() => sidecarInput.current?.click()}
-          title="Pick individual letter files from your inbox staging folder"
-        >
-          Import letter files
-        </button>
-        <button type="button" className="btn" disabled={busy} onClick={() => void refresh()}>
-          Refresh review list
-        </button>
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {sorted.length > 0 && (
+          <div className="relative" style={{ minWidth: 220, flex: '1 1 260px', maxWidth: 380 }}>
+            <TextInput
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search patient, claim, or file…"
+              aria-label="Search review list"
+              style={{ paddingLeft: 32 }}
+            />
+            <span
+              aria-hidden
+              className="absolute"
+              style={{ left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }}
+            >
+              ⌕
+            </span>
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                aria-label="Clear search"
+                className="absolute"
+                style={{
+                  right: 8,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--muted)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2 ml-auto">
+          <button
+            type="button"
+            className="btn"
+            disabled={busy}
+            onClick={() => void importStagingFolder()}
+            title="Pick your ACC-Inbox folder if letters are not loading automatically"
+          >
+            Import letters from folder
+          </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={busy}
+            onClick={() => sidecarInput.current?.click()}
+            title="Pick individual letter files from your inbox staging folder"
+          >
+            Import letter files
+          </button>
+          <button type="button" className="btn" disabled={busy} onClick={() => void refresh()}>
+            Refresh
+          </button>
+        </div>
         <input
           ref={sidecarInput}
           type="file"
@@ -724,305 +804,423 @@ export function ReviewQueue() {
       ) : (
         <div
           className="grid gap-4"
-          style={{ gridTemplateColumns: 'minmax(220px, 280px) minmax(0, 1fr)' }}
+          style={{ gridTemplateColumns: 'minmax(240px, 300px) minmax(0, 1fr)' }}
         >
           {/* Left: pending list */}
           <div
-            className="space-y-2 pr-1"
-            style={{ maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}
+            className="flex flex-col rounded-card"
+            style={{
+              maxHeight: 'calc(100vh - 210px)',
+              border: '1px solid var(--border)',
+              background: 'var(--surface)',
+              overflow: 'hidden',
+            }}
           >
-            {sorted.map((item) => {
-              const sla = hrqSlaStatus(item.createdAt);
-              const preview = stagingPreviewOf(item);
-              const active = item.id === selectedId;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setSelectedId(item.id)}
-                  className="w-full text-left rounded-card p-3 transition-colors"
-                  style={{
-                    border: active ? '2px solid var(--accent)' : '1px solid var(--border)',
-                    background: active ? 'var(--accent-soft)' : 'var(--surface)',
-                  }}
-                >
-                  <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                    <span className="font-semibold text-sm truncate">{listTitle(item)}</span>
-                    <Badge tone={item.severity === 'danger' ? 'danger' : item.severity === 'warn' ? 'warn' : 'good'}>
-                      {typeLabel(item.type)}
-                    </Badge>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 text-xs" style={{ color: 'var(--muted)' }}>
-                    <Badge tone={slaTone(sla.level)}>{stagingAgeLabel(item.createdAt)}</Badge>
-                    {sla.level !== 'ok' && <Badge tone={slaTone(sla.level)}>{hrqSlaLabel(sla)}</Badge>}
-                    {preview && <Badge tone="good">{Math.round(preview.confidence)}%</Badge>}
-                    {(item.claimNumber || preview?.claimNumber) && (
-                      <span className="font-mono">
-                        {item.claimNumber || preview?.claimNumber}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
+            <div
+              className="px-3 py-2 text-xs font-semibold uppercase tracking-wide flex items-center justify-between"
+              style={{ color: 'var(--muted)', borderBottom: '1px solid var(--border)' }}
+            >
+              <span>Letters under review</span>
+              <span>{query ? `${visible.length}/${sorted.length}` : sorted.length}</span>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+              {visible.length === 0 ? (
+                <p className="text-sm text-center py-6" style={{ color: 'var(--muted)' }}>
+                  No letters match “{query}”.
+                </p>
+              ) : (
+                visible.map((item) => {
+                  const sla = hrqSlaStatus(item.createdAt);
+                  const preview = stagingPreviewOf(item);
+                  const active = item.id === selectedId;
+                  const ready = Boolean(item.patientName?.trim() || preview?.patientName?.trim());
+                  const claim = item.claimNumber || preview?.claimNumber;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSelectedId(item.id)}
+                      className="w-full text-left rounded-card p-2.5 transition-colors"
+                      style={{
+                        border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
+                        borderLeft: active
+                          ? '3px solid var(--accent)'
+                          : '3px solid transparent',
+                        background: active ? 'var(--accent-soft)' : 'transparent',
+                      }}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span
+                          aria-hidden
+                          title={ready ? 'Patient details ready' : 'Still reading the letter…'}
+                          style={{
+                            flexShrink: 0,
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            background: ready ? 'var(--good-fg)' : 'var(--warn-fg)',
+                          }}
+                        />
+                        <span className="font-semibold text-sm truncate flex-1">
+                          {listTitle(item)}
+                        </span>
+                        {sla.level !== 'ok' && (
+                          <Badge tone={slaTone(sla.level)}>{hrqSlaLabel(sla)}</Badge>
+                        )}
+                      </div>
+                      <div
+                        className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs pl-4"
+                        style={{ color: 'var(--muted)' }}
+                      >
+                        {claim && <span className="font-mono">{claim}</span>}
+                        <span>{stagingAgeLabel(item.createdAt)}</span>
+                        {preview && <span>· {Math.round(preview.confidence)}%</span>}
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </div>
 
           {/* Right: detail pane */}
-          <div style={{ maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}>
-            <Card className="p-4">
+          <div
+            className="flex flex-col rounded-card min-w-0"
+            style={{
+              maxHeight: 'calc(100vh - 210px)',
+              border: '1px solid var(--border)',
+              background: 'var(--surface)',
+              overflow: 'hidden',
+            }}
+          >
             {!selected ? (
-              <EmptyState title="Select a letter" message="Choose an item on the left to review the attachment and patient form." />
+              <div className="p-6">
+                <EmptyState
+                  title="Select a letter"
+                  message="Choose an item on the left to review the attachment and patient form."
+                />
+              </div>
             ) : (
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <h2 className="text-lg font-bold">{listTitle(selected)}</h2>
+              <>
+                <div
+                  className="px-4 py-3 flex flex-wrap items-start justify-between gap-3"
+                  style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <h2 className="text-lg font-bold truncate">{listTitle(selected)}</h2>
+                      <Badge
+                        tone={
+                          selected.severity === 'danger'
+                            ? 'danger'
+                            : selected.severity === 'warn'
+                              ? 'warn'
+                              : 'good'
+                        }
+                      >
+                        {typeLabel(selected.type)}
+                      </Badge>
+                      {typeof parseMeta.confidence === 'number' && (
+                        <Badge tone={parseMeta.confidence >= 90 ? 'good' : 'warn'}>
+                          {Math.round(parseMeta.confidence)}%
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-sm" style={{ color: 'var(--muted)' }}>
                       {selected.summary}
                     </p>
                     {selected.sourceFileName && (
-                      <p className="text-xs mt-1 font-mono" style={{ color: 'var(--muted)' }}>
+                      <p className="text-xs mt-1 font-mono truncate" style={{ color: 'var(--muted)' }}>
                         {selected.sourceFileName}
                       </p>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {typeof parseMeta.confidence === 'number' && (
-                      <Badge tone={parseMeta.confidence >= 90 ? 'good' : 'warn'}>
-                        {Math.round(parseMeta.confidence)}% confidence
-                      </Badge>
-                    )}
-                    <Badge tone="neutral">via {selected.source}</Badge>
-                  </div>
-                </div>
-
-                {matchedPatient ? (
-                  <div
-                    className="text-sm p-2 rounded-card"
-                    style={{ background: 'var(--accent-soft)', color: 'var(--text)' }}
-                  >
-                    Links to existing patient <strong>{matchedPatient.name}</strong>
-                    {matchedClaim ? (
-                      <>
-                        {' '}
-                        / claim <strong>{matchedClaim.claimNumber || matchedClaim.id}</strong>
-                      </>
-                    ) : (
-                      ' — will create a new claim if needed'
-                    )}
-                    .
-                  </div>
-                ) : (
-                  <div
-                    className="text-sm p-2 rounded-card"
-                    style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}
-                  >
-                    Will create a <strong>new patient</strong> and claim when you Accept.
-                  </div>
-                )}
-
-                {parseMeta.blockers.length > 0 && (
-                  <div
-                    className="text-sm p-3 rounded-card"
-                    style={{ border: '1px solid var(--warn-fg)', background: 'var(--surface-2)' }}
-                  >
-                    <strong>Check before accepting:</strong>
-                    <ul className="list-disc pl-5 mt-1">
-                      {parseMeta.blockers.map((b) => (
-                        <li key={b}>{b}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {parseMeta.error && (
-                  <div className="text-sm" style={{ color: 'var(--danger-fg)' }}>
-                    {parseMeta.error}{' '}
+                  <div className="flex flex-wrap gap-2 shrink-0">
                     <button
                       type="button"
-                      className="btn btn-sm ml-2"
-                      onClick={() => letterInput.current?.click()}
+                      className="btn btn-primary"
+                      disabled={!canAccept}
+                      onClick={() => void acceptItem()}
                     >
-                      Pick letter file
+                      Accept → create patient case
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={busy}
+                      onClick={() => void deferItem(selected)}
+                    >
+                      Defer
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      disabled={busy}
+                      onClick={() => void rejectItem(selected)}
+                    >
+                      Reject
                     </button>
                   </div>
-                )}
+                </div>
 
-                <div
-                  className="grid gap-4"
-                  style={{
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                    alignItems: 'start',
-                  }}
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center justify-between mb-2 gap-2">
-                      <h3 className="text-sm font-semibold">Attachment</h3>
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {matchedPatient ? (
+                    <div
+                      className="text-sm p-2.5 rounded-card"
+                      style={{ background: 'var(--accent-soft)', color: 'var(--text)' }}
+                    >
+                      Links to existing patient <strong>{matchedPatient.name}</strong>
+                      {matchedClaim ? (
+                        <>
+                          {' '}
+                          / claim <strong>{matchedClaim.claimNumber || matchedClaim.id}</strong>
+                        </>
+                      ) : (
+                        ' - will create a new claim if needed'
+                      )}
+                      .
+                    </div>
+                  ) : (
+                    <div
+                      className="text-sm p-2.5 rounded-card"
+                      style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}
+                    >
+                      Will create a <strong>new patient</strong> and claim when you Accept.
+                    </div>
+                  )}
+
+                  {parseMeta.blockers.length > 0 && (
+                    <div
+                      className="text-sm p-3 rounded-card"
+                      style={{ border: '1px solid var(--warn-fg)', background: 'var(--surface-2)' }}
+                    >
+                      <strong>Check before accepting:</strong>
+                      <ul className="list-disc pl-5 mt-1">
+                        {parseMeta.blockers.map((b) => (
+                          <li key={b}>{b}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {parseMeta.error && (
+                    <div className="text-sm" style={{ color: 'var(--danger-fg)' }}>
+                      {parseMeta.error}{' '}
                       <button
                         type="button"
-                        className="btn btn-sm shrink-0"
+                        className="btn btn-sm ml-2"
                         onClick={() => letterInput.current?.click()}
                       >
-                        {file ? 'Replace file' : 'Pick letter file'}
+                        Pick letter file
                       </button>
                     </div>
-                    {parseMeta.loading ? (
-                      <div
-                        className="flex items-center justify-center text-sm rounded-card"
-                        style={{
-                          minHeight: 360,
-                          height: 'min(480px, 50vh)',
-                          color: 'var(--muted)',
-                          border: '1px dashed var(--border)',
-                        }}
-                      >
-                        Loading letter...
+                  )}
+
+                  <div
+                    className="grid gap-4"
+                    style={{
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                      alignItems: 'start',
+                    }}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center justify-between mb-2 gap-2">
+                        <h3 className="text-sm font-semibold">Attachment</h3>
+                        <button
+                          type="button"
+                          className="btn btn-sm shrink-0"
+                          onClick={() => letterInput.current?.click()}
+                        >
+                          {file ? 'Replace file' : 'Pick letter file'}
+                        </button>
                       </div>
-                    ) : (
-                      <PdfPreview file={file} title={selected.sourceFileName || selected.title} />
-                    )}
-                  </div>
-
-                  <div className="space-y-3 min-w-0" style={{ maxHeight: 'min(70vh, 640px)', overflowY: 'auto' }}>
-                    <h3 className="text-sm font-semibold">Patient &amp; case form</h3>
-                    <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1fr' }}>
-                      <Field label="Patient name" required>
-                        <TextInput
-                          value={fields.patientName}
-                          onChange={(e) => patchField('patientName', e.target.value)}
-                        />
-                      </Field>
-                      <Field label="NHI">
-                        <TextInput value={fields.nhi} onChange={(e) => patchField('nhi', e.target.value)} />
-                      </Field>
-                      <Field label="Date of birth">
-                        <DateInput value={fields.dob} onChange={(e) => patchField('dob', e.target.value)} />
-                      </Field>
-                      <Field label="Claim number" required={parsed?.kind === 'approval'}>
-                        <TextInput
-                          value={fields.claimNumber}
-                          onChange={(e) => patchField('claimNumber', e.target.value)}
-                        />
-                      </Field>
-                      <Field label="ACC45">
-                        <TextInput value={fields.acc45} onChange={(e) => patchField('acc45', e.target.value)} />
-                      </Field>
-                      <Field label="PO number">
-                        <TextInput
-                          value={fields.poNumber}
-                          onChange={(e) => patchField('poNumber', e.target.value)}
-                        />
-                      </Field>
-                      <Field label="Day 1 / date of injury">
-                        <DateInput value={fields.day1} onChange={(e) => patchField('day1', e.target.value)} />
-                      </Field>
-                      <Field label="Letter date">
-                        <DateInput
-                          value={fields.letterDate}
-                          onChange={(e) => patchField('letterDate', e.target.value)}
-                        />
-                      </Field>
+                      {parseMeta.loading ? (
+                        <div
+                          className="flex items-center justify-center text-sm rounded-card"
+                          style={{
+                            minHeight: 360,
+                            height: 'min(480px, 50vh)',
+                            color: 'var(--muted)',
+                            border: '1px dashed var(--border)',
+                          }}
+                        >
+                          Loading letter...
+                        </div>
+                      ) : (
+                        <PdfPreview file={file} title={selected.sourceFileName || selected.title} />
+                      )}
                     </div>
-                    <Field label="Injury description">
-                      <TextArea
-                        rows={2}
-                        value={fields.injury}
-                        onChange={(e) => patchField('injury', e.target.value)}
-                      />
-                    </Field>
 
-                    {parsed?.kind === 'decline' && (
-                      <>
-                        <Field label="Decline reason">
-                          <TextArea
-                            rows={2}
-                            value={fields.declineReason}
-                            onChange={(e) => patchField('declineReason', e.target.value)}
-                          />
-                        </Field>
-                        <Field label="Service period declined">
-                          <TextInput
-                            value={fields.servicePeriodDeclined}
-                            onChange={(e) => patchField('servicePeriodDeclined', e.target.value)}
-                          />
-                        </Field>
-                      </>
-                    )}
-
-                    {parsed?.kind === 'approval' && fields.rows.length > 0 && (
+                    <div className="space-y-4 min-w-0">
                       <div>
-                        <h4 className="text-xs font-semibold mb-2" style={{ color: 'var(--muted)' }}>
-                          Service rows
-                        </h4>
-                        <div className="space-y-2">
-                          {fields.rows.map((row, i) => (
-                            <div
-                              key={`${row.serviceCode}-${i}`}
-                              className="grid gap-2 items-end p-2 rounded-card"
-                              style={{
-                                gridTemplateColumns: '80px 1fr 1fr 70px auto auto',
-                                background: 'var(--surface-2)',
-                              }}
-                            >
-                              <Field label="Code">
-                                <TextInput
-                                  value={row.serviceCode}
-                                  onChange={(e) =>
-                                    updateRow(i, {
-                                      serviceCode: e.target.value as ApprovalServiceCode,
-                                    })
-                                  }
-                                />
-                              </Field>
-                              <Field label="Start">
-                                <DateInput
-                                  value={row.approvalStartDate}
-                                  onChange={(e) => updateRow(i, { approvalStartDate: e.target.value })}
-                                />
-                              </Field>
-                              <Field label="End">
-                                <DateInput
-                                  value={row.approvalEndDate}
-                                  onChange={(e) => updateRow(i, { approvalEndDate: e.target.value })}
-                                />
-                              </Field>
-                              <Field label="Qty">
-                                <TextInput
-                                  type="number"
-                                  value={String(row.approvedHoursOrConsults)}
-                                  onChange={(e) =>
-                                    updateRow(i, {
-                                      approvedHoursOrConsults: Number(e.target.value) || 0,
-                                    })
-                                  }
-                                />
-                              </Field>
-                              <button
-                                type="button"
-                                className="btn btn-sm"
-                                onClick={() => setCurrentRow(i)}
-                                title="Mark as current billing period"
-                              >
-                                {row.recordStatus === 'current' ? 'Current' : 'Make current'}
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-danger"
-                                onClick={() => removeRow(i)}
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          ))}
+                        <h3 className="text-sm font-semibold mb-2">Patient</h3>
+                        <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                          <Field label="Patient name" required>
+                            <TextInput
+                              value={fields.patientName}
+                              onChange={(e) => patchField('patientName', e.target.value)}
+                            />
+                          </Field>
+                          <Field label="NHI">
+                            <TextInput
+                              value={fields.nhi}
+                              onChange={(e) => patchField('nhi', e.target.value)}
+                            />
+                          </Field>
+                          <Field label="Date of birth">
+                            <DateInput
+                              value={fields.dob}
+                              onChange={(e) => patchField('dob', e.target.value)}
+                            />
+                          </Field>
+                          <Field label="Letter date">
+                            <DateInput
+                              value={fields.letterDate}
+                              onChange={(e) => patchField('letterDate', e.target.value)}
+                            />
+                          </Field>
                         </div>
                       </div>
-                    )}
+
+                      <div>
+                        <h3 className="text-sm font-semibold mb-2">Claim</h3>
+                        <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                          <Field label="Claim number" required={parsed?.kind === 'approval'}>
+                            <TextInput
+                              value={fields.claimNumber}
+                              onChange={(e) => patchField('claimNumber', e.target.value)}
+                            />
+                          </Field>
+                          <Field label="ACC45">
+                            <TextInput
+                              value={fields.acc45}
+                              onChange={(e) => patchField('acc45', e.target.value)}
+                            />
+                          </Field>
+                          <Field label="PO number">
+                            <TextInput
+                              value={fields.poNumber}
+                              onChange={(e) => patchField('poNumber', e.target.value)}
+                            />
+                          </Field>
+                          <Field label="Day 1 / date of injury">
+                            <DateInput
+                              value={fields.day1}
+                              onChange={(e) => patchField('day1', e.target.value)}
+                            />
+                          </Field>
+                        </div>
+                        <div className="mt-3">
+                          <Field label="Injury description">
+                            <TextArea
+                              rows={2}
+                              value={fields.injury}
+                              onChange={(e) => patchField('injury', e.target.value)}
+                            />
+                          </Field>
+                        </div>
+                      </div>
+
+                      {parsed?.kind === 'decline' && (
+                        <div>
+                          <h3 className="text-sm font-semibold mb-2">Decline</h3>
+                          <div className="space-y-3">
+                            <Field label="Decline reason">
+                              <TextArea
+                                rows={2}
+                                value={fields.declineReason}
+                                onChange={(e) => patchField('declineReason', e.target.value)}
+                              />
+                            </Field>
+                            <Field label="Service period declined">
+                              <TextInput
+                                value={fields.servicePeriodDeclined}
+                                onChange={(e) =>
+                                  patchField('servicePeriodDeclined', e.target.value)
+                                }
+                              />
+                            </Field>
+                          </div>
+                        </div>
+                      )}
+
+                      {parsed?.kind === 'approval' && fields.rows.length > 0 && (
+                        <div>
+                          <h3 className="text-sm font-semibold mb-2">Service rows</h3>
+                          <div className="space-y-2">
+                            {fields.rows.map((row, i) => (
+                              <div
+                                key={`${row.serviceCode}-${i}`}
+                                className="grid gap-2 items-end p-2 rounded-card"
+                                style={{
+                                  gridTemplateColumns: '80px 1fr 1fr 70px auto auto',
+                                  background: 'var(--surface-2)',
+                                }}
+                              >
+                                <Field label="Code">
+                                  <TextInput
+                                    value={row.serviceCode}
+                                    onChange={(e) =>
+                                      updateRow(i, {
+                                        serviceCode: e.target.value as ApprovalServiceCode,
+                                      })
+                                    }
+                                  />
+                                </Field>
+                                <Field label="Start">
+                                  <DateInput
+                                    value={row.approvalStartDate}
+                                    onChange={(e) =>
+                                      updateRow(i, { approvalStartDate: e.target.value })
+                                    }
+                                  />
+                                </Field>
+                                <Field label="End">
+                                  <DateInput
+                                    value={row.approvalEndDate}
+                                    onChange={(e) =>
+                                      updateRow(i, { approvalEndDate: e.target.value })
+                                    }
+                                  />
+                                </Field>
+                                <Field label="Qty">
+                                  <TextInput
+                                    type="number"
+                                    value={String(row.approvedHoursOrConsults)}
+                                    onChange={(e) =>
+                                      updateRow(i, {
+                                        approvedHoursOrConsults: Number(e.target.value) || 0,
+                                      })
+                                    }
+                                  />
+                                </Field>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm"
+                                  onClick={() => setCurrentRow(i)}
+                                  title="Mark as current billing period"
+                                >
+                                  {row.recordStatus === 'current' ? 'Current' : 'Make current'}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-danger"
+                                  onClick={() => removeRow(i)}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 <div
-                  className="flex flex-wrap gap-2 pt-3"
-                  style={{ borderTop: '1px solid var(--border)' }}
+                  className="px-4 py-3 flex flex-wrap gap-2"
+                  style={{ borderTop: '1px solid var(--border)', background: 'var(--surface-2)' }}
                 >
                   <button
                     type="button"
@@ -1049,9 +1247,8 @@ export function ReviewQueue() {
                     Reject
                   </button>
                 </div>
-              </div>
+              </>
             )}
-          </Card>
           </div>
         </div>
       )}

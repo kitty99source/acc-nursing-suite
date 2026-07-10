@@ -115,10 +115,10 @@ export function isStagingIngressDuplicate(
   incoming: Pick<StagingItem, 'sourceHash' | 'sourceFileName'>,
 ): boolean {
   const key = stagingIngressDedupKey(incoming);
-  // 'deferred' rows are still awaiting a decision (there is no "view deferred"
-  // screen — they simply drop out of the pending list), so their underlying
-  // sidecar must keep being treated as already-present. Otherwise a re-import
-  // (e.g. after an app restart resets the in-session seen-sidecar cache) would
+  // 'deferred' rows are still awaiting a decision (they've moved to the
+  // Review Queue's "Deferred" tab, not resolved), so their underlying sidecar
+  // must keep being treated as already-present. Otherwise a re-import (e.g.
+  // after an app restart resets the in-session seen-sidecar cache) would
   // append a SECOND row sharing the same `id` as the deferred one, corrupting
   // the staging array (any future update-by-id would touch both rows).
   if (!key || (existing.status !== 'pending' && existing.status !== 'deferred')) return false;

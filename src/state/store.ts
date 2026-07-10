@@ -746,200 +746,225 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   commitParsedApproval: async (parsed, file, opts) => {
-    const state = get();
-    let patientId = opts.patientId;
-    let claimId = opts.claimId;
+    const priorData = get().data;
+    const priorDirty = get().status.dirty;
+    let createdDocId: string | undefined;
+    try {
+      const state = get();
+      let patientId = opts.patientId;
+      let claimId = opts.claimId;
 
-    if (!patientId && opts.patientPatch?.name) {
-      patientId = state.addPatient({
-        name: opts.patientPatch.name,
-        nhi: opts.patientPatch.nhi ?? parsed.patient.nhi ?? '',
-        dob: opts.patientPatch.dob ?? parsed.patient.dob ?? '',
-        notes: '',
-      });
-    } else if (patientId && opts.patientPatch) {
-      state.updatePatient(patientId, opts.patientPatch);
-    }
-
-    if (!patientId) throw new Error('Patient is required to file an approval letter.');
-
-    if (!claimId) {
-      claimId = state.addClaim({
-        patientId,
-        claimNumber: opts.claimPatch?.claimNumber ?? parsed.claim.claimNumber ?? '',
-        acc45Number: opts.claimPatch?.acc45Number ?? parsed.claim.acc45Number ?? '',
-        poNumber: opts.claimPatch?.poNumber ?? parsed.claim.poNumber ?? '',
-        injuryDescription: opts.claimPatch?.injuryDescription ?? parsed.claim.injuryDescription ?? '',
-        type: 'original',
-        status: 'active',
-        day1Date: opts.claimPatch?.day1Date ?? parsed.claim.dateOfInjury ?? todayISO(),
-      });
-    } else if (opts.claimPatch) {
-      const patch = { ...opts.claimPatch };
-      const claim = state.data.claims.find((c) => c.id === claimId);
-      if (claim && !claim.poNumber && parsed.claim.poNumber) {
-        patch.poNumber = patch.poNumber ?? parsed.claim.poNumber;
-      }
-      state.updateClaim(claimId, patch);
-    }
-
-    // Fold any NS01–NS03 package rows into the document note as HISTORIC,
-    // non-billable history. These never become approvals and never bill.
-    const historicRows = opts.historicRows ?? [];
-    const noteParts: string[] = [];
-    if (parsed.letterDate) noteParts.push(`Letter dated ${formatDateNZ(parsed.letterDate)}`);
-    if (historicRows.length > 0) noteParts.push(describeHistoricPackageRows(historicRows));
-
-    const docId = await state.addDocument(
-      {
-        claimId,
-        kind: 'acc-approval-letter',
-        fileName: file instanceof File ? file.name : 'approval-letter.pdf',
-        mimeType: file.type || 'application/pdf',
-        sizeBytes: file.size,
-        notes: noteParts.length ? noteParts.join(' · ') : undefined,
-      },
-      file,
-    );
-
-    // Demote any existing current approvals for codes we're importing.
-    const codes = new Set(opts.rows.map((r) => r.serviceCode));
-    for (const a of state.data.approvals) {
-      if (a.claimId === claimId && codes.has(a.serviceCode) && a.recordStatus !== 'historical') {
-        state.updateApproval(a.id, { recordStatus: 'historical' });
-      }
-    }
-
-    let currentApprovalId: string | undefined;
-    for (const row of opts.rows) {
-      const id = state.addApproval({
-        patientId,
-        claimId,
-        serviceCode: row.serviceCode,
-        approvalStartDate: row.approvalStartDate,
-        approvalEndDate: row.approvalEndDate,
-        approvedHoursOrConsults: row.approvedHoursOrConsults,
-        consultsUsed: undefined,
-        accEmailedRenewalDate: undefined,
-        poNumber: parsed.claim.poNumber ?? '',
-        notes: `Imported from ACC letter (${parsed.formCode ?? 'NUR02'})`,
-        recordStatus: row.recordStatus ?? 'historical',
-        sourceDocumentId: docId,
-      });
-      if (row.recordStatus === 'current') currentApprovalId = id;
-    }
-
-    // Link the current NS04/NS05 service line to the latest approval.
-    if (currentApprovalId) {
-      const currentRow = opts.rows.find((r) => r.recordStatus === 'current');
-      if (currentRow) {
-        const line = state.data.serviceLines.find(
-          (l) => l.claimId === claimId && l.serviceCode === currentRow.serviceCode,
-        );
-        if (line) {
-          state.updateServiceLine(line.id, { approvalId: currentApprovalId });
-        } else {
-          state.addServiceLine({
-            claimId,
-            serviceCode: currentRow.serviceCode,
-            day1Date: currentRow.approvalStartDate,
-            lastConsultDate: undefined,
-            consultCount: 0,
-            interruptions: [],
-            approvalId: currentApprovalId,
-          });
-        }
-      }
-    }
-
-    pushImportHistory(get, {
-      fileName: file instanceof File ? file.name : 'approval-letter.pdf',
-      kind: 'approval',
-      patientId,
-      claimId,
-      sizeBytes: file.size,
-    });
-    const billingHint = billingHintForClaim(get().data, claimId);
-    return { patientId, claimId, kind: 'approval', billingHint };
-  },
-
-  commitParsedDecline: async (parsed, file, opts) => {
-    const state = get();
-    const claimNumber = opts.claimNumber ?? parsed.claim.claimNumber ?? '';
-    let patientId = opts.patientId;
-    let claimId = opts.claimId ?? state.data.claims.find((c) => c.claimNumber.replace(/\s/g, '') === claimNumber.replace(/\s/g, ''))?.id;
-
-    if (!patientId && claimId) {
-      patientId = state.data.claims.find((c) => c.id === claimId)?.patientId;
-    }
-    if (!patientId && parsed.patient.nhi) {
-      patientId = state.data.patients.find(
-        (p) => p.nhi && parsed.patient.nhi && p.nhi.toUpperCase() === parsed.patient.nhi.toUpperCase(),
-      )?.id;
-    }
-    if (!patientId) {
-      const name = (opts.patientName ?? parsed.patient.name ?? '').trim();
-      if (name) {
+      if (!patientId && opts.patientPatch?.name) {
         patientId = state.addPatient({
-          name,
-          nhi: parsed.patient.nhi ?? '',
-          dob: parsed.patient.dob ?? '',
+          name: opts.patientPatch.name,
+          nhi: opts.patientPatch.nhi ?? parsed.patient.nhi ?? '',
+          dob: opts.patientPatch.dob ?? parsed.patient.dob ?? '',
           notes: '',
         });
+      } else if (patientId && opts.patientPatch) {
+        state.updatePatient(patientId, opts.patientPatch);
       }
-    }
 
-    if (!claimId && claimNumber && patientId) {
-      claimId = state.addClaim({
-        patientId,
-        claimNumber,
-        acc45Number: parsed.claim.acc45Number ?? '',
-        poNumber: '',
-        injuryDescription: parsed.claim.injuryDescription ?? '',
-        type: 'original',
-        status: 'active',
-        day1Date: parsed.claim.dateOfInjury ?? todayISO(),
-      });
-    }
+      if (!patientId) throw new Error('Patient is required to file an approval letter.');
 
-    let docId: string | undefined;
-    if (claimId) {
-      docId = await state.addDocument(
+      if (!claimId) {
+        claimId = state.addClaim({
+          patientId,
+          claimNumber: opts.claimPatch?.claimNumber ?? parsed.claim.claimNumber ?? '',
+          acc45Number: opts.claimPatch?.acc45Number ?? parsed.claim.acc45Number ?? '',
+          poNumber: opts.claimPatch?.poNumber ?? parsed.claim.poNumber ?? '',
+          injuryDescription: opts.claimPatch?.injuryDescription ?? parsed.claim.injuryDescription ?? '',
+          type: 'original',
+          status: 'active',
+          day1Date: opts.claimPatch?.day1Date ?? parsed.claim.dateOfInjury ?? todayISO(),
+        });
+      } else if (opts.claimPatch) {
+        const patch = { ...opts.claimPatch };
+        const claim = state.data.claims.find((c) => c.id === claimId);
+        if (claim && !claim.poNumber && parsed.claim.poNumber) {
+          patch.poNumber = patch.poNumber ?? parsed.claim.poNumber;
+        }
+        state.updateClaim(claimId, patch);
+      }
+
+      // Fold any NS01–NS03 package rows into the document note as HISTORIC,
+      // non-billable history. These never become approvals and never bill.
+      const historicRows = opts.historicRows ?? [];
+      const noteParts: string[] = [];
+      if (parsed.letterDate) noteParts.push(`Letter dated ${formatDateNZ(parsed.letterDate)}`);
+      if (historicRows.length > 0) noteParts.push(describeHistoricPackageRows(historicRows));
+
+      const docId = await state.addDocument(
         {
           claimId,
-          kind: 'acc-decline-letter',
-          fileName: file instanceof File ? file.name : 'decline-letter.pdf',
+          kind: 'acc-approval-letter',
+          fileName: file instanceof File ? file.name : 'approval-letter.pdf',
           mimeType: file.type || 'application/pdf',
           sizeBytes: file.size,
+          notes: noteParts.length ? noteParts.join(' · ') : undefined,
         },
         file,
       );
-    }
+      createdDocId = docId;
 
-    state.addDecline({
-      patientId,
-      claimId,
-      patientName: opts.patientName ?? parsed.patient.name ?? '',
-      claimNumber,
-      declineReceivedDate: opts.declineReceivedDate ?? parsed.letterDate ?? todayISO(),
-      servicePeriodDeclined: opts.servicePeriodDeclined ?? parsed.serviceRequested ?? 'Extended Nursing',
-      reason: opts.reason ?? parsed.reason ?? '',
-      status: 'Awaiting nursing docs for resubmission',
-      notes: parsed.formCode ? `Imported from ${parsed.formCode}` : '',
-      sourceDocumentId: docId,
-    });
+      // Demote any existing current approvals for codes we're importing.
+      const codes = new Set(opts.rows.map((r) => r.serviceCode));
+      for (const a of state.data.approvals) {
+        if (a.claimId === claimId && codes.has(a.serviceCode) && a.recordStatus !== 'historical') {
+          state.updateApproval(a.id, { recordStatus: 'historical' });
+        }
+      }
 
-    pushImportHistory(get, {
-      fileName: file instanceof File ? file.name : 'decline-letter.pdf',
-      kind: 'decline',
-      patientId,
-      claimId,
-      sizeBytes: file.size,
-    });
-    if (!patientId || !claimId) {
-      return { patientId: patientId ?? '', claimId: claimId ?? '', kind: 'decline' };
+      let currentApprovalId: string | undefined;
+      for (const row of opts.rows) {
+        const id = state.addApproval({
+          patientId,
+          claimId,
+          serviceCode: row.serviceCode,
+          approvalStartDate: row.approvalStartDate,
+          approvalEndDate: row.approvalEndDate,
+          approvedHoursOrConsults: row.approvedHoursOrConsults,
+          consultsUsed: undefined,
+          accEmailedRenewalDate: undefined,
+          poNumber: parsed.claim.poNumber ?? '',
+          notes: `Imported from ACC letter (${parsed.formCode ?? 'NUR02'})`,
+          recordStatus: row.recordStatus ?? 'historical',
+          sourceDocumentId: docId,
+        });
+        if (row.recordStatus === 'current') currentApprovalId = id;
+      }
+
+      // Link the current NS04/NS05 service line to the latest approval.
+      if (currentApprovalId) {
+        const currentRow = opts.rows.find((r) => r.recordStatus === 'current');
+        if (currentRow) {
+          const line = state.data.serviceLines.find(
+            (l) => l.claimId === claimId && l.serviceCode === currentRow.serviceCode,
+          );
+          if (line) {
+            state.updateServiceLine(line.id, { approvalId: currentApprovalId });
+          } else {
+            state.addServiceLine({
+              claimId,
+              serviceCode: currentRow.serviceCode,
+              day1Date: currentRow.approvalStartDate,
+              lastConsultDate: undefined,
+              consultCount: 0,
+              interruptions: [],
+              approvalId: currentApprovalId,
+            });
+          }
+        }
+      }
+
+      pushImportHistory(get, {
+        fileName: file instanceof File ? file.name : 'approval-letter.pdf',
+        kind: 'approval',
+        patientId,
+        claimId,
+        sizeBytes: file.size,
+      });
+      const billingHint = billingHintForClaim(get().data, claimId);
+      return { patientId, claimId, kind: 'approval', billingHint };
+    } catch (err) {
+      // Nothing partially created should survive a failed accept: put the
+      // patient/claim/approval/service-line arrays back exactly as they were,
+      // and remove any document blob bytes already written to IndexedDB
+      // before the failure (the metadata row was rolled back with `data`, so
+      // an un-deleted blob would otherwise be orphaned, unreferenced bytes).
+      useStore.setState((s) => ({ data: priorData, status: { ...s.status, dirty: priorDirty } }));
+      if (createdDocId) await deleteDocumentBlob(createdDocId).catch(() => {});
+      throw err;
     }
-    return { patientId, claimId, kind: 'decline' };
+  },
+
+  commitParsedDecline: async (parsed, file, opts) => {
+    const priorData = get().data;
+    const priorDirty = get().status.dirty;
+    let createdDocId: string | undefined;
+    try {
+      const state = get();
+      const claimNumber = opts.claimNumber ?? parsed.claim.claimNumber ?? '';
+      let patientId = opts.patientId;
+      let claimId = opts.claimId ?? state.data.claims.find((c) => c.claimNumber.replace(/\s/g, '') === claimNumber.replace(/\s/g, ''))?.id;
+
+      if (!patientId && claimId) {
+        patientId = state.data.claims.find((c) => c.id === claimId)?.patientId;
+      }
+      if (!patientId && parsed.patient.nhi) {
+        patientId = state.data.patients.find(
+          (p) => p.nhi && parsed.patient.nhi && p.nhi.toUpperCase() === parsed.patient.nhi.toUpperCase(),
+        )?.id;
+      }
+      if (!patientId) {
+        const name = (opts.patientName ?? parsed.patient.name ?? '').trim();
+        if (name) {
+          patientId = state.addPatient({
+            name,
+            nhi: parsed.patient.nhi ?? '',
+            dob: parsed.patient.dob ?? '',
+            notes: '',
+          });
+        }
+      }
+
+      if (!claimId && claimNumber && patientId) {
+        claimId = state.addClaim({
+          patientId,
+          claimNumber,
+          acc45Number: parsed.claim.acc45Number ?? '',
+          poNumber: '',
+          injuryDescription: parsed.claim.injuryDescription ?? '',
+          type: 'original',
+          status: 'active',
+          day1Date: parsed.claim.dateOfInjury ?? todayISO(),
+        });
+      }
+
+      let docId: string | undefined;
+      if (claimId) {
+        docId = await state.addDocument(
+          {
+            claimId,
+            kind: 'acc-decline-letter',
+            fileName: file instanceof File ? file.name : 'decline-letter.pdf',
+            mimeType: file.type || 'application/pdf',
+            sizeBytes: file.size,
+          },
+          file,
+        );
+        createdDocId = docId;
+      }
+
+      state.addDecline({
+        patientId,
+        claimId,
+        patientName: opts.patientName ?? parsed.patient.name ?? '',
+        claimNumber,
+        declineReceivedDate: opts.declineReceivedDate ?? parsed.letterDate ?? todayISO(),
+        servicePeriodDeclined: opts.servicePeriodDeclined ?? parsed.serviceRequested ?? 'Extended Nursing',
+        reason: opts.reason ?? parsed.reason ?? '',
+        status: 'Awaiting nursing docs for resubmission',
+        notes: parsed.formCode ? `Imported from ${parsed.formCode}` : '',
+        sourceDocumentId: docId,
+      });
+
+      pushImportHistory(get, {
+        fileName: file instanceof File ? file.name : 'decline-letter.pdf',
+        kind: 'decline',
+        patientId,
+        claimId,
+        sizeBytes: file.size,
+      });
+      if (!patientId || !claimId) {
+        return { patientId: patientId ?? '', claimId: claimId ?? '', kind: 'decline' };
+      }
+      return { patientId, claimId, kind: 'decline' };
+    } catch (err) {
+      useStore.setState((s) => ({ data: priorData, status: { ...s.status, dirty: priorDirty } }));
+      if (createdDocId) await deleteDocumentBlob(createdDocId).catch(() => {});
+      throw err;
+    }
   },
 
   attachDocumentOnly: async (file, opts) => {

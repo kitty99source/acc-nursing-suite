@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FixedSizeList, type ListChildComponentProps } from 'react-window';
 import { useStore } from '../state/store';
 import {
   Badge,
@@ -12,6 +13,7 @@ import { PdfPreview } from '../components/PdfPreview';
 import { useConfirm } from '../components/useConfirm';
 import {
   loadStagingItems,
+  loadAllStagingItems,
   importStagingJsonText,
   importStagingSidecars,
   updateStagingItem,
@@ -25,6 +27,7 @@ import {
   type StagingItem,
 } from '../lib/staging';
 import { appendAudit, recordHrqResolution } from '../lib/auditLog';
+import { formatStorageError } from '../lib/storageQuota';
 import { LETTER_IMPORT_ACCEPT } from '../components/LetterImportButton';
 import {
   fetchInboxFileForStaging,
@@ -109,6 +112,92 @@ function listTitle(item: StagingItem): string {
   );
 }
 
+// Fixed row height for the virtualized review list (Decision 3): must stay
+// in sync with the row markup below (padding + one title line + one meta
+// line). Kept generous enough that long claim numbers/age labels never wrap.
+const STAGING_ROW_HEIGHT = 66;
+
+interface StagingRowData {
+  items: StagingItem[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}
+
+/**
+ * A single row in the virtualized "Letters under review" / "Deferred" list.
+ * Memoized against the *displayed* fields (not object identity) so the
+ * 2.5s live-refresh — which always produces fresh item objects/arrays from
+ * IndexedDB — does not force every already-named row to re-render. Only rows
+ * whose title/ready-state/claim/confidence/selection actually changed pay
+ * for a re-render.
+ */
+const StagingRow = memo(
+  function StagingRow({ index, style, data }: ListChildComponentProps<StagingRowData>) {
+    const item = data.items[index];
+    if (!item) return null;
+    const preview = stagingPreviewOf(item);
+    const active = item.id === data.selectedId;
+    const ready = Boolean(item.patientName?.trim() || preview?.patientName?.trim());
+    const claim = item.claimNumber || preview?.claimNumber;
+    return (
+      <div style={{ ...style, padding: '0 8px 6px 8px' }}>
+        <button
+          type="button"
+          onClick={() => data.onSelect(item.id)}
+          className="w-full h-full text-left rounded-card p-2.5 transition-colors"
+          style={{
+            border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
+            borderLeft: active ? '3px solid var(--accent)' : '3px solid transparent',
+            background: active ? 'var(--accent-soft)' : 'transparent',
+          }}
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <span
+              aria-hidden
+              title={ready ? 'Patient details ready' : 'Still reading the letter…'}
+              style={{
+                flexShrink: 0,
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: ready ? 'var(--good-fg)' : 'var(--warn-fg)',
+              }}
+            />
+            <span className="font-semibold text-sm truncate flex-1">{listTitle(item)}</span>
+          </div>
+          <div
+            className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs pl-4"
+            style={{ color: 'var(--muted)' }}
+          >
+            {claim && <span className="font-mono">{claim}</span>}
+            <span>{stagingAgeLabel(item.createdAt)}</span>
+            {preview && <span>· {Math.round(preview.confidence)}%</span>}
+          </div>
+        </button>
+      </div>
+    );
+  },
+  (prev, next) => {
+    if (prev.index !== next.index) return false;
+    const a = prev.data.items[prev.index];
+    const b = next.data.items[next.index];
+    if (!a || !b) return a === b;
+    if (a.id !== b.id) return false;
+    if ((prev.data.selectedId === a.id) !== (next.data.selectedId === b.id)) return false;
+    if (a === b) return true;
+    const pa = stagingPreviewOf(a);
+    const pb = stagingPreviewOf(b);
+    return (
+      listTitle(a) === listTitle(b) &&
+      Boolean(a.patientName?.trim() || pa?.patientName?.trim()) ===
+        Boolean(b.patientName?.trim() || pb?.patientName?.trim()) &&
+      (a.claimNumber || pa?.claimNumber) === (b.claimNumber || pb?.claimNumber) &&
+      Math.round(pa?.confidence ?? -1) === Math.round(pb?.confidence ?? -1) &&
+      a.createdAt === b.createdAt
+    );
+  },
+);
+
 export function ReviewQueue() {
   const commitParsedApproval = useStore((s) => s.commitParsedApproval);
   const commitParsedDecline = useStore((s) => s.commitParsedDecline);
@@ -118,6 +207,8 @@ export function ReviewQueue() {
   const userName = useStore((s) => s.data.settings.userDisplayName?.trim() || undefined);
 
   const [items, setItems] = useState<StagingItem[]>([]);
+  const [deferredItems, setDeferredItems] = useState<StagingItem[]>([]);
+  const [viewMode, setViewMode] = useState<'pending' | 'deferred'>('pending');
   const [busy, setBusy] = useState(false);
   const [autoImportNote, setAutoImportNote] = useState<string | null>(null);
   const [bridgeStatus, setBridgeStatus] = useState<StagingBridgeStatus | null>(null);
@@ -144,6 +235,21 @@ export function ReviewQueue() {
   const seenSidecarIds = useRef<Set<string>>(new Set());
   const loadGen = useRef(0);
 
+  // Measured height for the virtualized review list (Decision 3) — react-window
+  // needs an explicit pixel height, so track the actual size of its flex-1
+  // container as the layout/viewport changes.
+  const listPanelRef = useRef<HTMLDivElement>(null);
+  const [listPanelHeight, setListPanelHeight] = useState(400);
+  useEffect(() => {
+    const el = listPanelRef.current;
+    if (!el) return;
+    const update = () => setListPanelHeight(el.clientHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   useEffect(() => {
     if (!toolsOpen) return;
     const onDown = (e: MouseEvent) => {
@@ -161,15 +267,22 @@ export function ReviewQueue() {
   }, [toolsOpen]);
 
   const refresh = useCallback(async () => {
-    const pending = await loadStagingItems();
-    const sorted = pending.sort((a, b) => a.createdAt - b.createdAt);
-    setItems(sorted);
+    const all = await loadAllStagingItems();
+    const pending = all
+      .filter((i) => i.status === 'pending')
+      .sort((a, b) => a.createdAt - b.createdAt);
+    const deferred = all
+      .filter((i) => i.status === 'deferred')
+      .sort((a, b) => a.createdAt - b.createdAt);
+    setItems(pending);
+    setDeferredItems(deferred);
     enqueueStagingPreparse(pending);
     setSelectedId((prev) => {
-      if (prev && sorted.some((i) => i.id === prev)) return prev;
-      return sorted[0]?.id ?? null;
+      const current = viewMode === 'deferred' ? deferred : pending;
+      if (prev && current.some((i) => i.id === prev)) return prev;
+      return current[0]?.id ?? null;
     });
-  }, []);
+  }, [viewMode]);
 
   const autoImportFromLauncher = useCallback(async () => {
     const probe = await probeLocalStagingBridge();
@@ -195,7 +308,10 @@ export function ReviewQueue() {
 
   const reconciledOnce = useRef(false);
 
+  // "Letters under review" is always the pending queue — the Deferred tab
+  // (below) is a separate, explicit view and must never inflate these counts.
   const sorted = useMemo(() => items, [items]);
+  const deferredSorted = useMemo(() => deferredItems, [deferredItems]);
   const readyCount = useMemo(
     () => sorted.filter((i) => Boolean(i.patientName?.trim())).length,
     [sorted],
@@ -209,6 +325,10 @@ export function ReviewQueue() {
     () => sorted.filter((i) => Boolean(i.sourceHash) && !i.emailDate?.trim()).length,
     [sorted],
   );
+  // The list panel itself switches between the pending queue and the
+  // deferred-items view; everything above (header/toolbar counts) stays
+  // pending-only regardless of which tab is currently showing.
+  const listItems = viewMode === 'deferred' ? deferredSorted : sorted;
 
   useEffect(() => {
     void (async () => {
@@ -245,8 +365,8 @@ export function ReviewQueue() {
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return sorted;
-    return sorted.filter((item) => {
+    if (!q) return listItems;
+    return listItems.filter((item) => {
       const haystack = [
         listTitle(item),
         item.patientName,
@@ -259,10 +379,10 @@ export function ReviewQueue() {
         .toLowerCase();
       return haystack.includes(q);
     });
-  }, [sorted, query]);
+  }, [listItems, query]);
   const selected = useMemo(
-    () => sorted.find((i) => i.id === selectedId) ?? null,
-    [sorted, selectedId],
+    () => listItems.find((i) => i.id === selectedId) ?? null,
+    [listItems, selectedId],
   );
   async function discardUnnamed() {
     if (busy) return;
@@ -902,7 +1022,7 @@ export function ReviewQueue() {
   }
 
   function nextAfter(id: string): string | null {
-    const list = visible.length ? visible : sorted;
+    const list = visible.length ? visible : listItems;
     const idx = list.findIndex((i) => i.id === id);
     if (idx < 0) return list[0]?.id ?? null;
     return list[idx + 1]?.id ?? list[idx - 1]?.id ?? null;
@@ -996,8 +1116,8 @@ export function ReviewQueue() {
       }
     } catch (err) {
       await confirm({
-        title: 'Accept failed',
-        message: (err as Error).message,
+        title: 'Accept failed — nothing was changed',
+        message: `${formatStorageError(err)} Nothing was created or changed, and this letter is still in your review list, so it's safe to try Accept again.`,
         confirmLabel: 'OK',
       });
     } finally {
@@ -1045,6 +1165,23 @@ export function ReviewQueue() {
     setSelectedId(advanceTo);
   }
 
+  /** "Bring back to review" — restores a deferred item to the active pending queue. */
+  async function restoreItem(item: StagingItem) {
+    await updateStagingItem(item.id, { status: 'pending' });
+    await recordHrqResolution({
+      action: 'hrq-restore',
+      stagingItemId: item.id,
+      title: item.title,
+      beforeStatus: item.status,
+      afterStatus: 'pending',
+      user: userName,
+      runId: item.runId,
+    });
+    await refresh();
+    setViewMode('pending');
+    setSelectedId(item.id);
+  }
+
   const canAccept =
     !!selected &&
     !!parsed &&
@@ -1073,6 +1210,13 @@ export function ReviewQueue() {
           </div>
         )}
       </div>
+
+      {deferredSorted.length > 0 && (
+        <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>
+          {deferredSorted.length} letter{deferredSorted.length === 1 ? '' : 's'} set aside for later —
+          see the <strong>Deferred</strong> tab below to bring them back.
+        </p>
+      )}
 
       {bridgeStatus === 'unavailable' && (
         <div
@@ -1291,7 +1435,7 @@ export function ReviewQueue() {
         />
       </div>
 
-      {!sorted.length ? (
+      {!sorted.length && !deferredSorted.length ? (
         <EmptyState
           title="No letters under review"
           message={
@@ -1305,7 +1449,7 @@ export function ReviewQueue() {
           className="grid gap-4"
           style={{ gridTemplateColumns: 'minmax(240px, 300px) minmax(0, 1fr)' }}
         >
-          {/* Left: pending list */}
+          {/* Left: pending / deferred list */}
           <div
             className="flex flex-col rounded-card"
             style={{
@@ -1316,64 +1460,67 @@ export function ReviewQueue() {
             }}
           >
             <div
+              className="flex items-center gap-1 p-1.5"
+              style={{ borderBottom: '1px solid var(--border)' }}
+              role="tablist"
+              aria-label="Review list view"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={viewMode === 'pending'}
+                className="btn btn-sm flex-1"
+                style={viewMode === 'pending' ? undefined : { background: 'transparent', border: '1px solid transparent' }}
+                onClick={() => {
+                  setViewMode('pending');
+                  setSelectedId(sorted[0]?.id ?? null);
+                }}
+              >
+                Under review ({sorted.length})
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={viewMode === 'deferred'}
+                className="btn btn-sm flex-1"
+                style={viewMode === 'deferred' ? undefined : { background: 'transparent', border: '1px solid transparent' }}
+                onClick={() => {
+                  setViewMode('deferred');
+                  setSelectedId(deferredSorted[0]?.id ?? null);
+                }}
+              >
+                Deferred ({deferredSorted.length})
+              </button>
+            </div>
+            <div
               className="px-3 py-2 text-xs font-semibold uppercase tracking-wide flex items-center justify-between"
               style={{ color: 'var(--muted)', borderBottom: '1px solid var(--border)' }}
             >
-              <span>Letters under review</span>
-              <span>{query ? `${visible.length}/${sorted.length}` : sorted.length}</span>
+              <span>{viewMode === 'deferred' ? 'Deferred letters' : 'Letters under review'}</span>
+              <span>{query ? `${visible.length}/${listItems.length}` : listItems.length}</span>
             </div>
-            <div className="flex-1 overflow-y-auto overscroll-contain p-2 space-y-1.5">
+            <div ref={listPanelRef} className="flex-1 overflow-hidden">
               {visible.length === 0 ? (
                 <p className="text-sm text-center py-6" style={{ color: 'var(--muted)' }}>
-                  No letters match “{query}”.
+                  {query
+                    ? `No letters match “${query}”.`
+                    : viewMode === 'deferred'
+                      ? 'No deferred letters.'
+                      : 'No letters under review.'}
                 </p>
               ) : (
-                visible.map((item) => {
-                  const preview = stagingPreviewOf(item);
-                  const active = item.id === selectedId;
-                  const ready = Boolean(item.patientName?.trim() || preview?.patientName?.trim());
-                  const claim = item.claimNumber || preview?.claimNumber;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setSelectedId(item.id)}
-                      className="w-full text-left rounded-card p-2.5 transition-colors"
-                      style={{
-                        border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
-                        borderLeft: active
-                          ? '3px solid var(--accent)'
-                          : '3px solid transparent',
-                        background: active ? 'var(--accent-soft)' : 'transparent',
-                      }}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <span
-                          aria-hidden
-                          title={ready ? 'Patient details ready' : 'Still reading the letter…'}
-                          style={{
-                            flexShrink: 0,
-                            width: 8,
-                            height: 8,
-                            borderRadius: '50%',
-                            background: ready ? 'var(--good-fg)' : 'var(--warn-fg)',
-                          }}
-                        />
-                        <span className="font-semibold text-sm truncate flex-1">
-                          {listTitle(item)}
-                        </span>
-                      </div>
-                      <div
-                        className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs pl-4"
-                        style={{ color: 'var(--muted)' }}
-                      >
-                        {claim && <span className="font-mono">{claim}</span>}
-                        <span>{stagingAgeLabel(item.createdAt)}</span>
-                        {preview && <span>· {Math.round(preview.confidence)}%</span>}
-                      </div>
-                    </button>
-                  );
-                })
+                <FixedSizeList
+                  height={listPanelHeight}
+                  width="100%"
+                  itemCount={visible.length}
+                  itemSize={STAGING_ROW_HEIGHT}
+                  itemData={{ items: visible, selectedId, onSelect: setSelectedId } satisfies StagingRowData}
+                  overscanCount={8}
+                  className="overscroll-contain"
+                  style={{ paddingTop: 6 }}
+                >
+                  {StagingRow}
+                </FixedSizeList>
               )}
             </div>
           </div>
@@ -1446,14 +1593,27 @@ export function ReviewQueue() {
                     >
                       Accept
                     </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm"
-                      disabled={busy}
-                      onClick={() => void deferItem(selected)}
-                    >
-                      Defer
-                    </button>
+                    {selected.status === 'deferred' ? (
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        disabled={busy}
+                        onClick={() => void restoreItem(selected)}
+                        title="Move this letter back into the active review queue"
+                      >
+                        Bring back to review
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        disabled={busy}
+                        onClick={() => void deferItem(selected)}
+                        title="Set this letter aside for later — find it again in the Deferred tab"
+                      >
+                        Defer
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="btn btn-danger btn-sm"

@@ -49,6 +49,7 @@ export function Approvals() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'attention'>('all');
   const [codeFilter, setCodeFilter] = useState<'all' | 'NS04' | 'NS05'>('all');
   const [showHistorical, setShowHistorical] = useState(false);
+  const [autoAcceptedFilter, setAutoAcceptedFilter] = useState<'all' | 'auto'>('all');
 
   const focus = useStore((s) => s.focus);
   const clearFocus = useStore((s) => s.clearFocus);
@@ -88,13 +89,19 @@ export function Approvals() {
 
   const threshold = data.settings.expiryThresholdDays;
 
+  const autoAcceptedCount = useMemo(
+    () => data.approvals.filter((a) => a.autoAccepted).length,
+    [data.approvals],
+  );
+
   const rows = useMemo(() => {
     return data.approvals
       .map((a) => ({ approval: a, computed: computeApproval(a, threshold) }))
       .filter((r) => (showHistorical ? true : r.approval.recordStatus !== 'historical'))
       .filter((r) => (codeFilter === 'all' ? true : r.approval.serviceCode === codeFilter))
-      .filter((r) => (statusFilter === 'all' ? true : r.computed.status !== 'Active'));
-  }, [data.approvals, threshold, codeFilter, statusFilter, showHistorical]);
+      .filter((r) => (statusFilter === 'all' ? true : r.computed.status !== 'Active'))
+      .filter((r) => (autoAcceptedFilter === 'auto' ? Boolean(r.approval.autoAccepted) : true));
+  }, [data.approvals, threshold, codeFilter, statusFilter, showHistorical, autoAcceptedFilter]);
 
   function openCreate() {
     setForm({ ...EMPTY, patientId: data.patients[0]?.id ?? '' });
@@ -161,7 +168,18 @@ export function Approvals() {
       header: 'Code',
       sortable: true,
       sortValue: (r) => r.approval.serviceCode,
-      render: (r) => <Badge tone="accent">{r.approval.serviceCode}</Badge>,
+      render: (r) => (
+        <div className="flex items-center gap-1 flex-wrap">
+          <Badge tone="accent">{r.approval.serviceCode}</Badge>
+          {r.approval.autoAccepted && (
+            <Badge tone="neutral">
+              <span title="Filed by Auto-accept ready — created without individual human review.">
+                Auto-accepted
+              </span>
+            </Badge>
+          )}
+        </div>
+      ),
     },
     {
       key: 'po',
@@ -291,6 +309,18 @@ export function Approvals() {
           />
           Show historical records
         </label>
+        {autoAcceptedCount > 0 && (
+          <Select
+            value={autoAcceptedFilter}
+            onChange={(e) => setAutoAcceptedFilter(e.target.value as typeof autoAcceptedFilter)}
+            className="w-auto"
+            aria-label="Filter by auto-accepted"
+            title="Auto-accepted approvals were filed by the Review Queue's Auto-accept ready action, without individual human review — review them here as a batch."
+          >
+            <option value="all">All approvals</option>
+            <option value="auto">Auto-accepted only ({autoAcceptedCount})</option>
+          </Select>
+        )}
       </div>
 
       <DataTable

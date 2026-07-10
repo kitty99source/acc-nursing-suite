@@ -41,6 +41,7 @@ import {
   retryUnnamedStagingPreparse,
   stagingPreparseStats,
 } from '../lib/stagingPreparse';
+import { isAutoAcceptEligible, runAutoAccept } from '../lib/hrqBatch';
 import {
   blobToBase64,
   getCachedLetterFile,
@@ -58,6 +59,7 @@ import {
   stagingPreviewOf,
   type LetterCommitFormFields,
 } from '../lib/letterCommit';
+import { formatDate } from '../lib/format';
 import type { LetterParseResult, ParsedLetter, ParsedServiceRow } from '../lib/letterImport';
 import {
   hashBlob,
@@ -329,6 +331,9 @@ export function ReviewQueue() {
   // deferred-items view; everything above (header/toolbar counts) stays
   // pending-only regardless of which tab is currently showing.
   const listItems = viewMode === 'deferred' ? deferredSorted : sorted;
+  // Auto-accept eligibility only ever applies to the active pending queue —
+  // deferred items are explicitly out of scope until brought back to review.
+  const autoAcceptEligible = useMemo(() => sorted.filter(isAutoAcceptEligible), [sorted]);
 
   useEffect(() => {
     void (async () => {
@@ -1182,6 +1187,115 @@ export function ReviewQueue() {
     setSelectedId(item.id);
   }
 
+  /**
+   * "Auto-accept ready (N)" — files every 100%-confidence, zero-blocker,
+   * approval-only pending item without individual review. Runs each commit
+   * through the same rollback-safe store path as a manual Accept; a failure
+   * on one item is skipped (left pending, logged) and the rest continue.
+   */
+  async function autoAcceptReady() {
+    if (busy) return;
+    const eligible = autoAcceptEligible;
+    if (eligible.length === 0) return;
+
+    const rows = eligible.map((item) => {
+      const preview = stagingPreviewOf(item);
+      const name = preview?.patientName?.trim() || item.patientName?.trim() || item.title;
+      const letterDate = preview?.parsed.letterDate ? formatDate(preview.parsed.letterDate) : '';
+      return { name, letterDate };
+    });
+
+    const ok = await confirm({
+      title: `Auto-accept ${eligible.length} ready letter(s)?`,
+      message: (
+        <div className="space-y-2 text-sm">
+          <p>
+            These <strong>{eligible.length}</strong> letter(s) scored 100% confidence with no
+            outstanding issues. They will be created as patient cases immediately, without
+            individual review:
+          </p>
+          <ul className="list-disc pl-5 max-h-56 overflow-y-auto">
+            {rows.map((r, i) => (
+              <li key={i}>
+                {r.name}
+                {r.letterDate ? ` — letter dated ${r.letterDate}` : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ),
+      confirmLabel: `Auto-accept ${eligible.length} letter(s)`,
+    });
+    if (!ok) return;
+
+    if (eligible.length > 25) {
+      const reallyOk = await confirm({
+        title: 'Are you sure?',
+        message: (
+          <p className="text-sm">
+            This will immediately create <strong>{eligible.length}</strong> patient cases with no
+            further review. Confirm again to proceed — you can still fix up any individual record
+            afterward in Patients &amp; Cases.
+          </p>
+        ),
+        confirmLabel: `Yes, auto-accept all ${eligible.length}`,
+        destructive: true,
+      });
+      if (!reallyOk) return;
+    }
+
+    setBusy(true);
+    try {
+      setFixProgress(`Auto-accepting 0 of ${eligible.length}…`);
+      const outcomes = await runAutoAccept(
+        eligible,
+        { commitParsedApproval, commitParsedDecline },
+        (p) => setFixProgress(`Auto-accepting ${p.index} of ${p.total}…`),
+      );
+
+      let succeeded = 0;
+      let failed = 0;
+      for (const outcome of outcomes) {
+        const item = eligible.find((i) => i.id === outcome.stagingId);
+        if (!item) continue;
+        if (outcome.ok) {
+          succeeded++;
+          await updateStagingItem(item.id, { status: 'approved' });
+          await dismissStagingItems([item]);
+          await recordHrqResolution({
+            action: 'hrq-auto-accept',
+            stagingItemId: item.id,
+            title: item.title,
+            beforeStatus: item.status,
+            afterStatus: 'approved',
+            user: userName,
+            runId: item.runId,
+            detail: `auto-accepted → patient ${outcome.patientId}, claim ${outcome.claimId}`,
+          });
+        } else {
+          failed++;
+          await appendAudit({
+            action: 'hrq-auto-accept',
+            entityType: 'staging',
+            entityId: item.id,
+            summary: `Auto-accept failed for "${item.title}" — left pending for manual review: ${outcome.error ?? 'unknown error'}`,
+          });
+        }
+      }
+
+      setFixProgress(null);
+      await refresh();
+      setFlash(
+        failed > 0
+          ? `Auto-accepted ${succeeded} of ${eligible.length}; ${failed} skipped — see audit log.`
+          : `Auto-accepted ${succeeded} letter(s).`,
+      );
+      window.setTimeout(() => setFlash(null), 8000);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const canAccept =
     !!selected &&
     !!parsed &&
@@ -1299,6 +1413,17 @@ export function ReviewQueue() {
           </div>
         )}
         <div className="flex flex-wrap items-center gap-2 ml-auto">
+          {autoAcceptEligible.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              disabled={busy}
+              onClick={() => void autoAcceptReady()}
+              title="File every 100%-confidence approval letter with no outstanding issues, without individually reviewing each one."
+            >
+              Auto-accept ready ({autoAcceptEligible.length})
+            </button>
+          )}
           {unnamedCount > 0 && (
             <button
               type="button"

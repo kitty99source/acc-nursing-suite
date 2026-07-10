@@ -5,11 +5,15 @@ import { dirname, join } from 'node:path';
 import {
   HRQ_BATCH_MIN_CONFIDENCE,
   allSelectedBatchApprovable,
+  commitAutoAcceptItem,
   commitBatchStagingItem,
   commitBatchStagingItems,
+  isAutoAcceptEligible,
+  isAutoAcceptEligiblePreview,
   isBatchApprovable,
   isStagingParsedPreview,
   previewToFile,
+  runAutoAccept,
   stagingPatientNames,
 } from './hrqBatch';
 import { createStagingItem } from './staging';
@@ -48,6 +52,7 @@ vi.mock('./idb', () => {
 
 import { useStore } from '../state/store';
 import { emptyData } from './sampleData';
+import { saveDocumentBlob } from './idb';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 const loadPdf = (name: string) => new Uint8Array(readFileSync(join(dir, 'fixtures', name)));
@@ -160,6 +165,86 @@ describe('hrqBatch eligibility', () => {
     expect(allSelectedBatchApprovable([ready])).toBe(true);
     expect(allSelectedBatchApprovable([ready, notReady])).toBe(false);
     expect(allSelectedBatchApprovable([])).toBe(false);
+  });
+});
+
+describe('auto-accept eligibility (isAutoAcceptEligiblePreview / isAutoAcceptEligible)', () => {
+  it('accepts a clean, 100%-confidence, zero-blocker approval preview with service rows', async () => {
+    const preview = await buildApprovalPreview({ confidence: 100, blockers: [], ambiguous: false });
+    expect(isAutoAcceptEligiblePreview(preview)).toBe(true);
+    expect(isAutoAcceptEligible(stagingWithPreview(preview))).toBe(true);
+  });
+
+  it('rejects declines even at 100% confidence with no blockers (approvals only)', async () => {
+    const bytes = loadPdf('decline-template.pdf');
+    const text = await extractPdfText(bytes);
+    const parsed = parseDeclineLetter(text);
+    const preview: StagingParsedPreview = {
+      kind: 'decline',
+      confidence: 100,
+      patientName: 'Mille Butter',
+      claimNumber: '10000460000',
+      parsed,
+      fileBlobBase64: toBase64(bytes),
+      fileName: 'decline-template.pdf',
+      mimeType: 'application/pdf',
+      reason: parsed.reason,
+      servicePeriodDeclined: parsed.serviceRequested,
+      blockers: [],
+      ambiguous: false,
+    };
+    expect(isAutoAcceptEligiblePreview(preview)).toBe(false);
+    expect(isAutoAcceptEligible(stagingWithPreview(preview))).toBe(false);
+  });
+
+  it('rejects an ambiguous match even if confidence happens to read 100 (defense-in-depth)', async () => {
+    const preview = await buildApprovalPreview({ confidence: 100, blockers: [], ambiguous: true });
+    expect(isAutoAcceptEligiblePreview(preview)).toBe(false);
+  });
+
+  it('rejects when there are any blockers, even at 100% confidence (defense-in-depth)', async () => {
+    const preview = await buildApprovalPreview({
+      confidence: 100,
+      blockers: ['Claim number is missing.'],
+      ambiguous: false,
+    });
+    expect(isAutoAcceptEligiblePreview(preview)).toBe(false);
+  });
+
+  it('rejects confidence below 100, even by one point', async () => {
+    const preview = await buildApprovalPreview({ confidence: 99, blockers: [], ambiguous: false });
+    expect(isAutoAcceptEligiblePreview(preview)).toBe(false);
+  });
+
+  it('rejects an approval with no NS04/NS05 service rows', async () => {
+    const preview = await buildApprovalPreview({
+      confidence: 100,
+      blockers: [],
+      ambiguous: false,
+      rows: [],
+    });
+    // Force the underlying parsed letter to also have no rows, since the
+    // eligibility check falls back to preview.parsed.serviceRows otherwise.
+    preview.parsed = { ...preview.parsed, serviceRows: [] } as typeof preview.parsed;
+    expect(isAutoAcceptEligiblePreview(preview)).toBe(false);
+  });
+
+  it('rejects deferred and non-pending staging items even with an eligible preview', async () => {
+    const preview = await buildApprovalPreview({ confidence: 100, blockers: [], ambiguous: false });
+    expect(isAutoAcceptEligible(stagingWithPreview(preview, { status: 'deferred' }))).toBe(false);
+    expect(isAutoAcceptEligible(stagingWithPreview(preview, { status: 'approved' }))).toBe(false);
+    expect(isAutoAcceptEligible(stagingWithPreview(preview, { status: 'rejected' }))).toBe(false);
+  });
+
+  it('rejects a pending item with no parsed preview at all', () => {
+    const item = createStagingItem({
+      type: 'letter-import-pending',
+      source: 'folder',
+      severity: 'info',
+      title: 'Folder: no-preview.pdf',
+      summary: 'Awaiting review',
+    });
+    expect(isAutoAcceptEligible(item)).toBe(false);
   });
 });
 
@@ -281,5 +366,131 @@ describe('hrqBatch commit', () => {
         commitParsedDecline: state.commitParsedDecline,
       }),
     ).rejects.toThrow(/not eligible/);
+  });
+});
+
+describe('auto-accept commit + batch flow', () => {
+  beforeEach(() => {
+    useStore.setState({
+      ready: true,
+      data: {
+        ...emptyData(),
+        patients: [{ id: 'p1', name: 'George Bellingham', nhi: 'ABC1234', dob: '1945-03-12', notes: '' }],
+        claims: [
+          {
+            id: 'c1',
+            patientId: 'p1',
+            claimNumber: '10000000149',
+            acc45Number: 'YN65488',
+            poNumber: '',
+            injuryDescription: '',
+            type: 'original',
+            status: 'active',
+            day1Date: '2024-02-19',
+          },
+        ],
+      },
+      letterImport: undefined,
+    });
+    vi.mocked(saveDocumentBlob).mockReset();
+  });
+
+  it('commitAutoAcceptItem tags the created Approval(s) with autoAccepted + autoAcceptedAt', async () => {
+    const preview = await buildApprovalPreview({ confidence: 100, blockers: [], ambiguous: false });
+    const item = stagingWithPreview(preview);
+    const state = useStore.getState();
+    const before = Date.now();
+
+    const result = await commitAutoAcceptItem(item, {
+      commitParsedApproval: state.commitParsedApproval,
+      commitParsedDecline: state.commitParsedDecline,
+    });
+
+    expect(result.patientId).toBe('p1');
+    expect(result.claimId).toBe('c1');
+    const created = useStore.getState().data.approvals.filter((a) => a.claimId === 'c1');
+    expect(created.length).toBeGreaterThan(0);
+    expect(created.every((a) => a.autoAccepted === true)).toBe(true);
+    expect(created.every((a) => typeof a.autoAcceptedAt === 'number' && a.autoAcceptedAt! >= before)).toBe(true);
+  });
+
+  it('commitAutoAcceptItem throws (does not commit) for an ineligible item', async () => {
+    const preview = await buildApprovalPreview({ confidence: 95, blockers: [], ambiguous: false });
+    const item = stagingWithPreview(preview);
+    const state = useStore.getState();
+    await expect(
+      commitAutoAcceptItem(item, {
+        commitParsedApproval: state.commitParsedApproval,
+        commitParsedDecline: state.commitParsedDecline,
+      }),
+    ).rejects.toThrow(/not eligible/);
+    expect(useStore.getState().data.approvals).toHaveLength(0);
+  });
+
+  it('runAutoAccept continues past a mid-batch failure: the rest complete, the failed one leaves no orphaned records', async () => {
+    const previewA = await buildApprovalPreview({
+      confidence: 100,
+      blockers: [],
+      ambiguous: false,
+      patientName: 'George Bellingham',
+      fileName: 'letter-a.pdf',
+    });
+    const previewB = await buildApprovalPreview({
+      confidence: 100,
+      blockers: [],
+      ambiguous: false,
+      patientName: 'Someone New',
+      fileName: 'letter-b.pdf',
+      patientId: undefined,
+      claimId: undefined,
+      patientPatch: { name: 'Someone New', nhi: 'ZZZ9999', dob: '1980-01-01' },
+      claimPatch: { claimNumber: '99999999999', acc45Number: 'YZ00000', poNumber: '12345678' },
+    });
+    const previewC = await buildApprovalPreview({
+      confidence: 100,
+      blockers: [],
+      ambiguous: false,
+      patientName: 'George Bellingham',
+      fileName: 'letter-c.pdf',
+    });
+    const itemA = stagingWithPreview(previewA, { id: 'staging-a', title: 'Letter A' });
+    const itemB = stagingWithPreview(previewB, { id: 'staging-b', title: 'Letter B' });
+    const itemC = stagingWithPreview(previewC, { id: 'staging-c', title: 'Letter C' });
+
+    // Letter B's document write fails partway through the batch; A and C succeed.
+    let call = 0;
+    vi.mocked(saveDocumentBlob).mockImplementation(async () => {
+      call++;
+      if (call === 2) throw new Error('disk full');
+    });
+
+    const state = useStore.getState();
+    const priorPatients = useStore.getState().data.patients;
+    const progressCalls: number[] = [];
+    const outcomes = await runAutoAccept(
+      [itemA, itemB, itemC],
+      { commitParsedApproval: state.commitParsedApproval, commitParsedDecline: state.commitParsedDecline },
+      (p) => progressCalls.push(p.index),
+    );
+
+    expect(progressCalls).toEqual([1, 2, 3]);
+    expect(outcomes).toHaveLength(3);
+    expect(outcomes[0].ok).toBe(true);
+    expect(outcomes[1].ok).toBe(false);
+    expect(outcomes[1].error).toMatch(/disk full/);
+    expect(outcomes[2].ok).toBe(true);
+
+    const data = useStore.getState().data;
+    // B's would-be new patient/claim never persisted (rollback-safe commit path).
+    expect(data.patients.some((p) => p.name === 'Someone New')).toBe(false);
+    expect(data.claims.some((c) => c.claimNumber === '99999999999')).toBe(false);
+    // A and C's approvals for the existing claim did get created and tagged.
+    const approvalsForC1 = data.approvals.filter((a) => a.claimId === 'c1');
+    expect(approvalsForC1.length).toBeGreaterThan(0);
+    expect(approvalsForC1.every((a) => a.autoAccepted)).toBe(true);
+    // No unrelated existing data was touched by the failed attempt.
+    expect(data.patients.filter((p) => priorPatients.some((pp) => pp.id === p.id))).toHaveLength(
+      priorPatients.length,
+    );
   });
 });

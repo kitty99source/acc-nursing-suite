@@ -92,6 +92,10 @@ export interface Approval {
   recordStatus?: 'current' | 'historical';
   /** IndexedDB document id when imported from a letter PDF. */
   sourceDocumentId?: string;
+  /** Set when this approval was created by the Review Queue's "Auto-accept ready" batch action, without individual human review. */
+  autoAccepted?: boolean;
+  /** Timestamp (ms) the auto-accept batch created this record. */
+  autoAcceptedAt?: number;
   // Unrecognised columns absorbed during Excel import, preserved for round-trip.
   customFields?: Record<string, string>;
 }

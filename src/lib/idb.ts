@@ -58,8 +58,19 @@ export async function withIdbRetry<T>(fn: () => Promise<T>): Promise<T> {
   throw last;
 }
 
+// Cache the open connection instead of re-opening the database on every single
+// get/set/blob call. Under concurrent load (e.g. the staging pre-parse queue's
+// MAX_CONCURRENT workers reading/writing IDB alongside UI-driven reads) each
+// fresh `indexedDB.open()` adds real, compounding latency — this is a
+// meaningful chunk of the "letters/attachments take a while to show up"
+// slowness. If the connection is ever closed out from under us (another tab
+// upgrading the DB version, or a driver-level close), drop the cached promise
+// so the next call transparently reopens.
+let dbPromise: Promise<IDBDatabase> | null = null;
+
 function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+  if (dbPromise) return dbPromise;
+  const thisPromise: Promise<IDBDatabase> = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
@@ -67,9 +78,33 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(DOC_STORE)) db.createObjectStore(DOC_STORE);
       if (!db.objectStoreNames.contains(LETTER_BLOB_STORE)) db.createObjectStore(LETTER_BLOB_STORE);
     };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const db = req.result;
+      // Drop the cache on close/versionchange so a later call reopens fresh
+      // rather than reusing a dead connection — but only if nothing has
+      // already replaced the cached promise (avoids clobbering a newer
+      // connection opened after this one was superseded).
+      const dropIfCurrent = () => {
+        if (dbPromise === thisPromise) dbPromise = null;
+      };
+      db.onclose = dropIfCurrent;
+      db.onversionchange = () => {
+        db.close();
+        dropIfCurrent();
+      };
+      resolve(db);
+    };
+    req.onerror = () => {
+      dropCachedPromise(thisPromise);
+      reject(req.error);
+    };
   });
+  dbPromise = thisPromise;
+  return dbPromise;
+}
+
+function dropCachedPromise(promise: Promise<IDBDatabase>): void {
+  if (dbPromise === promise) dbPromise = null;
 }
 
 async function idbGet<T>(key: string): Promise<T | undefined> {

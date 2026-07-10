@@ -19,6 +19,7 @@ import {
   reconcileStagingQueue,
   analyzeStagingQueue,
   removeByteIdenticalDuplicates,
+  removeUnnamedStagingItems,
   stagingAgeLabel,
   type StagingItem,
 } from '../lib/staging';
@@ -239,6 +240,51 @@ export function ReviewQueue() {
   const slaSummary = useMemo(() => summarizeQueueSla(sorted), [sorted]);
   const overdueCount = slaSummary.breached;
 
+  async function discardUnnamed() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const pending = await loadStagingItems();
+      const count = pending.filter((i) => !i.patientName?.trim()).length;
+      if (count === 0) {
+        setFlash('No filename-only rows to discard.');
+        window.setTimeout(() => setFlash(null), 4000);
+        return;
+      }
+      const ok = await confirm({
+        title: `Discard ${count} filename-only letter(s)?`,
+        message: (
+          <div className="space-y-2 text-sm">
+            <p>
+              This permanently removes the <strong>{count}</strong> letter(s) that still have{' '}
+              <strong>no patient name</strong> — the rows showing only a filename.
+            </p>
+            <p style={{ color: 'var(--danger, #b42318)' }}>
+              Only do this if you have already run “Fix names now” and these are genuinely
+              unreadable or junk. This cannot be undone.
+            </p>
+            <p style={{ color: 'var(--muted)' }}>
+              Accepted patient cases are never affected — this only clears items still under review.
+            </p>
+          </div>
+        ),
+        confirmLabel: `Discard ${count} letter(s)`,
+      });
+      if (!ok) return;
+      const removed = await removeUnnamedStagingItems();
+      await appendAudit({
+        action: 'staging-import',
+        entityType: 'staging',
+        summary: `Discarded ${removed} filename-only (unnamed) staging row(s)`,
+      });
+      await refresh();
+      setFlash(`Discarded ${removed} filename-only letter(s).`);
+      window.setTimeout(() => setFlash(null), 6000);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function checkQueueHealth() {
     if (busy) return;
     setBusy(true);
@@ -276,6 +322,12 @@ export function ReviewQueue() {
               </p>
             ) : (
               <p style={{ color: 'var(--muted)' }}>No byte-identical duplicates to remove.</p>
+            )}
+            {a.unnamed > 0 && (
+              <p style={{ color: 'var(--muted)' }}>
+                {a.unnamed} row(s) still show a filename only. Try “Fix names now” first; if any are
+                genuinely unreadable, use the “Discard unnamed” button to clear them.
+              </p>
             )}
           </div>
         ),
@@ -1011,6 +1063,17 @@ export function ReviewQueue() {
           >
             Check queue health
           </button>
+          {unnamedCount > 0 && (
+            <button
+              type="button"
+              className="btn btn-danger"
+              disabled={busy}
+              onClick={() => void discardUnnamed()}
+              title="Permanently remove letters that still have no patient name (filename-only rows)"
+            >
+              Discard unnamed ({unnamedCount})
+            </button>
+          )}
           <button type="button" className="btn" disabled={busy} onClick={() => void refresh()}>
             Refresh
           </button>
@@ -1180,32 +1243,6 @@ export function ReviewQueue() {
                         {selected.sourceFileName}
                       </p>
                     )}
-                  </div>
-                  <div className="flex flex-wrap gap-2 shrink-0">
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      disabled={!canAccept}
-                      onClick={() => void acceptItem()}
-                    >
-                      Accept → create patient case
-                    </button>
-                    <button
-                      type="button"
-                      className="btn"
-                      disabled={busy}
-                      onClick={() => void deferItem(selected)}
-                    >
-                      Defer
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-danger"
-                      disabled={busy}
-                      onClick={() => void rejectItem(selected)}
-                    >
-                      Reject
-                    </button>
                   </div>
                 </div>
 

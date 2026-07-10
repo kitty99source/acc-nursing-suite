@@ -17,6 +17,8 @@ import {
   importStagingSidecars,
   updateStagingItem,
   reconcileStagingQueue,
+  analyzeStagingQueue,
+  removeByteIdenticalDuplicates,
   stagingAgeLabel,
   type StagingItem,
 } from '../lib/staging';
@@ -217,6 +219,64 @@ export function ReviewQueue() {
   );
   const slaSummary = useMemo(() => summarizeQueueSla(sorted), [sorted]);
   const overdueCount = slaSummary.breached;
+
+  async function checkQueueHealth() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const pending = await loadStagingItems();
+      const a = analyzeStagingQueue(pending);
+      const canDedupe = a.byteIdenticalExtras > 0;
+      const ok = await confirm({
+        title: 'Review queue health',
+        message: (
+          <div className="space-y-2 text-sm">
+            <div className="grid gap-1" style={{ gridTemplateColumns: 'auto 1fr' }}>
+              <span className="font-semibold">{a.total}</span>
+              <span>letters under review (pending)</span>
+              <span className="font-semibold">{a.named}</span>
+              <span>have a patient name</span>
+              <span className="font-semibold">{a.unnamed}</span>
+              <span>still show a filename only</span>
+              <span className="font-semibold">{a.uniqueByHash}</span>
+              <span>distinct letters by content (the “true” count)</span>
+              <span className="font-semibold">{a.byteIdenticalExtras}</span>
+              <span>byte-identical duplicate row(s)</span>
+              <span className="font-semibold">{a.withoutHash}</span>
+              <span>legacy row(s) with no content hash (cannot auto-parse)</span>
+            </div>
+            <p style={{ color: 'var(--muted)' }}>
+              Note: many ACC letters share the generic filename{' '}
+              <span className="font-mono">…approve_-_vendor.docx</span>, so rows that look the same
+              are usually different patients — not duplicates.
+            </p>
+            {canDedupe ? (
+              <p>
+                Remove the <strong>{a.byteIdenticalExtras}</strong> byte-identical duplicate row(s)?
+                This keeps the earliest copy of each and never touches accepted patient cases.
+              </p>
+            ) : (
+              <p style={{ color: 'var(--muted)' }}>No byte-identical duplicates to remove.</p>
+            )}
+          </div>
+        ),
+        confirmLabel: canDedupe ? `Remove ${a.byteIdenticalExtras} duplicate(s)` : 'Close',
+      });
+      if (ok && canDedupe) {
+        const removed = await removeByteIdenticalDuplicates();
+        await appendAudit({
+          action: 'staging-import',
+          entityType: 'staging',
+          summary: `Removed ${removed} byte-identical duplicate staging row(s)`,
+        });
+        await refresh();
+        setFlash(`Removed ${removed} byte-identical duplicate row(s).`);
+        window.setTimeout(() => setFlash(null), 6000);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function fixNamesNow() {
     if (busy) return;
@@ -861,6 +921,15 @@ export function ReviewQueue() {
             title="Pick individual letter files from your inbox staging folder"
           >
             Import letter files
+          </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={busy}
+            onClick={() => void checkQueueHealth()}
+            title="Show the true letter count and remove byte-identical duplicates"
+          >
+            Check queue health
           </button>
           <button type="button" className="btn" disabled={busy} onClick={() => void refresh()}>
             Refresh

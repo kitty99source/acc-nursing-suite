@@ -1017,7 +1017,7 @@ export function ReviewQueue() {
           {unnamedCount > 0 && (
             <button
               type="button"
-              className="btn btn-primary"
+              className="btn btn-primary btn-sm"
               disabled={busy}
               onClick={() => void fixNamesNow()}
               title="Re-read letter files via the local bridge and fill patient names on filename-only rows"
@@ -1028,9 +1028,9 @@ export function ReviewQueue() {
           {missingDateCount > 0 && (
             <button
               type="button"
-              className="btn"
-              disabled={busy}
-              onClick={() => void backfillEmailDates()}
+            className="btn btn-sm"
+            disabled={busy}
+            onClick={() => void backfillEmailDates()}
               title="Look up the email received date for letters synced before this field existed"
             >
               Backfill email dates ({missingDateCount})
@@ -1038,7 +1038,7 @@ export function ReviewQueue() {
           )}
           <button
             type="button"
-            className="btn"
+            className="btn btn-sm"
             disabled={busy}
             onClick={() => void importStagingFolder()}
             title="Pick your ACC-Inbox folder if letters are not loading automatically"
@@ -1047,7 +1047,7 @@ export function ReviewQueue() {
           </button>
           <button
             type="button"
-            className="btn"
+            className="btn btn-sm"
             disabled={busy}
             onClick={() => sidecarInput.current?.click()}
             title="Pick individual letter files from your inbox staging folder"
@@ -1056,7 +1056,7 @@ export function ReviewQueue() {
           </button>
           <button
             type="button"
-            className="btn"
+            className="btn btn-sm"
             disabled={busy}
             onClick={() => void checkQueueHealth()}
             title="Show the true letter count and remove byte-identical duplicates"
@@ -1066,7 +1066,7 @@ export function ReviewQueue() {
           {unnamedCount > 0 && (
             <button
               type="button"
-              className="btn btn-danger"
+              className="btn btn-danger btn-sm"
               disabled={busy}
               onClick={() => void discardUnnamed()}
               title="Permanently remove letters that still have no patient name (filename-only rows)"
@@ -1074,7 +1074,7 @@ export function ReviewQueue() {
               Discard unnamed ({unnamedCount})
             </button>
           )}
-          <button type="button" className="btn" disabled={busy} onClick={() => void refresh()}>
+          <button type="button" className="btn btn-sm" disabled={busy} onClick={() => void refresh()}>
             Refresh
           </button>
         </div>
@@ -1206,12 +1206,12 @@ export function ReviewQueue() {
             ) : (
               <>
                 <div
-                  className="px-4 py-3 flex flex-wrap items-start justify-between gap-3"
+                  className="px-4 py-2 flex items-start justify-between gap-3"
                   style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}
                 >
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <h2 className="text-lg font-bold truncate">{listTitle(selected)}</h2>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-base font-bold truncate">{listTitle(selected)}</h2>
                       <Badge
                         tone={
                           selected.severity === 'danger'
@@ -1243,6 +1243,32 @@ export function ReviewQueue() {
                         {selected.sourceFileName}
                       </p>
                     )}
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      disabled={!canAccept}
+                      onClick={() => void acceptItem()}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      disabled={busy}
+                      onClick={() => void deferItem(selected)}
+                    >
+                      Defer
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-danger btn-sm"
+                      disabled={busy}
+                      onClick={() => void rejectItem(selected)}
+                    >
+                      Reject
+                    </button>
                   </div>
                 </div>
 
@@ -1330,7 +1356,11 @@ export function ReviewQueue() {
                           Loading letter...
                         </div>
                       ) : (
-                        <PdfPreview file={file} title={selected.sourceFileName || selected.title} />
+                        <PdfPreview
+                          file={file}
+                          title={selected.sourceFileName || selected.title}
+                          text={parsed?.rawText}
+                        />
                       )}
                     </div>
 
@@ -1502,33 +1532,11 @@ export function ReviewQueue() {
                 </div>
 
                 <div
-                  className="px-4 py-3 flex flex-wrap gap-2"
-                  style={{ borderTop: '1px solid var(--border)', background: 'var(--surface-2)' }}
+                  className="px-4 py-1.5 text-xs"
+                  style={{ borderTop: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--muted)' }}
                 >
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    disabled={!canAccept}
-                    onClick={() => void acceptItem()}
-                  >
-                    Accept → create patient case
-                  </button>
-                  <button
-                    type="button"
-                    className="btn"
-                    disabled={busy}
-                    onClick={() => void deferItem(selected)}
-                  >
-                    Defer
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    disabled={busy}
-                    onClick={() => void rejectItem(selected)}
-                  >
-                    Reject
-                  </button>
+                  Accept creates the patient case; items under review don’t count toward metrics
+                  until accepted.
                 </div>
               </>
             )}

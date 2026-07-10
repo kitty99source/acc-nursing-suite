@@ -256,6 +256,53 @@ describe('<ReviewQueue /> Unnamed tab (filtered view of the pending queue)', () 
   });
 });
 
+describe('<ReviewQueue /> Auto-approve tab (browse view of the auto-accept-eligible subset)', () => {
+  it('shows only auto-accept-eligible items and leaves other counts/buttons unaffected', async () => {
+    // Reuses the same isAutoAcceptEligible mock pattern as the "Auto-accept
+    // ready (N)" toolbar tests above — proving the tab and the button are
+    // driven by the exact same eligibility array, not a duplicated filter.
+    const { isAutoAcceptEligible } = await import('../lib/hrqBatch');
+    vi.mocked(isAutoAcceptEligible).mockImplementation(
+      (item) => item.id === 'named-1' && item.status === 'pending',
+    );
+
+    await act(async () => {
+      root.render(<ReviewQueue />);
+    });
+    await flush();
+
+    const texts = buttonTexts();
+    expect(texts.some((t) => t === 'Under review (3)')).toBe(true);
+    expect(texts.some((t) => t === 'Unnamed (2)')).toBe(true);
+    expect(texts.some((t) => t === 'Deferred (0)')).toBe(true);
+    expect(texts.some((t) => t === 'Auto-approve (1)')).toBe(true);
+    // The toolbar button keeps working exactly as before — not tab-gated.
+    expect(texts.some((t) => t === 'Auto-accept ready (1)')).toBe(true);
+
+    const autoApproveTab = Array.from(container.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Auto-approve (1)',
+    );
+    expect(autoApproveTab).toBeTruthy();
+
+    await act(async () => {
+      autoApproveTab!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flush();
+
+    const rowTexts = buttonTexts();
+    // named-1 has a resolved patientName ("Jane Doe"), so the list row shows
+    // that instead of its filename — see `listTitle`.
+    expect(rowTexts.some((t) => t.includes('Jane Doe'))).toBe(true);
+    expect(rowTexts.some((t) => t.includes('unnamed-1.pdf'))).toBe(false);
+    expect(rowTexts.some((t) => t.includes('unnamed-2.pdf'))).toBe(false);
+
+    // Toolbar counts/buttons remain based on the full pending set regardless of tab.
+    expect(rowTexts.some((t) => t === 'Auto-accept ready (1)')).toBe(true);
+    expect(rowTexts.some((t) => t === 'Fix names now (2)')).toBe(true);
+    expect(rowTexts.some((t) => t === 'Discard unnamed (2)')).toBe(true);
+  });
+});
+
 describe('<ReviewQueue /> list title staleness (item 4)', () => {
   it('updates the list row title as soon as loadSelected resolves a patient name, without a manual Refresh', async () => {
     // jsdom has no Blob/File URL support — PdfPreview only needs a stable stub.

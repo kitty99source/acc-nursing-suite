@@ -217,7 +217,9 @@ export function ReviewQueue() {
 
   const [items, setItems] = useState<StagingItem[]>([]);
   const [deferredItems, setDeferredItems] = useState<StagingItem[]>([]);
-  const [viewMode, setViewMode] = useState<'pending' | 'unnamed' | 'deferred'>('pending');
+  const [viewMode, setViewMode] = useState<'pending' | 'unnamed' | 'deferred' | 'autoAccept'>(
+    'pending',
+  );
   const [busy, setBusy] = useState(false);
   const [autoImportNote, setAutoImportNote] = useState<string | null>(null);
   const [importProgress, setImportProgress] = useState<string | null>(null);
@@ -295,7 +297,9 @@ export function ReviewQueue() {
           ? deferred
           : viewMode === 'unnamed'
             ? pending.filter((i) => !i.patientName?.trim())
-            : pending;
+            : viewMode === 'autoAccept'
+              ? pending.filter(isAutoAcceptEligible)
+              : pending;
       if (prev && current.some((i) => i.id === prev)) return prev;
       return current[0]?.id ?? null;
     });
@@ -371,14 +375,25 @@ export function ReviewQueue() {
     () => sorted.filter((i) => Boolean(i.sourceHash) && !i.emailDate?.trim()).length,
     [sorted],
   );
-  // The list panel itself switches between the pending queue, its unnamed
-  // subset, and the deferred-items view; everything above (header/toolbar
-  // counts) stays pending-only regardless of which tab is currently showing.
-  const listItems =
-    viewMode === 'deferred' ? deferredSorted : viewMode === 'unnamed' ? unnamedSorted : sorted;
   // Auto-accept eligibility only ever applies to the active pending queue —
   // deferred items are explicitly out of scope until brought back to review.
+  // This is the SAME array driving both the "Auto-accept ready (N)" toolbar
+  // button (which stays active regardless of the selected tab) and the
+  // "Auto-approve" tab's filtered list below — never duplicate this filter.
   const autoAcceptEligible = useMemo(() => sorted.filter(isAutoAcceptEligible), [sorted]);
+
+  // The list panel itself switches between the pending queue, its unnamed
+  // subset, the deferred-items view, and the auto-accept-eligible subset;
+  // everything above (header/toolbar counts) stays pending-only regardless
+  // of which tab is currently showing.
+  const listItems =
+    viewMode === 'deferred'
+      ? deferredSorted
+      : viewMode === 'unnamed'
+        ? unnamedSorted
+        : viewMode === 'autoAccept'
+          ? autoAcceptEligible
+          : sorted;
 
   useEffect(() => {
     void (async () => {
@@ -1723,7 +1738,7 @@ export function ReviewQueue() {
             }}
           >
             <div
-              className="flex items-center gap-1 p-1.5"
+              className="flex items-center gap-1 p-1.5 flex-wrap"
               style={{ borderBottom: '1px solid var(--border)' }}
               role="tablist"
               aria-label="Review list view"
@@ -1768,6 +1783,20 @@ export function ReviewQueue() {
               >
                 Deferred ({deferredSorted.length})
               </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={viewMode === 'autoAccept'}
+                className="btn btn-sm flex-1"
+                style={viewMode === 'autoAccept' ? undefined : { background: 'transparent', border: '1px solid transparent' }}
+                onClick={() => {
+                  setViewMode('autoAccept');
+                  setSelectedId(autoAcceptEligible[0]?.id ?? null);
+                }}
+                title="Pending letters that are eligible for one-click auto-accept — 100% confidence, no outstanding issues"
+              >
+                Auto-approve ({autoAcceptEligible.length})
+              </button>
             </div>
             <div
               className="px-3 py-2 text-xs font-semibold uppercase tracking-wide flex items-center justify-between"
@@ -1778,7 +1807,9 @@ export function ReviewQueue() {
                   ? 'Deferred letters'
                   : viewMode === 'unnamed'
                     ? 'Unnamed letters'
-                    : 'Letters under review'}
+                    : viewMode === 'autoAccept'
+                      ? 'Auto-approve ready'
+                      : 'Letters under review'}
               </span>
               <span>{query ? `${visible.length}/${listItems.length}` : listItems.length}</span>
             </div>
@@ -1791,7 +1822,9 @@ export function ReviewQueue() {
                       ? 'No deferred letters.'
                       : viewMode === 'unnamed'
                         ? 'No unnamed letters — every pending letter has a patient name.'
-                        : 'No letters under review.'}
+                        : viewMode === 'autoAccept'
+                          ? 'No letters are currently eligible for auto-accept.'
+                          : 'No letters under review.'}
                 </p>
               ) : (
                 <FixedSizeList

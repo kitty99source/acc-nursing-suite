@@ -359,6 +359,20 @@ export async function removeByteIdenticalDuplicates(): Promise<number> {
   return removed;
 }
 
+/**
+ * Remove pending rows that still have no patient name (filename-only rows).
+ * Destructive: use only after "Fix names now" has been tried and the remainder
+ * are genuinely unreadable/junk. Never touches accepted/resolved items. Returns
+ * how many were removed. Only persists on change.
+ */
+export async function removeUnnamedStagingItems(): Promise<number> {
+  const all = await idbLoadStaging();
+  const kept = all.filter((i) => i.status !== 'pending' || Boolean(i.patientName?.trim()));
+  const removed = all.length - kept.length;
+  if (removed > 0) await idbSaveStaging(kept);
+  return removed;
+}
+
 /** Collapse duplicate-hash items, keeping the earliest-created one of each hash. */
 export function dedupeStagingByHash(items: StagingItem[]): StagingItem[] {
   const seen = new Map<string, true>();

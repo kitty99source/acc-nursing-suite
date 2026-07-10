@@ -36,6 +36,8 @@ import {
   saveFileHandle,
   loadFileHandle,
   clearFileHandle,
+  loadRecentFiles,
+  saveRecentFiles,
   saveDocumentBlob,
   loadDocumentBlob,
   deleteDocumentBlob,
@@ -62,6 +64,7 @@ import { resolveWorkingCopyLoad } from '../lib/recovery';
 import { uid, todayISO, formatDateNZ } from '../lib/format';
 import { mergeImportIntoData, type ImportMode, type ImportResult } from '../lib/excelImport';
 import { formatStorageError } from '../lib/storageQuota';
+import { upsertRecent, removeRecentAt, type RecentFileEntry } from '../lib/recentFiles';
 import type { EmailSyncStatus } from '../lib/emailSyncStatus';
 import { determinePackage } from '../lib/calculator';
 import { claimBillingState } from '../lib/compliance';
@@ -91,6 +94,11 @@ export interface LetterImportCommitResult {
 
 // In-memory only. Never persisted, never logged, cleared on lock.
 let sessionPassphrase: string | undefined;
+
+// Recent-files handles kept in a module var (like sessionPassphrase): the raw
+// FileSystemFileHandle objects live here, while only lightweight {name,
+// lastUsedAt} rows are mirrored into state for rendering. Persisted to IDB.
+let recentHandles: RecentFileEntry[] = [];
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
 const AUTOSAVE_DEBOUNCE_MS = 3000;
 let autosavePaused = false;
@@ -150,6 +158,12 @@ interface StoreState {
   needsPassphrase: boolean; // encrypted working copy present, awaiting unlock
   lastActivityAt: number;
   fileHandle: FileSystemFileHandle | null;
+  /**
+   * Lightweight, most-recent-first list of files the user can "Save into"
+   * directly (names + timestamps only for rendering; the underlying
+   * FileSystemFileHandle objects are kept internal in the store module).
+   */
+  recentFiles: { name: string; lastUsedAt: number }[];
   pendingEncryptedText?: string; // encrypted working copy awaiting passphrase
   focus?: FocusRequest; // pending cross-module navigation intent
   /**
@@ -261,6 +275,8 @@ interface StoreState {
   // file ops (File System Access API — optional/advanced)
   connectNewFile: () => Promise<void>;
   openExistingFile: () => Promise<void>;
+  /** Overwrite one of the recent files (by index into `recentFiles`). */
+  saveIntoRecent: (index: number) => Promise<{ fileName: string }>;
   exportJsonDownload: () => void;
   importJsonText: (text: string) => Promise<void>;
   saveNow: () => Promise<void>;
@@ -404,6 +420,39 @@ async function persistAll(get: () => StoreState) {
   }
 }
 
+/** Mirror the internal recent-handles list into state for rendering (names only). */
+function publishRecentFiles(): void {
+  useStore.setState({
+    recentFiles: recentHandles.map((e) => ({ name: e.name, lastUsedAt: e.lastUsedAt })),
+  });
+}
+
+/** Add/bump a handle to the front of the recent list; persist + publish. */
+async function recordRecentFile(handle: FileSystemFileHandle): Promise<void> {
+  recentHandles = upsertRecent(recentHandles, {
+    handle,
+    name: handle.name,
+    lastUsedAt: Date.now(),
+  });
+  publishRecentFiles();
+  try {
+    await saveRecentFiles(recentHandles);
+  } catch {
+    // non-fatal: the in-memory list still works for this session
+  }
+}
+
+/** Drop a recent entry (permission denied / file gone); persist + publish. */
+async function dropRecentFileAt(index: number): Promise<void> {
+  recentHandles = removeRecentAt(recentHandles, index);
+  publishRecentFiles();
+  try {
+    await saveRecentFiles(recentHandles);
+  } catch {
+    // non-fatal
+  }
+}
+
 function audit(action: string, entityType: string, entityId: string | undefined, summary: string) {
   const user = useStore.getState().data.settings.userDisplayName?.trim();
   void appendAudit({ action, entityType, entityId, summary, ...(user ? { user } : {}) }).catch(() => {});
@@ -507,6 +556,7 @@ export const useStore = create<StoreState>((set, get) => ({
   needsPassphrase: false,
   lastActivityAt: Date.now(),
   fileHandle: null,
+  recentFiles: [],
   integrityWarnings: [],
   excelImportRollbackAvailable: false,
 
@@ -517,6 +567,12 @@ export const useStore = create<StoreState>((set, get) => ({
     } catch {
       handle = null;
     }
+    try {
+      recentHandles = await loadRecentFiles();
+    } catch {
+      recentHandles = [];
+    }
+    const recentFiles = recentHandles.map((e) => ({ name: e.name, lastUsedAt: e.lastUsedAt }));
     let excelImportRollbackAvailable = false;
     try {
       excelImportRollbackAvailable = !!(await loadExcelImportSnapshot());
@@ -545,6 +601,7 @@ export const useStore = create<StoreState>((set, get) => ({
         locked: false,
         needsPassphrase: false,
         fileHandle: handle,
+        recentFiles,
         integrityWarnings: [],
         excelImportRollbackAvailable,
         status: baseStatus,
@@ -560,6 +617,7 @@ export const useStore = create<StoreState>((set, get) => ({
         needsPassphrase: true,
         pendingEncryptedText: loadResult.text,
         fileHandle: handle,
+        recentFiles,
         integrityWarnings: [],
         excelImportRollbackAvailable,
         status: baseStatus,
@@ -575,6 +633,7 @@ export const useStore = create<StoreState>((set, get) => ({
         locked: false,
         needsPassphrase: false,
         fileHandle: handle,
+        recentFiles,
         integrityWarnings: [],
         excelImportRollbackAvailable,
         recovery: alreadyResolved
@@ -591,6 +650,7 @@ export const useStore = create<StoreState>((set, get) => ({
       locked: false,
       needsPassphrase: false,
       fileHandle: handle,
+      recentFiles,
       excelImportRollbackAvailable,
       ...adoptLoadedData(enriched, { statusPatch: baseStatus }),
     });
@@ -998,6 +1058,7 @@ export const useStore = create<StoreState>((set, get) => ({
         await writeToHandle(fileHandle, text);
         savedToFile = true;
         savedName = fileHandle.name;
+        void recordRecentFile(fileHandle);
       }
     }
     if (!savedToFile) downloadText(filename, text);
@@ -1039,6 +1100,7 @@ export const useStore = create<StoreState>((set, get) => ({
     const text = await serialize(get().data, usePass);
     await writeToHandle(handle, text);
     await saveFileHandle(handle);
+    void recordRecentFile(handle);
     set({
       fileHandle: handle,
       status: {
@@ -1060,6 +1122,7 @@ export const useStore = create<StoreState>((set, get) => ({
     const text = await readFromHandle(handle);
     if (isEncryptedFile(text)) {
       await saveFileHandle(handle);
+      void recordRecentFile(handle);
       set({
         fileHandle: handle,
         locked: true,
@@ -1071,6 +1134,7 @@ export const useStore = create<StoreState>((set, get) => ({
     }
     const data = await deserialize(text);
     await saveFileHandle(handle);
+    void recordRecentFile(handle);
     set({
       data,
       fileHandle: handle,
@@ -1087,6 +1151,65 @@ export const useStore = create<StoreState>((set, get) => ({
       },
     });
     scheduleSave(get);
+  },
+
+  saveIntoRecent: async (index: number) => {
+    const entry = recentHandles[index];
+    if (!entry) throw new Error('That recent file is no longer available.');
+    const handle = entry.handle;
+
+    // May prompt the user to re-grant write permission for a persisted handle.
+    let granted = false;
+    try {
+      granted = await verifyPermission(handle, true);
+    } catch {
+      granted = false;
+    }
+    if (!granted) {
+      await dropRecentFileAt(index);
+      throw new Error(
+        `Permission to write “${entry.name}” was denied — it has been removed from recent files.`,
+      );
+    }
+
+    const { data } = get();
+    const usePass = data.settings.encryptionEnabled ? sessionPassphrase : undefined;
+    const text = await serialize(data, usePass);
+    try {
+      await writeToHandle(handle, text);
+    } catch (err) {
+      const name = (err as DOMException)?.name;
+      if (name === 'NotFoundError' || name === 'NotAllowedError') {
+        await dropRecentFileAt(index);
+        throw new Error(
+          `“${entry.name}” could not be written (it may have been moved or deleted) — it has been removed from recent files.`,
+        );
+      }
+      throw err;
+    }
+
+    await saveFileHandle(handle);
+    set({
+      fileHandle: handle,
+      status: {
+        ...get().status,
+        hasFileHandle: true,
+        fileName: handle.name,
+        saveState: 'saved',
+        lastSavedAt: Date.now(),
+        dirty: false,
+        lastExportAt: Date.now(),
+        saveError: undefined,
+      },
+    });
+    await recordRecentFile(handle);
+    audit(
+      'export',
+      'accdata',
+      undefined,
+      `Saved .accdata into ${handle.name} (${data.patients.length} patients, ${data.claims.length} claims)`,
+    );
+    return { fileName: handle.name };
   },
 
   exportJsonDownload: () => {

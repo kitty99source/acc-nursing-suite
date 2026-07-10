@@ -609,6 +609,10 @@ export function ReviewQueue() {
     [parseLetterFile],
   );
 
+  // Load the attachment/parse only when the *selected item* changes, keyed by id.
+  // Depending on the `selected` object would re-fire on every list refresh (the
+  // 2.5s auto-refresh replaces item references), reloading the file and causing
+  // the preview to flicker between error and fallback states.
   useEffect(() => {
     if (!selected) {
       setFile(null);
@@ -618,7 +622,8 @@ export function ReviewQueue() {
       return;
     }
     void loadSelected(selected);
-  }, [selected, loadSelected]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, loadSelected]);
 
   async function importSidecars(files: FileList | null) {
     if (!files?.length) return;
@@ -1126,7 +1131,7 @@ export function ReviewQueue() {
               <span>Letters under review</span>
               <span>{query ? `${visible.length}/${sorted.length}` : sorted.length}</span>
             </div>
-            <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-2 space-y-1.5">
               {visible.length === 0 ? (
                 <p className="text-sm text-center py-6" style={{ color: 'var(--muted)' }}>
                   No letters match “{query}”.
@@ -1272,7 +1277,7 @@ export function ReviewQueue() {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4">
                   {matchedPatient ? (
                     <div
                       className="text-sm p-2.5 rounded-card"

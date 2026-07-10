@@ -10,8 +10,17 @@ import type { StagingItem } from './staging';
 /** Minimum parser confidence for batch approve (still requires name-list confirm). */
 export const HRQ_BATCH_MIN_CONFIDENCE = 90;
 
+/**
+ * Bump when the letter parser changes in a way that should re-run on already-cached
+ * letters (claim/NS extraction, etc.). Cached previews stamped with an older version
+ * are treated as stale so the Review Queue re-parses them from bytes when opened.
+ */
+export const LETTER_PARSER_VERSION = 2;
+
 export interface StagingParsedPreview {
   kind: 'approval' | 'decline';
+  /** Parser version this preview was produced by (see LETTER_PARSER_VERSION). */
+  parserVersion?: number;
   confidence: number;
   patientName: string;
   claimNumber?: string;

@@ -728,19 +728,47 @@ export async function inferDocumentKindForPdf(file: File, selectedKind?: Documen
   }
 }
 
+/** Pull the approved quantity from the text after a row's end date. Prefers a
+ *  number tagged with a unit word; otherwise the first plain number that isn't a
+ *  currency amount (skips $-prefixed values and 2-decimal prices). */
+function extractRowQuantity(after: string): number {
+  const tagged = after.match(/(\d+(?:\.\d+)?)\s*(?:Units?|Consults?|Hours?|Visits?)/i);
+  if (tagged) return Math.round(parseFloat(tagged[1]));
+  const re = /(\d+(?:\.\d+)?)/g;
+  let n: RegExpExecArray | null;
+  while ((n = re.exec(after)) !== null) {
+    if (after[n.index - 1] === '$') continue; // currency
+    if (/\.\d{2}$/.test(n[1])) continue; // price like 123.45
+    const val = parseFloat(n[1]);
+    if (Number.isFinite(val) && val > 0) return Math.round(val);
+  }
+  return 0;
+}
+
 function parseServiceRows(text: string): { serviceRows: ParsedServiceRow[]; packageRows: ParsedPackageRow[] } {
   const serviceRows: ParsedServiceRow[] = [];
   const packageRows: ParsedPackageRow[] = [];
-  // pdf.js often flattens table rows onto one line — match code, two dates, quantity.
-  const re =
-    /(NS0[1-5])\s+Nursing Services[^0-9]*(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+([\d.]+)\s+Units?/gi;
+  const seen = new Set<string>();
+  // Scan each NS0x code, then read a bounded window after it. This handles both
+  // pdf.js one-line tables ("NS04 Nursing Services … d1 d2 6 Units") and Word/
+  // mammoth cell-per-line layouts where the code, dates and quantity land on
+  // separate lines. Requiring two dates in the window guards against prose.
+  const codeRe = /(?<![A-Za-z0-9])(NS0[1-5])(?![0-9])/gi;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
+  while ((m = codeRe.exec(text)) !== null) {
     const code = m[1].toUpperCase();
-    const start = parseAccDate(m[2]);
-    const end = parseAccDate(m[3]);
-    const qty = Math.round(parseFloat(m[4]));
-    if (!start || !end || !Number.isFinite(qty)) continue;
+    const window = text.slice(m.index, m.index + 260);
+    const dates = [...window.matchAll(/(\d{1,2}\/\d{1,2}\/\d{4})/g)];
+    if (dates.length < 2) continue;
+    const start = parseAccDate(dates[0][1]);
+    const end = parseAccDate(dates[1][1]);
+    if (!start || !end) continue;
+    const secondDate = dates[1];
+    const afterEnd = window.slice((secondDate.index ?? 0) + secondDate[0].length);
+    const qty = extractRowQuantity(afterEnd);
+    const key = `${code}|${start}|${end}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
     if (code === 'NS04' || code === 'NS05') {
       serviceRows.push({
         serviceCode: code,
@@ -761,7 +789,10 @@ function parseServiceRows(text: string): { serviceRows: ParsedServiceRow[]; pack
 }
 
 export function parseApprovalLetter(text: string): ParsedApprovalLetter {
-  const claimNumberRaw = firstMatch(text, /Client.s claim number:\s*([\d\s]+)/i);
+  // Claim numbers are usually 100…-style numerics, but some are letter-prefixed
+  // (e.g. "P2222756868"). Allow an optional short alpha prefix; digits may carry
+  // OCR spaces but must start & end on a digit so we don't run into the next field.
+  const claimNumberRaw = firstMatch(text, /Client.s claim number:\s*([A-Za-z]{0,3}\d[\d\s]*\d)/i);
   const poNumber = normalizePo(
     firstMatch(text, /Purchase order number:\s*([\d\s]+?)(?=\s*\d{1,2}\s+[A-Za-z]+\s+\d{4})/i) ?? '',
   );
@@ -798,7 +829,9 @@ export function parseApprovalLetter(text: string): ParsedApprovalLetter {
 }
 
 export function parseDeclineLetter(text: string): ParsedDeclineLetter {
-  const headerClaim = normalizeClaimNumber(firstMatch(text, /Claim number\s+([\d\s]+)/i));
+  const headerClaim = normalizeClaimNumber(
+    firstMatch(text, /Claim number\s+([A-Za-z]{0,3}\d[\d\s]*\d)/i),
+  );
   const letterDate = parseAccDate(firstMatch(text, /(\d{1,2}\s+[A-Za-z]+\s+\d{4})/));
   const nameRaw =
     firstMatch(text, /Client name\s+(.+?)\s+Postal address/i) ??
@@ -817,7 +850,9 @@ export function parseDeclineLetter(text: string): ParsedDeclineLetter {
     text.match(/Why we can.t approve the request\s+(We.re unable[\s\S]+?)(?:We.re happy to answer|Please call)/i) ||
     text.match(/because there are ([^.]+)\./i);
   const reason = reasonBlock?.[1]?.replace(/\s+/g, ' ').trim();
-  const allClaims = allMatches(text, /claim number\s*\(?([\d\s]+)\)?/gi).map(normalizeClaimNumber);
+  const allClaims = allMatches(text, /claim number\s*\(?\s*([A-Za-z]{0,3}\d[\d\s]*\d)\s*\)?/gi).map(
+    normalizeClaimNumber,
+  );
   const alternateClaimNumbers = [...new Set(allClaims.filter((c) => c && c !== headerClaim))];
 
   return {

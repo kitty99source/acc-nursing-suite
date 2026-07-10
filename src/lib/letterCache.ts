@@ -3,7 +3,12 @@
 // ============================================================================
 
 import { loadLetterBlob, saveLetterBlob, loadLetterParse, saveLetterParse } from './idb';
-import { isStagingParsedPreview, previewToFile, type StagingParsedPreview } from './hrqBatch';
+import {
+  isStagingParsedPreview,
+  previewToFile,
+  LETTER_PARSER_VERSION,
+  type StagingParsedPreview,
+} from './hrqBatch';
 
 export function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -40,9 +45,21 @@ export function base64ToBlob(base64: string, mime = 'application/octet-stream'):
   return new Blob([bytes], { type: mime });
 }
 
-export async function getCachedLetterParse(hash: string): Promise<StagingParsedPreview | undefined> {
+/** Any cached parse regardless of parser version — used as an offline fallback
+ *  when the letter bytes can't be re-fetched to re-parse. */
+export async function getCachedLetterParseAny(
+  hash: string,
+): Promise<StagingParsedPreview | undefined> {
   const raw = await loadLetterParse(hash);
   return isStagingParsedPreview(raw) ? raw : undefined;
+}
+
+/** Cached parse only if produced by the CURRENT parser version. A version miss
+ *  returns undefined so callers re-parse from bytes (transparent backfill). */
+export async function getCachedLetterParse(hash: string): Promise<StagingParsedPreview | undefined> {
+  const preview = await getCachedLetterParseAny(hash);
+  if (!preview) return undefined;
+  return preview.parserVersion === LETTER_PARSER_VERSION ? preview : undefined;
 }
 
 export async function putCachedLetterParse(hash: string, preview: StagingParsedPreview): Promise<void> {

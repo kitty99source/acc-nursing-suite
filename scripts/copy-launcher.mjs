@@ -81,6 +81,8 @@ const launcherFiles = [
   'Start Backfill Email Dates.cmd',
   'Optimize-StagingSidecars.ps1',
   'Start Optimize Staging.cmd',
+  'Reindex-InboxHashes.ps1',
+  'Start Reindex Inbox.cmd',
   'Start WFH Mode.cmd',
   'wfh-mode.ps1',
   'Start Portal Discover.cmd',

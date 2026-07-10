@@ -829,25 +829,91 @@ export function extractInjuryDescription(text: string): string | undefined {
   return joined || undefined;
 }
 
-export function parseApprovalLetter(text: string): ParsedApprovalLetter {
-  // Claim numbers are usually 100…-style numerics, but some are letter-prefixed
-  // (e.g. "P2222756868"). Allow an optional short alpha prefix; digits may carry
-  // OCR spaces but must start & end on a digit so we don't run into the next field.
-  const claimNumberRaw = firstMatch(text, /Client.s claim number:\s*([A-Za-z]{0,3}\d[\d\s]*\d)/i);
-  const poNumber = normalizePo(
-    firstMatch(text, /Purchase order number:\s*([\d\s]+?)(?=\s*\d{1,2}\s+[A-Za-z]+\s+\d{4})/i) ?? '',
+// ----------------------------------------------------------------------------
+// Single-field extractors (DRY). Each pulls ONE field from the raw letter text
+// and is used both by parseApprovalLetter/parseDeclineLetter AND by the Review
+// Queue's per-field "re-parse from attachment" buttons, so the main parse and a
+// targeted re-parse can never diverge. Every extractor tolerates BOTH the
+// colon-labelled NUR02 approval layout and the table-style NUR04VEN decline
+// layout; patterns are ordered so the matching layout wins without the other
+// layout's pattern spuriously matching (approval uses "Label:" colons, decline
+// uses whitespace-separated cells, and their surrounding field boundaries
+// differ — approval NHI is followed by "Injury", decline NHI by "ACC45").
+// ----------------------------------------------------------------------------
+
+/**
+ * Claim number. Usually a 100…-style numeric, but some are letter-prefixed
+ * (e.g. "P2222756868"). Allow an optional short alpha prefix; digits may carry
+ * OCR spaces but must start & end on a digit so we don't run into the next field.
+ */
+export function extractClaimNumber(text: string): string | undefined {
+  const raw =
+    firstMatch(text, /Client.s claim number:\s*([A-Za-z]{0,3}\d[\d\s]*\d)/i) ??
+    firstMatch(text, /Claim number\s+([A-Za-z]{0,3}\d[\d\s]*\d)/i);
+  return normalizeClaimNumber(raw ?? '') || undefined;
+}
+
+export function extractNhi(text: string): string | undefined {
+  const raw =
+    firstMatch(text, /NHI number\s+([A-Z0-9\s]+?)\s+ACC45/i) ??
+    firstMatch(text, /NHI number\s*:?\s*([A-Z0-9\s]+?)\s+Injury/i);
+  return normalizeNhi(raw ?? '') || undefined;
+}
+
+export function extractAcc45(text: string): string | undefined {
+  const raw =
+    firstMatch(text, /ACC45 number:\s*([A-Z0-9\s]+?)\s+NHI/i) ??
+    firstMatch(text, /ACC45 number\s+([A-Z0-9\s]+?)\s+Date of injury/i);
+  return normalizeAcc45(raw ?? '') || undefined;
+}
+
+export function extractPo(text: string): string | undefined {
+  const raw = firstMatch(
+    text,
+    /Purchase order number:\s*([\d\s]+?)(?=\s*\d{1,2}\s+[A-Za-z]+\s+\d{4})/i,
   );
+  return normalizePo(raw ?? '') || undefined;
+}
+
+export function extractDob(text: string): string | undefined {
+  const raw =
+    firstMatch(text, /Date of birth:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i) ??
+    firstMatch(text, /Date of birth\s+(\d{1,2}\/\d{1,2}\/\d{4})/i);
+  return parseAccDate(raw);
+}
+
+export function extractDateOfInjury(text: string): string | undefined {
+  // Approval couples the client name and the date of injury on one line.
+  const coupled = text.match(
+    /Client name:\s*[^\n]+?\s+Date of injury:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i,
+  );
+  if (coupled) return parseAccDate(coupled[1]);
+  const spaced = firstMatch(text, /Date of injury\s+(\d{1,2}\s*\/\s*\d{1,2}\s*\/\s*\d{4})/i);
+  if (spaced) return parseAccDate(spaced.replace(/\s+/g, ''));
+  return undefined;
+}
+
+export function extractPatientName(text: string): string | undefined {
+  // Approval: "Client name: <name> Date of injury: dd/mm/yyyy" (bounded so we
+  // don't swallow the following header field).
+  const coupled = text.match(
+    /Client name:\s*([^\n]+?)\s+Date of injury:\s*\d{1,2}\/\d{1,2}\/\d{4}/i,
+  );
+  if (coupled) return trimClientName(coupled[1]) || undefined;
+  // Decline: table layout with no colon.
+  const declineRaw =
+    firstMatch(text, /Client name\s+(.+?)\s+Postal address/i) ??
+    firstMatch(text, /Client name\s+([^\n]+)/i);
+  return declineRaw ? trimClientName(declineRaw) || undefined : undefined;
+}
+
+export function parseApprovalLetter(text: string): ParsedApprovalLetter {
   const letterDate = parseAccDate(firstMatch(text, /(\d{1,2}\s+[A-Za-z]+\s+\d{4})/));
-  const clientLine = text.match(/Client name:\s*([^\n]+?)\s+Date of injury:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i);
-  let name: string | undefined;
-  let dateOfInjury: string | undefined;
-  if (clientLine) {
-    name = trimClientName(clientLine[1]);
-    dateOfInjury = parseAccDate(clientLine[2]);
-  }
-  const dob = parseAccDate(firstMatch(text, /Date of birth:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i));
-  const acc45 = normalizeAcc45(firstMatch(text, /ACC45 number:\s*([A-Z0-9\s]+?)\s+NHI/i));
-  const nhi = normalizeNhi(firstMatch(text, /NHI number\s*:?\s*([A-Z0-9\s]+?)\s+Injury/i));
+  const name = extractPatientName(text);
+  const dateOfInjury = extractDateOfInjury(text);
+  const dob = extractDob(text);
+  const acc45 = extractAcc45(text);
+  const nhi = extractNhi(text);
   const injury = extractInjuryDescription(text);
   const { serviceRows, packageRows } = parseServiceRows(text);
 
@@ -855,11 +921,11 @@ export function parseApprovalLetter(text: string): ParsedApprovalLetter {
     kind: 'approval',
     letterDate,
     formCode: firstMatch(text, /^(NUR\d+)/m),
-    patient: { name, nhi, dob },
+    patient: { name, nhi: nhi ?? '', dob },
     claim: {
-      claimNumber: normalizeClaimNumber(claimNumberRaw),
-      acc45Number: acc45,
-      poNumber: poNumber || undefined,
+      claimNumber: extractClaimNumber(text) ?? '',
+      acc45Number: acc45 ?? '',
+      poNumber: extractPo(text),
       dateOfInjury,
       injuryDescription: injury,
     },
@@ -870,20 +936,13 @@ export function parseApprovalLetter(text: string): ParsedApprovalLetter {
 }
 
 export function parseDeclineLetter(text: string): ParsedDeclineLetter {
-  const headerClaim = normalizeClaimNumber(
-    firstMatch(text, /Claim number\s+([A-Za-z]{0,3}\d[\d\s]*\d)/i),
-  );
+  const headerClaim = extractClaimNumber(text) ?? '';
   const letterDate = parseAccDate(firstMatch(text, /(\d{1,2}\s+[A-Za-z]+\s+\d{4})/));
-  const nameRaw =
-    firstMatch(text, /Client name\s+(.+?)\s+Postal address/i) ??
-    firstMatch(text, /Client name\s+([^\n]+)/i);
-  const name = nameRaw ? trimClientName(nameRaw) : undefined;
-  const nhi = normalizeNhi(firstMatch(text, /NHI number\s+([A-Z0-9\s]+?)\s+ACC45/i));
-  const dob = parseAccDate(firstMatch(text, /Date of birth\s+(\d{1,2}\/\d{1,2}\/\d{4})/i));
-  const acc45 = normalizeAcc45(firstMatch(text, /ACC45 number\s+([A-Z0-9\s]+?)\s+Date of injury/i));
-  const dateOfInjury = parseAccDate(
-    firstMatch(text, /Date of injury\s+(\d{1,2}\s*\/\s*\d{1,2}\s*\/\s*\d{4})/i)?.replace(/\s+/g, ''),
-  );
+  const name = extractPatientName(text);
+  const nhi = extractNhi(text) ?? '';
+  const dob = extractDob(text);
+  const acc45 = extractAcc45(text) ?? '';
+  const dateOfInjury = extractDateOfInjury(text);
   const injury = extractInjuryDescription(text);
   const serviceRaw = firstMatch(text, /requested the following service:\s*•\s*([^\n]+)/i);
   const serviceRequested = serviceRaw ? trimServiceRequested(serviceRaw) : undefined;

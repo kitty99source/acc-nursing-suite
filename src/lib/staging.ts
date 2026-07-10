@@ -278,22 +278,36 @@ export async function reconcileStagingQueue(
 ): Promise<StagingReconcileResult> {
   const all = await idbLoadStaging();
 
-  // Collapse duplicate imports on the canonical ingress key (hash + filename),
-  // keeping the earliest-created entry so history/audit points stay stable.
-  const seen = new Set<string>();
+  // Collapse duplicate imports, keeping the earliest-created entry so history/
+  // audit points stay stable. Prefer collapsing on the CONTENT HASH so the same
+  // letter saved under different uniquified filenames (vendor.docx, vendor-1.docx)
+  // — which carry different ingress keys and therefore keep coming back from the
+  // .staging sidecars each poll — collapses to a single row. Rows without a hash
+  // fall back to the ingress key (hash+filename) so legacy behaviour is kept.
+  const seenHash = new Set<string>();
+  const seenKey = new Set<string>();
   const kept: StagingItem[] = [];
-  let removed = 0;
+  const removedItems: StagingItem[] = [];
   for (const item of [...all].sort((a, b) => a.createdAt - b.createdAt)) {
+    const hash = item.sourceHash?.trim();
     const key = stagingIngressDedupKey(item);
-    if (key) {
-      if (seen.has(key)) {
-        removed++;
+    if (hash) {
+      if (seenHash.has(hash)) {
+        removedItems.push(item);
         continue;
       }
-      seen.add(key);
+      seenHash.add(hash);
+      if (key) seenKey.add(key);
+    } else if (key) {
+      if (seenKey.has(key)) {
+        removedItems.push(item);
+        continue;
+      }
+      seenKey.add(key);
     }
     kept.push(item);
   }
+  const removed = removedItems.length;
 
   let renamed = 0;
   for (let i = 0; i < kept.length; i++) {
@@ -315,7 +329,32 @@ export async function reconcileStagingQueue(
   if (removed > 0 || renamed > 0) {
     await idbSaveStaging(kept);
   }
+  // Tombstone the REMOVED duplicates so their specific sidecars never re-import
+  // and the "Tidied the review list…" note goes quiet. Never tombstone a key
+  // that a KEPT row still uses (the earliest/kept copy must stay importable if
+  // it later leaves the queue), so exact same-key dupes are left un-tombstoned.
+  if (removed > 0) {
+    await tombstoneRemovedDuplicates(kept, removedItems);
+  }
   return { removed, renamed, total: kept.length };
+}
+
+/**
+ * Record dismissal tombstones for removed duplicate rows, excluding any ingress
+ * key still held by a kept row. Shared by the on-mount reconcile and the manual
+ * byte-identical dedup so both make removals persistent on re-import.
+ */
+async function tombstoneRemovedDuplicates(
+  kept: StagingItem[],
+  removedItems: StagingItem[],
+): Promise<void> {
+  const keptKeys = new Set(
+    kept.map((i) => stagingIngressDedupKey(i)).filter((k): k is string => k != null),
+  );
+  const keys = removedItems
+    .map((i) => stagingIngressDedupKey(i))
+    .filter((k): k is string => k != null && !keptKeys.has(k));
+  await addDismissedStagingKeys(keys);
 }
 
 /** Existing staging item already holding this attachment hash (pending by default). */
@@ -401,7 +440,15 @@ export async function removeByteIdenticalDuplicates(): Promise<number> {
   const all = await idbLoadStaging();
   const deduped = dedupeStagingByHash(all);
   const removed = all.length - deduped.length;
-  if (removed > 0) await idbSaveStaging(deduped);
+  if (removed > 0) {
+    const keptIds = new Set(deduped.map((i) => i.id));
+    const removedItems = all.filter((i) => !keptIds.has(i.id));
+    await idbSaveStaging(deduped);
+    // Persist the removal: tombstone each removed dupe's ingress key (skipping
+    // any key a kept row still uses) so the byte-identical sidecar — which has a
+    // different filename and would otherwise re-import each poll — stays gone.
+    await tombstoneRemovedDuplicates(deduped, removedItems);
+  }
   return removed;
 }
 

@@ -177,7 +177,7 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
 
   return (
     <header
-      className="h-14 shrink-0 flex items-center justify-between gap-3 px-4 border-b"
+      className="h-12 shrink-0 flex items-center justify-between gap-3 px-4 border-b"
       style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
     >
       <div className="flex items-center gap-3 min-w-0">

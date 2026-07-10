@@ -46,16 +46,12 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const loadMyData = useStore((s) => s.loadMyData);
   const connectNewFile = useStore((s) => s.connectNewFile);
   const openExistingFile = useStore((s) => s.openExistingFile);
-  const saveIntoRecent = useStore((s) => s.saveIntoRecent);
-  const recentFiles = useStore((s) => s.recentFiles);
   const lock = useStore((s) => s.lock);
   const topBarFlash = useStore((s) => s.topBarFlash);
   const clearTopBarFlash = useStore((s) => s.clearTopBarFlash);
 
   const fileInput = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
-  const [saveIntoOpen, setSaveIntoOpen] = useState(false);
-  const saveIntoRef = useRef<HTMLDivElement>(null);
   const { flash, showFlash, clearFlash } = useFlash();
 
   useEffect(() => {
@@ -64,32 +60,6 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
     const timer = window.setTimeout(() => clearTopBarFlash(), 4000);
     return () => window.clearTimeout(timer);
   }, [topBarFlash, showFlash, clearTopBarFlash]);
-
-  // Click-away to close the "Save into ▾" menu (same pattern as ReviewQueue).
-  useEffect(() => {
-    if (!saveIntoOpen) return;
-    const onDown = (e: MouseEvent) => {
-      if (saveIntoRef.current && !saveIntoRef.current.contains(e.target as Node)) {
-        setSaveIntoOpen(false);
-      }
-    };
-    window.addEventListener('mousedown', onDown);
-    return () => window.removeEventListener('mousedown', onDown);
-  }, [saveIntoOpen]);
-
-  async function handleSaveInto(index: number) {
-    setSaveIntoOpen(false);
-    setBusy(true);
-    clearFlash();
-    try {
-      const res = await saveIntoRecent(index);
-      showFlash(`Saved into ${res.fileName}`, 'good');
-    } catch (err) {
-      showFlash((err as Error).message, 'danger');
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function handleSave() {
     setBusy(true);
@@ -273,66 +243,6 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
             >
               {status.hasFileHandle ? 'Save As…' : 'Save to file…'}
             </button>
-          </div>
-        )}
-
-        {/* Recent files: overwrite one of several recently-used .accdata files
-            without re-picking it. Only shown when FSA is available and there is
-            at least one remembered file. */}
-        {status.fsaSupported && recentFiles.length > 0 && (
-          <div className="relative hidden sm:block shrink-0" ref={saveIntoRef}>
-            <button
-              type="button"
-              className="btn btn-sm"
-              disabled={busy}
-              aria-haspopup="menu"
-              aria-expanded={saveIntoOpen}
-              onClick={() => setSaveIntoOpen((v) => !v)}
-              title="Overwrite one of your recently-used files"
-            >
-              Save into ▾
-            </button>
-            {saveIntoOpen && (
-              <div
-                role="menu"
-                className="absolute right-0 mt-1 z-20 flex flex-col gap-1 p-1.5 rounded-card"
-                style={{
-                  minWidth: 240,
-                  border: '1px solid var(--border)',
-                  background: 'var(--surface)',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
-                }}
-              >
-                {recentFiles.map((f, i) => {
-                  const isConnected = status.hasFileHandle && status.fileName === f.name;
-                  return (
-                    <button
-                      key={`${f.name}-${i}`}
-                      type="button"
-                      role="menuitem"
-                      className="btn btn-sm w-full justify-start"
-                      disabled={busy}
-                      onClick={() => void handleSaveInto(i)}
-                      title={`Overwrite ${f.name} with your current data`}
-                    >
-                      <span
-                        aria-hidden
-                        className="inline-block w-4 shrink-0"
-                        style={{ color: 'var(--good-fg)' }}
-                      >
-                        {isConnected ? '✓' : ''}
-                      </span>
-                      <span className="truncate">{f.name}</span>
-                      {isConnected && (
-                        <span className="ml-auto text-xs shrink-0" style={{ color: 'var(--muted)' }}>
-                          connected
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
           </div>
         )}
 

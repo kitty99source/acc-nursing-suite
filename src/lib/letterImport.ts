@@ -788,6 +788,47 @@ function parseServiceRows(text: string): { serviceRows: ParsedServiceRow[]; pack
   return { serviceRows, packageRows };
 }
 
+/**
+ * Label-anchored, section-bounded injury/diagnosis extraction. Handles single
+ * "Injury(s): Sprain" phrasings AND multi-line coded lists (e.g. "S830. Open
+ * wound of scalp …", "T1400 Unspecified superficial injury …"). Anchors on the
+ * label (Injury / Injuries / Injury(s) / Diagnosis…), then captures up to the
+ * next known section boundary or end of text, tolerant of newlines. Separate
+ * lines are joined with ", " so they render cleanly in the form textarea.
+ */
+export function extractInjuryDescription(text: string): string | undefined {
+  const boundary = [
+    'Services approved',
+    'Services requested',
+    'Thank you',
+    'You requested',
+    'Purchase order',
+    'Client name',
+    'Client details',
+    'Why we',
+    'We.re happy',
+    'We are happy',
+    'Yours sincerely',
+    'After careful consideration',
+    '\\bNUR\\d',
+    '\\bNS0[1-5]\\b',
+  ].join('|');
+  // Require the label to carry a "(s)" or a colon so we don't accidentally
+  // anchor on "Date of injury" (which is followed by a date, not the injuries).
+  const re = new RegExp(
+    `(?:Injur(?:y|ies)|Diagnos(?:is|es))(?:\\s+description)?(?:\\(s\\)\\s*:?|\\s*:)\\s*([\\s\\S]*?)(?=\\s*(?:${boundary})|$)`,
+    'i',
+  );
+  const m = text.match(re);
+  if (!m) return undefined;
+  const lines = m[1]
+    .split(/\r?\n/)
+    .map((l) => l.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  const joined = lines.join(', ').replace(/(?:,\s*)+/g, ', ').replace(/^,\s*|,\s*$/g, '').trim();
+  return joined || undefined;
+}
+
 export function parseApprovalLetter(text: string): ParsedApprovalLetter {
   // Claim numbers are usually 100…-style numerics, but some are letter-prefixed
   // (e.g. "P2222756868"). Allow an optional short alpha prefix; digits may carry
@@ -807,7 +848,7 @@ export function parseApprovalLetter(text: string): ParsedApprovalLetter {
   const dob = parseAccDate(firstMatch(text, /Date of birth:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i));
   const acc45 = normalizeAcc45(firstMatch(text, /ACC45 number:\s*([A-Z0-9\s]+?)\s+NHI/i));
   const nhi = normalizeNhi(firstMatch(text, /NHI number\s*:?\s*([A-Z0-9\s]+?)\s+Injury/i));
-  const injury = firstMatch(text, /Injury\(s\):\s*(.+?)(?:Thank you|Services approved)/i);
+  const injury = extractInjuryDescription(text);
   const { serviceRows, packageRows } = parseServiceRows(text);
 
   return {
@@ -820,7 +861,7 @@ export function parseApprovalLetter(text: string): ParsedApprovalLetter {
       acc45Number: acc45,
       poNumber: poNumber || undefined,
       dateOfInjury,
-      injuryDescription: injury?.replace(/\s+/g, ' ').trim(),
+      injuryDescription: injury,
     },
     serviceRows,
     packageRows,
@@ -843,7 +884,7 @@ export function parseDeclineLetter(text: string): ParsedDeclineLetter {
   const dateOfInjury = parseAccDate(
     firstMatch(text, /Date of injury\s+(\d{1,2}\s*\/\s*\d{1,2}\s*\/\s*\d{4})/i)?.replace(/\s+/g, ''),
   );
-  const injury = firstMatch(text, /Injury\(s\)\s+(.+?)(?:Thank you|You requested)/i);
+  const injury = extractInjuryDescription(text);
   const serviceRaw = firstMatch(text, /requested the following service:\s*•\s*([^\n]+)/i);
   const serviceRequested = serviceRaw ? trimServiceRequested(serviceRaw) : undefined;
   const reasonBlock =
@@ -864,7 +905,7 @@ export function parseDeclineLetter(text: string): ParsedDeclineLetter {
       claimNumber: headerClaim,
       acc45Number: acc45,
       dateOfInjury,
-      injuryDescription: injury?.replace(/\s+/g, ' ').trim(),
+      injuryDescription: injury,
     },
     alternateClaimNumbers,
     serviceRequested,

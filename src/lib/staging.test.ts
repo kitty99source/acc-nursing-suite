@@ -10,12 +10,16 @@ import {
   dedupeStagingByHash,
   reconcileStagingQueue,
   analyzeStagingQueue,
+  stagingIngressDedupKey,
+  addDismissedStagingKeys,
   type StagingItem,
 } from './staging';
 
 vi.mock('./idb', () => ({
   loadStagingQueue: vi.fn(async () => []),
   saveStagingQueue: vi.fn(async () => {}),
+  loadDismissedStaging: vi.fn(async () => []),
+  saveDismissedStaging: vi.fn(async () => {}),
 }));
 
 vi.mock('./letterCache', () => ({
@@ -29,13 +33,20 @@ vi.mock('./letterCache', () => ({
   }),
 }));
 
-import { loadStagingQueue, saveStagingQueue } from './idb';
+import {
+  loadStagingQueue,
+  saveStagingQueue,
+  loadDismissedStaging,
+  saveDismissedStaging,
+} from './idb';
 import { putCachedLetterBlob } from './letterCache';
 
 describe('staging', () => {
   beforeEach(() => {
     vi.mocked(loadStagingQueue).mockResolvedValue([]);
     vi.mocked(saveStagingQueue).mockClear();
+    vi.mocked(loadDismissedStaging).mockResolvedValue([]);
+    vi.mocked(saveDismissedStaging).mockClear();
   });
 
   it('creates staging item with pending status', () => {
@@ -108,6 +119,29 @@ describe('staging', () => {
     });
     const added = await importStagingSidecars([{ version: 1, item: second }]);
     expect(added).toBe(1);
+  });
+
+  it('skips importing a sidecar whose ingress key is tombstoned', async () => {
+    const item = createStagingItem({
+      type: 'letter-import-pending',
+      source: 'folder',
+      severity: 'info',
+      title: 'Discarded letter',
+      summary: 'From folder watch',
+      sourceHash: 'tombstoned-hash',
+      sourceFileName: 'discarded.pdf',
+    });
+    const key = stagingIngressDedupKey(item);
+    vi.mocked(loadDismissedStaging).mockResolvedValue([key as string]);
+    const added = await importStagingSidecars([{ version: 1, item }]);
+    expect(added).toBe(0);
+    expect(saveStagingQueue).not.toHaveBeenCalled();
+  });
+
+  it('merges and de-dupes dismissed ingress keys without unbounded growth', async () => {
+    vi.mocked(loadDismissedStaging).mockResolvedValue(['a', 'b']);
+    await addDismissedStagingKeys(['b', 'c', null, undefined, '']);
+    expect(saveDismissedStaging).toHaveBeenCalledWith(['a', 'b', 'c']);
   });
 
   it('imports new sidecar into staging queue', async () => {

@@ -14,10 +14,15 @@
         JS and CSS directly into this file. No eval is used (production React build).
       - 'wasm-unsafe-eval' lets the bundled Tesseract OCR engine compile its WebAssembly
         (needed to read scanned/image-only PDF letters); it does NOT enable JS eval().
+      - frame-src 'self' blob: lets the letter/attachment preview render PDFs in an <iframe>
+        whose src is a blob: object URL (src/components/PdfPreview.tsx). blob: iframes don't
+        carry their own CSP, so they inherit this directive; without the blob: source here,
+        Chrome/Edge refuses to render the PDF and shows "This content is blocked."
+      - object-src stays 'none': nothing in the app uses <object>/<embed>/<applet>.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'; worker-src 'self' blob:;"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; frame-src 'self' blob:; base-uri 'self'; form-action 'none'; worker-src 'self' blob:;"
     />
     <title>ACC District Nursing Admin Suite</title>
   </head>

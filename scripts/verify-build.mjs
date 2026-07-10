@@ -70,6 +70,14 @@ if (head.includes("connect-src 'none'")) {
   console.error("FAIL: CSP still connect-src 'none' — app cannot reach the local /_acc bridge");
   process.exitCode = 1;
 }
+console.log('CSP frame-src blob:  :', /frame-src[^;]*blob:/.test(head));
+if (!/frame-src[^;]*blob:/.test(head)) {
+  console.error(
+    "FAIL: CSP frame-src missing blob: — the attachment/letter PDF <iframe> preview " +
+      '(src/components/PdfPreview.tsx) will be blocked with "This content is blocked"',
+  );
+  process.exitCode = 1;
+}
 console.log('inline <script> tags :', (html.match(/<script\b[^>]*>/g) || []).length);
 console.log('external script src  :', /<script[^>]+src=["']https?:/.test(html));
 console.log('external link href   :', /<link[^>]+href=["']https?:/.test(html));

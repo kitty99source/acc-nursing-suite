@@ -31,6 +31,25 @@ export function PdfPreview({
     };
   }, [url]);
 
+  // A CSP frame-src/object-src violation blocking the blob: iframe does NOT reliably fire the
+  // <iframe>'s onError — Chrome/Edge just render "This content is blocked" inside the frame.
+  // The browser does dispatch a document-level `securitypolicyviolation` event for it, though,
+  // so listen for that as a defensive fallback in case the CSP is ever loosened incorrectly.
+  useEffect(() => {
+    if (!url) return;
+    const onViolation = (e: SecurityPolicyViolationEvent) => {
+      const directive = e.effectiveDirective || e.violatedDirective || '';
+      if (
+        (directive === 'frame-src' || directive === 'object-src' || directive === 'child-src') &&
+        (e.blockedURI === 'blob' || e.blockedURI?.startsWith('blob:'))
+      ) {
+        setFailed(true);
+      }
+    };
+    document.addEventListener('securitypolicyviolation', onViolation);
+    return () => document.removeEventListener('securitypolicyviolation', onViolation);
+  }, [url]);
+
   if (!file || !url) {
     return (
       <div

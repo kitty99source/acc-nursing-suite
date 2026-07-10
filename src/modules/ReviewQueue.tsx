@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import {
-  SectionTitle,
   Badge,
   EmptyState,
   Field,
@@ -120,6 +119,8 @@ export function ReviewQueue() {
   const [flash, setFlash] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [fixProgress, setFixProgress] = useState<string | null>(null);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const toolsRef = useRef<HTMLDivElement>(null);
 
   const [file, setFile] = useState<File | null>(null);
   const [fields, setFields] = useState<LetterCommitFormFields>(emptyLetterCommitForm());
@@ -136,6 +137,15 @@ export function ReviewQueue() {
   const letterInput = useRef<HTMLInputElement>(null);
   const seenSidecarIds = useRef<Set<string>>(new Set());
   const loadGen = useRef(0);
+
+  useEffect(() => {
+    if (!toolsOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (toolsRef.current && !toolsRef.current.contains(e.target as Node)) setToolsOpen(false);
+    };
+    window.addEventListener('mousedown', onDown);
+    return () => window.removeEventListener('mousedown', onDown);
+  }, [toolsOpen]);
 
   const refresh = useCallback(async () => {
     const pending = await loadStagingItems();
@@ -922,20 +932,26 @@ export function ReviewQueue() {
 
   return (
     <div>
-      <SectionTitle
-        title="Review final patient form"
-        subtitle="Check the letter and the pre-filled form, then Accept to create the patient case. Items under review do not count toward metrics until accepted."
-        actions={
-          sorted.length > 0 ? (
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge tone="accent">{sorted.length} under review</Badge>
-              {readyCount > 0 && <Badge tone="good">{readyCount} ready</Badge>}
-              {slaSummary.warn > 0 && <Badge tone="warn">{slaSummary.warn} approaching SLA</Badge>}
-              {overdueCount > 0 && <Badge tone="danger">{overdueCount} overdue</Badge>}
-            </div>
-          ) : undefined
-        }
-      />
+      <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+        <div className="min-w-0">
+          <h1 className="text-lg font-bold leading-tight truncate">Review final patient form</h1>
+          <p
+            className="text-xs truncate"
+            style={{ color: 'var(--muted)' }}
+            title="Check the letter and the pre-filled form, then Accept to create the patient case. Items under review do not count toward metrics until accepted."
+          >
+            Check the letter &amp; pre-filled form, then Accept to create the patient case.
+          </p>
+        </div>
+        {sorted.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            <Badge tone="accent">{sorted.length} under review</Badge>
+            {readyCount > 0 && <Badge tone="good">{readyCount} ready</Badge>}
+            {slaSummary.warn > 0 && <Badge tone="warn">{slaSummary.warn} approaching SLA</Badge>}
+            {overdueCount > 0 && <Badge tone="danger">{overdueCount} overdue</Badge>}
+          </div>
+        )}
+      </div>
 
       {bridgeStatus === 'unavailable' && (
         <div
@@ -980,7 +996,7 @@ export function ReviewQueue() {
         </p>
       )}
 
-      <div className="flex flex-wrap items-center gap-2 mb-4">
+      <div className="flex flex-wrap items-center gap-2 mb-3">
         {sorted.length > 0 && (
           <div className="relative" style={{ minWidth: 220, flex: '1 1 260px', maxWidth: 380 }}>
             <TextInput
@@ -1018,7 +1034,7 @@ export function ReviewQueue() {
             )}
           </div>
         )}
-        <div className="flex flex-wrap gap-2 ml-auto">
+        <div className="flex flex-wrap items-center gap-2 ml-auto">
           {unnamedCount > 0 && (
             <button
               type="button"
@@ -1030,58 +1046,92 @@ export function ReviewQueue() {
               Fix names now ({unnamedCount})
             </button>
           )}
-          {missingDateCount > 0 && (
-            <button
-              type="button"
-            className="btn btn-sm"
-            disabled={busy}
-            onClick={() => void backfillEmailDates()}
-              title="Look up the email received date for letters synced before this field existed"
-            >
-              Backfill email dates ({missingDateCount})
-            </button>
-          )}
-          <button
-            type="button"
-            className="btn btn-sm"
-            disabled={busy}
-            onClick={() => void importStagingFolder()}
-            title="Pick your ACC-Inbox folder if letters are not loading automatically"
-          >
-            Import letters from folder
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm"
-            disabled={busy}
-            onClick={() => sidecarInput.current?.click()}
-            title="Pick individual letter files from your inbox staging folder"
-          >
-            Import letter files
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm"
-            disabled={busy}
-            onClick={() => void checkQueueHealth()}
-            title="Show the true letter count and remove byte-identical duplicates"
-          >
-            Check queue health
-          </button>
-          {unnamedCount > 0 && (
-            <button
-              type="button"
-              className="btn btn-danger btn-sm"
-              disabled={busy}
-              onClick={() => void discardUnnamed()}
-              title="Permanently remove letters that still have no patient name (filename-only rows)"
-            >
-              Discard unnamed ({unnamedCount})
-            </button>
-          )}
           <button type="button" className="btn btn-sm" disabled={busy} onClick={() => void refresh()}>
             Refresh
           </button>
+          <div className="relative" ref={toolsRef}>
+            <button
+              type="button"
+              className="btn btn-sm"
+              aria-haspopup="menu"
+              aria-expanded={toolsOpen}
+              onClick={() => setToolsOpen((v) => !v)}
+            >
+              More ▾
+            </button>
+            {toolsOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 mt-1 z-20 flex flex-col gap-1 p-1.5 rounded-card"
+                style={{
+                  minWidth: 220,
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn btn-sm w-full justify-start"
+                  disabled={busy}
+                  onClick={() => {
+                    setToolsOpen(false);
+                    void importStagingFolder();
+                  }}
+                >
+                  Import letters from folder
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm w-full justify-start"
+                  disabled={busy}
+                  onClick={() => {
+                    setToolsOpen(false);
+                    sidecarInput.current?.click();
+                  }}
+                >
+                  Import letter files
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm w-full justify-start"
+                  disabled={busy}
+                  onClick={() => {
+                    setToolsOpen(false);
+                    void checkQueueHealth();
+                  }}
+                >
+                  Check queue health
+                </button>
+                {missingDateCount > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-sm w-full justify-start"
+                    disabled={busy}
+                    onClick={() => {
+                      setToolsOpen(false);
+                      void backfillEmailDates();
+                    }}
+                  >
+                    Backfill email dates ({missingDateCount})
+                  </button>
+                )}
+                {unnamedCount > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-danger btn-sm w-full justify-start"
+                    disabled={busy}
+                    onClick={() => {
+                      setToolsOpen(false);
+                      void discardUnnamed();
+                    }}
+                  >
+                    Discard unnamed ({unnamedCount})
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         <input
           ref={sidecarInput}
@@ -1118,7 +1168,7 @@ export function ReviewQueue() {
           <div
             className="flex flex-col rounded-card"
             style={{
-              maxHeight: 'calc(100vh - 210px)',
+              maxHeight: 'calc(100vh - 150px)',
               border: '1px solid var(--border)',
               background: 'var(--surface)',
               overflow: 'hidden',
@@ -1195,7 +1245,7 @@ export function ReviewQueue() {
           <div
             className="flex flex-col rounded-card min-w-0"
             style={{
-              maxHeight: 'calc(100vh - 210px)',
+              maxHeight: 'calc(100vh - 150px)',
               border: '1px solid var(--border)',
               background: 'var(--surface)',
               overflow: 'hidden',

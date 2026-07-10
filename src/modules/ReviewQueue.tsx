@@ -20,10 +20,10 @@ import {
   removeByteIdenticalDuplicates,
   removeUnnamedStagingItems,
   removeUnhashedStagingItems,
+  dismissStagingItems,
   stagingAgeLabel,
   type StagingItem,
 } from '../lib/staging';
-import { hrqSlaStatus, hrqSlaLabel, summarizeQueueSla, type SlaLevel } from '../lib/hrqSla';
 import { appendAudit, recordHrqResolution } from '../lib/auditLog';
 import { LETTER_IMPORT_ACCEPT } from '../components/LetterImportButton';
 import {
@@ -58,12 +58,6 @@ import {
 import type { LetterParseResult, ParsedLetter, ParsedServiceRow } from '../lib/letterImport';
 import { hashBlob } from '../lib/letterImport';
 import type { ApprovalServiceCode } from '../types';
-
-function slaTone(level: SlaLevel): 'good' | 'warn' | 'danger' {
-  if (level === 'danger') return 'danger';
-  if (level === 'warn') return 'warn';
-  return 'good';
-}
 
 function typeLabel(type: StagingItem['type']): string {
   switch (type) {
@@ -253,9 +247,6 @@ export function ReviewQueue() {
     () => sorted.find((i) => i.id === selectedId) ?? null,
     [sorted, selectedId],
   );
-  const slaSummary = useMemo(() => summarizeQueueSla(sorted), [sorted]);
-  const overdueCount = slaSummary.breached;
-
   async function discardUnnamed() {
     if (busy) return;
     setBusy(true);
@@ -952,6 +943,7 @@ export function ReviewQueue() {
     if (!ok) return;
     const advanceTo = nextAfter(item.id);
     await updateStagingItem(item.id, { status: 'rejected' });
+    await dismissStagingItems([item]);
     await recordHrqResolution({
       action: 'hrq-reject',
       stagingItemId: item.id,
@@ -1006,8 +998,6 @@ export function ReviewQueue() {
           <div className="flex items-center gap-2 flex-wrap shrink-0">
             <Badge tone="accent">{sorted.length} under review</Badge>
             {readyCount > 0 && <Badge tone="good">{readyCount} ready</Badge>}
-            {slaSummary.warn > 0 && <Badge tone="warn">{slaSummary.warn} approaching SLA</Badge>}
-            {overdueCount > 0 && <Badge tone="danger">{overdueCount} overdue</Badge>}
           </div>
         )}
       </div>
@@ -1094,15 +1084,15 @@ export function ReviewQueue() {
           </div>
         )}
         <div className="flex flex-wrap items-center gap-2 ml-auto">
-          {unhashedCount > 0 && (
+          {unnamedCount > 0 && (
             <button
               type="button"
               className="btn btn-danger btn-sm"
               disabled={busy}
-              onClick={() => void discardUnhashed()}
-              title="Remove rows with no content hash — they can't be fetched or parsed, so they stay filename-only forever"
+              onClick={() => void discardUnnamed()}
+              title="Clear rows that still show a filename only. Try “Fix names now” first for any that are genuinely readable."
             >
-              Remove unhashed ({unhashedCount})
+              Discard unnamed ({unnamedCount})
             </button>
           )}
           <button type="button" className="btn btn-sm" disabled={busy} onClick={() => void refresh()}>
@@ -1189,17 +1179,18 @@ export function ReviewQueue() {
                     Backfill email dates ({missingDateCount})
                   </button>
                 )}
-                {unnamedCount > 0 && (
+                {unhashedCount > 0 && (
                   <button
                     type="button"
                     className="btn btn-danger btn-sm w-full justify-start"
                     disabled={busy}
                     onClick={() => {
                       setToolsOpen(false);
-                      void discardUnnamed();
+                      void discardUnhashed();
                     }}
+                    title="Remove rows with no content hash — they can't be fetched or parsed, so they stay filename-only forever"
                   >
-                    Discard unnamed ({unnamedCount})
+                    Remove unhashed ({unhashedCount})
                   </button>
                 )}
               </div>
@@ -1261,7 +1252,6 @@ export function ReviewQueue() {
                 </p>
               ) : (
                 visible.map((item) => {
-                  const sla = hrqSlaStatus(item.createdAt);
                   const preview = stagingPreviewOf(item);
                   const active = item.id === selectedId;
                   const ready = Boolean(item.patientName?.trim() || preview?.patientName?.trim());
@@ -1295,9 +1285,6 @@ export function ReviewQueue() {
                         <span className="font-semibold text-sm truncate flex-1">
                           {listTitle(item)}
                         </span>
-                        {sla.level !== 'ok' && (
-                          <Badge tone={slaTone(sla.level)}>{hrqSlaLabel(sla)}</Badge>
-                        )}
                       </div>
                       <div
                         className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs pl-4"

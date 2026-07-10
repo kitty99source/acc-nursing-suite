@@ -20,7 +20,6 @@ const DB_VERSION = 3;
 
 const WORKING_COPY_KEY = 'workingCopy';
 const FILE_HANDLE_KEY = 'fileHandle';
-const RECENT_FILES_KEY = 'recentFiles';
 const AUDIT_LOG_KEY = 'audit.jsonl';
 const IMPORT_HISTORY_KEY = 'importHistory';
 const COMPLIANCE_SNAPSHOT_KEY = 'complianceSnapshot';
@@ -137,22 +136,6 @@ export async function loadFileHandle(): Promise<FileSystemFileHandle | undefined
 
 export async function clearFileHandle(): Promise<void> {
   return idbDelete(FILE_HANDLE_KEY);
-}
-
-// Recent .accdata files the user can "Save into" directly. Each record holds a
-// structured-clonable FileSystemFileHandle plus lightweight display metadata.
-// Stored most-recent-first; capped by the caller (see lib/recentFiles).
-export async function loadRecentFiles(): Promise<import('./recentFiles').RecentFileEntry[]> {
-  const raw = await idbGet<import('./recentFiles').RecentFileEntry[]>(RECENT_FILES_KEY);
-  return Array.isArray(raw) ? raw : [];
-}
-
-export async function saveRecentFiles(entries: import('./recentFiles').RecentFileEntry[]): Promise<void> {
-  return idbSet(RECENT_FILES_KEY, entries);
-}
-
-export async function clearRecentFiles(): Promise<void> {
-  return idbDelete(RECENT_FILES_KEY);
 }
 
 // ----------------------------------------------------------------------------

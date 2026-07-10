@@ -15,7 +15,7 @@ export const HRQ_BATCH_MIN_CONFIDENCE = 90;
  * letters (claim/NS extraction, etc.). Cached previews stamped with an older version
  * are treated as stale so the Review Queue re-parses them from bytes when opened.
  */
-export const LETTER_PARSER_VERSION = 2;
+export const LETTER_PARSER_VERSION = 3;
 
 export interface StagingParsedPreview {
   kind: 'approval' | 'decline';

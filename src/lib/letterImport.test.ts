@@ -12,6 +12,7 @@ import {
   assignRecordStatus,
   normalizeClaimNumber,
   classifyLetter,
+  extractInjuryDescription,
   buildLetterIssues,
   describeHistoricPackageRows,
   letterKindToDocumentKind,
@@ -201,6 +202,41 @@ describe('letterImport — decline parse', () => {
     const parsed = parseDeclineLetter(text);
     expect(parsed.patient.name).toBe('Mille Butter');
     expect(parsed.serviceRequested).toBe('Extended Nursing');
+  });
+});
+
+describe('letterImport — injury extraction', () => {
+  it('captures a multi-line coded injury list up to the next section', () => {
+    const text = [
+      'Client name: John Smith',
+      'Date of injury: 01/06/2024',
+      'Injury(s):',
+      'S830. Open wound of scalp - Side: Not Applicable',
+      'T1400 Unspecified superficial injury of unspecified body region',
+      'S019 Open wound of head, part unspecified',
+      'S0600 Concussion',
+      'Services approved',
+      'NS04 Nursing 01/06/2024 07/06/2024 5',
+    ].join('\n');
+    const injury = extractInjuryDescription(text);
+    expect(injury).toContain('S830. Open wound of scalp - Side: Not Applicable');
+    expect(injury).toContain('S0600 Concussion');
+    expect(injury).not.toContain('Services approved');
+    expect(injury).not.toContain('NS04');
+  });
+
+  it('captures a single-line injury phrasing', () => {
+    expect(extractInjuryDescription('Injury(s): Sprain Services approved')).toBe('Sprain');
+  });
+
+  it('handles the decline phrasing without a colon and bounds on Thank you', () => {
+    const text =
+      'Date of injury 19/04/2025 Injury(s) M037z Cellulitis - Side: Right Thank you for sending us a request';
+    expect(extractInjuryDescription(text)).toBe('M037z Cellulitis - Side: Right');
+  });
+
+  it('returns undefined when no injury label is present', () => {
+    expect(extractInjuryDescription('Client name: Jane Doe Services approved')).toBeUndefined();
   });
 });
 

@@ -3,7 +3,12 @@
 // directly to live AppData until sign-off (P8-001).
 // ============================================================================
 
-import { loadStagingQueue as idbLoadStaging, saveStagingQueue as idbSaveStaging } from './idb';
+import {
+  loadStagingQueue as idbLoadStaging,
+  saveStagingQueue as idbSaveStaging,
+  loadDismissedStaging as idbLoadDismissed,
+  saveDismissedStaging as idbSaveDismissed,
+} from './idb';
 import { base64ToBlob, getCachedLetterParse, putCachedLetterBlob } from './letterCache';
 import { hrqSlaLevel } from './hrqSla';
 import { hashBlob } from './letterImport';
@@ -114,6 +119,44 @@ export function isStagingIngressDuplicate(
   return stagingIngressDedupKey(existing) === key;
 }
 
+// ----------------------------------------------------------------------------
+// Dismissal tombstones. Keyed by the same ingress key used for import dedup so
+// a discarded/removed/rejected letter never re-imports from its .staging
+// sidecar, and the dismissal persists across restarts.
+// ----------------------------------------------------------------------------
+
+/** Cap tombstone growth; keep the most-recently-added keys. Correctness first. */
+const DISMISSED_STAGING_CAP = 5000;
+
+export async function loadDismissedStagingKeys(): Promise<Set<string>> {
+  return new Set(await idbLoadDismissed());
+}
+
+/** Record ingress keys as dismissed. Null/empty keys are ignored. */
+export async function addDismissedStagingKeys(keys: Array<string | null | undefined>): Promise<void> {
+  const clean = keys.filter((k): k is string => Boolean(k));
+  if (clean.length === 0) return;
+  const existing = await idbLoadDismissed();
+  const merged = [...existing];
+  const seen = new Set(existing);
+  for (const k of clean) {
+    if (!seen.has(k)) {
+      seen.add(k);
+      merged.push(k);
+    }
+  }
+  const capped =
+    merged.length > DISMISSED_STAGING_CAP ? merged.slice(merged.length - DISMISSED_STAGING_CAP) : merged;
+  await idbSaveDismissed(capped);
+}
+
+/** Record the ingress keys of the given items as dismissed (for reject/decline flows). */
+export async function dismissStagingItems(
+  items: Array<Pick<StagingItem, 'sourceHash' | 'sourceFileName'>>,
+): Promise<void> {
+  await addDismissedStagingKeys(items.map((i) => stagingIngressDedupKey(i)));
+}
+
 export async function addStagingItem(item: StagingItem): Promise<void> {
   const existing = await idbLoadStaging();
   if (existing.some((e) => isStagingIngressDuplicate(e, item))) {
@@ -142,7 +185,10 @@ async function cacheSidecarBytes(sc: StagingSidecar): Promise<void> {
 /** Import one or more folder-watch JSON sidecars into IDB staging (never live data). */
 export async function importStagingSidecars(sidecars: StagingSidecar[]): Promise<number> {
   let added = 0;
+  const dismissed = await loadDismissedStagingKeys();
   for (const sc of sidecars) {
+    const key = stagingIngressDedupKey(sc.item);
+    if (key && dismissed.has(key)) continue;
     const before = await idbLoadStaging();
     const dup = before.some((e) => isStagingIngressDuplicate(e, sc.item));
     if (dup) continue;
@@ -367,10 +413,14 @@ export async function removeByteIdenticalDuplicates(): Promise<number> {
  */
 export async function removeUnnamedStagingItems(): Promise<number> {
   const all = await idbLoadStaging();
-  const kept = all.filter((i) => i.status !== 'pending' || Boolean(i.patientName?.trim()));
-  const removed = all.length - kept.length;
-  if (removed > 0) await idbSaveStaging(kept);
-  return removed;
+  const keep = (i: StagingItem) => i.status !== 'pending' || Boolean(i.patientName?.trim());
+  const kept = all.filter(keep);
+  const removed = all.filter((i) => !keep(i));
+  if (removed.length > 0) {
+    await addDismissedStagingKeys(removed.map((i) => stagingIngressDedupKey(i)));
+    await idbSaveStaging(kept);
+  }
+  return removed.length;
 }
 
 /**
@@ -381,10 +431,17 @@ export async function removeUnnamedStagingItems(): Promise<number> {
  */
 export async function removeUnhashedStagingItems(): Promise<number> {
   const all = await idbLoadStaging();
-  const kept = all.filter((i) => i.status !== 'pending' || Boolean(i.sourceHash?.trim()));
-  const removed = all.length - kept.length;
-  if (removed > 0) await idbSaveStaging(kept);
-  return removed;
+  const keep = (i: StagingItem) => i.status !== 'pending' || Boolean(i.sourceHash?.trim());
+  const kept = all.filter(keep);
+  const removed = all.filter((i) => !keep(i));
+  if (removed.length > 0) {
+    // Unhashed rows have no ingress key, so tombstones can't catch them; the
+    // key helper returns null and is simply ignored. Recorded for completeness
+    // in case a row carries a hash under a different status.
+    await addDismissedStagingKeys(removed.map((i) => stagingIngressDedupKey(i)));
+    await idbSaveStaging(kept);
+  }
+  return removed.length;
 }
 
 /** Collapse duplicate-hash items, keeping the earliest-created one of each hash. */

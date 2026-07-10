@@ -7,6 +7,7 @@ import { parseStagingSidecar, type StagingSidecar } from './staging';
 
 const STAGING_URL = '/_acc/staging';
 const INBOX_FILE_URL = '/_acc/inbox-file';
+const EMAIL_META_URL = '/_acc/email-meta';
 
 /** Result of probing launch.ps1 `/_acc/staging` (folder-watch sidecar list). */
 export type StagingBridgeStatus = 'ok' | 'empty' | 'unavailable';
@@ -62,6 +63,33 @@ export async function fetchInboxFileByHash(hash: string): Promise<File | undefin
     }
     // Prefer filename from Content-Disposition if present (launch.ps1 does not set it today).
     return new File([blob], name, { type: ctype });
+  } catch {
+    return undefined;
+  }
+}
+
+export interface EmailMetaResult {
+  emailDate: string;
+  emailDateApprox: boolean;
+}
+
+/**
+ * Look up the email received date for a letter by content hash, straight from
+ * `.email-sync/{hash}.meta.json` via launch.ps1. Used to backfill emailDate onto
+ * staging items that were already imported before this field existed (re-importing
+ * the sidecar would be a no-op since the ingress key already exists in the queue).
+ */
+export async function fetchEmailMetaForHash(hash: string): Promise<EmailMetaResult | undefined> {
+  const h = hash.trim().toLowerCase();
+  if (!/^[a-f0-9]{64}$/.test(h)) return undefined;
+  try {
+    const res = await fetch(`${EMAIL_META_URL}?hash=${encodeURIComponent(h)}`, { cache: 'no-store' });
+    if (!res.ok) return undefined;
+    const raw = (await res.json()) as unknown;
+    if (!raw || typeof raw !== 'object') return undefined;
+    const obj = raw as Record<string, unknown>;
+    if (typeof obj.emailDate !== 'string' || !obj.emailDate.trim()) return undefined;
+    return { emailDate: obj.emailDate, emailDateApprox: obj.emailDateApprox === true };
   } catch {
     return undefined;
   }

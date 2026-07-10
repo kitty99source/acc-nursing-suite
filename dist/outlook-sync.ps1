@@ -489,12 +489,17 @@ function Write-EmailSyncMeta {
         [string]$Sender,
         [string]$FileName,
         [string]$DescriptiveFileName,
-        [string]$RelativePath
+        [string]$RelativePath,
+        [datetime]$EmailDate
     )
     $metaDir = Join-Path $Inbox '.email-sync'
     [void][System.IO.Directory]::CreateDirectory($metaDir)
     $metaPath = Join-Path $metaDir ("{0}.meta.json" -f $Hash)
     $tmpPath = $metaPath + '.tmp'
+    $emailDateIso = $null
+    if ($EmailDate -and $EmailDate -ne [datetime]::MinValue) {
+        try { $emailDateIso = $EmailDate.ToUniversalTime().ToString('o') } catch {}
+    }
     $meta = [ordered]@{
         version            = 1
         hash               = $Hash
@@ -502,6 +507,7 @@ function Write-EmailSyncMeta {
         subject            = $Subject
         sender             = $Sender
         savedAt            = (Get-Date).ToUniversalTime().ToString('o')
+        emailDate          = $emailDateIso
         fileName           = $FileName
         descriptiveFileName = $DescriptiveFileName
         patientName        = (Get-PatientNameFromSubject -Subject $Subject)
@@ -1054,7 +1060,7 @@ try {
                     # SHA-256 meta for folder-watch enrichment + launch.ps1 /_acc/inbox-file.
                     try {
                         $fileHash = Get-FileSha256Hex -FilePath $dest
-                        Write-EmailSyncMeta -Inbox $inbox -Hash $fileHash -EntryId $entryId -Subject $subject -Sender $from -FileName $fileName -DescriptiveFileName $savedLeaf -RelativePath $savedLeaf
+                        Write-EmailSyncMeta -Inbox $inbox -Hash $fileHash -EntryId $entryId -Subject $subject -Sender $from -FileName $fileName -DescriptiveFileName $savedLeaf -RelativePath $savedLeaf -EmailDate $received
                     } catch {
                         Write-SyncLine ("  WARN - could not write .email-sync meta: {0}" -f $_.Exception.Message)
                     }

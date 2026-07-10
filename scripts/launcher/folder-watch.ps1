@@ -134,6 +134,8 @@ function New-FolderWatchSidecar {
             if ($meta.patientName) { $item.patientName = [string]$meta.patientName }
             if ($meta.claimNumber) { $item.claimNumber = [string]$meta.claimNumber }
             if ($meta.accId) { $item.accId = [string]$meta.accId }
+            if ($meta.emailDate) { $item.emailDate = [string]$meta.emailDate }
+            if ($meta.emailDateApprox) { $item.emailDateApprox = [bool]$meta.emailDateApprox }
             if ($meta.descriptiveFileName) { $item.expectedFileName = [string]$meta.descriptiveFileName }
             elseif ($meta.fileName) { $item.expectedFileName = [string]$meta.fileName }
             if ($meta.subject) {

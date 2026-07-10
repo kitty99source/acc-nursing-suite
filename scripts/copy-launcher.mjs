@@ -77,6 +77,8 @@ const launcherFiles = [
   'Start Email Diagnose.cmd',
   'Rename-AccInboxAttachments.ps1',
   'Start Rename Inbox Files.cmd',
+  'Backfill-EmailDates.ps1',
+  'Start Backfill Email Dates.cmd',
   'Start WFH Mode.cmd',
   'wfh-mode.ps1',
   'Start Portal Discover.cmd',

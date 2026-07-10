@@ -113,3 +113,65 @@ describe('<PdfPreview /> content-sniffing fallback', () => {
     expect(container.querySelector('iframe')).toBeTruthy();
   });
 });
+
+describe('<PdfPreview /> object-URL MIME correction (auto-download regression)', () => {
+  // Root cause of the "opens a letter and it silently downloads instead of
+  // previewing" bug: an <iframe src={blobUrl}> only gets the browser's PDF
+  // viewer if the Blob handed to createObjectURL actually has type
+  // application/pdf — the filename/extension is invisible on a blob: URL.
+  // Byte-sniffing/name-extension logic could previously flag a file as a PDF
+  // for RENDER-PATH purposes while still calling createObjectURL on the
+  // original, generically-typed Blob — that mismatch is exactly what made
+  // Chrome/Edge intercept the navigation as a download.
+
+  it('re-types a .pdf-named file with a generic MIME before creating the object URL', async () => {
+    // Name says .pdf, but the Blob's own `type` was left generic — the real
+    // world reproduction of "normal .pdf attachment auto-downloads".
+    const file = new File([PDF_BYTES], 'letter.pdf', { type: 'application/octet-stream' });
+    const createObjectURL = vi.fn(() => 'blob:mock');
+    vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL: vi.fn() });
+
+    await act(async () => {
+      root.render(<PdfPreview file={file} title="Approval letter" />);
+    });
+    await flush();
+
+    expect(container.querySelector('iframe')).toBeTruthy();
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    const typedArg = createObjectURL.mock.calls[0][0] as Blob;
+    expect(typedArg.type).toBe('application/pdf');
+  });
+
+  it('re-types a nameless/typeless blob once byte-sniffing confirms PDF', async () => {
+    const file = new File([PDF_BYTES], '2d5d827c-94cd-46f7-8e3e-0ba051001379', {
+      type: 'application/octet-stream',
+    });
+    const createObjectURL = vi.fn(() => 'blob:mock');
+    vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL: vi.fn() });
+
+    await act(async () => {
+      root.render(<PdfPreview file={file} title="Approval letter" />);
+    });
+    await flush();
+    await flush();
+
+    expect(container.querySelector('iframe')).toBeTruthy();
+    // First call is the initial (unsniffed) render; the final call — once the
+    // async sniff resolves to 'pdf' — must have been re-typed.
+    const lastArg = createObjectURL.mock.calls.at(-1)?.[0] as Blob;
+    expect(lastArg.type).toBe('application/pdf');
+  });
+
+  it('does not re-wrap a Blob/File whose type is already application/pdf', async () => {
+    const file = new File([PDF_BYTES], 'letter.pdf', { type: 'application/pdf' });
+    const createObjectURL = vi.fn(() => 'blob:mock');
+    vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL: vi.fn() });
+
+    await act(async () => {
+      root.render(<PdfPreview file={file} title="Approval letter" />);
+    });
+    await flush();
+
+    expect(createObjectURL).toHaveBeenCalledWith(file);
+  });
+});

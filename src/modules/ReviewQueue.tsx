@@ -10,6 +10,8 @@ import {
   TextArea,
 } from '../components/ui';
 import { PdfPreview } from '../components/PdfPreview';
+import { Modal } from '../components/Modal';
+import { IconExpand } from '../components/icons';
 import { useConfirm } from '../components/useConfirm';
 import {
   loadStagingItems,
@@ -239,6 +241,7 @@ export function ReviewQueue() {
   }>({ blockers: [], loading: false, error: null });
 
   const [confirm, confirmDialog] = useConfirm();
+  const [previewExpanded, setPreviewExpanded] = useState(false);
   const sidecarInput = useRef<HTMLInputElement>(null);
   const letterInput = useRef<HTMLInputElement>(null);
   const seenSidecarIds = useRef<Set<string>>(new Set());
@@ -905,6 +908,7 @@ export function ReviewQueue() {
   // 2.5s auto-refresh replaces item references), reloading the file and causing
   // the preview to flicker between error and fallback states.
   useEffect(() => {
+    setPreviewExpanded(false);
     if (!selected) {
       setFile(null);
       setParsed(null);
@@ -1963,13 +1967,26 @@ export function ReviewQueue() {
                     <div className="min-w-0" style={{ order: 2 }}>
                       <div className="flex items-center justify-between mb-2 gap-2">
                         <h3 className="text-sm font-semibold">Attachment</h3>
-                        <button
-                          type="button"
-                          className="btn btn-sm shrink-0"
-                          onClick={() => letterInput.current?.click()}
-                        >
-                          {file ? 'Replace file' : 'Pick letter file'}
-                        </button>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {file && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-icon"
+                              onClick={() => setPreviewExpanded(true)}
+                              aria-label="Open full size"
+                              title="Open full size"
+                            >
+                              <IconExpand />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn-sm shrink-0"
+                            onClick={() => letterInput.current?.click()}
+                          >
+                            {file ? 'Replace file' : 'Pick letter file'}
+                          </button>
+                        </div>
                       </div>
                       {parseMeta.loading ? (
                         <div
@@ -2199,6 +2216,22 @@ export function ReviewQueue() {
             )}
           </div>
         </div>
+      )}
+
+      {previewExpanded && file && (
+        <Modal
+          open={previewExpanded}
+          title={selected?.sourceFileName || selected?.title || 'Attachment'}
+          onClose={() => setPreviewExpanded(false)}
+          size="xl"
+        >
+          <PdfPreview
+            file={file}
+            title={selected?.sourceFileName || selected?.title}
+            text={parsed?.rawText}
+            height={Math.max(400, window.innerHeight - 220)}
+          />
+        </Modal>
       )}
 
       {confirmDialog}

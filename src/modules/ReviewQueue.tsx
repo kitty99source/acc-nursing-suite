@@ -1234,20 +1234,21 @@ export function ReviewQueue() {
                         </Badge>
                       )}
                     </div>
-                    <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                      {selected.summary}
+                    <p
+                      className="text-xs mt-0.5 truncate"
+                      style={{ color: 'var(--muted)' }}
+                    >
+                      {formatEmailDate(selected.emailDate) && (
+                        <>
+                          Email {formatEmailDate(selected.emailDate)}
+                          {selected.emailDateApprox && ' (approx.)'}
+                        </>
+                      )}
+                      {formatEmailDate(selected.emailDate) && selected.sourceFileName && ' · '}
+                      {selected.sourceFileName && (
+                        <span className="font-mono">{selected.sourceFileName}</span>
+                      )}
                     </p>
-                    {formatEmailDate(selected.emailDate) && (
-                      <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
-                        Email received: <strong>{formatEmailDate(selected.emailDate)}</strong>
-                        {selected.emailDateApprox && ' (approx.)'}
-                      </p>
-                    )}
-                    {selected.sourceFileName && (
-                      <p className="text-xs mt-1 font-mono truncate" style={{ color: 'var(--muted)' }}>
-                        {selected.sourceFileName}
-                      </p>
-                    )}
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
@@ -1277,12 +1278,9 @@ export function ReviewQueue() {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4">
+                <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-3">
                   {matchedPatient ? (
-                    <div
-                      className="text-sm p-2.5 rounded-card"
-                      style={{ background: 'var(--accent-soft)', color: 'var(--text)' }}
-                    >
+                    <p className="text-xs" style={{ color: 'var(--muted)' }}>
                       Links to existing patient <strong>{matchedPatient.name}</strong>
                       {matchedClaim ? (
                         <>
@@ -1290,17 +1288,14 @@ export function ReviewQueue() {
                           / claim <strong>{matchedClaim.claimNumber || matchedClaim.id}</strong>
                         </>
                       ) : (
-                        ' - will create a new claim if needed'
+                        ' — will create a new claim if needed'
                       )}
                       .
-                    </div>
+                    </p>
                   ) : (
-                    <div
-                      className="text-sm p-2.5 rounded-card"
-                      style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}
-                    >
+                    <p className="text-xs" style={{ color: 'var(--muted)' }}>
                       Will create a <strong>new patient</strong> and claim when you Accept.
-                    </div>
+                    </p>
                   )}
 
                   {parseMeta.blockers.length > 0 && (
@@ -1337,7 +1332,7 @@ export function ReviewQueue() {
                       alignItems: 'start',
                     }}
                   >
-                    <div className="min-w-0">
+                    <div className="min-w-0" style={{ order: 2 }}>
                       <div className="flex items-center justify-between mb-2 gap-2">
                         <h3 className="text-sm font-semibold">Attachment</h3>
                         <button
@@ -1352,8 +1347,8 @@ export function ReviewQueue() {
                         <div
                           className="flex items-center justify-center text-sm rounded-card"
                           style={{
-                            minHeight: 360,
-                            height: 'min(480px, 50vh)',
+                            minHeight: 300,
+                            height: 'min(380px, 42vh)',
                             color: 'var(--muted)',
                             border: '1px dashed var(--border)',
                           }}
@@ -1365,11 +1360,12 @@ export function ReviewQueue() {
                           file={file}
                           title={selected.sourceFileName || selected.title}
                           text={parsed?.rawText}
+                          height={380}
                         />
                       )}
                     </div>
 
-                    <div className="space-y-4 min-w-0">
+                    <div className="space-y-3 min-w-0" style={{ order: 1 }}>
                       <div>
                         <h3 className="text-sm font-semibold mb-2">Patient</h3>
                         <div className="grid gap-3" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}>

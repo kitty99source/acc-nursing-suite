@@ -9,6 +9,7 @@ import {
   LETTER_PARSER_VERSION,
   type StagingParsedPreview,
 } from './hrqBatch';
+import { hasFileExtension, sniffFileKind, withExtensionForKind } from './fileSniff';
 
 export function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -74,6 +75,28 @@ export async function putCachedLetterBlob(hash: string, blob: Blob): Promise<voi
   await saveLetterBlob(hash, blob);
 }
 
+/**
+ * Content-sniff a possibly-extensionless name/generic-mime combination as
+ * the authoritative fallback (see fileSniff.ts) — used below whenever the
+ * name/mime heuristics leave us with a name that has no recognizable
+ * extension at all (e.g. a bare GUID from `expectedFileName`/`sourceFileName`).
+ */
+async function repairExtensionlessName(
+  blobOrFile: Blob,
+  name: string,
+  type: string,
+): Promise<{ name: string; type: string }> {
+  if (hasFileExtension(name)) return { name, type };
+  const sniffed = await sniffFileKind(blobOrFile);
+  const repairedName = withExtensionForKind(name, sniffed);
+  let repairedType = type;
+  if (sniffed === 'pdf') repairedType = 'application/pdf';
+  else if (sniffed === 'docx') {
+    repairedType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  }
+  return { name: repairedName, type: repairedType };
+}
+
 export async function getCachedLetterFile(
   hash: string,
   preferredName?: string,
@@ -87,7 +110,8 @@ export async function getCachedLetterFile(
       (isGenericMime(blob.type) ? mimeFromName(name) : undefined) ||
       blob.type ||
       'application/octet-stream';
-    return new File([blob], name, { type });
+    const repaired = await repairExtensionlessName(blob, name, type);
+    return new File([blob], repaired.name, { type: repaired.type });
   }
   const preview = await getCachedLetterParse(hash);
   if (!preview) return undefined;
@@ -95,8 +119,9 @@ export async function getCachedLetterFile(
   const name = preferredName?.trim();
   const type =
     mime || (isGenericMime(file.type) ? mimeFromName(name || file.name) : undefined) || file.type;
-  if ((name && name !== file.name) || type !== file.type) {
-    return new File([file], name || file.name, { type });
+  const repaired = await repairExtensionlessName(file, name || file.name, type);
+  if (repaired.name !== file.name || repaired.type !== file.type) {
+    return new File([file], repaired.name, { type: repaired.type });
   }
   return file;
 }

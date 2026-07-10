@@ -1,6 +1,7 @@
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import type { AppData, ApprovalServiceCode, Claim, DocumentKind, Patient } from '../types';
 import { SERVICE_CODES } from './serviceCodes';
+import { sniffFileKind } from './fileSniff';
 
 // pdf.js v6 requires an explicit worker (disableWorker was removed in v6).
 // Worker is copied to public/pdf.worker.mjs → dist/ beside index.html so the
@@ -474,6 +475,25 @@ export function isWordDocument(file: Blob & { name?: string }): boolean {
 export function isPdfDocument(file: Blob & { name?: string }): boolean {
   const name = (file instanceof File ? file.name : file.name ?? '').toLowerCase();
   return file.type === 'application/pdf' || name.endsWith('.pdf');
+}
+
+/**
+ * Resolve whether `file` is a PDF or Word document. Tries the cheap
+ * name/MIME heuristics first; only when BOTH are inconclusive (e.g. a
+ * bridge-resolved file with a generic name/type) does it sniff the actual
+ * bytes for the `%PDF-` / `PK\x03\x04` magic numbers. This keeps the fast
+ * path synchronous-equivalent while still correctly classifying a
+ * correctly-byte'd-but-mis-named/mis-typed file.
+ */
+export async function detectDocumentKind(
+  file: Blob & { name?: string },
+): Promise<'pdf' | 'word' | 'unknown'> {
+  if (isPdfDocument(file)) return 'pdf';
+  if (isWordDocument(file)) return 'word';
+  const sniffed = await sniffFileKind(file);
+  if (sniffed === 'pdf') return 'pdf';
+  if (sniffed === 'docx') return 'word';
+  return 'unknown';
 }
 
 export async function extractLetterText(
@@ -1322,11 +1342,15 @@ export async function parseLetterFile(
 ): Promise<LetterParseResult> {
   // Try the extractor implied by name/type first, then fall back to the other.
   // Bridge-resolved files can arrive as application/octet-stream with an
-  // ambiguous name, so a PDF may look like Word (or vice versa). Falling back
-  // on a hard failure makes the auto-path as forgiving as a manual file pick.
-  const order = isWordDocument(file)
-    ? [extractWordResult, extractLetterText]
-    : [extractLetterText, extractWordResult];
+  // ambiguous (even extensionless) name, so a PDF may look like Word (or vice
+  // versa) — or neither. detectDocumentKind sniffs the actual bytes when the
+  // name/mime heuristics are inconclusive, so parsing doesn't silently pick
+  // the wrong extractor order for a correctly-byte'd-but-mis-named file.
+  // Falling back on a hard failure still keeps the auto-path as forgiving as
+  // a manual file pick even if detection itself comes back "unknown".
+  const kind = await detectDocumentKind(file);
+  const order =
+    kind === 'word' ? [extractWordResult, extractLetterText] : [extractLetterText, extractWordResult];
   let lastErr: unknown;
   for (const extract of order) {
     try {

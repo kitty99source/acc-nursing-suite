@@ -5,6 +5,7 @@
 
 import { parseStagingSidecar, type StagingSidecar } from './staging';
 import { mimeFromName } from './letterCache';
+import { hasFileExtension, sniffFileKind, withExtensionForKind } from './fileSniff';
 
 const STAGING_URL = '/_acc/staging';
 const INBOX_FILE_URL = '/_acc/inbox-file';
@@ -58,12 +59,26 @@ export async function fetchInboxFileByHash(hash: string): Promise<File | undefin
     if (!blob.size) return undefined;
     const ctype = res.headers.get('content-type') ?? blob.type ?? 'application/octet-stream';
     let name = 'letter.bin';
+    let type = ctype;
     if (ctype.includes('pdf')) name = 'letter.pdf';
     else if (ctype.includes('word') || ctype.includes('officedocument') || ctype.includes('msword')) {
       name = 'letter.docx';
+    } else {
+      // Content-type header gave no hint (e.g. launch.ps1 answering with a
+      // generic application/octet-stream) — sniff the actual bytes so a real
+      // PDF/DOCX is still assigned the right name/type here at the source,
+      // rather than leaving it ambiguous for every downstream consumer.
+      const sniffed = await sniffFileKind(blob);
+      if (sniffed === 'pdf') {
+        name = 'letter.pdf';
+        type = 'application/pdf';
+      } else if (sniffed === 'docx') {
+        name = 'letter.docx';
+        type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      }
     }
     // Prefer filename from Content-Disposition if present (launch.ps1 does not set it today).
-    return new File([blob], name, { type: ctype });
+    return new File([blob], name, { type });
   } catch {
     return undefined;
   }
@@ -105,12 +120,26 @@ export async function fetchInboxFileForStaging(opts: {
   if (!opts.sourceHash) return undefined;
   const file = await fetchInboxFileByHash(opts.sourceHash);
   if (!file) return undefined;
-  const preferred = (opts.expectedFileName || opts.sourceFileName || file.name).trim();
+  let preferred = (opts.expectedFileName || opts.sourceFileName || file.name).trim();
   // Bridge often returns application/octet-stream; recover the real type from the
   // attachment name so the preview and parser pick the right handler (pdf vs .docx).
   const generic =
     !file.type || file.type === 'application/octet-stream' || file.type === 'application/binary';
-  const type = (generic ? mimeFromName(preferred) : undefined) ?? file.type;
+  let type = (generic ? mimeFromName(preferred) : undefined) ?? file.type;
+  // The sidecar's expectedFileName/sourceFileName can itself be extensionless
+  // (e.g. a GUID), which would otherwise silently drop the correct extension
+  // fetchInboxFileByHash already worked out from a byte-sniff above. Content
+  // sniffing is the authoritative fallback here too, so the resolved file
+  // always carries a usable extension when the bytes are recognizable.
+  if (!hasFileExtension(preferred)) {
+    const generic2 = !type || type === 'application/octet-stream' || type === 'application/binary';
+    const kind = generic2 ? await sniffFileKind(file) : type.includes('pdf') ? 'pdf' : 'unknown';
+    preferred = withExtensionForKind(preferred, kind);
+    if (kind === 'pdf') type = 'application/pdf';
+    else if (kind === 'docx') {
+      type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    }
+  }
   if ((!preferred || preferred === file.name) && type === file.type) return file;
   return new File([file], preferred || file.name, { type });
 }

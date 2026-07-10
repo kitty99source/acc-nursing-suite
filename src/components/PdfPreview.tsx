@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { sniffFileKind, withExtensionForKind, type SniffedFileKind } from '../lib/fileSniff';
 
 /**
  * Offline-friendly PDF (or image) preview via object URL.
@@ -19,6 +20,7 @@ export function PdfPreview({
   height?: number;
 }) {
   const [failed, setFailed] = useState(false);
+  const [sniffedKind, setSniffedKind] = useState<SniffedFileKind | null>(null);
   const url = useMemo(() => {
     if (!file) return null;
     return URL.createObjectURL(file);
@@ -50,6 +52,27 @@ export function PdfPreview({
     return () => document.removeEventListener('securitypolicyviolation', onViolation);
   }, [url]);
 
+  const mime = file ? file.type || 'application/pdf' : '';
+  const nameHasPdfExt = file instanceof File && /\.pdf$/i.test(file.name);
+  const mimeIsPdf = mime.includes('pdf');
+  const isImage = mime.startsWith('image/');
+  // Name/MIME both inconclusive (e.g. a bridge-resolved file with a generic
+  // GUID-ish name and application/octet-stream type) — sniff the actual
+  // bytes for the %PDF- magic number before giving up on an inline preview.
+  // This is what makes a correctly-byte'd-but-mis-named/mis-typed PDF still
+  // render, instead of silently falling back to a "no preview" download link.
+  useEffect(() => {
+    setSniffedKind(null);
+    if (!file || mimeIsPdf || nameHasPdfExt || isImage) return;
+    let cancelled = false;
+    void sniffFileKind(file).then((kind) => {
+      if (!cancelled) setSniffedKind(kind);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [file, mimeIsPdf, nameHasPdfExt, isImage]);
+
   if (!file || !url) {
     return (
       <div
@@ -66,10 +89,13 @@ export function PdfPreview({
     );
   }
 
-  const mime = file.type || 'application/pdf';
-  const isPdf = mime.includes('pdf') || (file instanceof File && /\.pdf$/i.test(file.name));
-  const isImage = mime.startsWith('image/');
-  const downloadName = file instanceof File ? file.name : title || 'letter';
+  const isPdf = mimeIsPdf || nameHasPdfExt || sniffedKind === 'pdf';
+  // Best-effort kind for repairing an extensionless download name: prefer the
+  // sniffed result (authoritative), otherwise fall back to what the render
+  // path above already decided.
+  const detectedKind: SniffedFileKind = sniffedKind ?? (isPdf ? 'pdf' : 'unknown');
+  const rawDownloadName = file instanceof File ? file.name : title || 'letter';
+  const downloadName = withExtensionForKind(rawDownloadName, detectedKind);
   const hasText = Boolean(text?.trim());
 
   const textFallback = (heading: string) => (

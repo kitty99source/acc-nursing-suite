@@ -4,6 +4,7 @@
 // ============================================================================
 
 import { parseStagingSidecar, type StagingSidecar } from './staging';
+import { mimeFromName } from './letterCache';
 
 const STAGING_URL = '/_acc/staging';
 const INBOX_FILE_URL = '/_acc/inbox-file';
@@ -105,6 +106,11 @@ export async function fetchInboxFileForStaging(opts: {
   const file = await fetchInboxFileByHash(opts.sourceHash);
   if (!file) return undefined;
   const preferred = (opts.expectedFileName || opts.sourceFileName || file.name).trim();
-  if (!preferred || preferred === file.name) return file;
-  return new File([file], preferred, { type: file.type });
+  // Bridge often returns application/octet-stream; recover the real type from the
+  // attachment name so the preview and parser pick the right handler (pdf vs .docx).
+  const generic =
+    !file.type || file.type === 'application/octet-stream' || file.type === 'application/binary';
+  const type = (generic ? mimeFromName(preferred) : undefined) ?? file.type;
+  if ((!preferred || preferred === file.name) && type === file.type) return file;
+  return new File([file], preferred || file.name, { type });
 }

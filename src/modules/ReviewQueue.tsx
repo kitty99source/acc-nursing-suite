@@ -19,6 +19,7 @@ import {
   analyzeStagingQueue,
   removeByteIdenticalDuplicates,
   removeUnnamedStagingItems,
+  removeUnhashedStagingItems,
   stagingAgeLabel,
   type StagingItem,
 } from '../lib/staging';
@@ -188,6 +189,10 @@ export function ReviewQueue() {
     [sorted],
   );
   const unnamedCount = sorted.length - readyCount;
+  const unhashedCount = useMemo(
+    () => sorted.filter((i) => i.status === 'pending' && !i.sourceHash?.trim()).length,
+    [sorted],
+  );
   const missingDateCount = useMemo(
     () => sorted.filter((i) => Boolean(i.sourceHash) && !i.emailDate?.trim()).length,
     [sorted],
@@ -289,6 +294,50 @@ export function ReviewQueue() {
       });
       await refresh();
       setFlash(`Discarded ${removed} filename-only letter(s).`);
+      window.setTimeout(() => setFlash(null), 6000);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function discardUnhashed() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const pending = await loadStagingItems();
+      const count = pending.filter((i) => i.status === 'pending' && !i.sourceHash?.trim()).length;
+      if (count === 0) {
+        setFlash('No unhashed rows to remove.');
+        window.setTimeout(() => setFlash(null), 4000);
+        return;
+      }
+      const ok = await confirm({
+        title: `Remove ${count} unhashed letter(s)?`,
+        message: (
+          <div className="space-y-2 text-sm">
+            <p>
+              This permanently removes the <strong>{count}</strong> letter(s) with{' '}
+              <strong>no content hash</strong>. Without a hash the app can't fetch or parse the
+              letter bytes, so these rows can never fill in a patient name — they're almost always
+              the junk/filename-only rows.
+            </p>
+            <p style={{ color: 'var(--danger, #b42318)' }}>This cannot be undone.</p>
+            <p style={{ color: 'var(--muted)' }}>
+              Accepted patient cases are never affected — this only clears items still under review.
+            </p>
+          </div>
+        ),
+        confirmLabel: `Remove ${count} letter(s)`,
+      });
+      if (!ok) return;
+      const removed = await removeUnhashedStagingItems();
+      await appendAudit({
+        action: 'staging-import',
+        entityType: 'staging',
+        summary: `Removed ${removed} unhashed staging row(s)`,
+      });
+      await refresh();
+      setFlash(`Removed ${removed} unhashed letter(s).`);
       window.setTimeout(() => setFlash(null), 6000);
     } finally {
       setBusy(false);
@@ -1035,15 +1084,15 @@ export function ReviewQueue() {
           </div>
         )}
         <div className="flex flex-wrap items-center gap-2 ml-auto">
-          {unnamedCount > 0 && (
+          {unhashedCount > 0 && (
             <button
               type="button"
-              className="btn btn-primary btn-sm"
+              className="btn btn-danger btn-sm"
               disabled={busy}
-              onClick={() => void fixNamesNow()}
-              title="Re-read letter files via the local bridge and fill patient names on filename-only rows"
+              onClick={() => void discardUnhashed()}
+              title="Remove rows with no content hash — they can't be fetched or parsed, so they stay filename-only forever"
             >
-              Fix names now ({unnamedCount})
+              Remove unhashed ({unhashedCount})
             </button>
           )}
           <button type="button" className="btn btn-sm" disabled={busy} onClick={() => void refresh()}>
@@ -1070,6 +1119,20 @@ export function ReviewQueue() {
                   boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
                 }}
               >
+                {unnamedCount > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-sm w-full justify-start"
+                    disabled={busy}
+                    onClick={() => {
+                      setToolsOpen(false);
+                      void fixNamesNow();
+                    }}
+                    title="Re-read letter files via the local bridge and fill patient names on filename-only rows"
+                  >
+                    Fix names now ({unnamedCount})
+                  </button>
+                )}
                 <button
                   type="button"
                   className="btn btn-sm w-full justify-start"

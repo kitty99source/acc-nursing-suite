@@ -255,7 +255,7 @@ interface StoreState {
   ) => Promise<boolean>;
 
   // manual persistence (primary; works on file://)
-  saveMyData: (filename?: string) => Promise<void>;
+  saveMyData: (filename?: string) => Promise<{ savedToFile: boolean; fileName: string }>;
   loadMyData: (text: string, passphrase?: string) => Promise<void>;
 
   // file ops (File System Access API — optional/advanced)
@@ -984,10 +984,23 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   saveMyData: async (filename = 'acc-nursing-data.accdata') => {
-    const { data } = get();
+    const { data, fileHandle } = get();
     const usePass = data.settings.encryptionEnabled ? sessionPassphrase : undefined;
     const text = await serialize(data, usePass);
-    downloadText(filename, text);
+    // If the user has connected a real file (via Open / Save to file…), overwrite
+    // that same file instead of downloading a fresh copy every time. Only fall
+    // back to a browser download when no file handle is connected.
+    let savedToFile = false;
+    let savedName = filename;
+    if (fileHandle) {
+      const ok = await verifyPermission(fileHandle, true);
+      if (ok) {
+        await writeToHandle(fileHandle, text);
+        savedToFile = true;
+        savedName = fileHandle.name;
+      }
+    }
+    if (!savedToFile) downloadText(filename, text);
     set({
       status: {
         ...get().status,
@@ -1002,8 +1015,11 @@ export const useStore = create<StoreState>((set, get) => ({
       'export',
       'accdata',
       undefined,
-      `Exported .accdata (${data.patients.length} patients, ${data.claims.length} claims)`,
+      savedToFile
+        ? `Saved .accdata to ${savedName} (${data.patients.length} patients, ${data.claims.length} claims)`
+        : `Exported .accdata (${data.patients.length} patients, ${data.claims.length} claims)`,
     );
+    return { savedToFile, fileName: savedName };
   },
 
   loadMyData: async (text: string, passphrase?: string) => {

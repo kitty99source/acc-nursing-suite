@@ -65,8 +65,11 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
     setBusy(true);
     clearFlash();
     try {
-      await saveMyData(SAVE_FILENAME);
-      showFlash(`Downloaded ${SAVE_FILENAME}`, 'good');
+      const res = await saveMyData(SAVE_FILENAME);
+      showFlash(
+        res.savedToFile ? `Saved to ${res.fileName}` : `Downloaded ${SAVE_FILENAME}`,
+        'good',
+      );
     } catch (err) {
       showFlash(`Save failed: ${(err as Error).message}`, 'danger');
     } finally {
@@ -181,10 +184,16 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
           disabled={busy}
           onClick={() => void handleSave()}
           aria-label="Save my data"
-          title={`Download a backup of all your data (${SAVE_FILENAME})`}
+          title={
+            status.hasFileHandle && status.fileName
+              ? `Save into ${status.fileName} (overwrites the same file)`
+              : `Download a backup of all your data (${SAVE_FILENAME}). Tip: use “Save to file…” once to save into a fixed file instead of new downloads.`
+          }
         >
           <IconSave />
-          <span className="hidden sm:inline">Save my data</span>
+          <span className="hidden sm:inline">
+            {status.hasFileHandle ? 'Save' : 'Save my data'}
+          </span>
         </button>
         <button
           className="btn shrink-0"
@@ -218,7 +227,7 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
               className="btn text-xs"
               disabled={busy}
               onClick={() => void runFsa(openExistingFile, 'Open')}
-              title="Advanced: open an existing .accdata file with autosave"
+              title="Open an existing .accdata file and save into it from now on (no more new downloads)"
             >
               Open
             </button>
@@ -226,7 +235,11 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
               className="btn text-xs"
               disabled={busy}
               onClick={() => void runFsa(connectNewFile, 'Save to file')}
-              title="Advanced: choose a file to autosave into"
+              title={
+                status.hasFileHandle
+                  ? 'Choose a different file to save into from now on'
+                  : 'Choose one file to save into from now on (Save then overwrites it, no new downloads)'
+              }
             >
               {status.hasFileHandle ? 'Save As…' : 'Save to file…'}
             </button>

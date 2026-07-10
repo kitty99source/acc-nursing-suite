@@ -2,8 +2,11 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   fetchLocalStagingSidecars,
   fetchInboxFileByHash,
+  fetchInboxFileForStaging,
   probeLocalStagingBridge,
 } from './localAccBridge';
+
+const PDF_BYTES = new TextEncoder().encode('%PDF-1.4\n%%EOF');
 
 describe('localAccBridge', () => {
   afterEach(() => {
@@ -86,5 +89,45 @@ describe('localAccBridge', () => {
     vi.stubGlobal('fetch', spy);
     expect(await fetchInboxFileByHash('not-a-hash')).toBeUndefined();
     expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('sniffs the bytes and assigns letter.pdf when content-type gives no hint', async () => {
+    // Regression for the "download produces a nameless/typeless file that is
+    // actually a valid PDF" bug — launch.ps1 answering with a generic
+    // content-type must not leave the resolved file ambiguous when the bytes
+    // themselves carry the %PDF- magic number.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        blob: async () => new Blob([PDF_BYTES], { type: 'application/octet-stream' }),
+        headers: { get: (k: string) => (k === 'content-type' ? 'application/octet-stream' : null) },
+      })),
+    );
+    const file = await fetchInboxFileByHash('c'.repeat(64));
+    expect(file).toBeTruthy();
+    expect(file!.name).toBe('letter.pdf');
+    expect(file!.type).toBe('application/pdf');
+  });
+
+  it('repairs an extensionless sidecar filename (GUID) using content-sniffing', async () => {
+    // The sidecar's sourceFileName/expectedFileName can itself be a bare GUID
+    // with no extension — fetchInboxFileForStaging must not clobber the
+    // extension fetchInboxFileByHash already worked out from the bytes.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        blob: async () => new Blob([PDF_BYTES], { type: 'application/octet-stream' }),
+        headers: { get: (k: string) => (k === 'content-type' ? 'application/octet-stream' : null) },
+      })),
+    );
+    const file = await fetchInboxFileForStaging({
+      sourceHash: 'd'.repeat(64),
+      sourceFileName: '2d5d827c-94cd-46f7-8e3e-0ba051001379',
+    });
+    expect(file).toBeTruthy();
+    expect(file!.name).toBe('2d5d827c-94cd-46f7-8e3e-0ba051001379.pdf');
+    expect(file!.type).toBe('application/pdf');
   });
 });

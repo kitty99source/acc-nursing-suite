@@ -215,7 +215,7 @@ export function ReviewQueue() {
 
   const [items, setItems] = useState<StagingItem[]>([]);
   const [deferredItems, setDeferredItems] = useState<StagingItem[]>([]);
-  const [viewMode, setViewMode] = useState<'pending' | 'deferred'>('pending');
+  const [viewMode, setViewMode] = useState<'pending' | 'unnamed' | 'deferred'>('pending');
   const [busy, setBusy] = useState(false);
   const [autoImportNote, setAutoImportNote] = useState<string | null>(null);
   const [importProgress, setImportProgress] = useState<string | null>(null);
@@ -287,7 +287,12 @@ export function ReviewQueue() {
     setDeferredItems(deferred);
     enqueueStagingPreparse(pending);
     setSelectedId((prev) => {
-      const current = viewMode === 'deferred' ? deferred : pending;
+      const current =
+        viewMode === 'deferred'
+          ? deferred
+          : viewMode === 'unnamed'
+            ? pending.filter((i) => !i.patientName?.trim())
+            : pending;
       if (prev && current.some((i) => i.id === prev)) return prev;
       return current[0]?.id ?? null;
     });
@@ -348,6 +353,13 @@ export function ReviewQueue() {
     [sorted],
   );
   const unnamedCount = sorted.length - readyCount;
+  // Filtered VIEW of the pending queue (not a separate status) — same
+  // predicate `unnamedCount` uses, so the "Unnamed" tab and the toolbar
+  // count always agree on what counts as unnamed.
+  const unnamedSorted = useMemo(
+    () => sorted.filter((i) => !i.patientName?.trim()),
+    [sorted],
+  );
   const unhashedCount = useMemo(
     () => sorted.filter((i) => i.status === 'pending' && !i.sourceHash?.trim()).length,
     [sorted],
@@ -356,10 +368,11 @@ export function ReviewQueue() {
     () => sorted.filter((i) => Boolean(i.sourceHash) && !i.emailDate?.trim()).length,
     [sorted],
   );
-  // The list panel itself switches between the pending queue and the
-  // deferred-items view; everything above (header/toolbar counts) stays
-  // pending-only regardless of which tab is currently showing.
-  const listItems = viewMode === 'deferred' ? deferredSorted : sorted;
+  // The list panel itself switches between the pending queue, its unnamed
+  // subset, and the deferred-items view; everything above (header/toolbar
+  // counts) stays pending-only regardless of which tab is currently showing.
+  const listItems =
+    viewMode === 'deferred' ? deferredSorted : viewMode === 'unnamed' ? unnamedSorted : sorted;
   // Auto-accept eligibility only ever applies to the active pending queue —
   // deferred items are explicitly out of scope until brought back to review.
   const autoAcceptEligible = useMemo(() => sorted.filter(isAutoAcceptEligible), [sorted]);
@@ -1727,6 +1740,20 @@ export function ReviewQueue() {
               <button
                 type="button"
                 role="tab"
+                aria-selected={viewMode === 'unnamed'}
+                className="btn btn-sm flex-1"
+                style={viewMode === 'unnamed' ? undefined : { background: 'transparent', border: '1px solid transparent' }}
+                onClick={() => {
+                  setViewMode('unnamed');
+                  setSelectedId(unnamedSorted[0]?.id ?? null);
+                }}
+                title="Pending letters that still show a filename only — no patient name resolved yet"
+              >
+                Unnamed ({unnamedCount})
+              </button>
+              <button
+                type="button"
+                role="tab"
                 aria-selected={viewMode === 'deferred'}
                 className="btn btn-sm flex-1"
                 style={viewMode === 'deferred' ? undefined : { background: 'transparent', border: '1px solid transparent' }}
@@ -1742,7 +1769,13 @@ export function ReviewQueue() {
               className="px-3 py-2 text-xs font-semibold uppercase tracking-wide flex items-center justify-between"
               style={{ color: 'var(--muted)', borderBottom: '1px solid var(--border)' }}
             >
-              <span>{viewMode === 'deferred' ? 'Deferred letters' : 'Letters under review'}</span>
+              <span>
+                {viewMode === 'deferred'
+                  ? 'Deferred letters'
+                  : viewMode === 'unnamed'
+                    ? 'Unnamed letters'
+                    : 'Letters under review'}
+              </span>
               <span>{query ? `${visible.length}/${listItems.length}` : listItems.length}</span>
             </div>
             <div ref={listPanelRef} className="flex-1 overflow-hidden">
@@ -1752,7 +1785,9 @@ export function ReviewQueue() {
                     ? `No letters match “${query}”.`
                     : viewMode === 'deferred'
                       ? 'No deferred letters.'
-                      : 'No letters under review.'}
+                      : viewMode === 'unnamed'
+                        ? 'No unnamed letters — every pending letter has a patient name.'
+                        : 'No letters under review.'}
                 </p>
               ) : (
                 <FixedSizeList

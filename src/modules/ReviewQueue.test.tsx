@@ -223,6 +223,39 @@ describe('<ReviewQueue /> auto-accept eligible count (Auto-accept ready (N) butt
   });
 });
 
+describe('<ReviewQueue /> Unnamed tab (filtered view of the pending queue)', () => {
+  it('shows the tab counts and filters the list to nameless pending items only', async () => {
+    await act(async () => {
+      root.render(<ReviewQueue />);
+    });
+    await flush();
+
+    const texts = buttonTexts();
+    expect(texts.some((t) => t === 'Under review (3)')).toBe(true);
+    expect(texts.some((t) => t === 'Unnamed (2)')).toBe(true);
+    expect(texts.some((t) => t === 'Deferred (0)')).toBe(true);
+
+    const unnamedTab = Array.from(container.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Unnamed (2)',
+    );
+    expect(unnamedTab).toBeTruthy();
+
+    await act(async () => {
+      unnamedTab!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flush();
+
+    const rowTexts = buttonTexts();
+    expect(rowTexts.some((t) => t.includes('unnamed-1.pdf'))).toBe(true);
+    expect(rowTexts.some((t) => t.includes('unnamed-2.pdf'))).toBe(true);
+    expect(rowTexts.some((t) => t.includes('named.pdf'))).toBe(false);
+
+    // Toolbar action counts stay based on the full pending set regardless of tab.
+    expect(rowTexts.some((t) => t === 'Fix names now (2)')).toBe(true);
+    expect(rowTexts.some((t) => t === 'Discard unnamed (2)')).toBe(true);
+  });
+});
+
 describe('<ReviewQueue /> list title staleness (item 4)', () => {
   it('updates the list row title as soon as loadSelected resolves a patient name, without a manual Refresh', async () => {
     // jsdom has no Blob/File URL support — PdfPreview only needs a stable stub.

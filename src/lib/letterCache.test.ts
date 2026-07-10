@@ -105,4 +105,15 @@ describe('letterCache', () => {
     expect(file?.size).toBeGreaterThan(0);
     expect(file?.type).toBe('application/pdf');
   });
+
+  it('repairs an extensionless (GUID) preferred name by sniffing real PDF bytes', async () => {
+    // Regression: a nameless/typeless cached blob whose bytes are a real PDF
+    // must still resolve to a `.pdf`-named File, not a bare GUID.
+    const hash = 'f'.repeat(64);
+    const pdfBytes = new TextEncoder().encode('%PDF-1.4\n%%EOF');
+    await putCachedLetterBlob(hash, new Blob([pdfBytes], { type: 'application/octet-stream' }));
+    const file = await getCachedLetterFile(hash, '2d5d827c-94cd-46f7-8e3e-0ba051001379');
+    expect(file?.name).toBe('2d5d827c-94cd-46f7-8e3e-0ba051001379.pdf');
+    expect(file?.type).toBe('application/pdf');
+  });
 });

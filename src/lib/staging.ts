@@ -280,6 +280,81 @@ export function findStagingByHash(
   );
 }
 
+// ============================================================================
+// Queue health analysis — read-only counts so a human can see the true picture
+// (how many are named, how many are byte-identical duplicates, how many can
+// never be parsed because they carry no content hash).
+// ============================================================================
+
+export interface StagingQueueAnalysis {
+  /** Total pending rows in the queue. */
+  total: number;
+  /** Rows that already have a patient name to show. */
+  named: number;
+  /** Rows still shown by filename only (no patient name yet). */
+  unnamed: number;
+  /** Rows carrying a content hash (can be deduped / parsed). */
+  withHash: number;
+  /** Legacy rows with no content hash (cannot dedupe or auto-parse). */
+  withoutHash: number;
+  /** Distinct letters by content hash — the count if byte-identical rows collapse. */
+  uniqueByHash: number;
+  /** Rows beyond the first of each content hash (byte-identical extras). */
+  byteIdenticalExtras: number;
+  /** Exact ingress duplicates still present (same hash AND filename). */
+  exactDuplicates: number;
+}
+
+export function analyzeStagingQueue(items: StagingItem[]): StagingQueueAnalysis {
+  const pending = items.filter((i) => i.status === 'pending');
+  const hashSeen = new Set<string>();
+  const keySeen = new Set<string>();
+  let named = 0;
+  let withHash = 0;
+  let withoutHash = 0;
+  let byteIdenticalExtras = 0;
+  let exactDuplicates = 0;
+
+  for (const item of pending) {
+    if (item.patientName?.trim()) named++;
+    if (item.sourceHash) {
+      withHash++;
+      if (hashSeen.has(item.sourceHash)) byteIdenticalExtras++;
+      else hashSeen.add(item.sourceHash);
+      const key = stagingIngressDedupKey(item);
+      if (key) {
+        if (keySeen.has(key)) exactDuplicates++;
+        else keySeen.add(key);
+      }
+    } else {
+      withoutHash++;
+    }
+  }
+
+  return {
+    total: pending.length,
+    named,
+    unnamed: pending.length - named,
+    withHash,
+    withoutHash,
+    uniqueByHash: hashSeen.size + withoutHash,
+    byteIdenticalExtras,
+    exactDuplicates,
+  };
+}
+
+/**
+ * Remove byte-identical duplicate rows (same content hash), keeping the
+ * earliest-created one. Returns how many were removed. Only persists on change.
+ */
+export async function removeByteIdenticalDuplicates(): Promise<number> {
+  const all = await idbLoadStaging();
+  const deduped = dedupeStagingByHash(all);
+  const removed = all.length - deduped.length;
+  if (removed > 0) await idbSaveStaging(deduped);
+  return removed;
+}
+
 /** Collapse duplicate-hash items, keeping the earliest-created one of each hash. */
 export function dedupeStagingByHash(items: StagingItem[]): StagingItem[] {
   const seen = new Map<string, true>();

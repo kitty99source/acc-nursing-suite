@@ -9,6 +9,7 @@ import {
   findStagingByHash,
   dedupeStagingByHash,
   reconcileStagingQueue,
+  analyzeStagingQueue,
   type StagingItem,
 } from './staging';
 
@@ -330,5 +331,50 @@ describe('staging — reconcileStagingQueue', () => {
     const res = await reconcileStagingQueue(enrich);
     expect(enrich).not.toHaveBeenCalled();
     expect(res.renamed).toBe(0);
+  });
+});
+
+describe('staging — analyzeStagingQueue', () => {
+  const mk = (
+    id: string,
+    opts: Partial<StagingItem> = {},
+  ): StagingItem =>
+    createStagingItem({
+      id,
+      type: 'letter-import-pending',
+      source: 'folder',
+      severity: 'info',
+      title: `Folder: ${id}.pdf`,
+      summary: '',
+      ...opts,
+    });
+
+  it('counts named, unnamed, and byte-identical duplicates', () => {
+    const items = [
+      mk('a', { sourceHash: 'h1', sourceFileName: 'x.pdf', patientName: 'Jane Doe' }),
+      mk('b', { sourceHash: 'h1', sourceFileName: 'y.pdf' }), // same bytes, different name
+      mk('c', { sourceHash: 'h1', sourceFileName: 'x.pdf' }), // exact dupe of a
+      mk('d', { sourceHash: 'h2', sourceFileName: 'z.pdf', patientName: 'John Roe' }),
+      mk('e', {}), // legacy, no hash
+    ];
+    const a = analyzeStagingQueue(items);
+    expect(a.total).toBe(5);
+    expect(a.named).toBe(2);
+    expect(a.unnamed).toBe(3);
+    expect(a.withHash).toBe(4);
+    expect(a.withoutHash).toBe(1);
+    expect(a.uniqueByHash).toBe(3); // h1, h2, + 1 no-hash row
+    expect(a.byteIdenticalExtras).toBe(2); // b and c share h1 with a
+    expect(a.exactDuplicates).toBe(1); // c matches a on hash+filename
+  });
+
+  it('ignores non-pending items', () => {
+    const items = [
+      mk('a', { sourceHash: 'h1', sourceFileName: 'x.pdf', status: 'approved' }),
+      mk('b', { sourceHash: 'h2', sourceFileName: 'y.pdf' }),
+    ];
+    const a = analyzeStagingQueue(items);
+    expect(a.total).toBe(1);
+    expect(a.uniqueByHash).toBe(1);
   });
 });

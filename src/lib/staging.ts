@@ -115,7 +115,13 @@ export function isStagingIngressDuplicate(
   incoming: Pick<StagingItem, 'sourceHash' | 'sourceFileName'>,
 ): boolean {
   const key = stagingIngressDedupKey(incoming);
-  if (!key || existing.status !== 'pending') return false;
+  // 'deferred' rows are still awaiting a decision (there is no "view deferred"
+  // screen — they simply drop out of the pending list), so their underlying
+  // sidecar must keep being treated as already-present. Otherwise a re-import
+  // (e.g. after an app restart resets the in-session seen-sidecar cache) would
+  // append a SECOND row sharing the same `id` as the deferred one, corrupting
+  // the staging array (any future update-by-id would touch both rows).
+  if (!key || (existing.status !== 'pending' && existing.status !== 'deferred')) return false;
   return stagingIngressDedupKey(existing) === key;
 }
 
@@ -201,7 +207,7 @@ export async function importStagingSidecars(sidecars: StagingSidecar[]): Promise
 
 export async function importStagingJsonText(text: string): Promise<number> {
   const parsed = parseStagingSidecar(JSON.parse(text) as unknown);
-  if (!parsed) throw new Error('Invalid staging sidecar JSON');
+  if (!parsed) throw new Error("This file doesn't look like a letter-import file the app recognises.");
   return importStagingSidecars([parsed]);
 }
 

@@ -35,7 +35,7 @@ function SaveStatus() {
   return (
     <span className="text-xs flex items-center gap-1.5" style={{ color: 'var(--muted)' }}>
       <span className="w-2 h-2 rounded-full inline-block" style={{ background: 'var(--accent)' }} />
-      Auto-saved locally (IndexedDB){autosaved ? ` · ${autosaved}` : ''}
+      Auto-saved on this computer{autosaved ? ` · ${autosaved}` : ''}
     </span>
   );
 }
@@ -73,8 +73,15 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
         setSaveIntoOpen(false);
       }
     };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSaveIntoOpen(false);
+    };
     window.addEventListener('mousedown', onDown);
-    return () => window.removeEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
   }, [saveIntoOpen]);
 
   async function handleSaveInto(index: number) {
@@ -251,7 +258,7 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
           <div
             className="hidden sm:flex items-center gap-1 pl-2 ml-1 border-l"
             style={{ borderColor: 'var(--border)' }}
-            title="Advanced: silent autosave to a file you choose (requires the localhost launcher)"
+            title="Advanced: silent autosave to a file you choose (requires the helper program running on this PC)"
           >
             <button
               className="btn text-xs"

@@ -1072,6 +1072,34 @@ export function matchLetterToData(
   return { patientId, claimId, patient, claim, ambiguous, notes };
 }
 
+/**
+ * Cap overall confidence based on the KIND of blocker found — but only for
+ * genuine uncertainty. A brand-new patient/claim with no match in the file is
+ * the normal Review Queue case (not a sign of doubt) and must never reach
+ * here; callers simply don't push it into `blockers`. Required-field gaps get
+ * the harshest cap; other genuine issues (ambiguous match, unresolved name
+ * mismatch, no usable service rows) get a smaller one. A clean parse with no
+ * blockers at all is returned unmodified so it can reach 100.
+ */
+function capConfidenceForBlockers(overall: number, blockers: string[]): number {
+  if (blockers.some((b) => b.startsWith('Missing'))) return Math.min(overall, 70);
+  if (blockers.length > 0) return Math.min(overall, 80);
+  return overall;
+}
+
+/** Plain-language labels for internal field keys shown in "Missing X" blocker text. */
+const FIELD_LABELS: Record<string, string> = {
+  claimNumber: 'claim number',
+  poNumber: 'purchase order number',
+  patientName: 'patient name',
+  nhi: 'NHI',
+  acc45Number: 'ACC45 number',
+};
+
+function fieldLabel(field: string): string {
+  return FIELD_LABELS[field] ?? field;
+}
+
 function scoreApproval(parsed: ParsedApprovalLetter, match: LetterMatch): {
   fieldConfidences: FieldConfidence[];
   overallConfidence: number;
@@ -1080,16 +1108,24 @@ function scoreApproval(parsed: ParsedApprovalLetter, match: LetterMatch): {
   const fieldConfidences: FieldConfidence[] = [];
   const blockers: string[] = [];
 
-  const add = (field: string, value: string | undefined, conf: number, note?: string) => {
-    fieldConfidences.push({ field, value: value ?? '', confidence: conf, note });
-    if (!value) blockers.push(`Missing ${field}`);
+  /** Cleanly-extracted required field scores 100; missing it is a genuine blocker. */
+  const addRequired = (field: string, value: string | undefined, missingConf: number) => {
+    fieldConfidences.push({ field, value: value ?? '', confidence: value ? 100 : missingConf });
+    if (!value) blockers.push(`Missing ${fieldLabel(field)}`);
+  };
+  /** Cleanly-extracted optional field scores 100; missing it just softens the average. */
+  const addOptional = (field: string, value: string | undefined, missingConf: number) => {
+    fieldConfidences.push({ field, value: value ?? '', confidence: value ? 100 : missingConf });
   };
 
-  add('claimNumber', parsed.claim.claimNumber, parsed.claim.claimNumber ? 100 : 0);
-  add('poNumber', parsed.claim.poNumber, parsed.claim.poNumber ? 100 : 0);
-  add('patientName', parsed.patient.name, parsed.patient.name ? 90 : 0);
-  add('nhi', parsed.patient.nhi, parsed.patient.nhi ? 100 : 50);
-  add('acc45Number', parsed.claim.acc45Number, parsed.claim.acc45Number ? 90 : 40);
+  addRequired('claimNumber', parsed.claim.claimNumber, 0);
+  addRequired('poNumber', parsed.claim.poNumber, 0);
+  addRequired('patientName', parsed.patient.name, 0);
+  // NHI is required to accept an approval (buildLetterIssues blocks on it), but a
+  // missing value still leaves a usable letter, so it's a softer 50, not 0.
+  addRequired('nhi', parsed.patient.nhi, 50);
+  // ACC45 is never required to accept — missing it should never gate the score.
+  addOptional('acc45Number', parsed.claim.acc45Number, 60);
 
   if (parsed.serviceRows.length > 0) {
     fieldConfidences.push({ field: 'serviceRows', value: String(parsed.serviceRows.length), confidence: 100 });
@@ -1122,15 +1158,15 @@ function scoreApproval(parsed: ParsedApprovalLetter, match: LetterMatch): {
   }
 
   if (match.ambiguous) blockers.push(...match.notes);
-  if (!match.claimId && !match.patientId && parsed.patient.nhi) blockers.push('No matching patient/claim in file (new record OK on confirm)');
+  // Deliberately NOT a blocker: almost every Review Queue letter is for a brand-
+  // new patient with nothing to match yet. That's the normal case, not doubt
+  // about the parse — the ReviewQueue UI already shows "Will create a new
+  // patient…" and buildLetterIssues surfaces a non-blocking "no-match" note.
 
   const overall = fieldConfidences.length
     ? Math.round(fieldConfidences.reduce((s, f) => s + f.confidence, 0) / fieldConfidences.length)
     : 0;
-  if (blockers.some((b) => b.startsWith('Missing'))) {
-    return { fieldConfidences, overallConfidence: Math.min(overall, 85), blockers };
-  }
-  return { fieldConfidences, overallConfidence: blockers.length ? Math.min(overall, 90) : overall, blockers };
+  return { fieldConfidences, overallConfidence: capConfidenceForBlockers(overall, blockers), blockers };
 }
 
 function scoreDecline(parsed: ParsedDeclineLetter, match: LetterMatch): {
@@ -1141,18 +1177,20 @@ function scoreDecline(parsed: ParsedDeclineLetter, match: LetterMatch): {
   const blockers: string[] = [];
   const fieldConfidences: FieldConfidence[] = [];
 
+  const claimNumberPresent = !!parsed.claim.claimNumber;
   fieldConfidences.push({
     field: 'claimNumber',
     value: parsed.claim.claimNumber ?? '',
-    confidence: parsed.claim.claimNumber ? 100 : 0,
+    confidence: claimNumberPresent ? 100 : 0,
   });
+  if (!claimNumberPresent) blockers.push(`Missing ${fieldLabel('claimNumber')}`);
   if (parsed.alternateClaimNumbers.length > 0) {
     fieldConfidences.push({ field: 'claimConsistency', value: parsed.alternateClaimNumbers.join(', '), confidence: 50 });
   }
   fieldConfidences.push({
     field: 'reason',
     value: parsed.reason ?? '',
-    confidence: parsed.reason ? 95 : 30,
+    confidence: parsed.reason ? 100 : 30,
   });
   if (match.ambiguous) blockers.push(...match.notes);
 
@@ -1171,7 +1209,7 @@ function scoreDecline(parsed: ParsedDeclineLetter, match: LetterMatch): {
   }
 
   const overall = Math.round(fieldConfidences.reduce((s, f) => s + f.confidence, 0) / fieldConfidences.length);
-  return { fieldConfidences, overallConfidence: blockers.length ? Math.min(overall, 90) : overall, blockers };
+  return { fieldConfidences, overallConfidence: capConfidenceForBlockers(overall, blockers), blockers };
 }
 
 /** Gate for silent auto-file — production mode always disables (P0-005). */

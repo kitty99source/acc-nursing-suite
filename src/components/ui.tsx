@@ -62,18 +62,24 @@ export function Field({
   hint,
   error,
   required,
+  labelAction,
 }: {
   label: string;
   children: ReactNode;
   hint?: string;
   error?: string;
   required?: boolean;
+  /** Compact control shown at the right of the label row (e.g. a re-parse icon). */
+  labelAction?: ReactNode;
 }) {
   return (
     <label className="block">
-      <span className="label">
-        {label}
-        {required && <span style={{ color: 'var(--danger-fg)' }}> *</span>}
+      <span className="label flex items-center justify-between gap-1">
+        <span>
+          {label}
+          {required && <span style={{ color: 'var(--danger-fg)' }}> *</span>}
+        </span>
+        {labelAction}
       </span>
       {children}
       {hint && !error && (

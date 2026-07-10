@@ -9,6 +9,7 @@ import {
   findStagingByHash,
   dedupeStagingByHash,
   reconcileStagingQueue,
+  removeByteIdenticalDuplicates,
   analyzeStagingQueue,
   stagingIngressDedupKey,
   addDismissedStagingKeys,
@@ -365,6 +366,82 @@ describe('staging — reconcileStagingQueue', () => {
     const res = await reconcileStagingQueue(enrich);
     expect(enrich).not.toHaveBeenCalled();
     expect(res.renamed).toBe(0);
+  });
+});
+
+describe('staging — dedup persistence (tombstones)', () => {
+  // Stateful in-memory queue + dismissed set so a removal in one call is visible
+  // to a later import call — this is what proves a removed dupe stays gone.
+  let queue: StagingItem[];
+  let dismissed: string[];
+
+  beforeEach(() => {
+    queue = [];
+    dismissed = [];
+    vi.mocked(loadStagingQueue).mockImplementation(async () => queue);
+    vi.mocked(saveStagingQueue).mockImplementation(async (items) => {
+      queue = items;
+    });
+    vi.mocked(loadDismissedStaging).mockImplementation(async () => dismissed);
+    vi.mocked(saveDismissedStaging).mockImplementation(async (keys) => {
+      dismissed = keys;
+    });
+  });
+
+  const mk = (id: string, opts: Partial<StagingItem> & { createdAt?: number } = {}): StagingItem =>
+    createStagingItem({
+      id,
+      type: 'letter-import-pending',
+      source: 'folder',
+      severity: 'info',
+      title: id,
+      summary: '',
+      ...opts,
+    });
+
+  it('removeByteIdenticalDuplicates tombstones the removed dupe so it never re-imports', async () => {
+    queue = [
+      { ...mk('keep', { sourceHash: 'h1', sourceFileName: 'vendor.docx' }), createdAt: 10 },
+      { ...mk('dupe', { sourceHash: 'h1', sourceFileName: 'vendor-1.docx' }), createdAt: 20 },
+    ];
+    const removed = await removeByteIdenticalDuplicates();
+    expect(removed).toBe(1);
+    expect(queue.map((i) => i.id)).toEqual(['keep']);
+    // The removed dupe's ingress key is tombstoned; the kept one is not.
+    expect(dismissed).toContain('h1::vendor-1.docx');
+    expect(dismissed).not.toContain('h1::vendor.docx');
+
+    // Re-importing the same different-name sidecar is now permanently skipped.
+    const readd = await importStagingSidecars([
+      { version: 1, item: mk('dupe-again', { sourceHash: 'h1', sourceFileName: 'vendor-1.docx' }) },
+    ]);
+    expect(readd).toBe(0);
+    expect(queue.map((i) => i.id)).toEqual(['keep']);
+
+    // The kept letter can still be re-imported if it ever leaves the queue.
+    queue = [];
+    const reimportKept = await importStagingSidecars([
+      { version: 1, item: mk('keep-again', { sourceHash: 'h1', sourceFileName: 'vendor.docx' }) },
+    ]);
+    expect(reimportKept).toBe(1);
+  });
+
+  it('reconcile collapses byte-identical dupes with different filenames and tombstones them', async () => {
+    queue = [
+      { ...mk('a', { sourceHash: 'h9', sourceFileName: 'a.docx' }), createdAt: 5 },
+      { ...mk('b', { sourceHash: 'h9', sourceFileName: 'b.docx' }), createdAt: 6 },
+    ];
+    const res = await reconcileStagingQueue(async () => undefined);
+    expect(res.removed).toBe(1);
+    expect(queue.map((i) => i.id)).toEqual(['a']);
+    expect(dismissed).toContain('h9::b.docx');
+
+    // Second reconcile pass is quiet — the dupe stays gone (would drive the
+    // "Tidied the review list…" note to stop reappearing on every mount).
+    const added = await importStagingSidecars([
+      { version: 1, item: mk('b2', { sourceHash: 'h9', sourceFileName: 'b.docx' }) },
+    ]);
+    expect(added).toBe(0);
   });
 });
 

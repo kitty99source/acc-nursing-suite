@@ -56,7 +56,17 @@ import {
   type LetterCommitFormFields,
 } from '../lib/letterCommit';
 import type { LetterParseResult, ParsedLetter, ParsedServiceRow } from '../lib/letterImport';
-import { hashBlob } from '../lib/letterImport';
+import {
+  hashBlob,
+  extractClaimNumber,
+  extractNhi,
+  extractAcc45,
+  extractPo,
+  extractDob,
+  extractDateOfInjury,
+  extractPatientName,
+  extractInjuryDescription,
+} from '../lib/letterImport';
 import type { ApprovalServiceCode } from '../types';
 
 function typeLabel(type: StagingItem['type']): string {
@@ -752,6 +762,56 @@ export function ReviewQueue() {
     setFields((prev) => ({ ...prev, [key]: value }));
   }
 
+  const rawText = parsed?.rawText?.trim() ?? '';
+
+  /**
+   * Small "re-parse this field from the attachment" icon shown next to a field
+   * label. Runs the SAME single-field extractor the main parser uses (DRY) over
+   * the already-loaded raw letter text and fills only that one field. Disabled
+   * with an explanatory tooltip when no attachment text is available.
+   */
+  function reparseControl(
+    label: string,
+    field: keyof LetterCommitFormFields,
+    extract: (text: string) => string | undefined,
+  ) {
+    const disabled = !rawText || busy;
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        aria-label={`Re-parse ${label} from letter`}
+        title={
+          !rawText
+            ? 'Attachment text not available — pick the letter file'
+            : `Re-parse ${label} from the letter`
+        }
+        onClick={() => {
+          if (!rawText) return;
+          const value = extract(rawText);
+          if (value && value.trim()) patchField(field, value.trim());
+        }}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 18,
+          height: 18,
+          lineHeight: 1,
+          fontSize: 12,
+          borderRadius: 4,
+          border: '1px solid var(--border)',
+          background: 'transparent',
+          color: disabled ? 'var(--muted)' : 'var(--accent)',
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          opacity: disabled ? 0.5 : 1,
+        }}
+      >
+        <span aria-hidden>⟳</span>
+      </button>
+    );
+  }
+
   function updateRow(index: number, patch: Partial<ParsedServiceRow>) {
     setFields((prev) => ({
       ...prev,
@@ -890,6 +950,11 @@ export function ReviewQueue() {
         commitParsedDecline,
       });
       await updateStagingItem(selected.id, { status: 'approved' });
+      // Tombstone the accepted letter's ingress key so its .staging sidecar
+      // never re-imports as a fresh pending row after sign-off. Without this an
+      // accepted case reappears in the queue on the next poll (approved rows are
+      // not 'pending', so the ingress-dup check no longer skips them).
+      await dismissStagingItems([selected]);
       await recordHrqResolution({
         action: 'hrq-sign-off',
         stagingItemId: selected.id,
@@ -983,9 +1048,9 @@ export function ReviewQueue() {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+      <div className="flex items-center justify-between gap-3 mb-1.5 flex-wrap">
         <div className="min-w-0">
-          <h1 className="text-lg font-bold leading-tight truncate">Review final patient form</h1>
+          <h1 className="text-base font-bold leading-tight truncate">Review final patient form</h1>
           <p
             className="text-xs truncate"
             style={{ color: 'var(--muted)' }}
@@ -1045,7 +1110,7 @@ export function ReviewQueue() {
         </p>
       )}
 
-      <div className="flex flex-wrap items-center gap-2 mb-3">
+      <div className="flex flex-wrap items-center gap-2 mb-2">
         {sorted.length > 0 && (
           <div className="relative" style={{ minWidth: 220, flex: '1 1 260px', maxWidth: 380 }}>
             <TextInput
@@ -1232,7 +1297,7 @@ export function ReviewQueue() {
           <div
             className="flex flex-col rounded-card"
             style={{
-              maxHeight: 'calc(100vh - 150px)',
+              maxHeight: 'calc(100vh - 118px)',
               border: '1px solid var(--border)',
               background: 'var(--surface)',
               overflow: 'hidden',
@@ -1303,9 +1368,9 @@ export function ReviewQueue() {
 
           {/* Right: detail pane */}
           <div
-            className="flex flex-col rounded-card min-w-0"
-            style={{
-              maxHeight: 'calc(100vh - 150px)',
+          className="flex flex-col rounded-card min-w-0"
+          style={{
+            maxHeight: 'calc(100vh - 118px)',
               border: '1px solid var(--border)',
               background: 'var(--surface)',
               overflow: 'hidden',
@@ -1479,19 +1544,29 @@ export function ReviewQueue() {
                       <div>
                         <h3 className="text-sm font-semibold mb-2">Patient</h3>
                         <div className="grid gap-3" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}>
-                          <Field label="Patient name" required>
+                          <Field
+                            label="Patient name"
+                            required
+                            labelAction={reparseControl('patient name', 'patientName', extractPatientName)}
+                          >
                             <TextInput
                               value={fields.patientName}
                               onChange={(e) => patchField('patientName', e.target.value)}
                             />
                           </Field>
-                          <Field label="NHI">
+                          <Field
+                            label="NHI"
+                            labelAction={reparseControl('NHI', 'nhi', extractNhi)}
+                          >
                             <TextInput
                               value={fields.nhi}
                               onChange={(e) => patchField('nhi', e.target.value)}
                             />
                           </Field>
-                          <Field label="Date of birth">
+                          <Field
+                            label="Date of birth"
+                            labelAction={reparseControl('date of birth', 'dob', extractDob)}
+                          >
                             <DateInput
                               value={fields.dob}
                               onChange={(e) => patchField('dob', e.target.value)}
@@ -1509,25 +1584,38 @@ export function ReviewQueue() {
                       <div>
                         <h3 className="text-sm font-semibold mb-2">Claim</h3>
                         <div className="grid gap-3" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}>
-                          <Field label="Claim number" required={parsed?.kind === 'approval'}>
+                          <Field
+                            label="Claim number"
+                            required={parsed?.kind === 'approval'}
+                            labelAction={reparseControl('claim number', 'claimNumber', extractClaimNumber)}
+                          >
                             <TextInput
                               value={fields.claimNumber}
                               onChange={(e) => patchField('claimNumber', e.target.value)}
                             />
                           </Field>
-                          <Field label="ACC45">
+                          <Field
+                            label="ACC45"
+                            labelAction={reparseControl('ACC45', 'acc45', extractAcc45)}
+                          >
                             <TextInput
                               value={fields.acc45}
                               onChange={(e) => patchField('acc45', e.target.value)}
                             />
                           </Field>
-                          <Field label="PO number">
+                          <Field
+                            label="PO number"
+                            labelAction={reparseControl('PO number', 'poNumber', extractPo)}
+                          >
                             <TextInput
                               value={fields.poNumber}
                               onChange={(e) => patchField('poNumber', e.target.value)}
                             />
                           </Field>
-                          <Field label="Day 1 / date of injury">
+                          <Field
+                            label="Day 1 / date of injury"
+                            labelAction={reparseControl('date of injury', 'day1', extractDateOfInjury)}
+                          >
                             <DateInput
                               value={fields.day1}
                               onChange={(e) => patchField('day1', e.target.value)}
@@ -1535,7 +1623,10 @@ export function ReviewQueue() {
                           </Field>
                         </div>
                         <div className="mt-3">
-                          <Field label="Injury description">
+                          <Field
+                            label="Injury description"
+                            labelAction={reparseControl('injury description', 'injury', extractInjuryDescription)}
+                          >
                             <TextArea
                               rows={2}
                               value={fields.injury}

@@ -79,6 +79,8 @@ const launcherFiles = [
   'Start Rename Inbox Files.cmd',
   'Backfill-EmailDates.ps1',
   'Start Backfill Email Dates.cmd',
+  'Optimize-StagingSidecars.ps1',
+  'Start Optimize Staging.cmd',
   'Start WFH Mode.cmd',
   'wfh-mode.ps1',
   'Start Portal Discover.cmd',

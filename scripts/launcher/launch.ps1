@@ -124,6 +124,23 @@ function Get-RequestQueryValue {
     return $null
 }
 
+$script:StagingListCacheBody = $null
+$script:StagingListCacheSig = $null
+
+function Remove-SidecarEmbeddedBytesText {
+    # Strip the huge "fileBase64"/"fileMimeType" values from a sidecar's RAW text
+    # BEFORE parsing. ConvertFrom-Json on a 4 MB base64 string is what made the
+    # endpoint take minutes / run out of memory. base64 and mime values never
+    # contain a double-quote, so a simple text strip is safe, then we tidy any
+    # dangling comma left behind (e.g. when the stripped field was last).
+    param([string]$Raw)
+    $t = $Raw
+    $t = [regex]::Replace($t, '"fileBase64"\s*:\s*"[^"]*"\s*,?', '')
+    $t = [regex]::Replace($t, '"fileMimeType"\s*:\s*"[^"]*"\s*,?', '')
+    $t = [regex]::Replace($t, ',(\s*[}\]])', '$1')
+    return $t
+}
+
 function Get-StagingSidecarsBody {
     # List ACC-Inbox\.staging\*.json as a JSON array for Review Queue auto-import.
     if (-not (Get-Command Resolve-InboxPath -ErrorAction SilentlyContinue)) { return $null }
@@ -134,24 +151,42 @@ function Get-StagingSidecarsBody {
             $utf8Empty = New-Object System.Text.UTF8Encoding $false
             return $utf8Empty.GetBytes('[]')
         }
+
+        $files = [System.IO.Directory]::GetFiles($staging, '*.json')
+
+        # Cheap signature (count + newest mtime) so repeated 30s polls don't
+        # re-read every sidecar. GetLastWriteTimeUtc reads no file content.
+        $maxTicks = [long]0
+        foreach ($f in $files) {
+            $ticks = [System.IO.File]::GetLastWriteTimeUtc($f).Ticks
+            if ($ticks -gt $maxTicks) { $maxTicks = $ticks }
+        }
+        $sig = "{0}:{1}" -f $files.Count, $maxTicks
+        if ($script:StagingListCacheBody -and $script:StagingListCacheSig -eq $sig) {
+            return $script:StagingListCacheBody
+        }
+
         $items = New-Object System.Collections.Generic.List[object]
-        foreach ($path in [System.IO.Directory]::GetFiles($staging, '*.json')) {
+        foreach ($path in $files) {
             try {
                 $raw = Get-Content -LiteralPath $path -Raw -Encoding UTF8
-                $obj = $raw | ConvertFrom-Json
+                $hadBytes = $raw -match '"fileBase64"\s*:'
+                $lean = if ($hadBytes) { Remove-SidecarEmbeddedBytesText -Raw $raw } else { $raw }
+                $obj = $lean | ConvertFrom-Json
                 if ($obj) {
-                    # Keep the list LEAN. Sidecars embed the whole file as base64
-                    # (up to 4 MB each); serializing hundreds of those into one
-                    # response makes ConvertTo-Json blow up (out of memory ->
-                    # 404 -> app shows "bridge is down"). The bytes are fetched
-                    # on demand via /_acc/inbox-file?hash= instead, so drop them.
-                    if ($obj.PSObject.Properties['fileBase64']) {
-                        $obj.PSObject.Properties.Remove('fileBase64')
-                    }
-                    if ($obj.PSObject.Properties['fileMimeType']) {
-                        $obj.PSObject.Properties.Remove('fileMimeType')
-                    }
                     [void]$items.Add($obj)
+                    # Self-heal: rewrite the sidecar without its embedded bytes so
+                    # it is small forever (bytes stay resolvable by hash via
+                    # /_acc/inbox-file). One-time cost the first time we see a
+                    # legacy heavy sidecar; keeps the disk and this endpoint lean.
+                    if ($hadBytes) {
+                        try {
+                            $tmp = $path + '.tmp'
+                            $utf8w = New-Object System.Text.UTF8Encoding $false
+                            [System.IO.File]::WriteAllText($tmp, ($lean.Trim()), $utf8w)
+                            Move-Item -LiteralPath $tmp -Destination $path -Force
+                        } catch {}
+                    }
                 }
             } catch {}
         }
@@ -168,7 +203,18 @@ function Get-StagingSidecarsBody {
         }
         if ([string]::IsNullOrWhiteSpace($json)) { $json = '[]' }
         $utf8 = New-Object System.Text.UTF8Encoding $false
-        return $utf8.GetBytes($json)
+        $body = $utf8.GetBytes($json)
+
+        # Recompute the signature after self-heal rewrites (their mtimes changed)
+        # so the next poll hits the cache instead of rebuilding again.
+        $maxTicks2 = [long]0
+        foreach ($f in [System.IO.Directory]::GetFiles($staging, '*.json')) {
+            $ticks2 = [System.IO.File]::GetLastWriteTimeUtc($f).Ticks
+            if ($ticks2 -gt $maxTicks2) { $maxTicks2 = $ticks2 }
+        }
+        $script:StagingListCacheSig = "{0}:{1}" -f $files.Count, $maxTicks2
+        $script:StagingListCacheBody = $body
+        return $body
     } catch {
         return $null
     }

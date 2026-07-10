@@ -271,8 +271,10 @@ function Invoke-ProcessLetterFile {
         return 'skipped'
     }
 
+    # NB: sidecars stay LEAN (metadata only). Embedding the file as base64 here
+    # made the /_acc/staging list huge and slow (out-of-memory -> "bridge down").
+    # The bytes are resolved on demand by hash via /_acc/inbox-file instead.
     $sidecar = New-FolderWatchSidecar -FilePath $FilePath -Hash $hash -Inbox $inbox
-    $sidecar = Add-SidecarEmbeddedBytes -Sidecar $sidecar -FilePath $FilePath
     $outPath = Get-SidecarPath -Inbox $inbox -Hash $hash -FileName $leafName
     $json = $sidecar | ConvertTo-Json -Depth 6 -Compress:$false
     [System.IO.File]::WriteAllText($outPath, $json, [Text.Encoding]::UTF8)

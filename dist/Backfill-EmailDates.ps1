@@ -70,8 +70,18 @@ try {
 $fromOutlook = 0
 $fromFileTime = 0
 $failed = 0
+$startedAt = Get-Date
+$total = $missing.Count
+$idx = 0
+
+Write-Host ("Processing {0} letter(s) - this can take a while over COM, progress every 10..." -f $total) -ForegroundColor Gray
 
 foreach ($row in $missing) {
+    $idx++
+    if ($idx % 10 -eq 0 -or $idx -eq $total) {
+        $elapsed = [Math]::Round(((Get-Date) - $startedAt).TotalSeconds)
+        Write-Host ("  ... {0}/{1} ({2}s elapsed, {3} via Outlook, {4} via file time, {5} failed)" -f $idx, $total, $elapsed, $fromOutlook, $fromFileTime, $failed) -ForegroundColor Gray
+    }
     $meta = $row.Meta
     $hash = [string]$meta.hash
     $entryId = [string]$meta.entryId

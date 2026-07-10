@@ -63,8 +63,13 @@ const html = fs.readFileSync('dist/index.html', 'utf8');
 const head = html.slice(0, html.indexOf('</head>'));
 
 console.log('--- Single-file build checks ---');
-console.log('CSP connect-src none :', head.includes("connect-src 'none'"));
+console.log('CSP connect-src self :', head.includes("connect-src 'self'"));
 console.log('CSP default-src self :', head.includes("default-src 'self'"));
+console.log('CSP no external hosts:', !/connect-src[^;]*https?:\/\//.test(head));
+if (head.includes("connect-src 'none'")) {
+  console.error("FAIL: CSP still connect-src 'none' — app cannot reach the local /_acc bridge");
+  process.exitCode = 1;
+}
 console.log('inline <script> tags :', (html.match(/<script\b[^>]*>/g) || []).length);
 console.log('external script src  :', /<script[^>]+src=["']https?:/.test(html));
 console.log('external link href   :', /<link[^>]+href=["']https?:/.test(html));

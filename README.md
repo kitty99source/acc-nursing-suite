@@ -3,8 +3,10 @@
 A **100% offline, single-file** web app for supplier-side ACC Nursing Services billing & claims
 administration. It replaces the Excel toolkit workbook and exports straight back to it.
 
-Everything runs locally in your browser. There is **no server, no install, no telemetry, and no
-network access of any kind** — a strict Content-Security-Policy blocks all outbound connections.
+Everything runs locally in your browser. There is **no telemetry and no internet access** — a
+strict Content-Security-Policy (`connect-src 'self'`) blocks every outbound connection except to
+the app's own local loopback launcher (the `/_acc/*` bridge that reads letters from ACC-Inbox).
+Nothing is ever sent off the machine.
 
 ---
 
@@ -159,8 +161,9 @@ if you'd like to try the import (it contains obviously-fake demo data only).
 
 ### Privacy
 
-No data ever leaves your computer. There are no analytics and no network requests — the app's
-Content-Security-Policy (`connect-src 'none'`) blocks them entirely.
+No data ever leaves your computer. There are no analytics and no internet requests — the app's
+Content-Security-Policy (`connect-src 'self'`) permits connections only to the local loopback
+launcher on your own machine and blocks everything else.
 
 ---
 

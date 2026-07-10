@@ -149,8 +149,15 @@ export function ReviewQueue() {
     const onDown = (e: MouseEvent) => {
       if (toolsRef.current && !toolsRef.current.contains(e.target as Node)) setToolsOpen(false);
     };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setToolsOpen(false);
+    };
     window.addEventListener('mousedown', onDown);
-    return () => window.removeEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
   }, [toolsOpen]);
 
   const refresh = useCallback(async () => {
@@ -179,7 +186,7 @@ export function ReviewQueue() {
       await appendAudit({
         action: 'staging-import',
         entityType: 'staging',
-        summary: `Auto-imported ${added} folder-watch sidecar(s) via /_acc/staging`,
+        summary: `Auto-imported ${added} letter(s) via the helper program`,
       });
       setAutoImportNote(`Auto-imported ${added} letter(s) from ACC-Inbox\\.staging.`);
       await refresh();
@@ -292,7 +299,7 @@ export function ReviewQueue() {
       await appendAudit({
         action: 'staging-import',
         entityType: 'staging',
-        summary: `Discarded ${removed} filename-only (unnamed) staging row(s)`,
+        summary: `Discarded ${removed} filename-only (unnamed) letter(s)`,
       });
       await refresh();
       setFlash(`Discarded ${removed} filename-only letter(s).`);
@@ -309,19 +316,19 @@ export function ReviewQueue() {
       const pending = await loadStagingItems();
       const count = pending.filter((i) => i.status === 'pending' && !i.sourceHash?.trim()).length;
       if (count === 0) {
-        setFlash('No unhashed rows to remove.');
+        setFlash('No unreadable rows to remove.');
         window.setTimeout(() => setFlash(null), 4000);
         return;
       }
       const ok = await confirm({
-        title: `Remove ${count} unhashed letter(s)?`,
+        title: `Remove ${count} letter(s) that can't be opened?`,
         message: (
           <div className="space-y-2 text-sm">
             <p>
-              This permanently removes the <strong>{count}</strong> letter(s) with{' '}
-              <strong>no content hash</strong>. Without a hash the app can't fetch or parse the
-              letter bytes, so these rows can never fill in a patient name — they're almost always
-              the junk/filename-only rows.
+              This permanently removes the <strong>{count}</strong> letter(s) the app has{' '}
+              <strong>no way to open or read</strong>. Without being able to open the file, these
+              rows can never fill in a patient name — they're almost always old junk/filename-only
+              rows.
             </p>
             <p style={{ color: 'var(--danger, #b42318)' }}>This cannot be undone.</p>
             <p style={{ color: 'var(--muted)' }}>
@@ -336,10 +343,10 @@ export function ReviewQueue() {
       await appendAudit({
         action: 'staging-import',
         entityType: 'staging',
-        summary: `Removed ${removed} unhashed staging row(s)`,
+        summary: `Removed ${removed} letter(s) that couldn't be opened`,
       });
       await refresh();
-      setFlash(`Removed ${removed} unhashed letter(s).`);
+      setFlash(`Removed ${removed} letter(s) that couldn't be opened.`);
       window.setTimeout(() => setFlash(null), 6000);
     } finally {
       setBusy(false);
@@ -354,22 +361,22 @@ export function ReviewQueue() {
       const a = analyzeStagingQueue(pending);
       const canDedupe = a.byteIdenticalExtras > 0;
       const ok = await confirm({
-        title: 'Review queue health',
+        title: 'Review list health check',
         message: (
           <div className="space-y-2 text-sm">
             <div className="grid gap-1" style={{ gridTemplateColumns: 'auto 1fr' }}>
               <span className="font-semibold">{a.total}</span>
-              <span>letters under review (pending)</span>
+              <span>letters under review</span>
               <span className="font-semibold">{a.named}</span>
               <span>have a patient name</span>
               <span className="font-semibold">{a.unnamed}</span>
               <span>still show a filename only</span>
               <span className="font-semibold">{a.uniqueByHash}</span>
-              <span>distinct letters by content (the “true” count)</span>
+              <span>actual different letters (once exact duplicates are combined)</span>
               <span className="font-semibold">{a.byteIdenticalExtras}</span>
-              <span>byte-identical duplicate row(s)</span>
+              <span>exact duplicate letter(s)</span>
               <span className="font-semibold">{a.withoutHash}</span>
-              <span>legacy row(s) with no content hash (cannot auto-parse)</span>
+              <span>old row(s) the app can't open or read</span>
             </div>
             <p style={{ color: 'var(--muted)' }}>
               Note: many ACC letters share the generic filename{' '}
@@ -378,11 +385,11 @@ export function ReviewQueue() {
             </p>
             {canDedupe ? (
               <p>
-                Remove the <strong>{a.byteIdenticalExtras}</strong> byte-identical duplicate row(s)?
-                This keeps the earliest copy of each and never touches accepted patient cases.
+                Remove the <strong>{a.byteIdenticalExtras}</strong> exact duplicate letter(s)? This
+                keeps the first copy of each and never touches patient cases you've already accepted.
               </p>
             ) : (
-              <p style={{ color: 'var(--muted)' }}>No byte-identical duplicates to remove.</p>
+              <p style={{ color: 'var(--muted)' }}>No exact duplicates to remove.</p>
             )}
             {a.unnamed > 0 && (
               <p style={{ color: 'var(--muted)' }}>
@@ -399,10 +406,10 @@ export function ReviewQueue() {
         await appendAudit({
           action: 'staging-import',
           entityType: 'staging',
-          summary: `Removed ${removed} byte-identical duplicate staging row(s)`,
+          summary: `Removed ${removed} exact duplicate letter(s)`,
         });
         await refresh();
-        setFlash(`Removed ${removed} byte-identical duplicate row(s).`);
+        setFlash(`Removed ${removed} exact duplicate letter(s).`);
         window.setTimeout(() => setFlash(null), 6000);
       }
     } finally {
@@ -420,7 +427,7 @@ export function ReviewQueue() {
         await confirm({
           title: 'Cannot reach letter files',
           message:
-            'Start WFH Mode (or Start ACC Suite) so the app can read letters from ACC-Inbox. Without that bridge, old filename-only rows cannot be renamed.',
+            'Start WFH Mode (or Start ACC Suite) so the app can read letters from ACC-Inbox. Without it running, old filename-only rows cannot be renamed.',
           confirmLabel: 'OK',
         });
         return;
@@ -457,7 +464,7 @@ export function ReviewQueue() {
       setFixProgress(null);
       setFlash(
         stillUnnamed > 0
-          ? `Named ${named} letters. ${stillUnnamed} still need a file (bridge/hash miss or unreadable).`
+          ? `Named ${named} letters. ${stillUnnamed} still need a file (the helper program isn't running, or the file couldn't be found or opened).`
           : `Named ${named} letters. Review list is ready.`,
       );
       window.setTimeout(() => setFlash(null), 8000);
@@ -477,7 +484,7 @@ export function ReviewQueue() {
         await confirm({
           title: 'Cannot reach letter files',
           message:
-            'Start WFH Mode (or Start ACC Suite) so the app can read email dates from ACC-Inbox. Without that bridge, older rows cannot pick up their email date.',
+            'Start WFH Mode (or Start ACC Suite) so the app can read email dates from ACC-Inbox. Without it running, older rows cannot pick up their email date.',
           confirmLabel: 'OK',
         });
         return;
@@ -551,7 +558,7 @@ export function ReviewQueue() {
           confidence: preview.confidence,
           blockers: [],
           loading: false,
-          error: resolved ? null : 'Attachment not found - pick the letter file to continue.',
+          error: resolved ? null : "Couldn't find the letter file — pick it below to continue.",
         });
       };
 
@@ -616,7 +623,7 @@ export function ReviewQueue() {
         setParseMeta({
           blockers: [],
           loading: false,
-          error: 'Attachment not found - pick the letter file to parse and review.',
+          error: "Couldn't find the letter file — pick it below to read and review it.",
         });
         return;
       }
@@ -635,7 +642,7 @@ export function ReviewQueue() {
             confidence: result.overallConfidence,
             blockers: result.blockers,
             loading: false,
-            error: 'Could not parse this letter - fill the form manually, then Accept.',
+            error: "Couldn't read this letter automatically — fill in the form by hand, then Accept.",
           });
           return;
         }
@@ -708,7 +715,7 @@ export function ReviewQueue() {
         await appendAudit({
           action: 'staging-import',
           entityType: 'staging',
-          summary: `Imported ${added} folder-watch sidecar(s) into review queue`,
+          summary: `Imported ${added} letter(s) into the review list`,
         });
       }
       await refresh();
@@ -742,7 +749,7 @@ export function ReviewQueue() {
         await appendAudit({
           action: 'staging-import',
           entityType: 'staging',
-          summary: `Imported ${added} folder-watch sidecar(s) from .staging folder`,
+          summary: `Imported ${added} letter(s) from the .staging folder`,
         });
       }
       await refresh();
@@ -852,7 +859,7 @@ export function ReviewQueue() {
           confidence: result.overallConfidence,
           blockers: result.blockers,
           loading: false,
-          error: 'Could not parse this letter - fill the form manually, then Accept.',
+          error: "Couldn't read this letter automatically — fill in the form by hand, then Accept.",
         });
         return;
       }
@@ -1073,22 +1080,21 @@ export function ReviewQueue() {
           style={{ borderColor: 'var(--warn-fg)', background: 'var(--surface-2)' }}
           role="status"
         >
-          <strong>Local staging bridge is down.</strong> This page cannot auto-import folder-watch
-          letters because <span className="font-mono">/_acc/staging</span> is missing (typical when
-          the suite is opened via <span className="font-mono">npm run dev</span>, file://, or a host
-          without <span className="font-mono">launch.ps1</span>). Use{' '}
-          <strong>Start ACC Suite.cmd</strong> so the launcher serves the app, or use the Import
-          buttons below to pick <span className="font-mono">ACC-Inbox\.staging</span> manually.
+          <strong>The helper program on this PC isn't running.</strong> This page can't
+          automatically bring in new letters until it is. Use{' '}
+          <strong>Start ACC Suite.cmd</strong> to start it, or use the Import buttons below to add
+          letters from <span className="font-mono">ACC-Inbox\.staging</span> yourself.
         </div>
       )}
 
       {bridgeStatus === 'empty' && !sorted.length && (
         <div className="card mb-4 p-3 text-sm" style={{ background: 'var(--surface-2)' }} role="status">
-          Launcher bridge is up, but <span className="font-mono">ACC-Inbox\.staging</span> has no
-          sidecar JSON yet. Run <span className="font-mono">Start Folder Watch.cmd</span> (or WFH
-          Mode) so new letters get staged. Files already moved to{' '}
-          <span className="font-mono">processed/</span> are not queue rows — only{' '}
-          <span className="font-mono">.staging\*.json</span> sidecars are.
+          The helper program is running, but no new letters are waiting in{' '}
+          <span className="font-mono">ACC-Inbox\.staging</span> yet. Run{' '}
+          <span className="font-mono">Start Folder Watch.cmd</span> (or WFH Mode) so new letters get
+          picked up automatically. Letters already moved to the{' '}
+          <span className="font-mono">processed</span> folder won't show up here — only ones still
+          waiting in <span className="font-mono">.staging</span> will.
         </div>
       )}
 
@@ -1187,19 +1193,21 @@ export function ReviewQueue() {
                 {unnamedCount > 0 && (
                   <button
                     type="button"
+                    role="menuitem"
                     className="btn btn-sm w-full justify-start"
                     disabled={busy}
                     onClick={() => {
                       setToolsOpen(false);
                       void fixNamesNow();
                     }}
-                    title="Re-read letter files via the local bridge and fill patient names on filename-only rows"
+                    title="Re-read letter files and fill in patient names on filename-only rows"
                   >
                     Fix names now ({unnamedCount})
                   </button>
                 )}
                 <button
                   type="button"
+                  role="menuitem"
                   className="btn btn-sm w-full justify-start"
                   disabled={busy}
                   onClick={() => {
@@ -1211,6 +1219,7 @@ export function ReviewQueue() {
                 </button>
                 <button
                   type="button"
+                  role="menuitem"
                   className="btn btn-sm w-full justify-start"
                   disabled={busy}
                   onClick={() => {
@@ -1222,6 +1231,7 @@ export function ReviewQueue() {
                 </button>
                 <button
                   type="button"
+                  role="menuitem"
                   className="btn btn-sm w-full justify-start"
                   disabled={busy}
                   onClick={() => {
@@ -1229,11 +1239,12 @@ export function ReviewQueue() {
                     void checkQueueHealth();
                   }}
                 >
-                  Check queue health
+                  Check review list health
                 </button>
                 {missingDateCount > 0 && (
                   <button
                     type="button"
+                    role="menuitem"
                     className="btn btn-sm w-full justify-start"
                     disabled={busy}
                     onClick={() => {
@@ -1247,15 +1258,16 @@ export function ReviewQueue() {
                 {unhashedCount > 0 && (
                   <button
                     type="button"
+                    role="menuitem"
                     className="btn btn-danger btn-sm w-full justify-start"
                     disabled={busy}
                     onClick={() => {
                       setToolsOpen(false);
                       void discardUnhashed();
                     }}
-                    title="Remove rows with no content hash — they can't be fetched or parsed, so they stay filename-only forever"
+                    title="Remove rows the app can never open — they'll stay filename-only forever"
                   >
-                    Remove unhashed ({unhashedCount})
+                    Remove unreadable ({unhashedCount})
                   </button>
                 )}
               </div>
@@ -1284,8 +1296,8 @@ export function ReviewQueue() {
           title="No letters under review"
           message={
             bridgeStatus === 'unavailable'
-              ? 'Auto-import needs launch.ps1 (/_acc/staging). Until then: Import ACC-Inbox .staging folder. processed/ PDFs alone never appear here.'
-              : '1. Run Start WFH Mode.cmd (or Start Folder Watch.cmd). 2. Sidecars land in ACC-Inbox\\.staging and auto-import here when launch.ps1 is serving. 3. If the queue stays empty, use Import ACC-Inbox .staging folder.'
+              ? 'Automatic import needs the helper program running on this PC. Until then, use "Import ACC-Inbox .staging folder" below. Letters sitting only in the processed folder won\'t show up here.'
+              : '1. Run Start WFH Mode.cmd (or Start Folder Watch.cmd). 2. New letters are saved into ACC-Inbox\\.staging and picked up automatically here. 3. If nothing shows up, use "Import ACC-Inbox .staging folder" below.'
           }
         />
       ) : (

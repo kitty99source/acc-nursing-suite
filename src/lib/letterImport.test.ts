@@ -327,6 +327,50 @@ describe('letterImport — matching', () => {
   });
 });
 
+describe('letterImport — confidence scoring', () => {
+  it('scores a clean, brand-new-patient approval at 100% (new patient is normal, not doubt)', async () => {
+    const text = loadCorpusText('approval-ns04-basic.txt');
+    const result = await parseLetterFromText(text, emptyData());
+    expect(result.match.claimId).toBeUndefined();
+    expect(result.match.patientId).toBeUndefined();
+    expect(result.blockers).toHaveLength(0);
+    expect(result.overallConfidence).toBe(100);
+  });
+
+  it('scores a clean, brand-new-patient decline at 100%', async () => {
+    const text = loadCorpusText('decline-standard.txt');
+    const result = await parseLetterFromText(text, emptyData());
+    expect(result.match.claimId).toBeUndefined();
+    expect(result.match.patientId).toBeUndefined();
+    expect(result.blockers).toHaveLength(0);
+    expect(result.overallConfidence).toBe(100);
+  });
+
+  it('scores a missing-PO approval meaningfully lower than a clean one', async () => {
+    const text = loadCorpusText('approval-missing-po.txt');
+    const result = await parseLetterFromText(text, emptyData());
+    expect(result.blockers.some((b) => b.includes('purchase order number'))).toBe(true);
+    expect(result.overallConfidence).toBeLessThanOrEqual(70);
+  });
+
+  it('scores an unresolved name-mismatch approval meaningfully lower than a clean one', async () => {
+    const text = loadCorpusText('approval-name-mismatch.txt');
+    const result = await parseLetterFromText(text, emptyData());
+    expect(result.blockers.some((b) => b.includes('Client name'))).toBe(true);
+    expect(result.overallConfidence).toBeLessThanOrEqual(80);
+    expect(result.overallConfidence).toBeLessThan(100);
+  });
+
+  it('still lowers confidence on alternate claim numbers even without a hard blocker', async () => {
+    const text = await extractPdfText(loadPdf('decline-template.pdf'));
+    const parsed = parseDeclineLetter(text);
+    expect(parsed.alternateClaimNumbers.length).toBeGreaterThan(0);
+    const result = await parseLetterFromText(text, emptyData());
+    expect(result.blockers).toHaveLength(0);
+    expect(result.overallConfidence).toBeLessThan(100);
+  });
+});
+
 describe('letterImport — issues', () => {
   it('surfaces name mismatch with both names as alternatives', async () => {
     const text = await extractPdfText(loadPdf('approval-template.pdf'));

@@ -443,6 +443,22 @@ describe('staging — dedup persistence (tombstones)', () => {
     ]);
     expect(added).toBe(0);
   });
+
+  it('does not duplicate a deferred item if its sidecar is re-imported (e.g. after a restart)', async () => {
+    queue = [
+      { ...mk('deferred-1', { sourceHash: 'h5', sourceFileName: 'letter.pdf', status: 'deferred' }), createdAt: 1 },
+    ];
+    // Simulate the in-session "seen sidecar" cache resetting (app restart) and
+    // the same underlying .staging sidecar being probed again with its
+    // original id — nothing on disk deletes .staging/*.json files.
+    const added = await importStagingSidecars([
+      { version: 1, item: mk('deferred-1', { sourceHash: 'h5', sourceFileName: 'letter.pdf' }) },
+    ]);
+    expect(added).toBe(0);
+    // Exactly one row, still deferred — no second row sharing the same id.
+    expect(queue).toHaveLength(1);
+    expect(queue[0].status).toBe('deferred');
+  });
 });
 
 describe('staging — analyzeStagingQueue', () => {

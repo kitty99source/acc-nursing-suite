@@ -1367,7 +1367,7 @@ export function ReviewQueue() {
                     <div className="space-y-4 min-w-0">
                       <div>
                         <h3 className="text-sm font-semibold mb-2">Patient</h3>
-                        <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                        <div className="grid gap-3" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}>
                           <Field label="Patient name" required>
                             <TextInput
                               value={fields.patientName}
@@ -1397,7 +1397,7 @@ export function ReviewQueue() {
 
                       <div>
                         <h3 className="text-sm font-semibold mb-2">Claim</h3>
-                        <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                        <div className="grid gap-3" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}>
                           <Field label="Claim number" required={parsed?.kind === 'approval'}>
                             <TextInput
                               value={fields.claimNumber}
@@ -1460,13 +1460,15 @@ export function ReviewQueue() {
                       {parsed?.kind === 'approval' && fields.rows.length > 0 && (
                         <div>
                           <h3 className="text-sm font-semibold mb-2">Service rows</h3>
-                          <div className="space-y-2">
+                          <div className="space-y-2 overflow-x-auto">
                             {fields.rows.map((row, i) => (
                               <div
                                 key={`${row.serviceCode}-${i}`}
                                 className="grid gap-2 items-end p-2 rounded-card"
                                 style={{
-                                  gridTemplateColumns: '80px 1fr 1fr 70px auto auto',
+                                  gridTemplateColumns:
+                                    '64px minmax(0, 1fr) minmax(0, 1fr) 56px auto auto',
+                                  minWidth: 440,
                                   background: 'var(--surface-2)',
                                 }}
                               >

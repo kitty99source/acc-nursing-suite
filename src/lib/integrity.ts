@@ -42,6 +42,15 @@ export function validateReferentialIntegrity(data: AppData): string[] {
     }
   }
 
+  for (const m of data.memos ?? []) {
+    if (!patientIds.has(m.patientId)) {
+      warnings.push(`Memo ${m.id} references missing patient ${m.patientId}`);
+    }
+    if (m.claimId && !claimIds.has(m.claimId)) {
+      warnings.push(`Memo ${m.id} references missing claim ${m.claimId}`);
+    }
+  }
+
   return warnings;
 }
 

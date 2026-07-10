@@ -24,6 +24,7 @@ export function emptyData(): AppData {
     declines: [],
     settings: { ...DEFAULT_SETTINGS },
     documents: [],
+    memos: [],
   };
 }
 

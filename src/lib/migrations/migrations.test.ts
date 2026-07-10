@@ -15,15 +15,24 @@ function v1Fixture(): AppData {
     declines: [],
     settings: { ...DEFAULT_SETTINGS },
     documents: [],
+    memos: [],
   };
 }
 
 describe('migrations', () => {
-  it('migrates v1 fixture to v2', () => {
+  it('migrates v1 fixture to latest (v3)', () => {
     const next = migrateAppData(v1Fixture(), 1, LATEST_FILE_VERSION);
-    expect(next.schemaVersion).toBe(2);
+    expect(next.schemaVersion).toBe(3);
     expect(next.importHistory).toEqual([]);
     expect(next.documents).toEqual([]);
+    expect(next.memos).toEqual([]);
+  });
+
+  it('migrates v2 fixture to v3, adding the memos table', () => {
+    const v2 = { ...v1Fixture(), schemaVersion: 2, importHistory: [] };
+    const next = migrateAppData(v2, 2, LATEST_FILE_VERSION);
+    expect(next.schemaVersion).toBe(3);
+    expect(next.memos).toEqual([]);
   });
 
   it('blocks downgrade when file version is newer than app', () => {

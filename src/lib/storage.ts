@@ -87,12 +87,14 @@ export function normalizeData(data: AppData): AppData {
     Array.isArray(enabled) && enabled.length > 0 ? enabled : [...DEFAULT_SETTINGS.enabledServiceCodes];
   // Older files predate document attachments — ensure the array always exists.
   const documents = Array.isArray(data.documents) ? data.documents : [];
+  // Older files predate the memo table — ensure it always exists (P-memo-001).
+  const memos = Array.isArray(data.memos) ? data.memos : [];
   const approvals = (data.approvals ?? []).map((a) => ({
     ...a,
     recordStatus: a.recordStatus ?? 'current',
   }));
   const schemaVersion = data.schemaVersion ?? SCHEMA_VERSION;
-  return { ...data, schemaVersion, settings, documents, approvals };
+  return { ...data, schemaVersion, settings, documents, memos, approvals };
 }
 
 function applyFileMigrations(data: AppData, fileVersion: number): AppData {

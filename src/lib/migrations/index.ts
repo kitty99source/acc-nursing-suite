@@ -7,7 +7,7 @@ import { DEFAULT_RATES } from '../serviceCodes';
 // file envelope version is older than FILE_VERSION.
 // ============================================================================
 
-export const LATEST_FILE_VERSION = 2;
+export const LATEST_FILE_VERSION = 3;
 
 export class DowngradeBlockedError extends Error {
   constructor(fileVersion: number, appVersion: number) {
@@ -31,11 +31,12 @@ function normalizeForMigration(data: AppData): AppData {
   settings.enabledServiceCodes =
     Array.isArray(enabled) && enabled.length > 0 ? enabled : [...DEFAULT_SETTINGS.enabledServiceCodes];
   const documents = Array.isArray(data.documents) ? data.documents : [];
+  const memos = Array.isArray(data.memos) ? data.memos : [];
   const approvals = (data.approvals ?? []).map((a) => ({
     ...a,
     recordStatus: a.recordStatus ?? 'current',
   }));
-  return { ...data, settings, documents, approvals };
+  return { ...data, settings, documents, memos, approvals };
 }
 
 /** v1 → v2: stamp schemaVersion and ensure optional arrays exist. */
@@ -49,7 +50,20 @@ function migrateV1ToV2(data: AppData): AppData {
   };
 }
 
-const STEPS: MigrationStep[] = [{ from: 1, to: 2, migrate: migrateV1ToV2 }];
+/** v2 → v3: add the `memos` table (nurse follow-up tracking). */
+function migrateV2ToV3(data: AppData): AppData {
+  const normalized = normalizeForMigration(data);
+  return {
+    ...normalized,
+    schemaVersion: 3,
+    memos: normalized.memos ?? [],
+  };
+}
+
+const STEPS: MigrationStep[] = [
+  { from: 1, to: 2, migrate: migrateV1ToV2 },
+  { from: 2, to: 3, migrate: migrateV2ToV3 },
+];
 
 export function migrateAppData(data: AppData, fromVersion: number, toVersion = LATEST_FILE_VERSION): AppData {
   let current = fromVersion;

@@ -17,6 +17,8 @@ import {
 import { IconPlus, IconEdit, IconTrash, IconApprovals } from '../components/icons';
 import { LetterImportButton } from '../components/LetterImportButton';
 import { computeApproval } from '../lib/analytics';
+import { findDuplicateApprovalsByPO } from '../lib/approvals';
+import { appendAudit } from '../lib/auditLog';
 import { formatDate, daysUntil } from '../lib/format';
 import type { Approval, ApprovalServiceCode } from '../types';
 
@@ -133,6 +135,59 @@ export function Approvals() {
     if (ok) removeApproval(a.id);
   }
 
+  async function checkDuplicateApprovals() {
+    const groups = findDuplicateApprovalsByPO(data.approvals, data.documents, data.patients);
+    const redundantCount = groups.reduce((sum, g) => sum + g.redundant.length, 0);
+    const ok = await confirm({
+      title: 'Check for duplicate approvals',
+      message:
+        groups.length === 0 ? (
+          <p style={{ color: 'var(--muted)' }}>
+            No duplicates found. Every approval has a unique combination of patient, service code and
+            PO number.
+          </p>
+        ) : (
+          <div className="space-y-2 text-sm">
+            <p>
+              Found <strong>{redundantCount}</strong> redundant approval(s) across <strong>{groups.length}</strong>{' '}
+              patient/PO group(s) — the same patient, service code and PO number filed more than once
+              (e.g. the same ACC decision emailed twice, a year apart). The newest record in each group
+              is kept; only the older duplicate(s) would be removed. Approvals with different PO numbers
+              are never touched — those are legitimate, distinct renewals.
+            </p>
+            <div className="space-y-1 max-h-64 overflow-y-auto">
+              {groups.map((g) => {
+                const p = data.patients.find((x) => x.id === g.patientId);
+                return (
+                  <div key={g.key} className="rounded-card p-2" style={{ background: 'var(--surface-2)' }}>
+                    <div className="font-medium">
+                      {p?.name ?? g.patientId} — {g.serviceCode} — PO {g.poNumber || '—'}
+                    </div>
+                    <div className="text-xs" style={{ color: 'var(--muted)' }}>
+                      Keeping the record ending {formatDate(g.keep.approvalEndDate)}; removing{' '}
+                      {g.redundant.length} older duplicate(s).
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ),
+      confirmLabel: groups.length === 0 ? 'Close' : `Remove ${redundantCount} duplicate(s)`,
+      destructive: groups.length > 0,
+    });
+    if (ok && groups.length > 0) {
+      for (const g of groups) {
+        for (const a of g.redundant) removeApproval(a.id);
+      }
+      await appendAudit({
+        action: 'approval-dedupe',
+        entityType: 'approval',
+        summary: `Removed ${redundantCount} duplicate approval(s) across ${groups.length} patient/PO group(s)`,
+      });
+    }
+  }
+
   async function viewLetter(approval: Approval) {
     if (!approval.sourceDocumentId) return;
     const blob = await getDocumentBlob(approval.sourceDocumentId);
@@ -149,14 +204,17 @@ export function Approvals() {
     {
       key: 'patient',
       header: 'Patient',
+      width: '15%',
       sortable: true,
       sortValue: (r) => data.patients.find((p) => p.id === r.approval.patientId)?.name ?? '',
       render: (r) => {
         const p = data.patients.find((x) => x.id === r.approval.patientId);
         return (
-          <div>
-            <div className="font-medium">{p?.name ?? '—'}</div>
-            <div className="text-xs" style={{ color: 'var(--muted)' }}>
+          <div className="min-w-0">
+            <div className="font-medium truncate" title={p?.name}>
+              {p?.name ?? '—'}
+            </div>
+            <div className="text-xs truncate" style={{ color: 'var(--muted)' }}>
               {p?.nhi}
             </div>
           </div>
@@ -166,6 +224,7 @@ export function Approvals() {
     {
       key: 'code',
       header: 'Code',
+      width: '12%',
       sortable: true,
       sortValue: (r) => r.approval.serviceCode,
       render: (r) => (
@@ -184,13 +243,19 @@ export function Approvals() {
     {
       key: 'po',
       header: 'PO Number',
+      width: '10%',
       sortable: true,
       sortValue: (r) => r.approval.poNumber,
-      render: (r) => r.approval.poNumber || '—',
+      render: (r) => (
+        <span className="truncate block" title={r.approval.poNumber}>
+          {r.approval.poNumber || '—'}
+        </span>
+      ),
     },
     {
       key: 'start',
       header: 'Start',
+      width: '9%',
       sortable: true,
       sortValue: (r) => r.approval.approvalStartDate,
       render: (r) => formatDate(r.approval.approvalStartDate),
@@ -198,6 +263,7 @@ export function Approvals() {
     {
       key: 'end',
       header: 'End / PO Expiry',
+      width: '10%',
       sortable: true,
       sortValue: (r) => r.approval.approvalEndDate,
       render: (r) => formatDate(r.approval.approvalEndDate),
@@ -205,6 +271,7 @@ export function Approvals() {
     {
       key: 'qty',
       header: 'Approved',
+      width: '11%',
       align: 'right',
       sortable: true,
       sortValue: (r) => r.approval.approvedHoursOrConsults,
@@ -224,6 +291,7 @@ export function Approvals() {
     {
       key: 'days',
       header: 'Days to expiry',
+      width: '8%',
       align: 'right',
       sortable: true,
       sortValue: (r) => r.computed.daysUntilExpiry,
@@ -232,6 +300,7 @@ export function Approvals() {
     {
       key: 'status',
       header: 'Status',
+      width: '9%',
       sortable: true,
       sortValue: (r) => r.computed.status,
       render: (r) => {
@@ -245,11 +314,13 @@ export function Approvals() {
     {
       key: 'renewal',
       header: 'Renewal emailed',
+      width: '9%',
       render: (r) => formatDate(r.approval.accEmailedRenewalDate) || '—',
     },
     {
       key: 'actions',
       header: '',
+      width: '7%',
       render: (r) => (
         <div className="flex items-center gap-1 justify-end">
           {r.approval.sourceDocumentId && (
@@ -280,6 +351,13 @@ export function Approvals() {
         actions={
           <div className="flex items-center gap-2">
             <LetterImportButton opts={{ context: letterContext.current, entryPoint: 'approvals' }} />
+            <button
+              className="btn btn-sm"
+              onClick={() => void checkDuplicateApprovals()}
+              title="Find approvals for the same patient, service code and PO number filed more than once (e.g. from a different email/year), and remove the older duplicate(s) after review."
+            >
+              Check for duplicate approvals
+            </button>
             <button className="btn btn-primary" onClick={openCreate} disabled={data.patients.length === 0}>
               <IconPlus /> New approval
             </button>
@@ -329,6 +407,7 @@ export function Approvals() {
         rowKey={(r) => r.approval.id}
         rowClassName={(r) => (r.computed.status !== 'Active' ? 'row-salmon' : '')}
         initialSort={{ key: 'days', dir: 'asc' }}
+        tableLayout="fixed"
         emptyState={
           <EmptyState
             icon={<IconApprovals width={32} height={32} />}

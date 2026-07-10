@@ -1,0 +1,29 @@
+---
+description: Default git workflow — auto commit and push after changes
+globs:
+alwaysApply: true
+---
+
+After making code or file changes that leave the working tree in a good,
+buildable state, automatically commit and push to the current branch without
+waiting for the user to ask. This is the default; do not ask for permission.
+
+Do NOT auto commit/push (pause and check with the user first) when any of these apply:
+- The build, typecheck, or tests are failing, or changes are incomplete/WIP.
+- The change is destructive or hard to reverse (history rewrites, force pushes,
+  branch deletion, `reset --hard`, secrets, large binaries).
+- Files likely contain secrets or real patient data / PHI (e.g. `.accdata`,
+  credentials, `.env`, email-sync state, anything under `ACC-Inbox/` or `ACC-Suite/`).
+- The user explicitly asked to hold off, is mid-review, or is still deciding.
+- The work is purely exploratory (planning, read-only investigation) with no
+  intended file changes.
+
+Workflow details:
+- Run the project build/typecheck (and relevant tests) before committing; only
+  commit when they pass.
+- Stage with `git add -A`, write a concise message focused on the "why".
+- This repo's local git rejects Cursor's injected `--trailer`, so create the
+  commit via plumbing when `git commit` fails: `git write-tree` →
+  `git commit-tree <tree> -p <parent>` (message on stdin) → `git update-ref HEAD <commit>`.
+- Push with `git push origin HEAD`.
+- Never update git config; never skip hooks or force-push unless explicitly asked.

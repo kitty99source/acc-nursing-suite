@@ -1134,18 +1134,38 @@ export async function parseLetterFromText(
   };
 }
 
+async function extractWordResult(
+  input: Blob | ArrayBuffer | Uint8Array,
+  onProgress?: LetterImportProgressHandler,
+): Promise<{ text: string; usedOcr: boolean }> {
+  return { text: await extractWordText(input, onProgress), usedOcr: false };
+}
+
 export async function parseLetterFile(
   file: Blob,
   data: AppData,
   context?: LetterImportContext,
   onProgress?: LetterImportProgressHandler,
 ): Promise<LetterParseResult> {
-  if (isWordDocument(file)) {
-    const text = await extractWordText(file, onProgress);
-    return parseLetterFromText(text, data, context, false, onProgress);
+  // Try the extractor implied by name/type first, then fall back to the other.
+  // Bridge-resolved files can arrive as application/octet-stream with an
+  // ambiguous name, so a PDF may look like Word (or vice versa). Falling back
+  // on a hard failure makes the auto-path as forgiving as a manual file pick.
+  const order = isWordDocument(file)
+    ? [extractWordResult, extractLetterText]
+    : [extractLetterText, extractWordResult];
+  let lastErr: unknown;
+  for (const extract of order) {
+    try {
+      const { text, usedOcr } = await extract(file, onProgress);
+      return parseLetterFromText(text, data, context, usedOcr, onProgress);
+    } catch (err) {
+      lastErr = err;
+    }
   }
-  const { text, usedOcr } = await extractLetterText(file, onProgress);
-  return parseLetterFromText(text, data, context, usedOcr, onProgress);
+  throw lastErr instanceof Error
+    ? lastErr
+    : new Error('Could not read this file as a PDF or Word (.docx) letter.');
 }
 
 /** Patches for patient/claim forms — does not persist. */

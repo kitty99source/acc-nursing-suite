@@ -373,6 +373,20 @@ export async function removeUnnamedStagingItems(): Promise<number> {
   return removed;
 }
 
+/**
+ * Remove pending rows that have no content hash. Unhashed rows can't be resolved
+ * to letter bytes (no way to fetch/parse them), so they stay filename-only forever
+ * — these are almost always the junk/unnamed rows. Never touches accepted/resolved
+ * items. Returns how many were removed; only persists on change.
+ */
+export async function removeUnhashedStagingItems(): Promise<number> {
+  const all = await idbLoadStaging();
+  const kept = all.filter((i) => i.status !== 'pending' || Boolean(i.sourceHash?.trim()));
+  const removed = all.length - kept.length;
+  if (removed > 0) await idbSaveStaging(kept);
+  return removed;
+}
+
 /** Collapse duplicate-hash items, keeping the earliest-created one of each hash. */
 export function dedupeStagingByHash(items: StagingItem[]): StagingItem[] {
   const seen = new Map<string, true>();

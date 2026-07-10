@@ -18,6 +18,21 @@ export function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
+/** Best-effort MIME from a filename extension (bridge often returns octet-stream). */
+export function mimeFromName(name?: string): string | undefined {
+  const n = (name ?? '').toLowerCase();
+  if (n.endsWith('.pdf')) return 'application/pdf';
+  if (n.endsWith('.docx'))
+    return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  if (n.endsWith('.png')) return 'image/png';
+  if (n.endsWith('.jpg') || n.endsWith('.jpeg')) return 'image/jpeg';
+  return undefined;
+}
+
+function isGenericMime(mime?: string): boolean {
+  return !mime || mime === 'application/octet-stream' || mime === 'application/binary';
+}
+
 export function base64ToBlob(base64: string, mime = 'application/octet-stream'): Blob {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
@@ -50,14 +65,21 @@ export async function getCachedLetterFile(
   const blob = await loadLetterBlob(hash);
   if (blob?.size) {
     const name = preferredName?.trim() || 'letter.bin';
-    return new File([blob], name, { type: mime || blob.type || 'application/octet-stream' });
+    const type =
+      mime ||
+      (isGenericMime(blob.type) ? mimeFromName(name) : undefined) ||
+      blob.type ||
+      'application/octet-stream';
+    return new File([blob], name, { type });
   }
   const preview = await getCachedLetterParse(hash);
   if (!preview) return undefined;
   const file = previewToFile(preview);
   const name = preferredName?.trim();
-  if (name && name !== file.name) {
-    return new File([file], name, { type: mime || file.type });
+  const type =
+    mime || (isGenericMime(file.type) ? mimeFromName(name || file.name) : undefined) || file.type;
+  if ((name && name !== file.name) || type !== file.type) {
+    return new File([file], name || file.name, { type });
   }
   return file;
 }

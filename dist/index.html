@@ -4,15 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!--
-      Strict offline Content-Security-Policy.
-      - connect-src 'none' blocks ALL outbound connections (fetch / XHR / WebSocket / EventSource).
+      Strict local-only Content-Security-Policy.
+      - connect-src 'self' allows fetches ONLY to the same local origin (the loopback
+        launcher's /_acc/* bridge for ACC-Inbox staging + letter bytes). No internet,
+        no CDNs, no external hosts. When opened via file:// there is no origin to reach,
+        so it stays fully offline.
       - default-src 'self' keeps everything local; no CDNs, no external fonts.
       - 'unsafe-inline' is required ONLY because vite-plugin-singlefile inlines the bundled
         JS and CSS directly into this file. No eval is used (production React build).
+      - 'wasm-unsafe-eval' lets the bundled Tesseract OCR engine compile its WebAssembly
+        (needed to read scanned/image-only PDF letters); it does NOT enable JS eval().
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'; worker-src 'self' blob:;"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'; worker-src 'self' blob:;"
     />
     <title>ACC District Nursing Admin Suite</title>
     <script type="module" crossorigin>var cFU=Object.defineProperty;var O9=Q=>{throw TypeError(Q)};var iFU=(Q,U,F)=>U in Q?cFU(Q,U,{enumerable:!0,configurable:!0,writable:!0,value:F}):Q[U]=F;var rU=(Q,U,F)=>iFU(Q,typeof U!="symbol"?U+"":U,F),hb=(Q,U,F)=>U.has(Q)||O9("Cannot "+F);var s=(Q,U,F)=>(hb(Q,U,"read from private field"),F?F.call(Q):U.get(Q)),QU=(Q,U,F)=>U.has(Q)?O9("Cannot add the same private member more than once"):U instanceof WeakSet?U.add(Q):U.set(Q,F),P=(Q,U,F,B)=>(hb(Q,U,"write to private field"),B?B.call(Q,F):U.set(Q,F),F),BU=(Q,U,F)=>(hb(Q,U,"access private method"),F);var jQ=(Q,U,F,B)=>({set _(R){P(Q,U,R,F)},get _(){return s(Q,U,B)}});function Zf(Q,U){for(var F=0;F<U.length;F++){const B=U[F];if(typeof B!="string"&&!Array.isArray(B)){for(const R in B)if(R!=="default"&&!(R in Q)){const l=Object.getOwnPropertyDescriptor(B,R);l&&Object.defineProperty(Q,R,l.get?l:{enumerable:!0,get:()=>B[R]})}}}return Object.freeze(Object.defineProperty(Q,Symbol.toStringTag,{value:"Module"}))}(function(){const U=document.createElement("link").relList;if(U&&U.supports&&U.supports("modulepreload"))return;for(const R of document.querySelectorAll('link[rel="modulepreload"]'))B(R);new MutationObserver(R=>{for(const l of R)if(l.type==="childList")for(const n of l.addedNodes)n.tagName==="LINK"&&n.rel==="modulepreload"&&B(n)}).observe(document,{childList:!0,subtree:!0});function F(R){const l={};return R.integrity&&(l.integrity=R.integrity),R.referrerPolicy&&(l.referrerPolicy=R.referrerPolicy),R.crossOrigin==="use-credentials"?l.credentials="include":R.crossOrigin==="anonymous"?l.credentials="omit":l.credentials="same-origin",l}function B(R){if(R.ep)return;R.ep=!0;const l=F(R);fetch(R.href,l)}})();var PU=typeof globalThis<"u"?globalThis:typeof window<"u"?window:typeof global<"u"?global:typeof self<"u"?self:{};function eQ(Q){return Q&&Q.__esModule&&Object.prototype.hasOwnProperty.call(Q,"default")?Q.default:Q}function kFU(Q){if(Q.__esModule)return Q;var U=Q.default;if(typeof U=="function"){var F=function B(){return this instanceof B?Reflect.construct(U,arguments,this.constructor):U.apply(this,arguments)};F.prototype=U.prototype}else F={};return Object.defineProperty(F,"__esModule",{value:!0}),Object.keys(Q).forEach(function(B){var R=Object.getOwnPropertyDescriptor(Q,B);Object.defineProperty(F,B,R.get?R:{enumerable:!0,get:function(){return Q[B]}})}),F}var Jf={exports:{}},Qp={},tf={exports:{}},LF={};/**

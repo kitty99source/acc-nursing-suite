@@ -1,0 +1,52 @@
+---
+description: Playbook and case-study log for rescoping ACCAdminsuite into a new, narrower suite for a different coworker/role (e.g. Loan Equipment Tracker for a co-worker). Apply whenever starting, continuing, or reviewing a rescoping project for a new persona.
+alwaysApply: false
+---
+
+# Rescoping Playbook
+
+A short, mirrored version of this lives as a **user-level rule** ("ACCAdminsuite rescoping playbook") so it's available automatically in any brand-new repo without needing to be copied in. Keep both in sync when you learn something new — update the user-level rule for process/checklist changes, and add a new case-study entry below for project-specific specifics.
+
+## Why this exists
+
+ACCAdminsuite's core (offline-first, single-file, `.accdata`, IndexedDB blob storage, local launcher bridge, Outlook-sync ingestion, save/load, audit log, theme/UI kit) is proven and hospital-approved. Repeating coworkers/roles (a different admin, the boss, etc.) need narrower tools that share this DNA but cut irrelevant modules and add role-specific ones. Don't rebuild the plumbing each time; don't force every role into one bloated app either.
+
+## Process
+
+1. **Capture the job scope as a conversation, not a spec.** Let the coworker describe their day-to-day in their own words (chasing things up, billing, what triggers each step, what they email/receive). Don't ask them to fill in a schema up front.
+2. **Parse notes into a draft plan yourself; fill gaps from what ACCAdminsuite already solved.** Only surface true open questions back to the requester — things that would change the shape of the plan, not every field. State your assumptions and defaults explicitly so they're easy to correct.
+3. **Decide the reuse strategy** (ask if genuinely ambiguous, otherwise default):
+   - **Default: new standalone repo**, scaffolded by copying/forking reusable pieces from ACCAdminsuite (see building blocks below). Each persona gets an independently deployable, independently versioned app — safest, matches "we'll do this a few more times."
+   - Only propose extracting a **shared core library** once there are 3+ forked suites and a clear, stable common surface — premature abstraction before that point costs more than it saves.
+   - Adding a module to the *existing* ACCAdminsuite repo is rarely right when the persona's job scope is meaningfully different (couples unrelated products, mixes unrelated users' data/concerns).
+4. **Map the new domain onto existing primitives** before inventing new ones. Common translations:
+   - Any "thing tracked per person" → `Patient`-like record + a domain entity (`Claim`, `EquipmentLoan`, etc.) referencing it by id.
+   - Any "editable rates/prices the org updates over time" → the `serviceRates: Record<Code, number>` pattern in `Settings` (see [src/types/index.ts](/Users/prakritichhetri/ACCAdminsuite/src/types/index.ts)) — one editable table, versionless, no fixed reset default.
+   - Any "attach a file to a record" → `ClaimDocument`-style metadata row + IndexedDB blob store, never bytes in the main autosaved blob (see [src/lib/idb.ts](/Users/prakritichhetri/ACCAdminsuite/src/lib/idb.ts), [src/lib/letterCache.ts](/Users/prakritichhetri/ACCAdminsuite/src/lib/letterCache.ts)).
+   - Any "multi-step status per record" → a small ordered stage enum + a visual step-tracker component, denormalized onto the record for fast list rendering (avoid recomputing status from history on every render).
+   - Any "emails start/drive the process" → the staging/Review Queue pattern ([src/lib/staging.ts](/Users/prakritichhetri/ACCAdminsuite/src/lib/staging.ts), [src/modules/ReviewQueue.tsx](/Users/prakritichhetri/ACCAdminsuite/src/modules/ReviewQueue.tsx)): land in a queue for one-button accept-into-record, full email history kept per record afterward. Reuse the Outlook-sync + local launcher bridge for automated ingestion once the manual flow is validated — don't port the PowerShell bridge on day one of a new repo.
+   - Any "generate/track a specific known form" (e.g. ACC4249 loan form) → treat as a document kind + a tracked progress stage first; only build bespoke parsing/extraction once you have a real sample of the form and see it recurring.
+5. **Build order:** data model → core record CRUD module → domain-specific centerpiece feature (the thing that makes this persona's job easier day one) → secondary features → polish/UI passes. Don't front-load polish.
+6. **Cut aggressively.** Anything specific to the *other* persona's workflow (e.g. nursing service-code billing, compliance rules, complex-case tracking) should not exist in the new repo at all, not just be hidden in the UI.
+7. **After shipping, log a case study below** so the next rescoping (next coworker, or the boss) starts from real examples instead of a blank playbook.
+
+## Building blocks worth reusing as-is (from ACCAdminsuite)
+
+- Persistence: `src/lib/idb.ts` (IndexedDB stores, blob storage, recent-files), `src/state/store.ts` (Zustand store, autosave, save-into-file-handle, rollback-on-commit-failure pattern).
+- File handling: `src/lib/fileSniff.ts` (byte-level type detection), `src/components/PdfPreview.tsx` (offline preview + text fallback), `src/lib/letterCache.ts` (MIME inference, blob/parse caching).
+- UI shell: `src/components/TopBar.tsx`, `src/components/Sidebar.tsx`, `src/lib/theme.ts`, `src/index.css` (theme tokens, density modes).
+- Ingestion pipeline (only once manual flow is proven): `scripts/launcher/*.ps1` (local bridge, Outlook COM sync, folder watch), `src/lib/localAccBridge.ts`, `src/lib/staging.ts`, `src/modules/ReviewQueue.tsx`.
+- Build/verify tooling: `scripts/verify-build.mjs` (CSP checks — keep `connect-src 'self'` for the local bridge, `'wasm-unsafe-eval'` if OCR is needed), `scripts/copy-launcher.mjs`.
+
+## Case studies
+
+### 1. Loan Equipment Tracker (coworker, started 2026-07-11)
+
+- **Persona:** Coworker with similar role to the primary user, but scoped to hospital loan equipment (not nursing service billing).
+- **Job scope (coworker's own words):** track patient info useful for chasing up loan equipment and billing; know where each patient is in the process and who needs following up/re-emailing; maintain an editable equipment price list; save the initial patient email plus all subsequent emails as attachments under each patient for full history; a visual progress tracker per patient; the ACC4249 loan form is the essential first step many patients skip.
+- **Reuse strategy chosen:** new standalone repo, forked from ACCAdminsuite, reusing persistence/UI/file-handling building blocks above; email ingestion starts manual (attach email/attachment per patient), Outlook-sync/launcher bridge ported later once validated.
+- **Kept:** `Patient` record shape (id/name/nhi/dob/notes), IndexedDB blob + document metadata pattern, editable-rates-table pattern (repurposed as the price list), save/load `.accdata`, audit log, theme/UI kit.
+- **Cut:** `ServiceLine`/`ServiceCode` package calculator, `Approval` (NS04/NS05), `Billing`/`InvoiceLine` nursing-specific flow, `ComplexCases`, `Declines`, `Compliance` module, `ImportedTables`.
+- **New:** `EquipmentLoan`/loan-case entity per patient, `PriceListItem` catalog, ordered progress-stage enum + step-tracker UI, per-patient email/attachment history view, ACC4249 tracked as a document-kind + stage (bespoke parsing deferred — no sample form captured yet).
+- **Open questions logged for follow-up:** exact ordered list of progress stages (drafted from the one sample follow-up email + "loan form is step one", needs coworker confirmation); billing model for equipment (flat fee vs. per-item price vs. daily rate); whether billing target is ACC or the DHB; whether the Outlook-sync bridge should be pointed at the coworker's own mailbox/shared inbox and on what timeline.
+- **Lessons for next time:** ask for the actual sample form/attachment up front rather than assuming it's included with an email; the "cut down current suite" framing usually means a fully separate persona-specific product, not an added module for someone who also needs the original features.

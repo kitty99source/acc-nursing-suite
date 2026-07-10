@@ -202,24 +202,55 @@ export function isAutoAcceptEligiblePreview(preview: StagingParsedPreview | unde
   return true;
 }
 
-/** Full eligibility gate for a staging item: pending-only, approval-only, 100%, zero blockers, no ambiguous match, has service rows. */
+/**
+ * Full eligibility gate for a staging item: pending-only, plus the
+ * denormalized `autoAcceptEligible` flag stamped on the item by
+ * `stagingPreparse.ts` / `ReviewQueue.tsx` after a parse (foreground or
+ * background) clears `isAutoAcceptEligiblePreview`. Deliberately does NOT
+ * look at `item.parsedPreview` — under the lean-queue redesign that field is
+ * never populated (parsed data lives in the hash-keyed letter parse cache),
+ * so gating on it here made this permanently false for every item.
+ */
 export function isAutoAcceptEligible(item: StagingItem): boolean {
   if (item.status !== 'pending') return false;
-  if (!isStagingParsedPreview(item.parsedPreview)) return false;
-  return isAutoAcceptEligiblePreview(item.parsedPreview);
+  return item.autoAcceptEligible === true;
+}
+
+export interface AutoAcceptDeps extends BatchCommitDeps {
+  /**
+   * Resolve the full parsed preview for an eligible item at commit time.
+   * `StagingItem` only carries the lightweight `autoAcceptEligible` flag
+   * (see staging.ts) — the actual parsed data (service rows, file bytes,
+   * patient/claim patch, etc.) lives in the hash-keyed letter parse cache,
+   * not on the item. Return `undefined` if the cached parse/blob can no
+   * longer be resolved (cache evicted, launcher bridge down, etc.) — the
+   * caller skips this item and continues the batch rather than failing it.
+   */
+  resolvePreview: (item: StagingItem) => Promise<StagingParsedPreview | undefined>;
 }
 
 /** Commit a single auto-accept-eligible staging item, tagging the created Approval(s). */
 export async function commitAutoAcceptItem(
   item: StagingItem,
-  deps: BatchCommitDeps,
+  deps: AutoAcceptDeps,
 ): Promise<{ patientId: string; claimId: string }> {
   if (!isAutoAcceptEligible(item)) {
     throw new Error(`"${item.title}" is not eligible for auto-accept.`);
   }
-  const preview = item.parsedPreview;
-  if (!isStagingParsedPreview(preview) || preview.kind !== 'approval' || preview.parsed.kind !== 'approval') {
-    throw new Error(`"${item.title}" is not an approval letter.`);
+  const preview = await deps.resolvePreview(item);
+  // Re-check the full gate against the freshly-resolved preview (not just the
+  // denormalized flag) — defense-in-depth so a stale/incorrect flag can never
+  // let something unattended through, matching the "never auto-commit
+  // without checking every condition" stance this whole gate is built on.
+  if (
+    !preview ||
+    preview.kind !== 'approval' ||
+    preview.parsed.kind !== 'approval' ||
+    !isAutoAcceptEligiblePreview(preview)
+  ) {
+    throw new Error(
+      `"${item.title}" could not be resolved for auto-accept — the letter file or its cached parse is no longer available.`,
+    );
   }
   const file = previewToFile(preview);
   const rows =
@@ -259,7 +290,7 @@ export interface AutoAcceptOutcome {
  */
 export async function runAutoAccept(
   items: StagingItem[],
-  deps: BatchCommitDeps,
+  deps: AutoAcceptDeps,
   onProgress?: (progress: AutoAcceptProgress) => void,
 ): Promise<AutoAcceptOutcome[]> {
   const outcomes: AutoAcceptOutcome[] = [];

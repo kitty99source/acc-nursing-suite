@@ -188,6 +188,41 @@ describe('<ReviewQueue /> toolbar layout (item 5)', () => {
   });
 });
 
+describe('<ReviewQueue /> auto-accept eligible count (Auto-accept ready (N) button)', () => {
+  it('surfaces "Auto-accept ready (N)" as soon as any item carries the denormalized autoAcceptEligible flag', async () => {
+    // Regression test for the bug where isAutoAcceptEligible gated on
+    // item.parsedPreview (a field never written under the lean-queue
+    // redesign), which made this button permanently invisible. Here
+    // isAutoAcceptEligible is mocked directly (ReviewQueue.tsx just filters
+    // `sorted` with it — see the `autoAcceptEligible` useMemo), so this
+    // proves the toolbar count reacts to the real gate function's result
+    // rather than any legacy shape.
+    const { isAutoAcceptEligible } = await import('../lib/hrqBatch');
+    vi.mocked(isAutoAcceptEligible).mockImplementation(
+      (item) => item.id === 'named-1' && item.status === 'pending',
+    );
+
+    await act(async () => {
+      root.render(<ReviewQueue />);
+    });
+    await flush();
+
+    expect(buttonTexts().some((t) => t === 'Auto-accept ready (1)')).toBe(true);
+  });
+
+  it('does not show the button when no item is auto-accept eligible', async () => {
+    const { isAutoAcceptEligible } = await import('../lib/hrqBatch');
+    vi.mocked(isAutoAcceptEligible).mockImplementation(() => false);
+
+    await act(async () => {
+      root.render(<ReviewQueue />);
+    });
+    await flush();
+
+    expect(buttonTexts().some((t) => t.startsWith('Auto-accept ready'))).toBe(false);
+  });
+});
+
 describe('<ReviewQueue /> list title staleness (item 4)', () => {
   it('updates the list row title as soon as loadSelected resolves a patient name, without a manual Refresh', async () => {
     // jsdom has no Blob/File URL support — PdfPreview only needs a stable stub.

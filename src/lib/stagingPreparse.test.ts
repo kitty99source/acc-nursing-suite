@@ -102,6 +102,82 @@ describe('stagingPreparse', () => {
     expect(patch?.parsedPreview).toBeUndefined();
   });
 
+  it('denormalizes autoAcceptEligible=true onto the item for a fresh, 100%-confidence, zero-blocker approval parse', async () => {
+    const hash = 'c'.repeat(64);
+    const item = createStagingItem({
+      id: 'item-eligible',
+      type: 'letter-import-pending',
+      source: 'folder',
+      severity: 'info',
+      title: 'Folder: letter.pdf',
+      summary: 'Test',
+      sourceHash: hash,
+    });
+    blobCache.set(hash, new Blob(['pdf'], { type: 'application/pdf' }));
+    parseLetterFile.mockResolvedValue({
+      parsed: {
+        kind: 'approval',
+        letterDate: '',
+        patient: { name: 'Eligible Patient', nhi: '', dob: '' },
+        claim: { claimNumber: 'P100', acc45Number: '', poNumber: '', injuryDescription: '', dateOfInjury: '' },
+        serviceRows: [{ code: 'NS04', description: '', quantity: 1, status: 'approved' }],
+        packageRows: [],
+      },
+      overallConfidence: 100,
+      issues: [],
+      blockers: [],
+      match: {},
+    } as unknown as LetterParseResult);
+
+    enqueueStagingPreparse([item]);
+    await new Promise((r) => setTimeout(r, 80));
+
+    // This is the exact denormalization path the "Auto-accept ready (N)"
+    // toolbar button depends on (see hrqBatch.ts isAutoAcceptEligible) —
+    // NOT a hand-constructed parsedPreview.
+    expect(updateStagingItem).toHaveBeenCalledWith(
+      'item-eligible',
+      expect.objectContaining({ patientName: 'Eligible Patient', autoAcceptEligible: true }),
+    );
+  });
+
+  it('clears a stale autoAcceptEligible flag when a re-parse drops below the full-preview bar', async () => {
+    const hash = 'd'.repeat(64);
+    const item = createStagingItem({
+      id: 'item-regressed',
+      type: 'letter-import-pending',
+      source: 'folder',
+      severity: 'info',
+      title: 'Folder: letter.pdf',
+      summary: 'Test',
+      sourceHash: hash,
+      autoAcceptEligible: true, // stale flag from an earlier, now-superseded parse
+    });
+    blobCache.set(hash, new Blob(['pdf'], { type: 'application/pdf' }));
+    parseLetterFile.mockResolvedValue({
+      parsed: {
+        kind: 'approval',
+        letterDate: '',
+        patient: { name: 'Regressed Patient', nhi: '', dob: '' },
+        claim: { claimNumber: 'P200', acc45Number: '', poNumber: '', injuryDescription: '', dateOfInjury: '' },
+        serviceRows: [],
+        packageRows: [],
+      },
+      overallConfidence: 40,
+      issues: [{ message: 'check', blocking: true }],
+      blockers: ['check'],
+      match: {},
+    } as unknown as LetterParseResult);
+
+    enqueueStagingPreparse([item]);
+    await new Promise((r) => setTimeout(r, 80));
+
+    expect(updateStagingItem).toHaveBeenCalledWith(
+      'item-regressed',
+      expect.objectContaining({ autoAcceptEligible: false }),
+    );
+  });
+
   it('buildStagingPreview returns null for low confidence', () => {
     const file = new File(['x'], 'letter.pdf', { type: 'application/pdf' });
     const result = {

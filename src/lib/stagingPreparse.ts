@@ -8,6 +8,7 @@ import { fetchInboxFileForStaging } from './localAccBridge';
 import {
   HRQ_BATCH_MIN_CONFIDENCE,
   LETTER_PARSER_VERSION,
+  isAutoAcceptEligiblePreview,
   type StagingParsedPreview,
 } from './hrqBatch';
 import { prefillFromParsed, type LetterParseResult } from './letterImport';
@@ -97,20 +98,34 @@ export function buildStagingPreview(
 
 async function denormalizeNameHints(
   item: StagingItem,
-  hints: { patientName?: string; claimNumber?: string },
+  hints: { patientName?: string; claimNumber?: string; autoAcceptEligible?: boolean },
 ): Promise<void> {
   const patch: Partial<StagingItem> = {};
   if (hints.patientName?.trim()) patch.patientName = hints.patientName.trim();
   if (hints.claimNumber?.trim()) patch.claimNumber = hints.claimNumber.trim();
+  if (hints.autoAcceptEligible !== undefined) patch.autoAcceptEligible = hints.autoAcceptEligible;
   if (!Object.keys(patch).length) return;
-  if (item.patientName === patch.patientName && item.claimNumber === patch.claimNumber) return;
+  const unchanged =
+    (patch.patientName === undefined || item.patientName === patch.patientName) &&
+    (patch.claimNumber === undefined || item.claimNumber === patch.claimNumber) &&
+    (patch.autoAcceptEligible === undefined ||
+      (item.autoAcceptEligible ?? false) === patch.autoAcceptEligible);
+  if (unchanged) return;
   await updateStagingItem(item.id, patch);
 }
 
+// Denormalize the SMALL `autoAcceptEligible` boolean (not the full preview —
+// that's the exact per-item blob the lean-queue redesign removed) so the
+// "Auto-accept ready (N)" toolbar count/list filter in ReviewQueue.tsx can
+// stay a cheap synchronous check over `StagingItem`, matching how
+// `patientName`/`claimNumber` hints already work. The full preview is only
+// resolved from the hash-keyed letter parse cache again at actual commit
+// time (see `hrqBatch.ts` `commitAutoAcceptItem`'s `resolvePreview`).
 async function denormalizeHints(item: StagingItem, preview: StagingParsedPreview): Promise<void> {
   await denormalizeNameHints(item, {
     patientName: preview.patientName,
     claimNumber: preview.claimNumber,
+    autoAcceptEligible: isAutoAcceptEligiblePreview(preview),
   });
 }
 
@@ -165,8 +180,12 @@ async function processOne(item: StagingItem): Promise<void> {
       await denormalizeHints(item, preview);
     } else {
       // Still surface a usable list title from a partial / low-confidence parse.
+      // A parse that didn't clear the (lower) full-preview bar can never be
+      // auto-accept eligible (a stricter bar) — explicitly clear a stale
+      // `true` flag from an earlier pass (e.g. parser version bump) rather
+      // than leaving it dangling.
       const hints = patientHintsFromParse(result);
-      if (hints) await denormalizeNameHints(item, hints);
+      await denormalizeNameHints(item, { ...hints, autoAcceptEligible: false });
     }
     unavailable.delete(item.id);
     done.add(item.id);

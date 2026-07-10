@@ -1,6 +1,27 @@
 import { useEffect, useMemo, useState } from 'react';
 import { sniffFileKind, withExtensionForKind, type SniffedFileKind } from '../lib/fileSniff';
 
+const PDF_MIME = 'application/pdf';
+
+/**
+ * Blob: URLs are opaque (no filename, no extension) — a browser's built-in
+ * PDF-viewer plugin decides whether an `<iframe src={blobUrl}>` renders
+ * inline or triggers a silent download based ONLY on the Blob's actual
+ * `type` property at `URL.createObjectURL` time, never the filename/extension.
+ * So even after name- or byte-sniff-based PDF detection correctly identifies
+ * a file as a PDF, we still have to hand `createObjectURL` a Blob whose
+ * `type` is actually `application/pdf` — otherwise Chrome/Edge download the
+ * file instead of rendering it, and the `<iframe>` never even gets a chance
+ * to fire an error/fallback (this was the root cause of "preview pane blank,
+ * file auto-downloads" for attachments whose name/bytes said PDF but whose
+ * `Blob#type` was left as a generic `application/octet-stream`/`''`).
+ */
+function withPdfMime(file: File | Blob): File | Blob {
+  if (file.type === PDF_MIME) return file;
+  if (file instanceof File) return new File([file], file.name, { type: PDF_MIME });
+  return new Blob([file], { type: PDF_MIME });
+}
+
 /**
  * Offline-friendly PDF (or image) preview via object URL.
  * Caller owns the File; this component only creates/revokes the blob URL.
@@ -21,10 +42,41 @@ export function PdfPreview({
 }) {
   const [failed, setFailed] = useState(false);
   const [sniffedKind, setSniffedKind] = useState<SniffedFileKind | null>(null);
+
+  const mime = file ? file.type || '' : '';
+  const nameHasPdfExt = file instanceof File && /\.pdf$/i.test(file.name);
+  const mimeIsPdf = mime.includes('pdf');
+  const isImage = mime.startsWith('image/');
+  // Name/MIME both inconclusive (e.g. a bridge-resolved file with a generic
+  // GUID-ish name and application/octet-stream type) — sniff the actual
+  // bytes for the %PDF- magic number before giving up on an inline preview.
+  // This is what makes a correctly-byte'd-but-mis-named/mis-typed PDF still
+  // render, instead of silently falling back to a "no preview" download link.
+  useEffect(() => {
+    setSniffedKind(null);
+    if (!file || mimeIsPdf || nameHasPdfExt || isImage) return;
+    let cancelled = false;
+    void sniffFileKind(file).then((kind) => {
+      if (!cancelled) setSniffedKind(kind);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [file, mimeIsPdf, nameHasPdfExt, isImage]);
+
+  const isPdf = mimeIsPdf || nameHasPdfExt || sniffedKind === 'pdf';
+
+  // Build the object URL from a Blob/File that's guaranteed to carry the
+  // `application/pdf` MIME type whenever we've determined (by mime, name
+  // extension, or byte-sniff) that the content actually is a PDF — see
+  // `withPdfMime` above for why this matters. Recomputes (and the effect
+  // below revokes the stale URL) whenever `isPdf` flips true after an async
+  // sniff resolves, so the iframe always ends up pointed at a correctly
+  // MIME-typed blob, never the original possibly-generic one.
   const url = useMemo(() => {
     if (!file) return null;
-    return URL.createObjectURL(file);
-  }, [file]);
+    return URL.createObjectURL(isPdf && !mimeIsPdf ? withPdfMime(file) : file);
+  }, [file, isPdf, mimeIsPdf]);
 
   useEffect(() => {
     setFailed(false);
@@ -52,27 +104,6 @@ export function PdfPreview({
     return () => document.removeEventListener('securitypolicyviolation', onViolation);
   }, [url]);
 
-  const mime = file ? file.type || 'application/pdf' : '';
-  const nameHasPdfExt = file instanceof File && /\.pdf$/i.test(file.name);
-  const mimeIsPdf = mime.includes('pdf');
-  const isImage = mime.startsWith('image/');
-  // Name/MIME both inconclusive (e.g. a bridge-resolved file with a generic
-  // GUID-ish name and application/octet-stream type) — sniff the actual
-  // bytes for the %PDF- magic number before giving up on an inline preview.
-  // This is what makes a correctly-byte'd-but-mis-named/mis-typed PDF still
-  // render, instead of silently falling back to a "no preview" download link.
-  useEffect(() => {
-    setSniffedKind(null);
-    if (!file || mimeIsPdf || nameHasPdfExt || isImage) return;
-    let cancelled = false;
-    void sniffFileKind(file).then((kind) => {
-      if (!cancelled) setSniffedKind(kind);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [file, mimeIsPdf, nameHasPdfExt, isImage]);
-
   if (!file || !url) {
     return (
       <div
@@ -89,7 +120,6 @@ export function PdfPreview({
     );
   }
 
-  const isPdf = mimeIsPdf || nameHasPdfExt || sniffedKind === 'pdf';
   // Best-effort kind for repairing an extensionless download name: prefer the
   // sniffed result (authoritative), otherwise fall back to what the render
   // path above already decided.

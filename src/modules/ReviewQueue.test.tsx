@@ -327,3 +327,57 @@ describe('<ReviewQueue /> list title staleness (item 4)', () => {
     expect(updatedRow).toBeTruthy();
   });
 });
+
+describe('<ReviewQueue /> attachment "Open full size" expand button', () => {
+  it('opens a larger in-app preview modal for the current attachment', async () => {
+    vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:mock'), revokeObjectURL: vi.fn() });
+
+    const { fetchInboxFileForStaging } = await import('../lib/localAccBridge');
+    vi.mocked(fetchInboxFileForStaging).mockResolvedValue(
+      new File(['pdf-bytes'], 'unnamed-1.pdf', { type: 'application/pdf' }),
+    );
+
+    await act(async () => {
+      root.render(<ReviewQueue />);
+    });
+    await flush();
+
+    const namedRow = Array.from(container.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('unnamed-1.pdf'),
+    );
+    expect(namedRow).toBeTruthy();
+
+    await act(async () => {
+      namedRow!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flush();
+    await flush();
+
+    // No modal until the user asks for it.
+    expect(container.querySelector('[role="dialog"]')).toBeFalsy();
+
+    const expandButton = Array.from(container.querySelectorAll('button')).find(
+      (b) => b.getAttribute('aria-label') === 'Open full size',
+    );
+    expect(expandButton).toBeTruthy();
+
+    await act(async () => {
+      expandButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flush();
+
+    const dialog = container.querySelector('[role="dialog"]');
+    expect(dialog).toBeTruthy();
+    // The larger preview renders the same attachment inline (an iframe for a PDF).
+    expect(dialog!.querySelector('iframe')).toBeTruthy();
+
+    const closeButton = dialog!.querySelector('button[aria-label="Close"]');
+    expect(closeButton).toBeTruthy();
+    await act(async () => {
+      closeButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flush();
+
+    expect(container.querySelector('[role="dialog"]')).toBeFalsy();
+  });
+});

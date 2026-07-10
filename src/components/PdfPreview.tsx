@@ -7,11 +7,14 @@ import { useEffect, useMemo, useState } from 'react';
 export function PdfPreview({
   file,
   title,
+  text,
   className = '',
   height = 480,
 }: {
   file: File | Blob | null | undefined;
   title?: string;
+  /** Extracted letter text, shown as a readable fallback for Word/unpreviewable files. */
+  text?: string;
   className?: string;
   height?: number;
 }) {
@@ -47,8 +50,34 @@ export function PdfPreview({
   const mime = file.type || 'application/pdf';
   const isPdf = mime.includes('pdf') || (file instanceof File && /\.pdf$/i.test(file.name));
   const isImage = mime.startsWith('image/');
+  const downloadName = file instanceof File ? file.name : title || 'letter';
+  const hasText = Boolean(text?.trim());
+
+  const textFallback = (heading: string) => (
+    <div
+      className={`flex flex-col rounded-card ${className}`}
+      style={{ height, border: '1px solid var(--border)', background: 'var(--surface)' }}
+    >
+      <div
+        className="flex items-center justify-between gap-2 px-3 py-1.5 text-xs"
+        style={{ borderBottom: '1px solid var(--border)', color: 'var(--muted)' }}
+      >
+        <span>{heading}</span>
+        <a className="underline shrink-0" href={url} download={downloadName}>
+          Download original
+        </a>
+      </div>
+      <pre
+        className="flex-1 overflow-auto m-0 p-3 text-xs whitespace-pre-wrap"
+        style={{ color: 'var(--text)', fontFamily: 'inherit' }}
+      >
+        {text}
+      </pre>
+    </div>
+  );
 
   if (failed) {
+    if (hasText) return textFallback('Text preview (in-browser preview unavailable)');
     return (
       <div
         className={`flex flex-col items-center justify-center gap-2 rounded-card text-sm p-4 ${className}`}
@@ -60,7 +89,7 @@ export function PdfPreview({
         }}
       >
         <p>Could not preview this file in-browser.</p>
-        <a className="underline" href={url} download={file instanceof File ? file.name : title || 'letter'}>
+        <a className="underline" href={url} download={downloadName}>
           Download attachment
         </a>
       </div>
@@ -95,6 +124,10 @@ export function PdfPreview({
     );
   }
 
+  // Word / other: browsers can't render .docx inline, so show the extracted
+  // letter text as a readable preview when we have it, with a download fallback.
+  if (hasText) return textFallback('Text preview (Word letter)');
+
   return (
     <div
       className={`flex flex-col items-center justify-center gap-2 rounded-card text-sm p-4 ${className}`}
@@ -107,7 +140,7 @@ export function PdfPreview({
     >
       <p className="font-mono text-xs">{file instanceof File ? file.name : 'Attachment'}</p>
       <p>Preview not available for this file type.</p>
-      <a className="underline" href={url} download={file instanceof File ? file.name : title || 'letter'}>
+      <a className="underline" href={url} download={downloadName}>
         Download attachment
       </a>
     </div>

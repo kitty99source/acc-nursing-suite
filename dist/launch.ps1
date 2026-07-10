@@ -220,6 +220,88 @@ function Get-StagingSidecarsBody {
     }
 }
 
+$script:InboxHashMap = $null
+$script:InboxHashSig = $null
+
+function Get-InboxLetterFiles {
+    # All resolvable letter files: processed\ first (where folder-watch moves
+    # them), then the inbox root (not-yet-moved drops). Top level only.
+    param([string]$InboxFull)
+    $list = New-Object System.Collections.Generic.List[string]
+    $dirs = @()
+    $proc = Join-Path $InboxFull 'processed'
+    if (Test-Path -LiteralPath $proc -PathType Container) { $dirs += $proc }
+    $dirs += $InboxFull
+    foreach ($d in $dirs) {
+        foreach ($pattern in @('*.pdf', '*.docx', '*.doc')) {
+            try {
+                foreach ($f in [System.IO.Directory]::GetFiles($d, $pattern, [System.IO.SearchOption]::TopDirectoryOnly)) {
+                    [void]$list.Add($f)
+                }
+            } catch {}
+        }
+    }
+    return $list
+}
+
+function Get-InboxHashMap {
+    # Content-addressed fallback: SHA-256 -> full path for every letter file on
+    # disk. Rebuilt only when the file set changes (count + newest mtime), cached
+    # for the session, and persisted back to hash-index.json so the fast path
+    # works next time. This makes /_acc/inbox-file resolve letters even when the
+    # hash-index is missing, stale, or was written by a different tool - which is
+    # what was causing every preview to 404.
+    param([string]$InboxFull)
+    $files = Get-InboxLetterFiles -InboxFull $InboxFull
+    $maxTicks = [long]0
+    foreach ($f in $files) {
+        $t = [System.IO.File]::GetLastWriteTimeUtc($f).Ticks
+        if ($t -gt $maxTicks) { $maxTicks = $t }
+    }
+    $sig = "{0}:{1}" -f $files.Count, $maxTicks
+    if ($script:InboxHashMap -and $script:InboxHashSig -eq $sig) { return $script:InboxHashMap }
+
+    Write-LauncherLogSafe ("Building inbox hash map ({0} letter files)..." -f $files.Count)
+    $map = @{}
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        foreach ($f in $files) {
+            try {
+                $fs = [System.IO.File]::OpenRead($f)
+                try { $bytes = $sha.ComputeHash($fs) } finally { $fs.Dispose() }
+                $hex = [BitConverter]::ToString($bytes).Replace('-', '').ToLowerInvariant()
+                if (-not $map.ContainsKey($hex)) { $map[$hex] = $f }
+            } catch {}
+        }
+    } finally {
+        $sha.Dispose()
+    }
+    $script:InboxHashMap = $map
+    $script:InboxHashSig = $sig
+
+    # Persist to hash-index.json (relative paths) so the fast path resolves next run.
+    try {
+        $metaDir = Join-Path $InboxFull '.email-sync'
+        [void][System.IO.Directory]::CreateDirectory($metaDir)
+        $idxOut = @{}
+        $prefix = $InboxFull.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
+        foreach ($k in $map.Keys) {
+            $p = $map[$k]
+            if ($p.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $idxOut[$k] = $p.Substring($prefix.Length)
+            }
+        }
+        $indexPath = Join-Path $metaDir 'hash-index.json'
+        $json = ($idxOut | ConvertTo-Json -Depth 3 -Compress:$false)
+        if ([string]::IsNullOrWhiteSpace($json) -or $json -eq 'null') { $json = '{}' }
+        $tmp = $indexPath + '.tmp'
+        [System.IO.File]::WriteAllText($tmp, $json, (New-Object System.Text.UTF8Encoding $false))
+        Move-Item -LiteralPath $tmp -Destination $indexPath -Force
+    } catch {}
+
+    return $map
+}
+
 function Resolve-InboxFileByHash {
     # Hash-only lookup via .email-sync\hash-index.json (no arbitrary paths).
     # Returns full path or $null. Restricts to .pdf/.docx under ACC-Inbox.
@@ -247,20 +329,40 @@ function Resolve-InboxFileByHash {
                 if ($meta.relativePath) { $rel = [string]$meta.relativePath }
             }
         }
-        if ([string]::IsNullOrWhiteSpace($rel)) { return $null }
-        # Reject path traversal in the relative path.
-        foreach ($seg in ($rel -replace '\\', '/').Split('/')) {
-            if ($seg -eq '..' -or $seg -eq '.') { return $null }
+        if (-not [string]::IsNullOrWhiteSpace($rel)) {
+            # Reject path traversal in the relative path.
+            $traversal = $false
+            foreach ($seg in ($rel -replace '\\', '/').Split('/')) {
+                if ($seg -eq '..' -or $seg -eq '.') { $traversal = $true; break }
+            }
+            if (-not $traversal) {
+                $candidate = Join-Path $inboxFull ($rel -replace '/', [System.IO.Path]::DirectorySeparatorChar)
+                $full = [System.IO.Path]::GetFullPath($candidate)
+                # Require a trailing separator so ACC-Inbox-evil\... cannot match ACC-Inbox prefix.
+                $inboxPrefix = $inboxFull.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
+                if ($full.StartsWith($inboxPrefix, [System.StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $full -PathType Leaf)) {
+                    $ext = [System.IO.Path]::GetExtension($full).ToLowerInvariant()
+                    if ($ext -eq '.pdf' -or $ext -eq '.docx' -or $ext -eq '.doc') {
+                        return $full
+                    }
+                }
+            }
         }
-        $candidate = Join-Path $inboxFull ($rel -replace '/', [System.IO.Path]::DirectorySeparatorChar)
-        $full = [System.IO.Path]::GetFullPath($candidate)
-        # Require a trailing separator so ACC-Inbox-evil\... cannot match ACC-Inbox prefix.
-        $inboxPrefix = $inboxFull.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
-        if (-not $full.StartsWith($inboxPrefix, [System.StringComparison]::OrdinalIgnoreCase)) { return $null }
-        if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { return $null }
-        $ext = [System.IO.Path]::GetExtension($full).ToLowerInvariant()
-        if ($ext -ne '.pdf' -and $ext -ne '.docx' -and $ext -ne '.doc') { return $null }
-        return $full
+
+        # Fast path missed (no index entry, stale path, renamed/moved file).
+        # Fall back to a content-hash scan of the inbox so the letter still
+        # resolves. Cached + persisted so this cost is paid at most once.
+        $map = Get-InboxHashMap -InboxFull $inboxFull
+        if ($map.ContainsKey($h)) {
+            $full = $map[$h]
+            if (Test-Path -LiteralPath $full -PathType Leaf) {
+                $ext = [System.IO.Path]::GetExtension($full).ToLowerInvariant()
+                if ($ext -eq '.pdf' -or $ext -eq '.docx' -or $ext -eq '.doc') {
+                    return $full
+                }
+            }
+        }
+        return $null
     } catch {
         return $null
     }

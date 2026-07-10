@@ -48,7 +48,8 @@ export type HrqResolutionAction =
   | 'hrq-sign-off'
   | 'hrq-batch-sign-off'
   | 'hrq-reject'
-  | 'hrq-defer';
+  | 'hrq-defer'
+  | 'hrq-restore';
 
 export interface HrqResolutionInput {
   action: HrqResolutionAction;
@@ -73,6 +74,7 @@ const HRQ_ACTION_VERB: Record<HrqResolutionAction, string> = {
   'hrq-batch-sign-off': 'batch approved',
   'hrq-reject': 'rejected',
   'hrq-defer': 'deferred',
+  'hrq-restore': 'brought back to review',
 };
 
 /**

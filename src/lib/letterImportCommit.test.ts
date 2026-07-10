@@ -29,6 +29,7 @@ vi.mock('./idb', () => {
 import { useStore } from '../state/store';
 import { emptyData } from './sampleData';
 import { extractPdfText, parseApprovalLetter, parseDeclineLetter, assignRecordStatus } from './letterImport';
+import { saveDocumentBlob, deleteDocumentBlob } from './idb';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 const loadPdf = (name: string) => new Uint8Array(readFileSync(join(dir, 'fixtures', name)));
@@ -227,5 +228,94 @@ describe('letterImport commit journey', () => {
     expect(data.claims.some((c) => c.id === result.claimId)).toBe(true);
     expect(data.approvals.some((a) => a.claimId === result.claimId)).toBe(true);
     expect(data.documents.some((d) => d.claimId === result.claimId && d.kind === 'acc-approval-letter')).toBe(true);
+  });
+});
+
+describe('letterImport commit rollback on partial failure', () => {
+  beforeEach(() => {
+    useStore.setState({
+      ready: true,
+      data: emptyData(),
+      letterImport: undefined,
+    });
+    vi.mocked(saveDocumentBlob).mockReset();
+    vi.mocked(deleteDocumentBlob).mockReset().mockResolvedValue(undefined);
+  });
+
+  it('commitParsedApproval rolls back the new patient/claim when the document write throws', async () => {
+    const priorData = useStore.getState().data;
+    const text = await extractPdfText(loadPdf('approval-template.pdf'));
+    const parsed = parseApprovalLetter(text);
+    const rows = assignRecordStatus(parsed.serviceRows);
+    const file = new File([loadPdf('approval-template.pdf')], 'approval-template.pdf', { type: 'application/pdf' });
+
+    vi.mocked(saveDocumentBlob).mockRejectedValueOnce(new Error('disk full'));
+
+    await expect(
+      useStore.getState().commitParsedApproval(parsed, file, {
+        patientPatch: { name: 'Someone New', nhi: 'ZZZ0001', dob: '1990-01-01' },
+        claimPatch: {
+          claimNumber: '99999999999',
+          acc45Number: 'YZ00000',
+          poNumber: '12345678',
+        },
+        rows,
+      }),
+    ).rejects.toThrow('disk full');
+
+    const data = useStore.getState().data;
+    // Nothing partially created survives: no orphaned patient, claim, or document.
+    expect(data.patients).toEqual(priorData.patients);
+    expect(data.claims).toEqual(priorData.claims);
+    expect(data.approvals).toEqual(priorData.approvals);
+    expect(data.documents).toEqual(priorData.documents);
+    expect(data.patients.some((p) => p.name === 'Someone New')).toBe(false);
+  });
+
+  it('commitParsedDecline rolls back the new patient/claim when the document write throws', async () => {
+    const priorData = useStore.getState().data;
+    const text = await extractPdfText(loadPdf('decline-template.pdf'));
+    const parsed = parseDeclineLetter(text);
+    const file = new File([loadPdf('decline-template.pdf')], 'decline-template.pdf', { type: 'application/pdf' });
+
+    vi.mocked(saveDocumentBlob).mockRejectedValueOnce(new Error('disk full'));
+
+    await expect(
+      useStore.getState().commitParsedDecline(parsed, file, {
+        patientName: 'Someone Else',
+        claimNumber: '88888888888',
+        reason: 'Missing nursing consultation notes',
+        servicePeriodDeclined: 'Extended Nursing',
+      }),
+    ).rejects.toThrow('disk full');
+
+    const data = useStore.getState().data;
+    expect(data.patients).toEqual(priorData.patients);
+    expect(data.claims).toEqual(priorData.claims);
+    expect(data.declines).toEqual(priorData.declines);
+    expect(data.documents).toEqual(priorData.documents);
+    expect(data.patients.some((p) => p.name === 'Someone Else')).toBe(false);
+  });
+
+  it('does not attempt to delete a blob that was never successfully written', async () => {
+    // The document write itself is what throws in these tests (the realistic
+    // failure mode — IDB quota/write errors), so no blob id is ever recorded
+    // as "created" and cleanup must not fire for it.
+    const text = await extractPdfText(loadPdf('approval-template.pdf'));
+    const parsed = parseApprovalLetter(text);
+    const rows = assignRecordStatus(parsed.serviceRows);
+    const file = new File([loadPdf('approval-template.pdf')], 'approval-template.pdf', { type: 'application/pdf' });
+
+    vi.mocked(saveDocumentBlob).mockRejectedValueOnce(new Error('disk full'));
+
+    await expect(
+      useStore.getState().commitParsedApproval(parsed, file, {
+        patientPatch: { name: 'Blob Cleanup Patient', nhi: 'ZZZ0002', dob: '1990-01-01' },
+        claimPatch: { claimNumber: '77777777777' },
+        rows,
+      }),
+    ).rejects.toThrow('disk full');
+
+    expect(deleteDocumentBlob).not.toHaveBeenCalled();
   });
 });

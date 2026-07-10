@@ -13,6 +13,8 @@ import {
   analyzeStagingQueue,
   stagingIngressDedupKey,
   addDismissedStagingKeys,
+  loadStagingItems,
+  loadAllStagingItems,
   type StagingItem,
 } from './staging';
 
@@ -63,6 +65,41 @@ describe('staging', () => {
     expect(item.status).toBe('pending');
     expect(item.id).toBeTruthy();
     expect(item.createdAt).toBeGreaterThan(0);
+  });
+
+  it('loadStagingItems returns only pending rows; loadAllStagingItems returns everything (Deferred tab filter)', async () => {
+    const pending = createStagingItem({
+      type: 'letter-import-pending',
+      source: 'folder',
+      severity: 'info',
+      title: 'Pending letter',
+      summary: '',
+    });
+    const deferred = createStagingItem({
+      type: 'letter-import-pending',
+      source: 'folder',
+      severity: 'info',
+      title: 'Deferred letter',
+      summary: '',
+      status: 'deferred',
+    });
+    const approved = createStagingItem({
+      type: 'letter-import-pending',
+      source: 'folder',
+      severity: 'info',
+      title: 'Approved letter',
+      summary: '',
+      status: 'approved',
+    });
+    vi.mocked(loadStagingQueue).mockResolvedValue([pending, deferred, approved]);
+
+    const pendingOnly = await loadStagingItems();
+    expect(pendingOnly).toHaveLength(1);
+    expect(pendingOnly[0].title).toBe('Pending letter');
+
+    const all = await loadAllStagingItems();
+    expect(all).toHaveLength(3);
+    expect(all.filter((i) => i.status === 'deferred')).toHaveLength(1);
   });
 
   it('parses valid staging sidecar JSON', () => {

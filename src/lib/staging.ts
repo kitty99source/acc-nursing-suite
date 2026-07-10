@@ -53,6 +53,19 @@ export interface StagingItem {
   /** Absolute path on work PC (folder watch only; not synced to IDB on other machines). */
   sourcePath?: string;
   parsedPreview?: Record<string, unknown>;
+  /**
+   * Denormalized result of `isAutoAcceptEligiblePreview` from the last
+   * successful parse (foreground or background pre-parse) — NOT the full
+   * `StagingParsedPreview` blob, which the lean-queue redesign deliberately
+   * stopped writing onto staging items (parsed data lives in the hash-keyed
+   * letter parse cache instead; see `letterCache.ts`). Lets the "Auto-accept
+   * ready (N)" toolbar count/list filter stay a cheap synchronous check
+   * (same pattern as `patientName`/`claimNumber` hints) without needing the
+   * full preview object on the item itself. Cleared back to `false`/removed
+   * whenever a fresh parse no longer qualifies (e.g. a re-parse resolves an
+   * ambiguous match or drops confidence).
+   */
+  autoAcceptEligible?: boolean;
   runId?: string;
 }
 

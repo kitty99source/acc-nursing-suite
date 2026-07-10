@@ -41,7 +41,12 @@ import {
   retryUnnamedStagingPreparse,
   stagingPreparseStats,
 } from '../lib/stagingPreparse';
-import { isAutoAcceptEligible, runAutoAccept } from '../lib/hrqBatch';
+import {
+  isAutoAcceptEligible,
+  isAutoAcceptEligiblePreview,
+  runAutoAccept,
+  type StagingParsedPreview,
+} from '../lib/hrqBatch';
 import {
   blobToBase64,
   getCachedLetterFile,
@@ -849,10 +854,13 @@ export function ReviewQueue() {
           const preview = buildStagingPreview(result, resolved, base64);
           if (preview) {
             await putCachedLetterParse(hash, preview);
+            const eligible = isAutoAcceptEligiblePreview(preview);
             const hints: Partial<StagingItem> = {};
             if (preview.patientName?.trim()) hints.patientName = preview.patientName.trim();
             if (preview.claimNumber?.trim()) hints.claimNumber = preview.claimNumber.trim();
-            // Stamp the resolved name/claim back onto the staging item AND
+            if (eligible !== (item.autoAcceptEligible ?? false)) hints.autoAcceptEligible = eligible;
+            // Stamp the resolved name/claim (and auto-accept eligibility — see
+            // StagingItem.autoAcceptEligible) back onto the staging item AND
             // refresh the list's `items` state to match. Without the refresh,
             // the persisted patientName can sit correctly in IndexedDB while
             // the list row's `item` object (still the old, unnamed reference
@@ -1261,6 +1269,47 @@ export function ReviewQueue() {
    * through the same rollback-safe store path as a manual Accept; a failure
    * on one item is skipped (left pending, logged) and the rest continue.
    */
+  /**
+   * Resolve the full parsed preview for an auto-accept-eligible item at
+   * commit time. `StagingItem.autoAcceptEligible` is only a denormalized
+   * boolean (see staging.ts) — the actual data commitAutoAcceptItem needs
+   * (service rows, file bytes, patient/claim patch) lives in the hash-keyed
+   * letter parse cache. Falls back through the same cache → bridge → re-parse
+   * chain `loadSelected` uses; returns undefined (skip, don't throw) if the
+   * letter truly can't be resolved right now.
+   */
+  const resolveAutoAcceptPreview = useCallback(
+    async (item: StagingItem): Promise<StagingParsedPreview | undefined> => {
+      const hash = item.sourceHash?.trim().toLowerCase();
+      if (!hash) return undefined;
+      const cached = await getCachedLetterParse(hash);
+      if (cached) return cached;
+
+      const preferredName = (item.expectedFileName || item.sourceFileName || 'letter.bin').trim();
+      const file =
+        (await getCachedLetterFile(hash, preferredName)) ??
+        (await fetchInboxFileForStaging({
+          sourceHash: item.sourceHash,
+          sourceFileName: item.sourceFileName,
+          expectedFileName: item.expectedFileName,
+        })) ??
+        null;
+      if (!file) return undefined;
+      await putCachedLetterBlob(hash, file);
+
+      try {
+        const result = await parseLetterFile(file);
+        const base64 = await blobToBase64(file);
+        const preview = buildStagingPreview(result, file, base64);
+        if (preview) await putCachedLetterParse(hash, preview);
+        return preview ?? undefined;
+      } catch {
+        return undefined;
+      }
+    },
+    [parseLetterFile],
+  );
+
   async function autoAcceptReady() {
     if (busy) return;
     const eligible = autoAcceptEligible;
@@ -1317,7 +1366,7 @@ export function ReviewQueue() {
       setFixProgress(`Auto-accepting 0 of ${eligible.length}…`);
       const outcomes = await runAutoAccept(
         eligible,
-        { commitParsedApproval, commitParsedDecline },
+        { commitParsedApproval, commitParsedDecline, resolvePreview: resolveAutoAcceptPreview },
         (p) => setFixProgress(`Auto-accepting ${p.index} of ${p.total}…`),
       );
 

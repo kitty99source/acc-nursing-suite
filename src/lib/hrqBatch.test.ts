@@ -16,7 +16,7 @@ import {
   runAutoAccept,
   stagingPatientNames,
 } from './hrqBatch';
-import { createStagingItem } from './staging';
+import { createStagingItem, type StagingItem } from './staging';
 import {
   assignRecordStatus,
   extractPdfText,
@@ -97,6 +97,33 @@ function stagingWithPreview(preview: StagingParsedPreview, patch: Partial<Return
   });
 }
 
+/**
+ * Under the lean-queue redesign `StagingItem.parsedPreview` is never
+ * populated — only the small denormalized `autoAcceptEligible` flag (see
+ * staging.ts) is stamped onto the item, computed from the real
+ * `isAutoAcceptEligiblePreview` gate against the full preview (which lives
+ * in the hash-keyed letter parse cache, not on the item). This mirrors what
+ * `stagingPreparse.ts` / `ReviewQueue.tsx` actually write, rather than
+ * hand-constructing a `parsedPreview` shape `isAutoAcceptEligible` no
+ * longer reads.
+ */
+function stagingWithAutoAcceptFlag(
+  preview: StagingParsedPreview,
+  patch: Partial<ReturnType<typeof createStagingItem>> = {},
+) {
+  return createStagingItem({
+    type: 'letter-import-pending',
+    source: 'email',
+    severity: 'info',
+    title: `Email: ${preview.fileName}`,
+    summary: `Parsed ${preview.confidence}% confidence`,
+    sourceFileName: preview.fileName,
+    sourceHash: `hash-${preview.fileName}`,
+    autoAcceptEligible: isAutoAcceptEligiblePreview(preview),
+    ...patch,
+  });
+}
+
 describe('hrqBatch eligibility', () => {
   it('accepts high-confidence letter-import-pending with parsed preview', async () => {
     const preview = await buildApprovalPreview();
@@ -172,7 +199,20 @@ describe('auto-accept eligibility (isAutoAcceptEligiblePreview / isAutoAcceptEli
   it('accepts a clean, 100%-confidence, zero-blocker approval preview with service rows', async () => {
     const preview = await buildApprovalPreview({ confidence: 100, blockers: [], ambiguous: false });
     expect(isAutoAcceptEligiblePreview(preview)).toBe(true);
-    expect(isAutoAcceptEligible(stagingWithPreview(preview))).toBe(true);
+    expect(isAutoAcceptEligible(stagingWithAutoAcceptFlag(preview))).toBe(true);
+  });
+
+  it('isAutoAcceptEligible ignores item.parsedPreview entirely — only the denormalized flag counts', async () => {
+    // Regression guard for the bug where isAutoAcceptEligible gated on
+    // item.parsedPreview, a field the lean-queue redesign never writes —
+    // which made the "Auto-accept ready (N)" button permanently invisible.
+    const preview = await buildApprovalPreview({ confidence: 100, blockers: [], ambiguous: false });
+    // A hand-constructed parsedPreview blob (the old, broken shape this item
+    // would have had) must NOT make the item eligible on its own.
+    expect(isAutoAcceptEligible(stagingWithPreview(preview))).toBe(false);
+    // Only the denormalized flag — set the way the real parse pipeline sets
+    // it — makes the item eligible.
+    expect(isAutoAcceptEligible(stagingWithAutoAcceptFlag(preview))).toBe(true);
   });
 
   it('rejects declines even at 100% confidence with no blockers (approvals only)', async () => {
@@ -194,7 +234,7 @@ describe('auto-accept eligibility (isAutoAcceptEligiblePreview / isAutoAcceptEli
       ambiguous: false,
     };
     expect(isAutoAcceptEligiblePreview(preview)).toBe(false);
-    expect(isAutoAcceptEligible(stagingWithPreview(preview))).toBe(false);
+    expect(isAutoAcceptEligible(stagingWithAutoAcceptFlag(preview))).toBe(false);
   });
 
   it('rejects an ambiguous match even if confidence happens to read 100 (defense-in-depth)', async () => {
@@ -229,14 +269,14 @@ describe('auto-accept eligibility (isAutoAcceptEligiblePreview / isAutoAcceptEli
     expect(isAutoAcceptEligiblePreview(preview)).toBe(false);
   });
 
-  it('rejects deferred and non-pending staging items even with an eligible preview', async () => {
+  it('rejects deferred and non-pending staging items even with an eligible flag', async () => {
     const preview = await buildApprovalPreview({ confidence: 100, blockers: [], ambiguous: false });
-    expect(isAutoAcceptEligible(stagingWithPreview(preview, { status: 'deferred' }))).toBe(false);
-    expect(isAutoAcceptEligible(stagingWithPreview(preview, { status: 'approved' }))).toBe(false);
-    expect(isAutoAcceptEligible(stagingWithPreview(preview, { status: 'rejected' }))).toBe(false);
+    expect(isAutoAcceptEligible(stagingWithAutoAcceptFlag(preview, { status: 'deferred' }))).toBe(false);
+    expect(isAutoAcceptEligible(stagingWithAutoAcceptFlag(preview, { status: 'approved' }))).toBe(false);
+    expect(isAutoAcceptEligible(stagingWithAutoAcceptFlag(preview, { status: 'rejected' }))).toBe(false);
   });
 
-  it('rejects a pending item with no parsed preview at all', () => {
+  it('rejects a pending item that has never been parsed (no autoAcceptEligible flag at all)', () => {
     const item = createStagingItem({
       type: 'letter-import-pending',
       source: 'folder',
@@ -397,13 +437,17 @@ describe('auto-accept commit + batch flow', () => {
 
   it('commitAutoAcceptItem tags the created Approval(s) with autoAccepted + autoAcceptedAt', async () => {
     const preview = await buildApprovalPreview({ confidence: 100, blockers: [], ambiguous: false });
-    const item = stagingWithPreview(preview);
+    const item = stagingWithAutoAcceptFlag(preview);
     const state = useStore.getState();
     const before = Date.now();
 
     const result = await commitAutoAcceptItem(item, {
       commitParsedApproval: state.commitParsedApproval,
       commitParsedDecline: state.commitParsedDecline,
+      // Resolved from the hash-keyed letter parse cache at commit time —
+      // mirrors ReviewQueue.tsx's resolveAutoAcceptPreview, since the item
+      // itself only ever carries the denormalized `autoAcceptEligible` flag.
+      resolvePreview: async () => preview,
     });
 
     expect(result.patientId).toBe('p1');
@@ -414,16 +458,37 @@ describe('auto-accept commit + batch flow', () => {
     expect(created.every((a) => typeof a.autoAcceptedAt === 'number' && a.autoAcceptedAt! >= before)).toBe(true);
   });
 
-  it('commitAutoAcceptItem throws (does not commit) for an ineligible item', async () => {
+  it('commitAutoAcceptItem throws (does not commit) for an ineligible item — checked before resolvePreview is ever called', async () => {
     const preview = await buildApprovalPreview({ confidence: 95, blockers: [], ambiguous: false });
-    const item = stagingWithPreview(preview);
+    const item = stagingWithAutoAcceptFlag(preview);
+    const state = useStore.getState();
+    const resolvePreview = vi.fn(async () => preview);
+    await expect(
+      commitAutoAcceptItem(item, {
+        commitParsedApproval: state.commitParsedApproval,
+        commitParsedDecline: state.commitParsedDecline,
+        resolvePreview,
+      }),
+    ).rejects.toThrow(/not eligible/);
+    expect(resolvePreview).not.toHaveBeenCalled();
+    expect(useStore.getState().data.approvals).toHaveLength(0);
+  });
+
+  it('commitAutoAcceptItem skips gracefully (does not throw a crash-y error) when the cache can no longer resolve the letter', async () => {
+    // Item passed the sync eligibility gate earlier (flag is true), but by
+    // commit time the cached parse/blob has been evicted — resolvePreview
+    // returns undefined, same as ReviewQueue.tsx's real resolver would if
+    // the cache miss + bridge fallback both come up empty.
+    const preview = await buildApprovalPreview({ confidence: 100, blockers: [], ambiguous: false });
+    const item = stagingWithAutoAcceptFlag(preview);
     const state = useStore.getState();
     await expect(
       commitAutoAcceptItem(item, {
         commitParsedApproval: state.commitParsedApproval,
         commitParsedDecline: state.commitParsedDecline,
+        resolvePreview: async () => undefined,
       }),
-    ).rejects.toThrow(/not eligible/);
+    ).rejects.toThrow(/could not be resolved/);
     expect(useStore.getState().data.approvals).toHaveLength(0);
   });
 
@@ -453,9 +518,15 @@ describe('auto-accept commit + batch flow', () => {
       patientName: 'George Bellingham',
       fileName: 'letter-c.pdf',
     });
-    const itemA = stagingWithPreview(previewA, { id: 'staging-a', title: 'Letter A' });
-    const itemB = stagingWithPreview(previewB, { id: 'staging-b', title: 'Letter B' });
-    const itemC = stagingWithPreview(previewC, { id: 'staging-c', title: 'Letter C' });
+    const itemA = stagingWithAutoAcceptFlag(previewA, { id: 'staging-a', title: 'Letter A' });
+    const itemB = stagingWithAutoAcceptFlag(previewB, { id: 'staging-b', title: 'Letter B' });
+    const itemC = stagingWithAutoAcceptFlag(previewC, { id: 'staging-c', title: 'Letter C' });
+    const previewByItemId = new Map([
+      [itemA.id, previewA],
+      [itemB.id, previewB],
+      [itemC.id, previewC],
+    ]);
+    const resolvePreview = async (item: StagingItem) => previewByItemId.get(item.id);
 
     // Letter B's document write fails partway through the batch; A and C succeed.
     let call = 0;
@@ -469,7 +540,7 @@ describe('auto-accept commit + batch flow', () => {
     const progressCalls: number[] = [];
     const outcomes = await runAutoAccept(
       [itemA, itemB, itemC],
-      { commitParsedApproval: state.commitParsedApproval, commitParsedDecline: state.commitParsedDecline },
+      { commitParsedApproval: state.commitParsedApproval, commitParsedDecline: state.commitParsedDecline, resolvePreview },
       (p) => progressCalls.push(p.index),
     );
 

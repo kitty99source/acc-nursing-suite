@@ -213,6 +213,8 @@ export function ReviewQueue() {
   const [viewMode, setViewMode] = useState<'pending' | 'deferred'>('pending');
   const [busy, setBusy] = useState(false);
   const [autoImportNote, setAutoImportNote] = useState<string | null>(null);
+  const [importProgress, setImportProgress] = useState<string | null>(null);
+  const [bgReadingNote, setBgReadingNote] = useState<string | null>(null);
   const [bridgeStatus, setBridgeStatus] = useState<StagingBridgeStatus | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
@@ -286,6 +288,11 @@ export function ReviewQueue() {
     });
   }, [viewMode]);
 
+  // Batch size for reporting import progress — small enough that "importing
+  // X of Y" updates several times a second on a big backlog, large enough
+  // that we're not re-rendering once per sidecar on a 1000+ letter import.
+  const IMPORT_PROGRESS_CHUNK = 25;
+
   const autoImportFromLauncher = useCallback(async () => {
     const probe = await probeLocalStagingBridge();
     setBridgeStatus(probe.status);
@@ -296,7 +303,24 @@ export function ReviewQueue() {
       return true;
     });
     if (!fresh.length) return;
-    const added = await importStagingSidecars(fresh);
+
+    // Real total/done progress instead of a vague "auto-imported N" note with
+    // no sense of how much is left — most useful the first time the app sees
+    // a big backlog of .staging sidecars (e.g. after enabling folder-watch on
+    // a machine with years of letters already piled up).
+    let added = 0;
+    if (fresh.length > IMPORT_PROGRESS_CHUNK) {
+      setImportProgress(`Importing letters… 0 of ${fresh.length}`);
+      for (let i = 0; i < fresh.length; i += IMPORT_PROGRESS_CHUNK) {
+        const chunk = fresh.slice(i, i + IMPORT_PROGRESS_CHUNK);
+        added += await importStagingSidecars(chunk);
+        const done = Math.min(i + chunk.length, fresh.length);
+        setImportProgress(`Importing letters… ${done} of ${fresh.length}`);
+      }
+    } else {
+      added = await importStagingSidecars(fresh);
+    }
+    setImportProgress(null);
     if (added > 0) {
       await appendAudit({
         action: 'staging-import',
@@ -359,12 +383,26 @@ export function ReviewQueue() {
     return () => window.clearInterval(id);
   }, [refresh, autoImportFromLauncher]);
 
-  // Keep the list titles live while background pre-parse fills patient names.
+  // Keep the list titles live while background pre-parse fills patient names,
+  // and surface a lightweight "reading N letters in the background…" note
+  // instead of leaving the user guessing whether anything is still happening.
+  // Unobtrusive: only shows while there's actually work in flight, hides the
+  // moment the queue drains.
   useEffect(() => {
-    if (unnamedCount <= 0 || busy) return;
-    const id = window.setInterval(() => {
+    if (unnamedCount <= 0 || busy) {
+      setBgReadingNote(null);
+      return;
+    }
+    const tick = () => {
+      const stats = stagingPreparseStats();
+      const inFlight = stats.queued + stats.active;
+      setBgReadingNote(
+        inFlight > 0 ? `Reading ${inFlight} letter${inFlight === 1 ? '' : 's'} in the background…` : null,
+      );
       void refresh();
-    }, 2500);
+    };
+    tick();
+    const id = window.setInterval(tick, 2500);
     return () => window.clearInterval(id);
   }, [unnamedCount, busy, refresh]);
 
@@ -567,19 +605,37 @@ export function ReviewQueue() {
       }
       setFixProgress(`Reading letters to fix names… 0/${targets}`);
       const started = Date.now();
+      // Some items fail on the FIRST pass for reasons that are often transient
+      // (the launcher bridge answering slowly while it's still starting up, a
+      // one-off fetch hiccup) rather than genuinely unreadable. The background
+      // queue marks those "unavailable" and — by design — never retries them on
+      // its own, so previously this required the user to notice and press
+      // "Fix names now" again. Auto-retry a bounded number of times within this
+      // single run so one press covers everything a second/third press would
+      // have caught anyway.
+      const MAX_AUTO_RETRY_ROUNDS = 3;
+      let autoRetryRounds = 0;
       while (Date.now() - started < 10 * 60_000) {
         await new Promise((r) => setTimeout(r, 1500));
         await refresh();
         const stats = stagingPreparseStats();
-        const still = (await loadStagingItems()).filter(
+        const stillPending = (await loadStagingItems()).filter(
           (i) => i.status === 'pending' && !i.patientName?.trim(),
-        ).length;
+        );
+        const still = stillPending.length;
         const doneCount = Math.max(0, targets - still);
         setFixProgress(
           `Reading letters to fix names… ${doneCount}/${targets}` +
             (stats.queued + stats.active > 0 ? ` (${stats.queued + stats.active} in flight)` : ''),
         );
-        if (stats.queued === 0 && stats.active === 0) break;
+        if (stats.queued === 0 && stats.active === 0) {
+          if (still > 0 && autoRetryRounds < MAX_AUTO_RETRY_ROUNDS) {
+            autoRetryRounds++;
+            retryUnnamedStagingPreparse(stillPending);
+            continue;
+          }
+          break;
+        }
       }
       const after = await loadStagingItems();
       const named = after.filter((i) => i.status === 'pending' && i.patientName?.trim()).length;
@@ -796,7 +852,19 @@ export function ReviewQueue() {
             const hints: Partial<StagingItem> = {};
             if (preview.patientName?.trim()) hints.patientName = preview.patientName.trim();
             if (preview.claimNumber?.trim()) hints.claimNumber = preview.claimNumber.trim();
-            if (Object.keys(hints).length) await updateStagingItem(item.id, hints);
+            // Stamp the resolved name/claim back onto the staging item AND
+            // refresh the list's `items` state to match. Without the refresh,
+            // the persisted patientName can sit correctly in IndexedDB while
+            // the list row's `item` object (still the old, unnamed reference
+            // from the last `refresh()`) keeps rendering the generic
+            // "Folder: filename" title until the next periodic tick — which
+            // may never come if `unnamedCount` had already dropped to 0 or
+            // the queue is `busy` (the live-refresh timer pauses in both
+            // cases). This is what "form is right, list title is stale" was.
+            if (Object.keys(hints).length) {
+              await updateStagingItem(item.id, hints);
+              if (gen === loadGen.current) await refresh();
+            }
           }
         }
       } catch (err) {
@@ -808,7 +876,7 @@ export function ReviewQueue() {
         });
       }
     },
-    [parseLetterFile],
+    [parseLetterFile, refresh],
   );
 
   // Load the attachment/parse only when the *selected item* changes, keyed by id.
@@ -1356,9 +1424,21 @@ export function ReviewQueue() {
         </div>
       )}
 
-      {autoImportNote && (
-        <p className="text-sm mb-3" style={{ color: 'var(--good-fg, var(--muted))' }}>
-          {autoImportNote}
+      {importProgress ? (
+        <p className="text-sm mb-3" style={{ color: 'var(--muted)' }} role="status">
+          {importProgress}
+        </p>
+      ) : (
+        autoImportNote && (
+          <p className="text-sm mb-3" style={{ color: 'var(--good-fg, var(--muted))' }}>
+            {autoImportNote}
+          </p>
+        )
+      )}
+
+      {!importProgress && bgReadingNote && (
+        <p className="text-sm mb-3" style={{ color: 'var(--muted)' }} role="status">
+          {bgReadingNote}
         </p>
       )}
 
@@ -1427,6 +1507,17 @@ export function ReviewQueue() {
           {unnamedCount > 0 && (
             <button
               type="button"
+              className="btn btn-primary btn-sm"
+              disabled={busy}
+              onClick={() => void fixNamesNow()}
+              title="Re-read letter files and fill in patient names on filename-only rows"
+            >
+              Fix names now ({unnamedCount})
+            </button>
+          )}
+          {unnamedCount > 0 && (
+            <button
+              type="button"
               className="btn btn-danger btn-sm"
               disabled={busy}
               onClick={() => void discardUnnamed()}
@@ -1435,6 +1526,14 @@ export function ReviewQueue() {
               Discard unnamed ({unnamedCount})
             </button>
           )}
+          <button
+            type="button"
+            className="btn btn-sm"
+            disabled={busy}
+            onClick={() => void checkQueueHealth()}
+          >
+            Check queue health
+          </button>
           <button type="button" className="btn btn-sm" disabled={busy} onClick={() => void refresh()}>
             Refresh
           </button>
@@ -1459,21 +1558,6 @@ export function ReviewQueue() {
                   boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
                 }}
               >
-                {unnamedCount > 0 && (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="btn btn-sm w-full justify-start"
-                    disabled={busy}
-                    onClick={() => {
-                      setToolsOpen(false);
-                      void fixNamesNow();
-                    }}
-                    title="Re-read letter files and fill in patient names on filename-only rows"
-                  >
-                    Fix names now ({unnamedCount})
-                  </button>
-                )}
                 <button
                   type="button"
                   role="menuitem"
@@ -1497,18 +1581,6 @@ export function ReviewQueue() {
                   }}
                 >
                   Import letter files
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="btn btn-sm w-full justify-start"
-                  disabled={busy}
-                  onClick={() => {
-                    setToolsOpen(false);
-                    void checkQueueHealth();
-                  }}
-                >
-                  Check review list health
                 </button>
                 {missingDateCount > 0 && (
                   <button

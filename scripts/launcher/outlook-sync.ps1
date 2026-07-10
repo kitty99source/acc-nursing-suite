@@ -975,7 +975,12 @@ try {
 
             $received = $null
             try { $received = [datetime]$item.ReceivedTime } catch {}
-            if (-not $useBacklog -and $received -and $received -lt $cutoff) { continue }
+            # Recent-mode items are sorted newest-first (see Sort above), so once we
+            # hit one older than the cutoff, every remaining item in the collection is
+            # also older - stop scanning instead of walking the rest of the mailbox.
+            # This is what turned "recent" mode into a full-mailbox scan every run on
+            # large/long-lived mailboxes even though only a few days of mail mattered.
+            if (-not $useBacklog -and $received -and $received -lt $cutoff) { break }
 
             $status.scanStats.mailItemsScanned++
 

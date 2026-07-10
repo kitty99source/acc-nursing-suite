@@ -126,6 +126,12 @@ function Get-RequestQueryValue {
 
 $script:StagingListCacheBody = $null
 $script:StagingListCacheSig = $null
+# Per-file parse cache (path -> @{ ticks; obj }) so a signature miss (ANY new/
+# changed sidecar) only re-reads/re-parses the files that actually changed,
+# not the whole .staging folder. Before this, one new letter dropping in with
+# 1500+ existing sidecars meant re-reading and re-parsing all 1500+ of them on
+# every poll that saw the new file.
+$script:StagingFileParseCache = @{}
 
 function Remove-SidecarEmbeddedBytesText {
     # Strip the huge "fileBase64"/"fileMimeType" values from a sidecar's RAW text
@@ -167,7 +173,15 @@ function Get-StagingSidecarsBody {
         }
 
         $items = New-Object System.Collections.Generic.List[object]
+        $seenPaths = New-Object System.Collections.Generic.HashSet[string]
         foreach ($path in $files) {
+            [void]$seenPaths.Add($path)
+            $ticksNow = [System.IO.File]::GetLastWriteTimeUtc($path).Ticks
+            $cached = $script:StagingFileParseCache[$path]
+            if ($cached -and $cached.ticks -eq $ticksNow) {
+                [void]$items.Add($cached.obj)
+                continue
+            }
             try {
                 $raw = Get-Content -LiteralPath $path -Raw -Encoding UTF8
                 $hadBytes = $raw -match '"fileBase64"\s*:'
@@ -179,16 +193,25 @@ function Get-StagingSidecarsBody {
                     # it is small forever (bytes stay resolvable by hash via
                     # /_acc/inbox-file). One-time cost the first time we see a
                     # legacy heavy sidecar; keeps the disk and this endpoint lean.
+                    $cacheTicks = $ticksNow
                     if ($hadBytes) {
                         try {
                             $tmp = $path + '.tmp'
                             $utf8w = New-Object System.Text.UTF8Encoding $false
                             [System.IO.File]::WriteAllText($tmp, ($lean.Trim()), $utf8w)
                             Move-Item -LiteralPath $tmp -Destination $path -Force
+                            $cacheTicks = [System.IO.File]::GetLastWriteTimeUtc($path).Ticks
                         } catch {}
                     }
+                    $script:StagingFileParseCache[$path] = @{ ticks = $cacheTicks; obj = $obj }
                 }
             } catch {}
+        }
+        # Drop cache entries for sidecars that no longer exist on disk so this
+        # hashtable doesn't grow unbounded across a long-running launcher session.
+        if ($script:StagingFileParseCache.Count -gt $seenPaths.Count) {
+            $stale = @($script:StagingFileParseCache.Keys | Where-Object { -not $seenPaths.Contains($_) })
+            foreach ($k in $stale) { $script:StagingFileParseCache.Remove($k) }
         }
         # Windows PowerShell 5.1 unwraps a single-element array to a bare object.
         # The browser bridge requires a JSON array (localAccBridge checks Array.isArray).

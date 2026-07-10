@@ -41,6 +41,10 @@ export interface StagingParsedPreview {
   rows?: ParsedServiceRow[];
   reason?: string;
   servicePeriodDeclined?: string;
+  /** Blocking/scoring issues from the parse, carried over for the auto-accept gate. */
+  blockers?: string[];
+  /** True when the patient/claim match was ambiguous (multiple candidates). */
+  ambiguous?: boolean;
 }
 
 export interface BatchCommitDeps {
@@ -53,6 +57,7 @@ export interface BatchCommitDeps {
       patientPatch?: StagingParsedPreview['patientPatch'];
       claimPatch?: StagingParsedPreview['claimPatch'];
       rows: ParsedServiceRow[];
+      autoAccept?: boolean;
     },
   ) => Promise<{ patientId: string; claimId: string }>;
   commitParsedDecline: (
@@ -165,4 +170,113 @@ export async function commitBatchStagingItems(
     results.push({ stagingId: item.id, ...commit });
   }
   return results;
+}
+
+// ============================================================================
+// Auto-accept ready (100% confidence) letters — approvals only.
+//
+// This is deliberately much stricter than isBatchApprovable above: it exists
+// to file a letter with ZERO human review, so every condition is checked
+// explicitly against the parsed preview rather than trusting the confidence
+// number alone (defense-in-depth — a future scoring bug should never let an
+// ambiguous match or a decline slip through unattended).
+// ============================================================================
+
+/** Confidence required for silent auto-accept — anything less always needs a human. */
+export const AUTO_ACCEPT_MIN_CONFIDENCE = 100;
+
+/**
+ * Pure eligibility check against a parsed preview alone (no StagingItem
+ * status lookup) — kept separate so the gate itself is trivially unit
+ * testable without constructing full staging items.
+ */
+export function isAutoAcceptEligiblePreview(preview: StagingParsedPreview | undefined): boolean {
+  if (!preview) return false;
+  if (preview.kind !== 'approval') return false; // declines always stay manual
+  if (preview.parsed.kind !== 'approval') return false;
+  if (preview.confidence !== AUTO_ACCEPT_MIN_CONFIDENCE) return false;
+  if ((preview.blockers?.length ?? 0) > 0) return false;
+  if (preview.ambiguous) return false;
+  const rows = preview.rows?.length ? preview.rows : preview.parsed.serviceRows;
+  if (!rows || rows.length === 0) return false;
+  return true;
+}
+
+/** Full eligibility gate for a staging item: pending-only, approval-only, 100%, zero blockers, no ambiguous match, has service rows. */
+export function isAutoAcceptEligible(item: StagingItem): boolean {
+  if (item.status !== 'pending') return false;
+  if (!isStagingParsedPreview(item.parsedPreview)) return false;
+  return isAutoAcceptEligiblePreview(item.parsedPreview);
+}
+
+/** Commit a single auto-accept-eligible staging item, tagging the created Approval(s). */
+export async function commitAutoAcceptItem(
+  item: StagingItem,
+  deps: BatchCommitDeps,
+): Promise<{ patientId: string; claimId: string }> {
+  if (!isAutoAcceptEligible(item)) {
+    throw new Error(`"${item.title}" is not eligible for auto-accept.`);
+  }
+  const preview = item.parsedPreview;
+  if (!isStagingParsedPreview(preview) || preview.kind !== 'approval' || preview.parsed.kind !== 'approval') {
+    throw new Error(`"${item.title}" is not an approval letter.`);
+  }
+  const file = previewToFile(preview);
+  const rows =
+    preview.rows && preview.rows.length > 0 ? preview.rows : assignRecordStatus(preview.parsed.serviceRows);
+  return deps.commitParsedApproval(preview.parsed, file, {
+    patientId: preview.patientId,
+    claimId: preview.claimId,
+    patientPatch: preview.patientPatch,
+    claimPatch: preview.claimPatch,
+    rows,
+    autoAccept: true,
+  });
+}
+
+export interface AutoAcceptProgress {
+  /** 1-based index of the item currently being committed. */
+  index: number;
+  total: number;
+  item: StagingItem;
+}
+
+export interface AutoAcceptOutcome {
+  stagingId: string;
+  title: string;
+  ok: boolean;
+  patientId?: string;
+  claimId?: string;
+  error?: string;
+}
+
+/**
+ * Commit a batch of auto-accept-eligible items in sequence. A failure on one
+ * item (e.g. a document-write error) is caught, recorded, and skipped — the
+ * rest of the batch still runs. `commitParsedApproval` is the rollback-safe
+ * store action, so a failed item never leaves an orphaned patient/claim
+ * behind and its staging item is simply never advanced past 'pending'.
+ */
+export async function runAutoAccept(
+  items: StagingItem[],
+  deps: BatchCommitDeps,
+  onProgress?: (progress: AutoAcceptProgress) => void,
+): Promise<AutoAcceptOutcome[]> {
+  const outcomes: AutoAcceptOutcome[] = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    onProgress?.({ index: i + 1, total: items.length, item });
+    try {
+      const result = await commitAutoAcceptItem(item, deps);
+      outcomes.push({ stagingId: item.id, title: item.title, ok: true, ...result });
+    } catch (err) {
+      outcomes.push({
+        stagingId: item.id,
+        title: item.title,
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+  return outcomes;
 }

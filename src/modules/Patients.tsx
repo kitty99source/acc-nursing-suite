@@ -854,6 +854,13 @@ function ClaimCard({
                   ) : (
                     <Badge tone="good">Active</Badge>
                   )}
+                  {a.autoAccepted && (
+                    <Badge tone="neutral">
+                      <span title="Filed by Auto-accept ready — created without individual human review.">
+                        Auto-accepted
+                      </span>
+                    </Badge>
+                  )}
                 </div>
               );
             })}
@@ -877,6 +884,7 @@ function ClaimCard({
                         {formatDate(a.approvalStartDate)} – {formatDate(a.approvalEndDate)}
                       </span>
                       <Badge tone="neutral">Historical</Badge>
+                      {a.autoAccepted && <Badge tone="neutral">Auto-accepted</Badge>}
                     </div>
                   ))}
                 </div>

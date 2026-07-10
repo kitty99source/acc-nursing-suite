@@ -236,6 +236,13 @@ interface StoreState {
        * document's note so the patient's history is complete.
        */
       historicRows?: ParsedPackageRow[];
+      /**
+       * True when this commit came from the Review Queue's "Auto-accept
+       * ready" batch action rather than an individually human-reviewed
+       * Accept — stamps every Approval record created here as auto-accepted
+       * so it stays traceable/filterable later.
+       */
+      autoAccept?: boolean;
     },
   ) => Promise<LetterImportCommitResult>;
   commitParsedDecline: (
@@ -830,6 +837,7 @@ export const useStore = create<StoreState>((set, get) => ({
           notes: `Imported from ACC letter (${parsed.formCode ?? 'NUR02'})`,
           recordStatus: row.recordStatus ?? 'historical',
           sourceDocumentId: docId,
+          ...(opts.autoAccept ? { autoAccepted: true, autoAcceptedAt: Date.now() } : {}),
         });
         if (row.recordStatus === 'current') currentApprovalId = id;
       }

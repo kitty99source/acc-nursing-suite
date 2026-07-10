@@ -90,6 +90,8 @@ export function buildStagingPreview(
     reason: result.parsed.kind === 'decline' ? result.parsed.reason : undefined,
     servicePeriodDeclined:
       result.parsed.kind === 'decline' ? result.parsed.serviceRequested : undefined,
+    blockers: result.blockers,
+    ambiguous: result.match.ambiguous,
   };
 }
 

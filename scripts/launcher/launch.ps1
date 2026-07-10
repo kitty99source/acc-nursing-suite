@@ -139,7 +139,20 @@ function Get-StagingSidecarsBody {
             try {
                 $raw = Get-Content -LiteralPath $path -Raw -Encoding UTF8
                 $obj = $raw | ConvertFrom-Json
-                if ($obj) { [void]$items.Add($obj) }
+                if ($obj) {
+                    # Keep the list LEAN. Sidecars embed the whole file as base64
+                    # (up to 4 MB each); serializing hundreds of those into one
+                    # response makes ConvertTo-Json blow up (out of memory ->
+                    # 404 -> app shows "bridge is down"). The bytes are fetched
+                    # on demand via /_acc/inbox-file?hash= instead, so drop them.
+                    if ($obj.PSObject.Properties['fileBase64']) {
+                        $obj.PSObject.Properties.Remove('fileBase64')
+                    }
+                    if ($obj.PSObject.Properties['fileMimeType']) {
+                        $obj.PSObject.Properties.Remove('fileMimeType')
+                    }
+                    [void]$items.Add($obj)
+                }
             } catch {}
         }
         # Windows PowerShell 5.1 unwraps a single-element array to a bare object.

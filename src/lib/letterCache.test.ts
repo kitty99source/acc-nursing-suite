@@ -5,10 +5,11 @@ import {
   getCachedLetterBlob,
   getCachedLetterFile,
   getCachedLetterParse,
+  getCachedLetterParseAny,
   putCachedLetterBlob,
   putCachedLetterParse,
 } from './letterCache';
-import type { StagingParsedPreview } from './hrqBatch';
+import { LETTER_PARSER_VERSION, type StagingParsedPreview } from './hrqBatch';
 
 const letterBlobs = new Map<string, Blob>();
 const letterParses = new Map<string, unknown>();
@@ -27,6 +28,7 @@ vi.mock('./idb', () => ({
 function samplePreview(base64: string): StagingParsedPreview {
   return {
     kind: 'approval',
+    parserVersion: LETTER_PARSER_VERSION,
     confidence: 95,
     patientName: 'Jane Doe',
     claimNumber: 'P123',
@@ -67,6 +69,14 @@ describe('letterCache', () => {
     const loaded = await getCachedLetterParse(hash);
     expect(loaded?.patientName).toBe('Jane Doe');
     expect(loaded?.claimNumber).toBe('P123');
+  });
+
+  it('treats an older parser version as stale (backfill), but keeps it for offline fallback', async () => {
+    const hash = 'e'.repeat(64);
+    const stale = { ...samplePreview('cGRm'), parserVersion: LETTER_PARSER_VERSION - 1 };
+    await putCachedLetterParse(hash, stale);
+    expect(await getCachedLetterParse(hash)).toBeUndefined();
+    expect((await getCachedLetterParseAny(hash))?.patientName).toBe('Jane Doe');
   });
 
   it('stores and loads letter blobs by hash', async () => {

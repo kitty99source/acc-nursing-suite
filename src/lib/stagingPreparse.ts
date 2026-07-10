@@ -7,6 +7,7 @@ import { useStore } from '../state/store';
 import { fetchInboxFileForStaging } from './localAccBridge';
 import {
   HRQ_BATCH_MIN_CONFIDENCE,
+  LETTER_PARSER_VERSION,
   type StagingParsedPreview,
 } from './hrqBatch';
 import { prefillFromParsed, type LetterParseResult } from './letterImport';
@@ -64,6 +65,7 @@ export function buildStagingPreview(
     'Unknown';
   return {
     kind: result.parsed.kind,
+    parserVersion: LETTER_PARSER_VERSION,
     confidence: result.overallConfidence,
     patientName,
     claimNumber:

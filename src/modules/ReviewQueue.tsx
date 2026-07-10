@@ -42,6 +42,7 @@ import {
   blobToBase64,
   getCachedLetterFile,
   getCachedLetterParse,
+  getCachedLetterParseAny,
   putCachedLetterBlob,
   putCachedLetterParse,
 } from '../lib/letterCache';
@@ -597,6 +598,15 @@ export function ReviewQueue() {
       if (resolved && hash) await putCachedLetterBlob(hash, resolved);
 
       if (!resolved) {
+        // No fetchable bytes (bridge down, nothing cached). Fall back to any
+        // previously cached parse — even an older parser version — so the form
+        // still shows what we had rather than regressing to a blank error.
+        const stale = hash ? await getCachedLetterParseAny(hash) : undefined;
+        if (gen !== loadGen.current) return;
+        if (stale) {
+          await applyPreview(stale, null);
+          return;
+        }
         setFields({
           ...emptyLetterCommitForm(),
           patientName: item.patientName ?? '',

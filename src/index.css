@@ -233,6 +233,9 @@ body {
     background: var(--surface);
     border: 1px solid var(--border);
     color: var(--text);
+    /* Allow inputs to shrink inside grid/flex tracks so date/number fields
+       cannot force horizontal page scroll on narrow panes. */
+    min-width: 0;
   }
   .input:focus,
   .select:focus,

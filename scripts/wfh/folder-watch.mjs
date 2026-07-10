@@ -27,13 +27,6 @@ const DEFAULT_INBOX = path.join(
 const PROCESSED_DIR = 'processed';
 const STAGING_DIR = '.staging';
 const SUPPORTED_EXT = new Set(['.pdf', '.docx']);
-const MAX_EMBED_BYTES = 4 * 1024 * 1024;
-
-function mimeForExt(ext) {
-  if (ext === '.pdf') return 'application/pdf';
-  if (ext === '.docx') return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-  return 'application/octet-stream';
-}
 
 function readOfficeInboxPath() {
   const home = process.env.USERPROFILE ?? process.env.HOME ?? '';
@@ -113,16 +106,9 @@ function createSidecar({ filePath, hash, inbox }) {
       runId: `folder-watch-${new Date().toISOString().slice(0, 10)}`,
     },
   };
-  try {
-    const stat = fs.statSync(filePath);
-    if (stat.size > 0 && stat.size <= MAX_EMBED_BYTES) {
-      const ext = path.extname(filePath).toLowerCase();
-      sidecar.fileBase64 = fs.readFileSync(filePath).toString('base64');
-      sidecar.fileMimeType = mimeForExt(ext);
-    }
-  } catch {
-    /* omit embedded bytes */
-  }
+  // Sidecars stay LEAN (metadata only). Embedding the file as base64 made the
+  // /_acc/staging list huge and slow (out-of-memory -> "bridge down"); the bytes
+  // are resolved on demand by hash via /_acc/inbox-file instead.
   return sidecar;
 }
 

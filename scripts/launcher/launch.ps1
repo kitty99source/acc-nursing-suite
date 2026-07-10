@@ -207,6 +207,33 @@ function Resolve-InboxFileByHash {
     }
 }
 
+function Get-EmailMetaBody {
+    # Small lookup so the app can backfill emailDate onto already-imported Review
+    # Queue items without re-importing the whole sidecar (which would be skipped
+    # as a duplicate). Returns {"emailDate":"...","emailDateApprox":bool} or $null.
+    param([string]$Hash)
+    if ([string]::IsNullOrWhiteSpace($Hash)) { return $null }
+    $h = $Hash.Trim().ToLowerInvariant()
+    if ($h -notmatch '^[a-f0-9]{64}$') { return $null }
+    if (-not (Get-Command Resolve-InboxPath -ErrorAction SilentlyContinue)) { return $null }
+    try {
+        $inbox = Resolve-InboxPath -ScriptRoot $bootstrapRoot
+        $metaPath = Join-Path $inbox (Join-Path '.email-sync' ("{0}.meta.json" -f $h))
+        if (-not (Test-Path -LiteralPath $metaPath -PathType Leaf)) { return $null }
+        $meta = Get-Content -LiteralPath $metaPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        if (-not $meta.emailDate) { return $null }
+        $out = [ordered]@{
+            emailDate       = [string]$meta.emailDate
+            emailDateApprox = [bool]$meta.emailDateApprox
+        }
+        $json = $out | ConvertTo-Json -Depth 3 -Compress:$false
+        $utf8 = New-Object System.Text.UTF8Encoding $false
+        return $utf8.GetBytes($json)
+    } catch {
+        return $null
+    }
+}
+
 function Get-StaticContentType {
     param([string]$Extension)
     switch ($Extension.ToLowerInvariant()) {
@@ -496,6 +523,14 @@ try {
                         }
                     } elseif ($reqPath -eq '/_acc/staging') {
                         $body = Get-StagingSidecarsBody
+                        if ($null -ne $body) {
+                            Send-Response -Client $client -StatusCode 200 -StatusText 'OK' -Body $body -ContentType 'application/json; charset=utf-8'
+                        } else {
+                            Send-Response -Client $client -StatusCode 404 -StatusText 'Not Found' -Body $notFound -ContentType 'text/plain; charset=utf-8'
+                        }
+                    } elseif ($reqPath -eq '/_acc/email-meta') {
+                        $hash = Get-RequestQueryValue -RequestLine $requestLine -Key 'hash'
+                        $body = Get-EmailMetaBody -Hash $hash
                         if ($null -ne $body) {
                             Send-Response -Client $client -StatusCode 200 -StatusText 'OK' -Body $body -ContentType 'application/json; charset=utf-8'
                         } else {

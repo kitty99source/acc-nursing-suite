@@ -27,6 +27,7 @@ import { appendAudit, recordHrqResolution } from '../lib/auditLog';
 import { LETTER_IMPORT_ACCEPT } from '../components/LetterImportButton';
 import {
   fetchInboxFileForStaging,
+  fetchEmailMetaForHash,
   probeLocalStagingBridge,
   type StagingBridgeStatus,
 } from '../lib/localAccBridge';
@@ -77,6 +78,20 @@ function typeLabel(type: StagingItem['type']): string {
     default:
       return type;
   }
+}
+
+/** Format a full ISO email timestamp as "dd/mm/yyyy, HH:MM" (NZ). Empty -> "". */
+function formatEmailDate(iso?: string): string {
+  if (!iso?.trim()) return '';
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) return '';
+  return new Date(ms).toLocaleString('en-NZ', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function listTitle(item: StagingItem): string {
@@ -162,6 +177,10 @@ export function ReviewQueue() {
     [sorted],
   );
   const unnamedCount = sorted.length - readyCount;
+  const missingDateCount = useMemo(
+    () => sorted.filter((i) => Boolean(i.sourceHash) && !i.emailDate?.trim()).length,
+    [sorted],
+  );
 
   useEffect(() => {
     void (async () => {
@@ -327,6 +346,56 @@ export function ReviewQueue() {
         stillUnnamed > 0
           ? `Named ${named} letters. ${stillUnnamed} still need a file (bridge/hash miss or unreadable).`
           : `Named ${named} letters. Review list is ready.`,
+      );
+      window.setTimeout(() => setFlash(null), 8000);
+    } finally {
+      setBusy(false);
+      setFixProgress(null);
+    }
+  }
+
+  async function backfillEmailDates() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const probe = await probeLocalStagingBridge();
+      setBridgeStatus(probe.status);
+      if (probe.status === 'unavailable') {
+        await confirm({
+          title: 'Cannot reach letter files',
+          message:
+            'Start WFH Mode (or Start ACC Suite) so the app can read email dates from ACC-Inbox. Without that bridge, older rows cannot pick up their email date.',
+          confirmLabel: 'OK',
+        });
+        return;
+      }
+      const pending = await loadStagingItems();
+      const targets = pending.filter((i) => i.sourceHash && !i.emailDate?.trim());
+      if (targets.length === 0) {
+        setFlash('All letters already have an email date.');
+        window.setTimeout(() => setFlash(null), 4000);
+        return;
+      }
+      setFixProgress(`Looking up email dates… 0/${targets.length}`);
+      let filled = 0;
+      for (let i = 0; i < targets.length; i++) {
+        const item = targets[i];
+        setFixProgress(`Looking up email dates… ${i + 1}/${targets.length}`);
+        const meta = await fetchEmailMetaForHash(item.sourceHash!);
+        if (meta) {
+          await updateStagingItem(item.id, {
+            emailDate: meta.emailDate,
+            emailDateApprox: meta.emailDateApprox,
+          });
+          filled++;
+        }
+      }
+      await refresh();
+      setFixProgress(null);
+      setFlash(
+        filled < targets.length
+          ? `Added email dates to ${filled} of ${targets.length} letters. Run the "Backfill Email Dates" tool on the local machine to fill in the rest.`
+          : `Added email dates to ${filled} letter(s).`,
       );
       window.setTimeout(() => setFlash(null), 8000);
     } finally {
@@ -904,6 +973,17 @@ export function ReviewQueue() {
               Fix names now ({unnamedCount})
             </button>
           )}
+          {missingDateCount > 0 && (
+            <button
+              type="button"
+              className="btn"
+              disabled={busy}
+              onClick={() => void backfillEmailDates()}
+              title="Look up the email received date for letters synced before this field existed"
+            >
+              Backfill email dates ({missingDateCount})
+            </button>
+          )}
           <button
             type="button"
             className="btn"
@@ -1089,6 +1169,12 @@ export function ReviewQueue() {
                     <p className="text-sm" style={{ color: 'var(--muted)' }}>
                       {selected.summary}
                     </p>
+                    {formatEmailDate(selected.emailDate) && (
+                      <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+                        Email received: <strong>{formatEmailDate(selected.emailDate)}</strong>
+                        {selected.emailDateApprox && ' (approx.)'}
+                      </p>
+                    )}
                     {selected.sourceFileName && (
                       <p className="text-xs mt-1 font-mono truncate" style={{ color: 'var(--muted)' }}>
                         {selected.sourceFileName}

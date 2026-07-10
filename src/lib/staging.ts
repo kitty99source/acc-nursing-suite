@@ -39,6 +39,10 @@ export interface StagingItem {
   expectedFileName?: string;
   /** Original ACC email subject (from .email-sync meta / folder-watch enrichment). */
   emailSubject?: string;
+  /** ISO timestamp the ACC email was received (from .email-sync meta). */
+  emailDate?: string;
+  /** True when emailDate is a file-timestamp fallback, not an exact Outlook ReceivedTime. */
+  emailDateApprox?: boolean;
   /** SHA-256 hex of source PDF bytes — dedup key for folder/email ingress. */
   sourceHash?: string;
   /** Absolute path on work PC (folder watch only; not synced to IDB on other machines). */

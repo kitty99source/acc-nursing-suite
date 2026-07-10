@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { act } from 'react';
 
 // React 18 requires this flag for act(...) to drive effects in a test env.
@@ -9,6 +9,18 @@ import { Approvals } from './Approvals';
 import { useStore } from '../state/store';
 import { emptyData } from '../lib/sampleData';
 import type { Approval, Claim, Patient } from '../types';
+
+vi.mock('../lib/auditLog', () => ({
+  appendAudit: vi.fn(async () => {}),
+}));
+
+async function flush() {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
 
 let container: HTMLDivElement;
 let root: Root;
@@ -72,6 +84,82 @@ afterEach(() => {
 function badgeTexts(): string[] {
   return Array.from(container.querySelectorAll('.badge')).map((el) => el.textContent ?? '');
 }
+
+function clickButtonByText(text: string) {
+  const btn = Array.from(container.querySelectorAll('button')).find((b) => b.textContent?.trim() === text);
+  expect(btn).toBeTruthy();
+  act(() => {
+    btn!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  });
+}
+
+describe('<Approvals /> duplicate-approval check', () => {
+  it('reports and removes the older duplicate approval sharing a patient/code/PO, keeping the newer one', async () => {
+    const older: Approval = {
+      id: 'a-2025',
+      patientId: 'p1',
+      claimId: 'c1',
+      serviceCode: 'NS04',
+      approvalStartDate: '2025-01-01',
+      approvalEndDate: '2025-06-30',
+      approvedHoursOrConsults: 10,
+      poNumber: 'DUP-PO',
+      notes: '',
+    };
+    const newer: Approval = {
+      id: 'a-2026',
+      patientId: 'p1',
+      claimId: 'c1',
+      serviceCode: 'NS04',
+      approvalStartDate: '2026-01-01',
+      approvalEndDate: '2026-06-30',
+      approvedHoursOrConsults: 10,
+      poNumber: 'DUP-PO',
+      notes: '',
+    };
+    useStore.setState({
+      data: {
+        ...emptyData(),
+        patients: [patient],
+        claims: [claim],
+        approvals: [older, newer],
+      },
+    });
+    act(() => {
+      root.render(<Approvals />);
+    });
+
+    clickButtonByText('Check for duplicate approvals');
+    expect(container.textContent).toContain('Found 1 redundant approval(s)');
+
+    clickButtonByText('Remove 1 duplicate(s)');
+    await flush();
+
+    const remaining = useStore.getState().data.approvals;
+    expect(remaining.map((a) => a.id)).toEqual(['a-2026']);
+  });
+
+  it('reports no duplicates when approvals have different PO numbers', async () => {
+    useStore.setState({
+      data: {
+        ...emptyData(),
+        patients: [patient],
+        claims: [claim],
+        approvals: [manualApproval, autoApproval],
+      },
+    });
+    act(() => {
+      root.render(<Approvals />);
+    });
+
+    clickButtonByText('Check for duplicate approvals');
+    expect(container.textContent).toContain('No duplicates found');
+
+    clickButtonByText('Close');
+    await flush();
+    expect(useStore.getState().data.approvals).toHaveLength(2);
+  });
+});
 
 describe('<Approvals /> auto-accepted badge + filter', () => {
   it('shows the Auto-accepted badge only next to the record created via auto-accept', () => {

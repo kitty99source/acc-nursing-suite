@@ -8,7 +8,8 @@ export interface Column<T> {
   sortValue?: (row: T) => string | number;
   sortable?: boolean;
   align?: 'left' | 'right' | 'center';
-  width?: number;
+  /** Number = pixels; string is used verbatim (e.g. a percentage, for fluid `tableLayout="fixed"` tables). */
+  width?: number | string;
 }
 
 /** Rows above this count use windowed rendering (~30 DOM nodes regardless of total). */
@@ -74,6 +75,7 @@ export function DataTable<T>({
   initialSort,
   maxHeight = '65vh',
   virtualize = true,
+  tableLayout = 'auto',
 }: {
   columns: Column<T>[];
   rows: T[];
@@ -84,6 +86,18 @@ export function DataTable<T>({
   maxHeight?: string;
   /** Window rows when count exceeds VIRTUAL_ROW_THRESHOLD (default true). */
   virtualize?: boolean;
+  /**
+   * 'fixed' locks column widths to the header row's `width`s so they never
+   * recompute from whichever rows happen to be mounted. With virtualization,
+   * the default 'auto' layout recalculates column widths from only the
+   * currently-rendered (windowed) rows — as different rows scroll in/out,
+   * that recalculation visibly jitters the table (and toggles the container's
+   * horizontal scrollbar) even though nothing the user did should resize
+   * anything. Opt in per-table (rather than switching every DataTable) since
+   * it also requires the caller to give every column an explicit `width` for
+   * sane proportions. Default 'auto' preserves prior behaviour everywhere else.
+   */
+  tableLayout?: 'auto' | 'fixed';
 }) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [sortKey, setSortKey] = useState<string | undefined>(initialSort?.key);
@@ -133,8 +147,13 @@ export function DataTable<T>({
   }
 
   return (
-    <div ref={parentRef} data-testid="data-table-scroll" className="card overflow-auto" style={{ maxHeight }}>
-      <table className="data-table">
+    <div
+      ref={parentRef}
+      data-testid="data-table-scroll"
+      className="card overflow-auto overscroll-contain"
+      style={{ maxHeight }}
+    >
+      <table className="data-table" style={tableLayout === 'fixed' ? { tableLayout: 'fixed', width: '100%' } : undefined}>
         <thead>
           <tr>
             {columns.map((col) => (
@@ -143,7 +162,7 @@ export function DataTable<T>({
                 className={col.sortable ? 'sortable' : ''}
                 style={{
                   textAlign: col.align ?? 'left',
-                  width: col.width ? `${col.width}px` : undefined,
+                  width: typeof col.width === 'number' ? `${col.width}px` : col.width,
                 }}
                 onClick={() => toggleSort(col.key)}
               >

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { AppData, InvoiceLine } from '../types';
 import { DEFAULT_SETTINGS, SCHEMA_VERSION } from '../types';
-import { billingFunnel, staleRemittanceLines, managementSummaryMetrics } from './analytics';
+import { billingFunnel, staleRemittanceLines, managementSummaryMetrics, memoStats } from './analytics';
 import { sampleData } from './sampleData';
 import { todayISO } from './format';
 
@@ -17,6 +17,7 @@ function emptyData(): AppData {
     declines: [],
     settings: { ...DEFAULT_SETTINGS },
     documents: [],
+    memos: [],
   };
 }
 
@@ -117,5 +118,32 @@ describe('managementSummaryMetrics', () => {
     expect(m.funnel).toEqual(billingFunnel(data));
     expect(m.violations).toBeGreaterThanOrEqual(0);
     expect(typeof m.openDeclines).toBe('number');
+  });
+});
+
+describe('memoStats', () => {
+  const DAY = 24 * 60 * 60 * 1000;
+
+  it('returns zeros for no memos', () => {
+    const data = emptyData();
+    expect(memoStats(data)).toEqual({ total: 0, unresolved: 0, sentThisWeek: 0 });
+  });
+
+  it('counts total, unresolved, and memos sent within the last 7 days', () => {
+    const now = Date.parse('2026-06-15T00:00:00.000Z');
+    const data = emptyData();
+    data.memos = [
+      { id: 'm1', patientId: 'p1', text: 'a', createdAt: now - 1 * DAY, resolved: false },
+      { id: 'm2', patientId: 'p1', text: 'b', createdAt: now - 2 * DAY, resolved: true, resolvedAt: now },
+      { id: 'm3', patientId: 'p2', text: 'c', createdAt: now - 40 * DAY, resolved: false },
+    ];
+    expect(memoStats(data, now)).toEqual({ total: 3, unresolved: 2, sentThisWeek: 2 });
+  });
+
+  it('treats memos with resolved undefined as unresolved', () => {
+    const now = Date.now();
+    const data = emptyData();
+    data.memos = [{ id: 'm1', patientId: 'p1', text: 'a', createdAt: now }];
+    expect(memoStats(data, now).unresolved).toBe(1);
   });
 });

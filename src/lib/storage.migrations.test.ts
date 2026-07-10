@@ -15,6 +15,7 @@ function v1Envelope(): string {
     declines: [],
     settings: { ...DEFAULT_SETTINGS },
     documents: [],
+    memos: [],
   };
   return JSON.stringify({ format: FILE_FORMAT, version: 1, encrypted: false, data });
 }
@@ -22,14 +23,15 @@ function v1Envelope(): string {
 describe('storage migrations', () => {
   it('migrates v1 accdata envelope on deserialize', async () => {
     const loaded = await deserialize(v1Envelope());
-    expect(loaded.schemaVersion).toBe(2);
+    expect(loaded.schemaVersion).toBe(3);
     expect(loaded.importHistory).toEqual([]);
+    expect(loaded.memos).toEqual([]);
   });
 
   it('serializes at current FILE_VERSION', async () => {
     const data = await deserialize(v1Envelope());
     const text = await serialize(data);
     const env = JSON.parse(text) as { version: number };
-    expect(env.version).toBe(2);
+    expect(env.version).toBe(3);
   });
 });

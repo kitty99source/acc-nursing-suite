@@ -447,6 +447,31 @@ export interface DashboardMetrics {
   outstandingTotal: number;
 }
 
+export interface MemoStats {
+  total: number;
+  unresolved: number;
+  /** Memos created in the last 7 days (rolling window from `now`). */
+  sentThisWeek: number;
+}
+
+const MEMO_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Aggregate memo counts for the Dashboard's self-monitoring stat card (she's
+ * been told she sends "too many" memos and wants visibility). `now` is
+ * injectable for deterministic tests.
+ */
+export function memoStats(data: AppData, now = Date.now()): MemoStats {
+  const memos = data.memos ?? [];
+  let unresolved = 0;
+  let sentThisWeek = 0;
+  for (const m of memos) {
+    if (!m.resolved) unresolved += 1;
+    if (now - m.createdAt <= MEMO_WEEK_MS) sentThisWeek += 1;
+  }
+  return { total: memos.length, unresolved, sentThisWeek };
+}
+
 export function dashboardMetrics(data: AppData, idx?: DataIndexes): DashboardMetrics {
   const indexes = idx ?? buildDataIndexes(data);
   const threshold = data.settings.expiryThresholdDays;

@@ -243,6 +243,24 @@ export interface ImportHistoryEntry {
   sizeBytes?: number;
 }
 
+/**
+ * A quick follow-up question/note sent to a nurse about a patient — distinct
+ * from `Patient.notes` (free-text scratchpad) because it needs to be a
+ * first-class, countable, timestamped record so the sender can see how many
+ * she has sent (self-monitoring — see Dashboard memo stat card).
+ */
+export interface Memo {
+  id: string;
+  patientId: string;
+  claimId?: string;
+  text: string;
+  /** Free-text recipient, e.g. a nurse's name — local note, not validated. */
+  to?: string;
+  createdAt: number; // ms epoch
+  resolved?: boolean;
+  resolvedAt?: number; // ms epoch
+}
+
 export interface AppData {
   schemaVersion: number;
   patients: Patient[];
@@ -259,9 +277,10 @@ export interface AppData {
   // sent, etc.). File bytes live in IndexedDB, not here.
   documents: ClaimDocument[];
   importHistory?: ImportHistoryEntry[];
+  memos: Memo[];
 }
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'clinical-light',

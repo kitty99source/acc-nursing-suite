@@ -65,6 +65,13 @@ describe('validateReferentialIntegrity', () => {
     ];
     expect(validateReferentialIntegrity(data).some((w) => w.includes('ghost'))).toBe(true);
   });
+
+  it('reports memo referencing missing patient', () => {
+    const data = emptyData();
+    data.memos = [{ id: 'm1', patientId: 'missing', text: 'Call re: dressing supplies', createdAt: 1 }];
+    const warnings = validateReferentialIntegrity(data);
+    expect(warnings.some((w) => w.includes('Memo m1 references missing patient'))).toBe(true);
+  });
 });
 
 describe('compareDocumentBlobs', () => {

@@ -23,6 +23,7 @@ function base(): AppData {
     declines: [],
     settings: { ...DEFAULT_SETTINGS },
     documents: [],
+    memos: [],
   };
 }
 

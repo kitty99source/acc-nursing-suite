@@ -15,7 +15,14 @@ import { useStore } from '../state/store';
 import { SectionTitle, Card, StatCard, Badge, EmptyState } from '../components/ui';
 import { IconWarning, IconDashboard } from '../components/icons';
 import type { ModuleId } from '../components/Sidebar';
-import { dashboardMetrics, buildActionQueue, computeApproval, capActionQueueForDisplay, ACTION_QUEUE_DISPLAY_CAP } from '../lib/analytics';
+import {
+  dashboardMetrics,
+  buildActionQueue,
+  computeApproval,
+  capActionQueueForDisplay,
+  ACTION_QUEUE_DISPLAY_CAP,
+  memoStats,
+} from '../lib/analytics';
 import { complianceSummary } from '../lib/compliance';
 import { getComplianceFindings } from '../lib/complianceCache';
 import { buildDataIndexes } from '../lib/indexes';
@@ -72,6 +79,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
   const displayActions = useMemo(() => capActionQueueForDisplay(actions), [actions]);
   const compliance = useMemo(() => complianceSummary(findings), [findings]);
   const topFindings = useMemo(() => findings.slice(0, 6), [findings]);
+  const memos = useMemo(() => memoStats(data), [data]);
 
   // Daily triage signals: HRQ pending count + email-sync freshness (read-only,
   // via existing exports — no live-data writes from the dashboard).
@@ -197,7 +205,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-4">
         <button className="clickable-card" onClick={() => onNavigate('compliance')}>
           <StatCard
             label="Contract flags"
@@ -222,6 +230,14 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
         </button>
         <button className="clickable-card" onClick={() => onNavigate('complex')}>
           <StatCard label="Complex reviews due" value={m.complexDue} tone={m.complexDue ? 'salmon' : 'good'} />
+        </button>
+        <button className="clickable-card" onClick={() => onNavigate('patients')}>
+          <StatCard
+            label="Memos to nurses"
+            value={memos.total}
+            tone={memos.unresolved ? 'warn' : 'good'}
+            hint={`${memos.sentThisWeek} this week · ${memos.unresolved} unresolved`}
+          />
         </button>
       </div>
 

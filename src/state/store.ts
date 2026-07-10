@@ -8,6 +8,7 @@ import type {
   Decline,
   ImportHistoryEntry,
   InvoiceLine,
+  Memo,
   Patient,
   ServiceLine,
   Settings,
@@ -340,6 +341,12 @@ interface StoreState {
   addDecline: (d: Omit<Decline, 'id'>) => string;
   updateDecline: (id: string, patch: Partial<Decline>) => void;
   removeDecline: (id: string) => void;
+
+  // memo CRUD (nurse follow-up tracking, distinct from Patient.notes)
+  addMemo: (m: Omit<Memo, 'id' | 'createdAt' | 'resolved' | 'resolvedAt'>) => string;
+  updateMemo: (id: string, patch: Partial<Memo>) => void;
+  resolveMemo: (id: string, resolved: boolean) => void;
+  removeMemo: (id: string) => void;
 
   // document attachments (metadata in `data.documents`, bytes in IndexedDB)
   addDocument: (meta: Omit<ClaimDocument, 'id' | 'addedDate'>, blob: Blob) => Promise<string>;
@@ -1384,6 +1391,7 @@ export const useStore = create<StoreState>((set, get) => ({
         serviceLines: data.serviceLines.filter((s) => !claimIds.has(s.claimId)),
         approvals: data.approvals.filter((a) => a.patientId !== id),
         documents: data.documents.filter((d) => !claimIds.has(d.claimId)),
+        memos: (data.memos ?? []).filter((m) => m.patientId !== id),
       };
     });
     audit('delete', 'patient', id, `Removed patient ${name}`);
@@ -1568,6 +1576,33 @@ export const useStore = create<StoreState>((set, get) => ({
     })),
   removeDecline: (id) =>
     mutate(get, (data) => ({ ...data, declines: data.declines.filter((x) => x.id !== id) })),
+
+  addMemo: (m) => {
+    const id = uid('memo');
+    mutate(get, (data) => ({
+      ...data,
+      memos: [...(data.memos ?? []), { ...m, id, createdAt: Date.now() }],
+    }));
+    const patient = get().data.patients.find((p) => p.id === m.patientId);
+    audit('create', 'memo', id, `Added memo for ${patient?.name ?? m.patientId}`);
+    return id;
+  },
+  updateMemo: (id, patch) =>
+    mutate(get, (data) => ({
+      ...data,
+      memos: (data.memos ?? []).map((x) => (x.id === id ? { ...x, ...patch } : x)),
+    })),
+  resolveMemo: (id, resolved) =>
+    mutate(get, (data) => ({
+      ...data,
+      memos: (data.memos ?? []).map((x) =>
+        x.id === id ? { ...x, resolved, resolvedAt: resolved ? Date.now() : undefined } : x,
+      ),
+    })),
+  removeMemo: (id) => {
+    mutate(get, (data) => ({ ...data, memos: (data.memos ?? []).filter((x) => x.id !== id) }));
+    audit('delete', 'memo', id, 'Removed memo');
+  },
 
   addDocument: async (meta, blob) => {
     const id = uid('doc');

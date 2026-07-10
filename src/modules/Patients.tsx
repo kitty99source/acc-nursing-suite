@@ -43,6 +43,8 @@ import type {
   ServiceCode,
 } from '../types';
 
+const MEMO_EMPTY = { text: '', to: '' };
+
 const PATIENTS_PAGE_SIZE = 25;
 
 export function Patients() {
@@ -379,6 +381,7 @@ function PatientDetail({
             </button>
           </div>
         </div>
+        <MemoPanel patient={patient} />
       </Card>
 
       <div className="flex items-center justify-between">
@@ -499,6 +502,125 @@ function PatientDetail({
         )}
       </Modal>
 
+      {confirmDialog}
+    </div>
+  );
+}
+
+// Memos are a first-class, countable, timestamped record of follow-up
+// questions sent to nurses — distinct from Patient.notes (free-text, not
+// individually countable). Lives on the patient card, near the notes UI.
+function MemoPanel({ patient }: { patient: Patient }) {
+  const memos = useStore((s) => s.data.memos ?? []);
+  const addMemo = useStore((s) => s.addMemo);
+  const resolveMemo = useStore((s) => s.resolveMemo);
+  const removeMemo = useStore((s) => s.removeMemo);
+  const [confirm, confirmDialog] = useConfirm();
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState(MEMO_EMPTY);
+
+  const patientMemos = useMemo(
+    () => memos.filter((m) => m.patientId === patient.id).sort((a, b) => b.createdAt - a.createdAt),
+    [memos, patient.id],
+  );
+  const unresolvedCount = patientMemos.filter((m) => !m.resolved).length;
+
+  function submit() {
+    const text = form.text.trim();
+    if (!text) return;
+    addMemo({ patientId: patient.id, text, to: form.to.trim() || undefined });
+    setForm(MEMO_EMPTY);
+    setAdding(false);
+  }
+
+  async function del(id: string) {
+    const ok = await confirm({
+      title: 'Delete memo?',
+      message: 'Delete this memo? This cannot be undone.',
+      destructive: true,
+      confirmLabel: 'Delete',
+    });
+    if (ok) removeMemo(id);
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
+      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+        <h4 className="text-sm font-semibold" style={{ color: 'var(--muted)' }}>
+          Memos to nurses
+          {patientMemos.length > 0 &&
+            ` (${patientMemos.length}${unresolvedCount > 0 ? `, ${unresolvedCount} unresolved` : ''})`}
+        </h4>
+        <button className="btn btn-sm" onClick={() => setAdding((v) => !v)}>
+          <IconPlus width={14} height={14} /> Add memo
+        </button>
+      </div>
+      {adding && (
+        <div className="rounded-lg p-3 mb-2 space-y-2" style={{ background: 'var(--surface-2)' }}>
+          <Field label="Memo" required>
+            <TextArea
+              rows={2}
+              value={form.text}
+              onChange={(e) => setForm({ ...form, text: e.target.value })}
+              placeholder="Follow-up question for the nurse…"
+            />
+          </Field>
+          <Field label="To (optional)" hint="Free-text — nurse or team name.">
+            <TextInput value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} placeholder="e.g. district nurse team" />
+          </Field>
+          <div className="flex items-center gap-2 justify-end">
+            <button
+              className="btn btn-sm"
+              onClick={() => {
+                setAdding(false);
+                setForm(MEMO_EMPTY);
+              }}
+            >
+              Cancel
+            </button>
+            <button className="btn btn-primary btn-sm" onClick={submit} disabled={!form.text.trim()}>
+              Save memo
+            </button>
+          </div>
+        </div>
+      )}
+      {patientMemos.length === 0 ? (
+        <p className="text-sm" style={{ color: 'var(--muted)' }}>
+          No memos sent for this patient yet.
+        </p>
+      ) : (
+        <div className="space-y-1.5">
+          {patientMemos.map((m) => (
+            <div
+              key={m.id}
+              className="rounded-lg p-2.5 flex items-start justify-between gap-3"
+              style={{ background: 'var(--surface-2)' }}
+            >
+              <div className="min-w-0">
+                <p className="text-sm whitespace-pre-wrap">{m.text}</p>
+                <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
+                  {m.to ? `To ${m.to} · ` : ''}
+                  {new Date(m.createdAt).toLocaleString('en-NZ')}
+                  {m.resolved && m.resolvedAt ? ` · resolved ${new Date(m.resolvedAt).toLocaleString('en-NZ')}` : ''}
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
+                <Badge tone={m.resolved ? 'good' : 'salmon'}>{m.resolved ? 'Resolved' : 'Unresolved'}</Badge>
+                <button className="btn btn-sm" onClick={() => resolveMemo(m.id, !m.resolved)}>
+                  {m.resolved ? 'Reopen' : 'Mark resolved'}
+                </button>
+                <button
+                  className="btn btn-icon btn-icon-danger"
+                  onClick={() => void del(m.id)}
+                  aria-label="Delete memo"
+                >
+                  <IconTrash width={14} height={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       {confirmDialog}
     </div>
   );

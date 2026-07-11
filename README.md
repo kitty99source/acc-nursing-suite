@@ -36,24 +36,42 @@ That's it. Everything stays on your computer — no server, no network, no telem
 
 ---
 
-## Optional / advanced: the localhost launcher
+## The full experience on a work laptop: the localhost launchers
 
-The `dist` folder also ships two launcher files (`Start ACC Suite.cmd` and `launch.ps1`). These
-are **completely optional** — you only need them if you want **silent autosave to a file you
-choose** (via the browser's File System Access API) instead of the manual *Save my data* /
-*Load my data* buttons.
+The `dist` folder also ships launcher files that serve the app over
+**`http://127.0.0.1` (localhost)** instead of `file://`. This is the way to run it on the work
+laptop, because localhost is a **secure context**, which enables **silent autosave to a file you
+choose** (via the browser's File System Access API) and lets the app read ACC letters through its
+local `/_acc/*` bridge. It stays **100% local**: the tiny built-in server binds to
+**`127.0.0.1` only** and only ever serves this one file.
 
-1. **Double-click `Start ACC Suite.cmd`.** A small console window opens and Microsoft Edge
-   launches the app over **`http://127.0.0.1` (localhost)**.
-2. **Keep that small console window open** while you use the app; close it (or press `Ctrl+C`)
-   to stop.
+### Recommended: `Start ACC Suite (recommended).cmd`
 
-Why it exists: opening `index.html` directly uses a `file://` address, where browsers treat the
-page as an *insecure context* and hide the File System Access API. Serving the same file over
-localhost makes it a **secure context**, which re-enables the de-emphasised **Open** /
-**Save to file…** buttons in the top bar for silent autosave. It stays **100% local**: the tiny
-built-in server binds to **`127.0.0.1` only** and only ever serves this one file. Encryption and
-the in-browser working copy work in both modes.
+**Double-click `Start ACC Suite (recommended).cmd`.** This is the normal way to open the suite. In
+one double-click it starts everything you need:
+
+- the **ACC Suite app** (minimized window — keep it running),
+- **Folder Watch** (separate window — keep it open), and
+- **Email Sync** (runs once per launch).
+
+Use this one because it also starts **folder-watch + email-sync**, so ACC letters actually flow
+into the **Review Queue** instead of you importing them by hand. (It runs the same all-in-one
+`wfh-mode.ps1` as the older `Start WFH Mode.cmd`, which is kept for existing shortcuts.) It needs
+**Outlook desktop open** for the email-sync step.
+
+### Minimal fallback: `Start ACC Suite.cmd`
+
+**Double-click `Start ACC Suite.cmd`** only if you want the **app alone with no sync** — no
+folder-watch, no email-sync. A small console window opens and Microsoft Edge launches the app over
+localhost. Keep that window open while you work; close it (or press `Ctrl+C`) to stop. You still
+get silent autosave via the **Open** / **Save to file…** buttons, but ACC letters will not flow in
+automatically.
+
+Why the launchers exist: opening `index.html` directly uses a `file://` address, where browsers
+treat the page as an *insecure context* and hide the File System Access API. Serving the same file
+over localhost makes it a **secure context**, which re-enables the de-emphasised **Open** /
+**Save to file…** buttons in the top bar for silent autosave. Encryption and the in-browser working
+copy work in every mode.
 
 ---
 

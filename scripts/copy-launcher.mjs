@@ -83,6 +83,7 @@ const launcherFiles = [
   'Start Optimize Staging.cmd',
   'Reindex-InboxHashes.ps1',
   'Start Reindex Inbox.cmd',
+  'Start ACC Suite (recommended).cmd',
   'Start WFH Mode.cmd',
   'wfh-mode.ps1',
   'Start Portal Discover.cmd',

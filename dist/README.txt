@@ -12,12 +12,24 @@ Logs are in %USERPROFILE%\ACC-Suite\logs - NOT in this dist folder.
   portal-discover-*.log    = portal discovery run log
   folder-watch-*.log       = folder watch run log
 
-Start ACC Suite.cmd        = main app (no extra software)
+HOW TO OPEN THE SUITE
+
+  Start ACC Suite (recommended).cmd = START HERE. All-in-one: ACC Suite app +
+                             Folder Watch + Email Sync in one double-click. This
+                             is the normal way to open the suite - it also starts
+                             folder-watch and email-sync so ACC letters actually
+                             flow into the Review Queue. (Same behaviour as
+                             Start WFH Mode.cmd, just the recommended default.)
+  Start ACC Suite.cmd        = MINIMAL FALLBACK: the app alone, no sync. Use only
+                             when you do not want folder-watch/email-sync running.
+
+Other launchers
+
 Start Portal Discover.cmd  = map the ACC portal (PowerShell only - built into Windows)
 Start Folder Watch.cmd     = watch ACC-Inbox for letter drops (PowerShell only - built into Windows)
 Start Email Probe.cmd      = test Outlook COM read on work laptop (read-only, no attachments saved)
 Start Email Sync.cmd       = sync ACC letter attachments from Outlook to ACC-Inbox (runs once)
-Start WFH Mode.cmd         = all-in-one: ACC Suite + Folder Watch + Email Sync (recommended on work laptop)
+Start WFH Mode.cmd         = same all-in-one as the recommended launcher (kept for existing shortcuts)
 
 If a launcher closes instantly or something goes wrong, check:
   %USERPROFILE%\ACC-Suite\logs\acc-bootstrap.log or portal-bootstrap.log (first place to look)

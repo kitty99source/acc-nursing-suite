@@ -70,6 +70,9 @@ import type { EmailSyncStatus } from '../lib/emailSyncStatus';
 import { determinePackage } from '../lib/calculator';
 import { claimBillingState } from '../lib/compliance';
 import { PACKAGE_CODES, MAX_PACKAGE_CONSULTS, getRate } from '../lib/serviceCodes';
+import { buildInvoiceClaimIndex, claimKey, matchRemittanceToInvoice } from '../lib/billingReconcile';
+import type { ParsedRemittanceLine } from '../lib/remittanceImport';
+import type { RemittanceImportSummary } from '../lib/billingReconcile';
 import {
   parseLetterFile as parseLetterFileLib,
   type LetterImportContext,
@@ -331,6 +334,12 @@ interface StoreState {
   // service-line records, with rates and patient/claim/PO/NHI auto-carried.
   // Returns the number of lines created (0 if already billed / nothing to do).
   generateInvoiceLinesForClaim: (claimId: string) => number;
+  // Invoice-schedule import: upsert-by-(claim, service code, invoice sheet).
+  // Returns how many lines were newly created vs updated.
+  importInvoiceSchedule: (rows: Omit<InvoiceLine, 'id' | 'status'>[]) => { created: number; updated: number };
+  // Remittance import: match each remittance line to an invoice line by
+  // claim key (never by name) and update its paid/status/review fields.
+  importRemittanceBatch: (lines: ParsedRemittanceLine[]) => RemittanceImportSummary;
 
   // complex case CRUD
   addComplexCase: (c: Omit<ComplexCase, 'id'>) => string;
@@ -1549,6 +1558,96 @@ export const useStore = create<StoreState>((set, get) => ({
     if (rows.length === 0) return 0;
     get().addInvoiceLines(rows);
     return rows.length;
+  },
+
+  importInvoiceSchedule: (rows) => {
+    let created = 0;
+    let updated = 0;
+    mutate(get, (data) => {
+      const existing = [...data.invoiceLines];
+      // Upsert key: same claim + service code + invoice sheet — a re-import of the
+      // same monthly schedule (e.g. re-downloaded after ACC corrects a row) updates
+      // in place instead of duplicating.
+      const keyOf = (l: { claimNumber: string; serviceCode: string; invoiceSheet: string }) =>
+        `${claimKey(l.claimNumber)}|${l.serviceCode.trim().toUpperCase()}|${l.invoiceSheet.trim().toUpperCase()}`;
+      const byKey = new Map(existing.map((l, idx) => [keyOf(l), idx]));
+      for (const row of rows) {
+        const key = keyOf(row);
+        const idx = byKey.get(key);
+        if (idx != null) {
+          existing[idx] = {
+            ...existing[idx],
+            patientName: row.patientName || existing[idx].patientName,
+            nhi: row.nhi || existing[idx].nhi,
+            invoiceDate: row.invoiceDate || existing[idx].invoiceDate,
+            amountInvoiced: row.amountInvoiced,
+          };
+          updated += 1;
+        } else {
+          const id = uid('inv');
+          existing.push({ ...row, id, status: 'Awaiting Billing' });
+          byKey.set(key, existing.length - 1);
+          created += 1;
+        }
+      }
+      return { ...data, invoiceLines: existing };
+    });
+    if (created || updated) {
+      audit('import', 'invoiceLine', undefined, `Imported invoice schedule: ${created} new, ${updated} updated`);
+    }
+    return { created, updated };
+  },
+
+  importRemittanceBatch: (lines) => {
+    const summary: RemittanceImportSummary = {
+      matchedCount: 0,
+      paidInFullCount: 0,
+      heldCount: 0,
+      unmatchedCount: 0,
+      unmatched: [],
+    };
+    mutate(get, (data) => {
+      const invoiceLines = [...data.invoiceLines];
+      // Index is built once from the pre-batch snapshot: real remittance batches carry at
+      // most one paid line per claim/service-code, so re-resolving "the outstanding line for
+      // this claim" per remittance row (rather than after every single update) is the simple,
+      // correct-for-the-real-shape choice — it avoids O(n^2) re-indexing on large batches.
+      const index = buildInvoiceClaimIndex(invoiceLines);
+      for (const rem of lines) {
+        const matched = matchRemittanceToInvoice(rem, index);
+        if (!matched) {
+          summary.unmatchedCount += 1;
+          summary.unmatched.push({ claimNumber: rem.claimNumber, clientName: rem.clientName, amountPaid: rem.amountPaid });
+          continue;
+        }
+        summary.matchedCount += 1;
+        const idx = invoiceLines.findIndex((l) => l.id === matched.id);
+        if (idx < 0) continue;
+        const current = invoiceLines[idx];
+        const totalPaid = (current.amountPaid ?? 0) + rem.amountPaid;
+        const paidInFull = totalPaid + 0.005 >= current.amountInvoiced;
+        const needsReview = rem.lineNeedsReview && !paidInFull;
+        if (needsReview) summary.heldCount += 1;
+        else if (paidInFull) summary.paidInFullCount += 1;
+        invoiceLines[idx] = {
+          ...current,
+          amountPaid: totalPaid,
+          datePaid: rem.amountPaid > 0 ? current.datePaid ?? todayISO() : current.datePaid,
+          status: paidInFull ? 'Billed' : 'Remittance',
+          needsReview,
+          heldReasonCode: needsReview ? rem.reasonCode : undefined,
+          heldReason: needsReview ? rem.reasonText : undefined,
+        };
+      }
+      return { ...data, invoiceLines };
+    });
+    audit(
+      'import',
+      'invoiceLine',
+      undefined,
+      `Imported remittance: ${summary.matchedCount} matched (${summary.paidInFullCount} paid in full, ${summary.heldCount} need review), ${summary.unmatchedCount} unmatched`,
+    );
+    return summary;
   },
 
   addComplexCase: (c) => {

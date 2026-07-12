@@ -117,6 +117,16 @@ export interface InvoiceLine {
   amountPaid?: number;
   status: InvoiceStatus;
   notes: string;
+  // Set by remittance import when a matched remittance line was short-paid,
+  // unpaid or carried a decline/hold comment. Cleared once the line is
+  // updated to a full payment by a later remittance import.
+  needsReview?: boolean;
+  // A documented ACC "sort out a payment problem" code (see lib/reasonCodes.ts),
+  // extracted from the remittance's comment column when present.
+  heldReasonCode?: string;
+  // The full free-text remittance comment the code (if any) was extracted from
+  // — declined lines often carry only free text and no code at all.
+  heldReason?: string;
   // Unrecognised columns absorbed during Excel import, preserved for round-trip.
   customFields?: Record<string, string>;
 }

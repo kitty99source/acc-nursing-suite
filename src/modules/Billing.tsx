@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { DataTable, customColumns, type Column } from '../components/DataTable';
 import { Modal } from '../components/Modal';
@@ -14,10 +14,20 @@ import {
   TextArea,
   EmptyState,
 } from '../components/ui';
-import { IconPlus, IconEdit, IconTrash, IconBilling, IconSearch } from '../components/icons';
+import { IconPlus, IconEdit, IconTrash, IconBilling, IconSearch, IconFolder, IconWarning } from '../components/icons';
 import { formatCurrency, visibleServiceCodes } from '../lib/serviceCodes';
 import { formatDate } from '../lib/format';
 import type { InvoiceLine, InvoiceStatus, ServiceCode } from '../types';
+import { readFileAsText, readFileAsArrayBuffer } from '../lib/storage';
+import {
+  parseInvoiceScheduleCsv,
+  parseInvoiceScheduleXlsx,
+  toInvoiceLineCandidate,
+  type ParsedInvoiceSchedule,
+} from '../lib/invoiceScheduleImport';
+import { parseRemittanceCsv, parseRemittanceXlsx, type ParsedRemittanceSheet } from '../lib/remittanceImport';
+import { lookupReasonCode } from '../lib/reasonCodes';
+import type { RemittanceImportSummary } from '../lib/billingReconcile';
 
 const STATUSES: InvoiceStatus[] = ['Awaiting Billing', 'Billed', 'Remittance'];
 
@@ -39,9 +49,14 @@ function emptyLine(): Omit<InvoiceLine, 'id'> {
   };
 }
 
-function rowClass(status: InvoiceStatus): string {
-  if (status === 'Billed') return 'row-good';
+function rowClass(line: InvoiceLine): string {
+  if (line.needsReview) return 'row-salmon';
+  if (line.status === 'Billed') return 'row-good';
   return 'row-salmon'; // Awaiting Billing & Remittance
+}
+
+function sheetNameFromFile(fileName: string): string {
+  return fileName.replace(/\.[^.]+$/, '');
 }
 
 export function Billing() {
@@ -49,6 +64,8 @@ export function Billing() {
   const addInvoiceLine = useStore((s) => s.addInvoiceLine);
   const updateInvoiceLine = useStore((s) => s.updateInvoiceLine);
   const removeInvoiceLine = useStore((s) => s.removeInvoiceLine);
+  const importInvoiceSchedule = useStore((s) => s.importInvoiceSchedule);
+  const importRemittanceBatch = useStore((s) => s.importRemittanceBatch);
   const [confirm, confirmDialog] = useConfirm();
 
   const [creating, setCreating] = useState(false);
@@ -59,6 +76,21 @@ export function Billing() {
   const [statusFilter, setStatusFilter] = useState<'all' | InvoiceStatus>('all');
   const [codeFilter, setCodeFilter] = useState<'all' | ServiceCode>('all');
   const [sheetFilter, setSheetFilter] = useState('');
+  const [reviewOnly, setReviewOnly] = useState(false);
+
+  // Invoice-schedule import.
+  const scheduleInput = useRef<HTMLInputElement>(null);
+  const [scheduleFileName, setScheduleFileName] = useState('');
+  const [schedulePreview, setSchedulePreview] = useState<ParsedInvoiceSchedule | null>(null);
+  const [scheduleSheetLabel, setScheduleSheetLabel] = useState('');
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [scheduleResult, setScheduleResult] = useState<{ created: number; updated: number } | null>(null);
+
+  // Remittance import.
+  const remittanceInput = useRef<HTMLInputElement>(null);
+  const [remittancePreview, setRemittancePreview] = useState<ParsedRemittanceSheet | null>(null);
+  const [remittanceError, setRemittanceError] = useState<string | null>(null);
+  const [remittanceResult, setRemittanceResult] = useState<RemittanceImportSummary | null>(null);
 
   const focus = useStore((s) => s.focus);
   const clearFocus = useStore((s) => s.clearFocus);
@@ -97,23 +129,85 @@ export function Billing() {
       if (statusFilter !== 'all' && i.status !== statusFilter) return false;
       if (codeFilter !== 'all' && i.serviceCode !== codeFilter) return false;
       if (sheetFilter && i.invoiceSheet !== sheetFilter) return false;
+      if (reviewOnly && !i.needsReview) return false;
       if (q) {
         const hay = `${i.patientName} ${i.nhi} ${i.claimNumber} ${i.poNumber} ${i.acc45Number}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [data.invoiceLines, search, statusFilter, codeFilter, sheetFilter]);
+  }, [data.invoiceLines, search, statusFilter, codeFilter, sheetFilter, reviewOnly]);
 
   const totals = useMemo(() => {
     let invoiced = 0;
     let paid = 0;
+    let needsReview = 0;
     for (const r of rows) {
       invoiced += r.amountInvoiced || 0;
       paid += r.amountPaid || 0;
+      if (r.needsReview) needsReview += 1;
     }
-    return { invoiced, paid, outstanding: invoiced - paid };
+    return { invoiced, paid, outstanding: invoiced - paid, needsReview };
   }, [rows]);
+
+  async function handleScheduleFile(file: File) {
+    setScheduleError(null);
+    setScheduleResult(null);
+    setScheduleFileName(file.name);
+    setScheduleSheetLabel(sheetNameFromFile(file.name));
+    try {
+      const isXlsx = /\.xlsx$/i.test(file.name);
+      const parsed = isXlsx
+        ? await parseInvoiceScheduleXlsx(await readFileAsArrayBuffer(file), sheetNameFromFile(file.name))
+        : parseInvoiceScheduleCsv(await readFileAsText(file), sheetNameFromFile(file.name));
+      if (parsed.unrecognised) {
+        setScheduleError("Couldn't find a claim-number and amount column in that file. Check it's an invoice-schedule export (CSV or .xlsx).");
+        return;
+      }
+      setSchedulePreview(parsed);
+    } catch (err) {
+      setScheduleError(`Could not read that file: ${(err as Error).message}`);
+    } finally {
+      if (scheduleInput.current) scheduleInput.current.value = '';
+    }
+  }
+
+  function confirmScheduleImport() {
+    if (!schedulePreview) return;
+    const rowsToImport = schedulePreview.lines.map((l) =>
+      toInvoiceLineCandidate({ ...l, invoiceSheet: scheduleSheetLabel || l.invoiceSheet }),
+    );
+    const result = importInvoiceSchedule(rowsToImport);
+    setScheduleResult(result);
+    setSchedulePreview(null);
+  }
+
+  async function handleRemittanceFile(file: File) {
+    setRemittanceError(null);
+    setRemittanceResult(null);
+    try {
+      const isXlsx = /\.xlsx$/i.test(file.name);
+      const parsed = isXlsx
+        ? await parseRemittanceXlsx(await readFileAsArrayBuffer(file))
+        : parseRemittanceCsv(await readFileAsText(file));
+      if (parsed.unrecognised) {
+        setRemittanceError("Couldn't recognise that as a remittance export — no claim-number + paid-amount block was found.");
+        return;
+      }
+      setRemittancePreview(parsed);
+    } catch (err) {
+      setRemittanceError(`Could not read that file: ${(err as Error).message}`);
+    } finally {
+      if (remittanceInput.current) remittanceInput.current.value = '';
+    }
+  }
+
+  function confirmRemittanceImport() {
+    if (!remittancePreview) return;
+    const result = importRemittanceBatch(remittancePreview.lines);
+    setRemittanceResult(result);
+    setRemittancePreview(null);
+  }
 
   function openCreate() {
     setForm(emptyLine());
@@ -200,6 +294,21 @@ export function Billing() {
       ),
     },
     {
+      key: 'review',
+      header: 'Review',
+      render: (r) => {
+        if (!r.needsReview) return null;
+        const info = lookupReasonCode(r.heldReasonCode);
+        return (
+          <span title={info ? `${info.description} ${info.action}` : r.heldReason || 'Held or short-paid by ACC'}>
+            <Badge tone="salmon">
+              <IconWarning width={12} height={12} /> {info?.label ?? r.heldReasonCode ?? 'Needs review'}
+            </Badge>
+          </span>
+        );
+      },
+    },
+    {
       key: 'actions',
       header: '',
       render: (r) => (
@@ -223,15 +332,78 @@ export function Billing() {
     <div>
       <SectionTitle
         title="Billing Log"
-        subtitle="The core ledger. Salmon = awaiting billing or remittance (follow up); green = billed. Import ACC letters from Patients or Approvals — not from Billing."
+        subtitle="The core ledger. Salmon = awaiting billing, remittance, or needs review; green = billed. Import ACC letters from Patients or Approvals — not from Billing."
         actions={
-          <button className="btn btn-primary" onClick={openCreate}>
-            <IconPlus /> New invoice line
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn" onClick={() => scheduleInput.current?.click()}>
+              <IconFolder width={15} height={15} /> Import invoice schedule
+            </button>
+            <button className="btn" onClick={() => remittanceInput.current?.click()}>
+              <IconFolder width={15} height={15} /> Import remittance
+            </button>
+            <button className="btn btn-primary" onClick={openCreate}>
+              <IconPlus /> New invoice line
+            </button>
+          </div>
         }
       />
+      <input
+        ref={scheduleInput}
+        type="file"
+        accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void handleScheduleFile(f);
+        }}
+      />
+      <input
+        ref={remittanceInput}
+        type="file"
+        accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void handleRemittanceFile(f);
+        }}
+      />
 
-      <div className="grid sm:grid-cols-3 gap-3 mb-4">
+      {scheduleError && (
+        <p className="text-sm mb-3 font-medium" style={{ color: 'var(--danger-fg)' }}>
+          {scheduleError}
+        </p>
+      )}
+      {scheduleResult && (
+        <p className="text-sm mb-3 font-medium" style={{ color: 'var(--good-fg)' }}>
+          Invoice schedule imported: {scheduleResult.created} new line(s), {scheduleResult.updated} updated.
+        </p>
+      )}
+      {remittanceError && (
+        <p className="text-sm mb-3 font-medium" style={{ color: 'var(--danger-fg)' }}>
+          {remittanceError}
+        </p>
+      )}
+      {remittanceResult && (
+        <p className="text-sm mb-3 font-medium" style={{ color: remittanceResult.unmatchedCount ? 'var(--warn-fg)' : 'var(--good-fg)' }}>
+          Remittance imported: {remittanceResult.matchedCount} matched ({remittanceResult.paidInFullCount} paid in full,{' '}
+          {remittanceResult.heldCount} need review){remittanceResult.unmatchedCount ? `, ${remittanceResult.unmatchedCount} unmatched — see below` : '.'}
+        </p>
+      )}
+      {remittanceResult && remittanceResult.unmatched.length > 0 && (
+        <div className="card p-3 mb-3">
+          <div className="text-sm font-semibold mb-2">Unmatched remittance lines (no invoice line for this claim)</div>
+          <ul className="text-sm space-y-1">
+            {remittanceResult.unmatched.map((u, i) => (
+              <li key={i}>
+                <span className="font-mono">{u.claimNumber || '(no claim number)'}</span>
+                {u.clientName ? ` — ${u.clientName}` : ''} — {formatCurrency(u.amountPaid)} paid
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="grid sm:grid-cols-4 gap-3 mb-4">
         <div className="card p-3">
           <div className="text-xs uppercase font-semibold" style={{ color: 'var(--muted)' }}>
             Invoiced (filtered)
@@ -254,6 +426,20 @@ export function Billing() {
             {formatCurrency(totals.outstanding)}
           </div>
         </div>
+        <button
+          className="card p-3 text-left clickable-card"
+          onClick={() => {
+            setReviewOnly(true);
+            setStatusFilter('all');
+          }}
+        >
+          <div className="text-xs uppercase font-semibold" style={{ color: 'var(--muted)' }}>
+            Needs review (filtered)
+          </div>
+          <div className="text-xl font-bold" style={{ color: totals.needsReview ? 'var(--danger-fg)' : undefined }}>
+            {totals.needsReview}
+          </div>
+        </button>
       </div>
 
       <div className="flex items-center gap-2 mb-3 flex-wrap">
@@ -292,13 +478,17 @@ export function Billing() {
             </option>
           ))}
         </Select>
+        <label className="flex items-center gap-1.5 text-sm cursor-pointer select-none">
+          <input type="checkbox" checked={reviewOnly} onChange={(e) => setReviewOnly(e.target.checked)} />
+          Needs review only
+        </label>
       </div>
 
       <DataTable
         columns={columns}
         rows={rows}
         rowKey={(r) => r.id}
-        rowClassName={(r) => rowClass(r.status)}
+        rowClassName={(r) => rowClass(r)}
         initialSort={{ key: 'invDate', dir: 'desc' }}
         emptyState={
           <EmptyState
@@ -403,6 +593,124 @@ export function Billing() {
             </Field>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        open={!!schedulePreview}
+        title="Preview invoice schedule import"
+        onClose={() => setSchedulePreview(null)}
+        size="lg"
+        footer={
+          <>
+            <button className="btn" onClick={() => setSchedulePreview(null)}>
+              Cancel
+            </button>
+            <button className="btn btn-primary" onClick={confirmScheduleImport} disabled={!schedulePreview?.lines.length}>
+              Import {schedulePreview?.lines.length ?? 0} line(s)
+            </button>
+          </>
+        }
+      >
+        {schedulePreview && (
+          <div className="space-y-3">
+            <Field label="Invoice sheet label" hint={`From ${scheduleFileName || 'the filename'} — edit if needed`}>
+              <TextInput value={scheduleSheetLabel} onChange={(e) => setScheduleSheetLabel(e.target.value)} />
+            </Field>
+            <p className="text-sm" style={{ color: 'var(--muted)' }}>
+              Found {schedulePreview.lines.length} line(s). Rows are matched to existing invoice lines by claim number +
+              service code + invoice sheet; a match updates the amount, a new claim/code/sheet combination creates a new
+              line with status "Awaiting Billing".
+            </p>
+            <div className="max-h-64 overflow-y-auto rounded-lg border" style={{ borderColor: 'var(--border)' }}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left" style={{ background: 'var(--surface-2)' }}>
+                    <th className="p-2">Patient</th>
+                    <th className="p-2">Claim</th>
+                    <th className="p-2">Code</th>
+                    <th className="p-2 text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {schedulePreview.lines.slice(0, 200).map((l, i) => (
+                    <tr key={i} className="border-t" style={{ borderColor: 'var(--border)' }}>
+                      <td className="p-2">{l.patientName || '—'}</td>
+                      <td className="p-2 font-mono">{l.claimNumber}</td>
+                      <td className="p-2">{l.serviceCode || '—'}</td>
+                      <td className="p-2 text-right">{formatCurrency(l.amountInvoiced)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {schedulePreview.lines.length > 200 && (
+              <p className="text-xs" style={{ color: 'var(--muted)' }}>
+                Showing the first 200 of {schedulePreview.lines.length} rows; all will be imported.
+              </p>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={!!remittancePreview}
+        title="Preview remittance import"
+        onClose={() => setRemittancePreview(null)}
+        size="lg"
+        footer={
+          <>
+            <button className="btn" onClick={() => setRemittancePreview(null)}>
+              Cancel
+            </button>
+            <button className="btn btn-primary" onClick={confirmRemittanceImport} disabled={!remittancePreview?.lines.length}>
+              Import {remittancePreview?.lines.length ?? 0} line(s)
+            </button>
+          </>
+        }
+      >
+        {remittancePreview && (
+          <div className="space-y-3">
+            <p className="text-sm" style={{ color: 'var(--muted)' }}>
+              Found {remittancePreview.lines.length} line(s){' '}
+              {remittancePreview.summaryOnlyLineCount ? `(plus ${remittancePreview.summaryOnlyLineCount} coarse summary row(s), not matched individually)` : ''}. Each line
+              is matched to an invoice line by its ACC45/claim number — never by name. Short-paid, unpaid or
+              held/declined lines are flagged "Needs review" with ACC's reason (when a documented code is found).
+            </p>
+            <div className="max-h-64 overflow-y-auto rounded-lg border" style={{ borderColor: 'var(--border)' }}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left" style={{ background: 'var(--surface-2)' }}>
+                    <th className="p-2">Claim</th>
+                    <th className="p-2">Client</th>
+                    <th className="p-2 text-right">Paid</th>
+                    <th className="p-2">Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {remittancePreview.lines.slice(0, 200).map((l, i) => (
+                    <tr key={i} className="border-t" style={{ borderColor: 'var(--border)' }}>
+                      <td className="p-2 font-mono">{l.claimNumber || '—'}</td>
+                      <td className="p-2">{l.clientName || '—'}</td>
+                      <td className="p-2 text-right">{formatCurrency(l.amountPaid)}</td>
+                      <td className="p-2">
+                        {l.lineNeedsReview ? (
+                          <Badge tone="salmon">{lookupReasonCode(l.reasonCode)?.label ?? l.reasonText ?? 'Held/short-paid'}</Badge>
+                        ) : (
+                          <Badge tone="good">Paid in full</Badge>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {remittancePreview.lines.length > 200 && (
+              <p className="text-xs" style={{ color: 'var(--muted)' }}>
+                Showing the first 200 of {remittancePreview.lines.length} rows; all will be imported.
+              </p>
+            )}
+          </div>
+        )}
       </Modal>
 
       {confirmDialog}

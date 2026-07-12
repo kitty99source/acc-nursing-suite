@@ -368,38 +368,70 @@ export function Billing() {
         }}
       />
 
-      {scheduleError && (
-        <p className="text-sm mb-3 font-medium" style={{ color: 'var(--danger-fg)' }}>
-          {scheduleError}
-        </p>
+      {(scheduleError || scheduleResult) && (
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+          <div className="flex-1 min-w-0">
+            {scheduleError && (
+              <p className="text-sm font-medium" style={{ color: 'var(--danger-fg)' }}>
+                {scheduleError}
+              </p>
+            )}
+            {scheduleResult && (
+              <p className="text-sm font-medium" style={{ color: 'var(--good-fg)' }}>
+                Invoice schedule imported: {scheduleResult.created} new line(s), {scheduleResult.updated} updated.
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm shrink-0"
+            onClick={() => {
+              setScheduleError(null);
+              setScheduleResult(null);
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
       )}
-      {scheduleResult && (
-        <p className="text-sm mb-3 font-medium" style={{ color: 'var(--good-fg)' }}>
-          Invoice schedule imported: {scheduleResult.created} new line(s), {scheduleResult.updated} updated.
-        </p>
-      )}
-      {remittanceError && (
-        <p className="text-sm mb-3 font-medium" style={{ color: 'var(--danger-fg)' }}>
-          {remittanceError}
-        </p>
-      )}
-      {remittanceResult && (
-        <p className="text-sm mb-3 font-medium" style={{ color: remittanceResult.unmatchedCount ? 'var(--warn-fg)' : 'var(--good-fg)' }}>
-          Remittance imported: {remittanceResult.matchedCount} matched ({remittanceResult.paidInFullCount} paid in full,{' '}
-          {remittanceResult.heldCount} need review){remittanceResult.unmatchedCount ? `, ${remittanceResult.unmatchedCount} unmatched — see below` : '.'}
-        </p>
-      )}
-      {remittanceResult && remittanceResult.unmatched.length > 0 && (
-        <div className="card p-3 mb-3">
-          <div className="text-sm font-semibold mb-2">Unmatched remittance lines (no invoice line for this claim)</div>
-          <ul className="text-sm space-y-1">
-            {remittanceResult.unmatched.map((u, i) => (
-              <li key={i}>
-                <span className="font-mono">{u.claimNumber || '(no claim number)'}</span>
-                {u.clientName ? ` — ${u.clientName}` : ''} — {formatCurrency(u.amountPaid)} paid
-              </li>
-            ))}
-          </ul>
+      {(remittanceError || remittanceResult) && (
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+          <div className="flex-1 min-w-0">
+            {remittanceError && (
+              <p className="text-sm font-medium" style={{ color: 'var(--danger-fg)' }}>
+                {remittanceError}
+              </p>
+            )}
+            {remittanceResult && (
+              <p className="text-sm font-medium" style={{ color: remittanceResult.unmatchedCount ? 'var(--warn-fg)' : 'var(--good-fg)' }}>
+                Remittance imported: {remittanceResult.matchedCount} matched ({remittanceResult.paidInFullCount} paid in full,{' '}
+                {remittanceResult.heldCount} need review){remittanceResult.unmatchedCount ? `, ${remittanceResult.unmatchedCount} unmatched — see below` : '.'}
+              </p>
+            )}
+            {remittanceResult && remittanceResult.unmatched.length > 0 && (
+              <div className="card p-3 mt-2">
+                <div className="text-sm font-semibold mb-2">Unmatched remittance lines (no invoice line for this claim)</div>
+                <ul className="text-sm space-y-1">
+                  {remittanceResult.unmatched.map((u, i) => (
+                    <li key={i}>
+                      <span className="font-mono">{u.claimNumber || '(no claim number)'}</span>
+                      {u.clientName ? ` — ${u.clientName}` : ''} — {formatCurrency(u.amountPaid)} paid
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm shrink-0"
+            onClick={() => {
+              setRemittanceError(null);
+              setRemittanceResult(null);
+            }}
+          >
+            Dismiss
+          </button>
         </div>
       )}
 

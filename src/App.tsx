@@ -30,9 +30,13 @@ import { AccInbox } from './modules/AccInbox';
 import { LetterImportModal } from './components/LetterImportModal';
 import { RecoveryModal } from './components/RecoveryModal';
 import { BackupReminderModal } from './components/BackupReminderModal';
+import { HelpCenterModal, type HelpTab } from './components/HelpCenterModal';
 import { ConfirmDialog } from './components/Modal';
 import { loadBackupSnoozeUntil } from './lib/idb';
 import { logInfo } from './lib/logger';
+import { startLauncherSessionLifecycle } from './lib/launcherLifecycle';
+import { AccInboxConfigBanner } from './components/AccInboxConfigBanner';
+import { RemittanceStaleBanner } from './components/RemittanceStaleBanner';
 
 export default function App() {
   const ready = useStore((s) => s.ready);
@@ -47,6 +51,7 @@ export default function App() {
   const lastActivityAt = useStore((s) => s.lastActivityAt);
   const focus = useStore((s) => s.focus);
   const openLetterImport = useStore((s) => s.openLetterImport);
+  const updateSettings = useStore((s) => s.updateSettings);
 
   const [module, setModule] = useState<ModuleId>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -57,6 +62,9 @@ export default function App() {
   const [concurrentTabWarning, setConcurrentTabWarning] = useState(false);
   const idleWarnedRef = useRef(false);
   const tabIdRef = useRef(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpTab, setHelpTab] = useState<HelpTab>('guide');
+  const helpAutoOpenedRef = useRef(false);
 
   // A cross-module focus request (e.g. from the Flagged page) switches the
   // active module; the target module then consumes the request on mount.
@@ -68,6 +76,13 @@ export default function App() {
   useEffect(() => {
     void init().then(() => logInfo('App initialized', 'init'));
   }, [init]);
+
+  // When served by launch.ps1: heartbeat + tab-close goodbye so quiet/hidden
+  // PowerShell (app server + folder-watch) exit with the last browser tab.
+  useEffect(() => {
+    const handle = startLauncherSessionLifecycle();
+    return () => handle.stop();
+  }, []);
 
   // Apply theme tokens whenever settings change.
   useEffect(() => {
@@ -253,6 +268,28 @@ export default function App() {
     };
   }, [ready, locked, recovery, module]);
 
+  // First-run instruction guide — one-shot; Settings/top-bar reopen never clears the flag.
+  useEffect(() => {
+    if (!ready || locked || recovery) return;
+    if (settings.hasSeenWelcomeGuide) return;
+    if (helpAutoOpenedRef.current) return;
+    helpAutoOpenedRef.current = true;
+    setHelpTab('guide');
+    setHelpOpen(true);
+  }, [ready, locked, recovery, settings.hasSeenWelcomeGuide]);
+
+  function openHelp(tab: HelpTab = 'guide') {
+    setHelpTab(tab);
+    setHelpOpen(true);
+  }
+
+  function closeHelp() {
+    setHelpOpen(false);
+    if (!settings.hasSeenWelcomeGuide) {
+      updateSettings({ hasSeenWelcomeGuide: true });
+    }
+  }
+
   // Sidebar attention badges — cheap counters + cached compliance (P1-004).
   const badges = useMemo(() => {
     const result: Partial<Record<ModuleId, number>> = {};
@@ -327,8 +364,12 @@ export default function App() {
         onToggle={() => setSidebarOpen((v) => !v)}
       />
       <div className="flex-1 flex flex-col min-w-0">
-        <TopBar onMenuToggle={() => setSidebarOpen((v) => !v)} />
+        <TopBar onMenuToggle={() => setSidebarOpen((v) => !v)} onOpenHelp={() => openHelp('guide')} />
         <AutosaveErrorBanner />
+        <div className="px-5 pt-2 space-y-1">
+          {(module === 'dashboard' || module === 'accinbox' || module === 'review') && <AccInboxConfigBanner />}
+          {(module === 'dashboard' || module === 'billing') && <RemittanceStaleBanner />}
+        </div>
         <main className="flex-1 overflow-y-auto p-5">
           {module === 'dashboard' && <Dashboard onNavigate={setModule} />}
           {module === 'compliance' && <Compliance />}
@@ -343,10 +384,11 @@ export default function App() {
           {module === 'accinbox' && <AccInbox />}
           {module === 'export' && <ExportCenter />}
           {module === 'imported' && <ImportedTables />}
-          {module === 'settings' && <SettingsModule />}
+          {module === 'settings' && <SettingsModule onOpenHelp={() => openHelp('guide')} />}
         </main>
       </div>
       <LetterImportModal />
+      <HelpCenterModal open={helpOpen} initialTab={helpTab} onClose={closeHelp} />
       <ConfirmDialog
         open={idleWarningOpen}
         title="Session expiring"

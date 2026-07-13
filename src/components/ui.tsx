@@ -16,14 +16,8 @@ export function SectionTitle({
   return (
     <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
       <div>
-        <h1 className="text-xl font-bold" style={{ color: 'var(--text)' }}>
-          {title}
-        </h1>
-        {subtitle && (
-          <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>
-            {subtitle}
-          </p>
-        )}
+        <h1 className="page-title">{title}</h1>
+        {subtitle && <p className="page-subtitle mt-1">{subtitle}</p>}
       </div>
       {actions && <div className="flex items-center gap-2 flex-wrap">{actions}</div>}
     </div>

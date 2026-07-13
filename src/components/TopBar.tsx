@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { useStore } from '../state/store';
-import { IconSave, IconFolder, IconLock } from './icons';
+import { IconSave, IconFolder, IconLock, IconHelp } from './icons';
 import { formatDate } from '../lib/format';
 import { readFileAsText, PassphraseRequiredError, WrongPassphraseError } from '../lib/storage';
 import { Modal } from './Modal';
@@ -40,7 +40,13 @@ function SaveStatus() {
   );
 }
 
-export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
+export function TopBar({
+  onMenuToggle,
+  onOpenHelp,
+}: {
+  onMenuToggle?: () => void;
+  onOpenHelp?: () => void;
+}) {
   const status = useStore((s) => s.status);
   const saveMyData = useStore((s) => s.saveMyData);
   const loadMyData = useStore((s) => s.loadMyData);
@@ -343,6 +349,17 @@ export function TopBar({ onMenuToggle }: { onMenuToggle?: () => void }) {
           </div>
         )}
 
+        {onOpenHelp && (
+          <button
+            type="button"
+            className="btn btn-icon shrink-0"
+            onClick={onOpenHelp}
+            title="Help Center"
+            aria-label="Open Help Center"
+          >
+            <IconHelp />
+          </button>
+        )}
         <button className="btn btn-icon shrink-0" onClick={lock} title="Lock the app">
           <IconLock />
         </button>

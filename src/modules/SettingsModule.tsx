@@ -43,7 +43,7 @@ function rateBasisLabel(code: ServiceCode): string {
   }
 }
 
-export function SettingsModule() {
+export function SettingsModule({ onOpenHelp }: { onOpenHelp?: () => void } = {}) {
   const data = useStore((s) => s.data);
   const settings = data.settings;
   const status = useStore((s) => s.status);
@@ -252,15 +252,27 @@ export function SettingsModule() {
       <SectionTitle title="Settings" subtitle="Appearance, thresholds, security and data — all stored locally." />
 
       <Card className="mb-4">
-        <h3 className="font-semibold mb-2">About</h3>
+        <h3 className="card-title mb-2">About</h3>
         <p className="text-sm" style={{ color: 'var(--muted)' }}>
           ACC District Nursing Admin Suite · v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.0'}
           {typeof __BUILD_DATE__ !== 'undefined' ? ` (build ${__BUILD_DATE__})` : ''}
         </p>
       </Card>
 
+      {onOpenHelp && (
+        <Card className="mb-4">
+          <h3 className="card-title mb-2">Help &amp; instructions</h3>
+          <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>
+            Open the in-app guide and FAQ (quiet launcher, tab-close shutdown, Accept undo, and more).
+          </p>
+          <button type="button" className="btn btn-primary" onClick={onOpenHelp}>
+            Open instruction guide
+          </button>
+        </Card>
+      )}
+
       <Card className="mb-4">
-        <h3 className="font-semibold mb-2">How saving works</h3>
+        <h3 className="card-title mb-2">How saving works</h3>
         <p className="text-sm mb-2" style={{ color: 'var(--text)' }}>
           <strong>IndexedDB autosave</strong> keeps a working copy in this browser after every edit (crash-safe).
           It does <strong>not</strong> clear the &quot;unsaved&quot; warning — that only clears when you{' '}
@@ -275,7 +287,8 @@ export function SettingsModule() {
         </p>
         <p className="text-xs mt-2" style={{ color: 'var(--muted)' }}>
           <strong>How to launch:</strong> copy the built <span className="font-mono">dist/</span> folder to your shared drive, then double-click{' '}
-          <span className="font-mono">Start ACC Suite.cmd</span> (Windows) — a small local server opens the app in your browser. Your{' '}
+          <span className="font-mono">Start ACC Suite (quiet).vbs</span> for day-to-day (no console windows), or{' '}
+          <span className="font-mono">Start ACC Suite (recommended).cmd</span> when you want to watch sync progress. Your{' '}
           <span className="font-mono">.accdata</span> file is separate; load it via TopBar after launch.
         </p>
         <p className="text-xs mt-2" style={{ color: 'var(--muted)' }}>

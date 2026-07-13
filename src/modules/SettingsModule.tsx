@@ -268,58 +268,38 @@ export function SettingsModule({ onOpenHelp }: { onOpenHelp?: () => void } = {})
         </p>
       </Card>
 
-      {onOpenHelp && (
-        <Card className="mb-4">
-          <h3 className="card-title mb-2">Help &amp; instructions</h3>
-          <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>
-            Open the in-app guide and FAQ (quiet launcher, tab-close shutdown, Accept undo, and more).
-            Also available from <strong>Help</strong> in the top bar. Turn on <strong>Helper Mode</strong> (?) for hover tips.
-          </p>
-          <button type="button" className="btn btn-primary" onClick={onOpenHelp}>
-            Open instruction guide
-          </button>
-        </Card>
-      )}
-
+      {/* Near the top on purpose — easy to find; not gated by role or flags. */}
       <Card className="mb-4">
-        <h3 className="card-title mb-2">Helper Mode</h3>
-        <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>
-          When on, hovering or focusing key controls shows a short explainer. Off by default. Same as the ? button in the top bar.
+        <p
+          className="text-xs font-semibold uppercase tracking-wide mb-2"
+          style={{ color: 'var(--accent)' }}
+        >
+          Fun extras
         </p>
-        <HelperTip tipId="tip-helper-mode">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={settings.helperModeEnabled}
-              onChange={(e) => updateSettings({ helperModeEnabled: e.target.checked })}
-            />
-            Enable Helper Mode
-          </label>
+        <HelperTip tipId="tip-fun-easter" style={{ display: 'block', width: '100%' }}>
+          <h3 className="card-title mb-1">Fun / Easter eggs</h3>
         </HelperTip>
-      </Card>
+        <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>
+          Optional decorative extras (disco cats, cute cursors, walking companion). All off by
+          default — they never touch patient or billing data. Motion gentles automatically if your
+          system prefers reduced motion.
+        </p>
 
-      <HelperTip tipId="tip-fun-easter" style={{ display: 'block', width: '100%' }}>
-        <Card className="mb-4">
-          <h3 className="card-title mb-2">Fun / Easter eggs</h3>
-          <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>
-            Purely decorative extras. All off by default, and they never touch your data. Motion is
-            gentled automatically if your system prefers reduced motion.
-          </p>
-
-          <label className="flex items-center justify-between gap-3 text-sm mb-3">
-            <span>
-              <span className="font-medium">Dancing disco cats</span>
-              <span className="block text-xs" style={{ color: 'var(--muted)' }}>
-                A mini disco of pixel cats in the corner. Tip: triple-click the “NS” badge to toggle it too.
-              </span>
+        <label className="flex items-center justify-between gap-3 text-sm mb-3">
+          <span>
+            <span className="font-medium">Dancing disco cats</span>
+            <span className="block text-xs" style={{ color: 'var(--muted)' }}>
+              Mini disco of pixel cats in the corner. Shortcut: triple-click the sidebar “NS” badge.
             </span>
-            <input
-              type="checkbox"
-              checked={settings.discoCatsEnabled}
-              onChange={(e) => updateSettings({ discoCatsEnabled: e.target.checked })}
-              className="w-5 h-5"
-            />
-          </label>
+          </span>
+          <input
+            type="checkbox"
+            checked={settings.discoCatsEnabled}
+            onChange={(e) => updateSettings({ discoCatsEnabled: e.target.checked })}
+            className="w-5 h-5"
+            aria-label="Dancing disco cats"
+          />
+        </label>
 
         <Field label="Mouse cursor">
           <Select
@@ -367,6 +347,7 @@ export function SettingsModule({ onOpenHelp }: { onOpenHelp?: () => void } = {})
             checked={settings.companionEnabled}
             onChange={(e) => updateSettings({ companionEnabled: e.target.checked })}
             className="w-5 h-5"
+            aria-label="Walking companion"
           />
         </label>
         {settings.companionEnabled && (
@@ -386,7 +367,36 @@ export function SettingsModule({ onOpenHelp }: { onOpenHelp?: () => void } = {})
           </Field>
         )}
       </Card>
-      </HelperTip>
+
+      {onOpenHelp && (
+        <Card className="mb-4">
+          <h3 className="card-title mb-2">Help &amp; instructions</h3>
+          <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>
+            Open the in-app guide and FAQ (quiet launcher, tab-close shutdown, Accept undo, and more).
+            Also available from <strong>Help</strong> in the top bar. Turn on <strong>Helper Mode</strong> (?) for hover tips.
+          </p>
+          <button type="button" className="btn btn-primary" onClick={onOpenHelp}>
+            Open instruction guide
+          </button>
+        </Card>
+      )}
+
+      <Card className="mb-4">
+        <h3 className="card-title mb-2">Helper Mode</h3>
+        <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>
+          When on, hovering or focusing key controls shows a short explainer. Off by default. Same as the ? button in the top bar.
+        </p>
+        <HelperTip tipId="tip-helper-mode">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={settings.helperModeEnabled}
+              onChange={(e) => updateSettings({ helperModeEnabled: e.target.checked })}
+            />
+            Enable Helper Mode
+          </label>
+        </HelperTip>
+      </Card>
 
       <Card className="mb-4">
         <h3 className="card-title mb-2">How saving works</h3>

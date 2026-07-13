@@ -173,7 +173,7 @@ export const HELPER_TIPS: HelperTipDef[] = [
     faqId: 'faq-easter-eggs',
     title: 'Fun / Easter eggs',
     body:
-      'Disco cats, cute cursors, walking companion — decorative only. Triple-click sidebar NS for session disco.',
+      'Disco cats, cute cursors, walking companion — decorative only. Near top of Settings. Triple-click teal NS badge for session disco.',
   },
   {
     id: 'tip-quick-paste',

@@ -106,6 +106,39 @@ function Request-AccFolderWatchStop {
     Clear-AccPidFile -Name 'folder-watch.pid'
 }
 
+# ---------------------------------------------------------------------------
+# On-demand Outlook email sync (ACC Inbox Refresh).
+# launch.ps1 POST /_acc/email-sync writes the sentinel; supervisor (or launch
+# fallback) starts outlook-sync.ps1. Never run Outlook COM inside the HTTP
+# serve loop.
+# ---------------------------------------------------------------------------
+
+function Request-AccEmailSync {
+    $suite = Get-AccSuiteDir
+    $sentinel = Join-Path $suite 'request-email-sync'
+    try {
+        [System.IO.File]::WriteAllText($sentinel, [DateTime]::UtcNow.ToString('o'))
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+function Test-AccEmailSyncRequested {
+    return Test-Path -LiteralPath (Join-Path (Get-AccSuiteDir) 'request-email-sync') -PathType Leaf
+}
+
+function Clear-AccEmailSyncRequest {
+    $path = Join-Path (Get-AccSuiteDir) 'request-email-sync'
+    if (Test-Path -LiteralPath $path -PathType Leaf) {
+        Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Test-AccSupervisorAlive {
+    return Test-AccPidFileAlive -Name 'supervisor.pid'
+}
+
 function Get-AccClientIdFromRequest {
     # Accept clientId from query string and/or JSON body so sendBeacon
     # (often empty body + query) and fetch(keepalive) both work.

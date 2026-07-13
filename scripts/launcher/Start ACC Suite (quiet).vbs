@@ -2,9 +2,12 @@
 ' Starts supervisor.ps1 with -Quiet via a Hidden PowerShell host. The supervisor:
 '   - starts the app server Hidden (browser still opens)
 '   - starts Folder Watch Hidden (direct powershell, not cmd /k)
-'   - runs one Outlook email-sync at session start
+'   - checks mail in Outlook once at session start
+'   - checks mail again when you press Refresh in ACC Inbox
 '   - silently restarts app server / Folder Watch if they die mid-session
+'   - refuses to start a second supervisor (opens the app instead)
 ' Closing the last app browser tab ends the session (supervisor + helpers stop).
+' If leftovers block folder delete: run "Stop ACC District Nursing Suite (force).vbs".
 ' Pin a Desktop shortcut to THIS .vbs (not quiet.cmd, not recommended.cmd).
 ' Logs still go to %USERPROFILE%\ACC-Suite\logs\
 Option Explicit

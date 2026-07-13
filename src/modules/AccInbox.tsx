@@ -94,7 +94,7 @@ export function AccInbox() {
     return () => window.clearInterval(tick);
   }, [syncLoading]);
 
-  async function refreshSyncStatus() {
+  async function refreshSyncStatus(opts?: { triggerSync?: boolean }) {
     abortRef.current?.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
@@ -106,6 +106,7 @@ export function AccInbox() {
     try {
       const result = await refreshEmailSyncStatus({
         signal: ctrl.signal,
+        triggerSync: opts?.triggerSync !== false,
         onPhase: (phase, status) => {
           setRefreshPhase(phase);
           if (status) setSyncStatus(status);
@@ -115,17 +116,28 @@ export function AccInbox() {
         setMessage(syncRefreshStatusText('cancelled'));
         return;
       }
+      if (result.phase === 'stopped') {
+        setMessage(
+          result.status?.errors?.[0]
+            ? `Sync stopped — ${result.status.errors[0]}. Press Refresh to try again. Outlook must be open and signed in.`
+            : 'Sync stopped — press Refresh to try again. Outlook must be open and signed in.',
+        );
+        if (result.status) setSyncStatus(result.status);
+        return;
+      }
       if (result.status) {
         setSyncStatus(result.status);
         setMessage(null);
       } else if (useStore.getState().accInboxSyncStatus) {
         setMessage(
-          'No served sync report found — showing the last loaded status. Click "Load sync report" to update it.',
+          'Could not get a fresh mail report — showing the last one. Press Refresh again, or use “Load sync report” if you have a saved file.',
         );
       } else {
         setSyncStatus(undefined);
         if (result.phase === 'error') {
-          setMessage(syncRefreshStatusText('error'));
+          setMessage(
+            'Could not reach the local helper. Start the suite with the quiet starter (desktop shortcut), keep the tab open, then press Refresh.',
+          );
         }
       }
     } finally {
@@ -140,17 +152,10 @@ export function AccInbox() {
     abortRef.current?.abort();
   }
 
-  // On mount, refresh from the locally served report. If nothing is served
-  // (e.g. status was loaded manually via the file picker), keep the cached
-  // status already in the store so the rows persist across navigation.
+  // On mount, only re-read the last mail report (no Outlook COM). Pressing
+  // Refresh is what asks the helper to check mail again.
   async function initialLoadSyncStatus() {
-    const cached = useStore.getState().accInboxSyncStatus;
-    if (!cached) {
-      await refreshSyncStatus();
-      return;
-    }
-    // Background refresh — keep cached rows visible; still show the panel.
-    await refreshSyncStatus();
+    await refreshSyncStatus({ triggerSync: false });
   }
 
   useEffect(() => {
@@ -247,7 +252,7 @@ export function AccInbox() {
     <div>
       <SectionTitle
         title="ACC Inbox"
-        subtitle="Email sync status and saved-letter audit. Filing happens in Review Queue. Open Review Queue only navigates; Advanced: stage writes a queue row (works without launch.ps1)."
+        subtitle="Shows the latest mail check from Outlook. Filing happens in Review Queue. Open Review Queue only navigates; Advanced: stage writes a queue row when the helper is offline."
       />
 
       {settings.automationPaused && (
@@ -268,13 +273,13 @@ export function AccInbox() {
             <div className="flex items-start gap-3 min-w-0">
               <span className="spinner shrink-0 mt-1" aria-hidden style={{ width: '1.25rem', height: '1.25rem' }} />
               <div className="min-w-0">
-                <h3 className="font-semibold text-sm">Refreshing ACC Inbox sync</h3>
+                <h3 className="font-semibold text-sm">Refreshing mail</h3>
                 <p className="text-sm mt-1">{syncRefreshStatusText(refreshPhase, syncStatus)}</p>
                 <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
                   Elapsed {formatElapsedMs(elapsedMs)}
                   {syncStatus?.outcome === 'running'
-                    ? ' · Outlook sync cannot be stopped from here — Cancel only stops waiting in this screen.'
-                    : ' · Cancel stops waiting for the helper; it does not undo a finished sync.'}
+                    ? ' · Cancel only stops waiting here — Outlook keeps checking mail.'
+                    : ' · Cancel stops waiting here; it does not undo a finished check.'}
                 </p>
               </div>
             </div>
@@ -307,14 +312,12 @@ export function AccInbox() {
           </>
         ) : syncLoading ? (
           <p className="text-sm mb-2" style={{ color: 'var(--muted)' }}>
-            Please wait — loading the first sync report from <span className="font-mono">launch.ps1</span>…
+            Please wait — starting the local helper and checking mail…
           </p>
         ) : (
           <p className="text-sm mb-2" style={{ color: 'var(--muted)' }}>
-            No sync report loaded. On work laptop: Email Sync runs once when you start via the quiet .vbs /
-            recommended launcher (or run <span className="font-mono">Start Email Sync.cmd</span>). Status
-            auto-loads when served by <span className="font-mono">launch.ps1</span>, or pick{' '}
-            <span className="font-mono">{EMAIL_SYNC_STATUS_HINT_PATH}</span> below (not email-sync-state.json).
+            No mail report yet. Start the suite with the quiet desktop shortcut (Outlook should be
+            open), then press Refresh. Or use Load sync report if someone gave you a status file.
           </p>
         )}
         {syncStatus && syncStatus.savedFiles.length > 0 && (
@@ -343,7 +346,7 @@ export function AccInbox() {
               className="btn btn-sm"
               type="button"
               disabled={syncLoading}
-              onClick={() => void refreshSyncStatus()}
+              onClick={() => void refreshSyncStatus({ triggerSync: true })}
             >
               {syncLoading ? 'Refreshing…' : 'Refresh sync status'}
             </button>

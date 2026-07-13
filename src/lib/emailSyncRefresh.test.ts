@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   formatElapsedMs,
+  LOCAL_EMAIL_SYNC_TRIGGER_URL,
   refreshEmailSyncStatus,
   syncRefreshStatusText,
+  triggerEmailSync,
 } from './emailSyncRefresh';
 import { LOCAL_EMAIL_SYNC_STATUS_URL } from './emailSyncStatus';
 
@@ -21,9 +23,10 @@ describe('emailSyncRefresh', () => {
     expect(formatElapsedMs(65_000)).toBe('1:05');
   });
 
-  it('maps phases to status copy', () => {
-    expect(syncRefreshStatusText('connecting')).toMatch(/Connecting/i);
-    expect(syncRefreshStatusText('fetching')).toMatch(/Fetching/i);
+  it('maps phases to plain coworker copy (no script jargon)', () => {
+    expect(syncRefreshStatusText('connecting')).toMatch(/local helper/i);
+    expect(syncRefreshStatusText('starting')).toMatch(/check mail/i);
+    expect(syncRefreshStatusText('checking')).toMatch(/Checking mail/i);
     expect(
       syncRefreshStatusText('running', {
         version: 1,
@@ -38,28 +41,39 @@ describe('emailSyncRefresh', () => {
         inboxPath: '',
         sharedMailbox: '',
       }),
-    ).toMatch(/still running/i);
-    expect(syncRefreshStatusText('cancelled')).toMatch(/cancelled/i);
+    ).toMatch(/Outlook/i);
+    expect(syncRefreshStatusText('stopped')).toMatch(/retry/i);
+    expect(syncRefreshStatusText('connecting')).not.toMatch(/launch\.ps1/i);
+    expect(syncRefreshStatusText('error')).not.toMatch(/launch\.ps1/i);
   });
 
-  it('polls while outcome is running, then returns the final report', async () => {
-    let calls = 0;
+  it('POSTs /_acc/email-sync then polls while outcome is running', async () => {
+    let statusCalls = 0;
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (url: string) => {
-        if (String(url) !== LOCAL_EMAIL_SYNC_STATUS_URL) {
-          return { ok: false, text: async () => '' } as unknown as Response;
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (String(url) === LOCAL_EMAIL_SYNC_TRIGGER_URL) {
+          expect(init?.method).toBe('POST');
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ ok: true, queued: true }),
+          } as unknown as Response;
         }
-        calls += 1;
-        const outcome = calls < 3 ? 'running' : 'ok';
+        if (String(url) !== LOCAL_EMAIL_SYNC_STATUS_URL) {
+          return { ok: false, status: 404, text: async () => '' } as unknown as Response;
+        }
+        statusCalls += 1;
+        const outcome = statusCalls < 3 ? 'running' : 'ok';
         return {
           ok: true,
+          status: 200,
           text: async () =>
             JSON.stringify({
               version: 1,
               lastRunAt: '2026-07-08T10:00:00.000Z',
               outcome,
-              savedCount: calls,
+              savedCount: statusCalls,
               skippedCount: 0,
               errorCount: 0,
               savedFiles: [],
@@ -76,12 +90,13 @@ describe('emailSyncRefresh', () => {
       pollIntervalMs: 100,
       onPhase: (p) => phases.push(p),
     });
-    await vi.advanceTimersByTimeAsync(500);
+    await vi.advanceTimersByTimeAsync(800);
     const result = await promise;
     expect(result.cancelled).toBe(false);
+    expect(result.triggered).toBe(true);
     expect(result.status?.outcome).toBe('ok');
     expect(phases).toContain('connecting');
-    expect(phases).toContain('fetching');
+    expect(phases).toContain('starting');
     expect(phases).toContain('running');
     expect(phases).toContain('done');
   });
@@ -89,22 +104,32 @@ describe('emailSyncRefresh', () => {
   it('soft-cancels mid-poll without throwing', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => ({
-        ok: true,
-        text: async () =>
-          JSON.stringify({
-            version: 1,
-            lastRunAt: '2026-07-08T10:00:00.000Z',
-            outcome: 'running',
-            savedCount: 0,
-            skippedCount: 0,
-            errorCount: 0,
-            savedFiles: [],
-            errors: [],
-            inboxPath: '',
-            sharedMailbox: '',
-          }),
-      }) as unknown as Response),
+      vi.fn(async (url: string) => {
+        if (String(url) === LOCAL_EMAIL_SYNC_TRIGGER_URL) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ ok: true, queued: true }),
+          } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({
+              version: 1,
+              lastRunAt: '2026-07-08T10:00:00.000Z',
+              outcome: 'running',
+              savedCount: 0,
+              skippedCount: 0,
+              errorCount: 0,
+              savedFiles: [],
+              errors: [],
+              inboxPath: '',
+              sharedMailbox: '',
+            }),
+        } as unknown as Response;
+      }),
     );
 
     const ctrl = new AbortController();
@@ -112,11 +137,22 @@ describe('emailSyncRefresh', () => {
       signal: ctrl.signal,
       pollIntervalMs: 5_000,
     });
-    await vi.advanceTimersByTimeAsync(10);
+    await vi.advanceTimersByTimeAsync(50);
     ctrl.abort();
-    await vi.advanceTimersByTimeAsync(10);
+    await vi.advanceTimersByTimeAsync(50);
     const result = await promise;
     expect(result.cancelled).toBe(true);
     expect(result.phase).toBe('cancelled');
+  });
+
+  it('triggerEmailSync reports unavailable on 404', async () => {
+    vi.useRealTimers();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: false, status: 404, json: async () => ({}) }) as unknown as Response),
+    );
+    const result = await triggerEmailSync();
+    expect(result.unavailable).toBe(true);
+    expect(result.ok).toBe(false);
   });
 });

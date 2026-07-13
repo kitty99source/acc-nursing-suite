@@ -49,9 +49,14 @@ local `/_acc/*` bridge. It stays **100% local**: the tiny built-in server binds 
 
 **Double-click `Start ACC Suite (quiet).vbs`** for day-to-day use with **no visible
 PowerShell/cmd windows**. It starts a hidden **supervisor** that opens the browser, keeps the app
-server and Folder Watch **Hidden** (and silently restarts them if they die mid-session), and runs
-one Outlook sync at session start. **Closing the last app browser tab** ends the session. Pin a
-Desktop shortcut to the **`.vbs`**.
+server and Folder Watch **Hidden** (and silently restarts them if they die mid-session), checks
+Outlook mail once at session start, and **checks mail again** when you press **Refresh** in ACC
+Inbox. **Closing the last app browser tab** ends the session. Only one supervisor runs at a time.
+Pin a Desktop shortcut to the **`.vbs`**.
+
+**If the app acts weird or you can't delete the folder:** run
+`Stop ACC District Nursing Suite (force).vbs` (or the `.cmd`) — it closes leftover helpers for
+this suite only and clears stale PID files under `%USERPROFILE%\ACC-Suite\`.
 
 ### Recommended (visible console): `Start ACC Suite (recommended).cmd`
 
@@ -60,7 +65,7 @@ Same supervised session as quiet mode:
 
 - the **ACC Suite app** (local server + `/_acc` bridge),
 - **Folder Watch** (kept alive by the supervisor), and
-- **Email Sync** (once at session start).
+- **Email Sync** (at session start, and again from ACC Inbox Refresh).
 
 Use this one because it also starts **folder-watch + email-sync**, so ACC letters actually flow
 into the **Review Queue** instead of you importing them by hand. (It runs `supervisor.ps1`; the

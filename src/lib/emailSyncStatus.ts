@@ -166,16 +166,15 @@ export function describeInboxEmptyState(
 ): InboxEmptyStateCopy {
   if (loading) {
     return {
-      title: 'Loading sync status…',
-      message:
-        'Reading email-sync-status.json from the work laptop. Demo rows stay hidden until this finishes.',
+      title: 'Checking mail…',
+      message: 'Starting the local helper and reading the latest mail report. Please wait.',
     };
   }
   if (!status) {
     return {
-      title: 'No sync yet',
+      title: 'No mail check yet',
       message:
-        'Run Start Email Sync.cmd (or Start WFH Mode.cmd) on the work laptop during 7am–6pm NZ, then reopen ACC Inbox or click Refresh sync status.',
+        'Start the suite with the quiet desktop shortcut (Outlook open), then press Refresh. During work hours the starter also checks mail once at launch.',
     };
   }
   if (status.inferredFromState) {

@@ -12,9 +12,12 @@
 $bootstrapRoot = $PSScriptRoot
 if ([string]::IsNullOrEmpty($bootstrapRoot)) { $bootstrapRoot = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }
 . (Join-Path $bootstrapRoot 'bootstrap-log.ps1') -LogName 'email-sync'
+. (Join-Path $bootstrapRoot 'lifecycle.ps1')
 . (Join-Path $bootstrapRoot 'mailbox-config.ps1')
 . (Join-Path $bootstrapRoot 'inbox-config.ps1')
 Write-BootstrapLog 'outlook-sync.ps1 started'
+try { Write-AccPidFile -Name 'email-sync.pid' | Out-Null } catch {}
+Write-BootstrapLog "Wrote email-sync.pid ($PID)"
 
 # ACC Outlook COM sync - work laptop only
 #
@@ -1176,6 +1179,8 @@ finally {
     Write-SyncLine "State:  $($script:StatePath)"
     Write-SyncLine "Log:    $env:USERPROFILE\ACC-Suite\logs\email-sync-bootstrap.log"
     Write-SyncLine ''
+    try { Clear-AccPidFile -Name 'email-sync.pid' } catch {}
+    Write-BootstrapLog 'Cleared email-sync.pid'
 }
 
 if ($status.outcome -eq 'fail') { exit 1 }

@@ -1,7 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from '../../state/store';
-import { SPRITE_SVGS, svgToDataUrl } from '../../assets/easter/sprites';
-import type { CompanionCharacter } from '../../types';
+import { COMPANION_FRAME_URLS, framesFor, frameDurationMs } from '../../assets/easter/companionFrames';
+import {
+  resolveCompanionState,
+  frameIndexFor,
+  type CompanionTimers,
+} from '../../lib/easter/companionBehavior';
+import { emptyClickBurst, registerClick, type ClickBurstState } from '../../lib/easter/clickCounter';
 import {
   nearestSegment,
   pickNextSegment,
@@ -15,20 +20,26 @@ import {
 /**
  * Easter egg #3 — a cute sprite that walks along the top edges of the app
  * chrome (top bar, sidebar, opted-in cards). See docs/EASTER-COMPANION.md for
- * the full A–Z design. Kept to a single rAF loop that pauses when the tab is
- * hidden; all geometry math is delegated to the pure helpers in pathing.ts.
+ * the full A–Z design.
+ *
+ * v2 adds real multi-frame pixel animation (a 4-frame walk cycle, not just a
+ * CSS bob), a sleep state with floating "z z z", and a click interaction: the
+ * sprite is clickable (only the sprite has pointer-events), wakes when poked,
+ * and gets briefly annoyed after a few pokes in a short window. Still a single
+ * rAF loop that pauses when the tab is hidden.
  */
 
-const SPRITE_SIZE = 28;
+const SPRITE_SIZE = 30;
 const MIN_SEGMENT_WIDTH = 48;
 const EDGE_INSET = 8;
 const BASE_SPEED = 42; // px/sec
-const IDLE_CHANCE = 0.35; // chance to pause on reaching a segment end
-const IDLE_MS: [number, number] = [700, 1800];
-
-function charUrl(c: CompanionCharacter): string {
-  return svgToDataUrl(SPRITE_SVGS[c]);
-}
+const IDLE_CHANCE = 0.4; // chance to pause on reaching a segment end
+const LONG_REST_CHANCE = 0.35; // of those pauses, chance it's a long (sleepy) rest
+const SHORT_IDLE_MS: [number, number] = [700, 1800];
+const LONG_REST_MS: [number, number] = [5000, 11000];
+const SLEEP_ONSET_MS = 2600; // continuous rest before dozing off
+const ANNOYED_MS = 1300;
+const CLICK_BURST = { threshold: 3, windowMs: 1300 };
 
 function prefersReducedMotion(): boolean {
   return (
@@ -45,7 +56,6 @@ function measureSegments(): Segment[] {
   els.forEach((el) => {
     const r = el.getBoundingClientRect();
     if (r.width <= 0 || r.height <= 0) return;
-    // Ignore off-screen / collapsed chrome.
     if (r.top < -40 || r.top > window.innerHeight - 8) return;
     const seg = rectToTopEdge({ left: r.left, right: r.right, top: r.top }, EDGE_INSET);
     if (seg) segs.push(seg);
@@ -53,10 +63,16 @@ function measureSegments(): Segment[] {
   return pruneSegments(segs, MIN_SEGMENT_WIDTH);
 }
 
+function randBetween([lo, hi]: [number, number]): number {
+  return lo + Math.random() * (hi - lo);
+}
+
 export function Companion() {
   const enabled = useStore((s) => s.data.settings.companionEnabled);
   const character = useStore((s) => s.data.settings.companionCharacter);
   const spriteRef = useRef<HTMLImageElement | null>(null);
+  const posRef = useRef<HTMLDivElement | null>(null);
+  const zzzRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
@@ -71,6 +87,12 @@ export function Companion() {
     let x = 0;
     let y = 0;
     let idleUntil = 0;
+    let idleStartedAt = 0;
+    let annoyedUntil = 0;
+    let clickBurst: ClickBurstState = emptyClickBurst();
+    let stateStartedAt = performance.now();
+    let prevState: string | null = null;
+    let lastFrameUrl = '';
     const reduced = prefersReducedMotion();
     const speed = reduced ? BASE_SPEED * 0.55 : BASE_SPEED;
 
@@ -84,7 +106,6 @@ export function Companion() {
         return;
       }
       if (!current || !segments.some((s) => s === current)) {
-        // Re-snap to the nearest valid segment after a layout change.
         const snap = nearestSegment(segments, { x, y });
         current = snap;
         if (current) {
@@ -94,13 +115,52 @@ export function Companion() {
       }
     };
 
-    const positionSprite = () => {
+    const timers = (now: number): CompanionTimers => ({
+      now,
+      idleUntil,
+      idleStartedAt,
+      annoyedUntil,
+      sleepOnsetMs: SLEEP_ONSET_MS,
+    });
+
+    const render = (now: number, moving: boolean) => {
       const el = spriteRef.current;
-      if (!el) return;
-      const left = x - SPRITE_SIZE / 2;
-      const top = y - SPRITE_SIZE;
-      el.style.transform = `translate3d(${left}px, ${top}px, 0) scaleX(${dir === 1 ? 1 : -1})`;
-      el.style.opacity = current ? '1' : '0';
+      const pos = posRef.current;
+      const zzz = zzzRef.current;
+      const state = resolveCompanionState(timers(now));
+
+      if (state !== prevState) {
+        prevState = state;
+        stateStartedAt = now;
+      }
+
+      // Advance the frame within the current state.
+      if (el) {
+        const frames = framesFor(character, state, reduced);
+        const idx = frameIndexFor(now - stateStartedAt, frames.length, frameDurationMs(state, reduced));
+        const url = frames[idx];
+        if (url && url !== lastFrameUrl) {
+          el.src = url;
+          lastFrameUrl = url;
+        }
+        el.style.transform = `scaleX(${dir === 1 ? 1 : -1})`;
+      }
+
+      if (pos) {
+        let left = x - SPRITE_SIZE / 2;
+        const top = y - SPRITE_SIZE;
+        // A little shake while annoyed (never under reduced motion).
+        if (state === 'annoyed' && !reduced) left += Math.sin(now / 28) * 1.6;
+        pos.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+        pos.style.opacity = current ? '1' : '0';
+      }
+
+      if (zzz) {
+        zzz.style.opacity = state === 'sleep' ? '1' : '0';
+      }
+
+      // Report whether we actually moved this frame (unused today, keeps signature clear).
+      void moving;
     };
 
     const frame = (now: number) => {
@@ -113,15 +173,18 @@ export function Companion() {
         ensureCurrent();
       }
 
-      if (current && now >= idleUntil) {
+      const moving = resolveCompanionState(timers(now)) === 'walk';
+
+      if (current && moving) {
         const res = stepAlong(x, current, dir, speed * dt);
         x = res.x;
         y = current.y;
         if (res.atEnd) {
           const endPoint = { x, y };
-          // Occasionally pause and look around before moving on.
           if (Math.random() < IDLE_CHANCE) {
-            idleUntil = now + (IDLE_MS[0] + Math.random() * (IDLE_MS[1] - IDLE_MS[0]));
+            idleStartedAt = now;
+            const long = Math.random() < LONG_REST_CHANCE;
+            idleUntil = now + randBetween(long ? LONG_REST_MS : SHORT_IDLE_MS);
           }
           const next = pickNextSegment(segments, current, endPoint);
           if (next) {
@@ -135,8 +198,21 @@ export function Companion() {
         }
       }
 
-      positionSprite();
+      render(now, moving);
       rafId = requestAnimationFrame(frame);
+    };
+
+    const onClick = (e: MouseEvent) => {
+      e.stopPropagation();
+      const now = performance.now();
+      // Any poke wakes the companion up and cancels the current rest.
+      idleUntil = 0;
+      idleStartedAt = now;
+      const res = registerClick(clickBurst, now, CLICK_BURST);
+      clickBurst = res.state;
+      if (res.triggered) {
+        annoyedUntil = now + ANNOYED_MS;
+      }
     };
 
     const onVisibility = () => {
@@ -155,6 +231,8 @@ export function Companion() {
     window.addEventListener('resize', markDirty);
     window.addEventListener('scroll', markDirty, true);
     document.addEventListener('visibilitychange', onVisibility);
+    const spriteEl = spriteRef.current;
+    spriteEl?.addEventListener('click', onClick);
 
     rafId = requestAnimationFrame(frame);
 
@@ -164,8 +242,9 @@ export function Companion() {
       window.removeEventListener('resize', markDirty);
       window.removeEventListener('scroll', markDirty, true);
       document.removeEventListener('visibilitychange', onVisibility);
+      spriteEl?.removeEventListener('click', onClick);
     };
-  }, [enabled]);
+  }, [enabled, character]);
 
   if (!enabled) return null;
 
@@ -174,20 +253,37 @@ export function Companion() {
       aria-hidden
       className="easter-companion-layer fixed inset-0 z-[45] pointer-events-none overflow-hidden"
     >
-      <img
-        ref={spriteRef}
-        src={charUrl(character)}
-        alt=""
-        width={SPRITE_SIZE}
-        height={SPRITE_SIZE}
-        className="easter-companion-sprite absolute top-0 left-0"
-        style={{
-          imageRendering: 'pixelated',
-          opacity: 0,
-          filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.28))',
-          willChange: 'transform',
-        }}
-      />
+      <div
+        ref={posRef}
+        className="easter-companion-pos absolute top-0 left-0"
+        style={{ opacity: 0, willChange: 'transform' }}
+      >
+        {/* Floating snore "z z z" (only visible while sleeping). */}
+        <div
+          ref={zzzRef}
+          className="easter-companion-zzz"
+          aria-hidden
+          style={{ opacity: 0 }}
+        >
+          <span style={{ animationDelay: '0s' }}>z</span>
+          <span style={{ animationDelay: '0.6s' }}>z</span>
+          <span style={{ animationDelay: '1.2s' }}>z</span>
+        </div>
+        <img
+          ref={spriteRef}
+          src={COMPANION_FRAME_URLS[character].walk[0]}
+          alt=""
+          width={SPRITE_SIZE}
+          height={SPRITE_SIZE}
+          className="easter-companion-sprite"
+          style={{
+            imageRendering: 'pixelated',
+            filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.28))',
+            pointerEvents: 'auto',
+            cursor: 'pointer',
+          }}
+        />
+      </div>
     </div>
   );
 }

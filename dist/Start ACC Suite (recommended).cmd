@@ -29,21 +29,23 @@ if not errorlevel 1 (
   exit /b 1
 )
 echo.
-echo   ACC District Nursing Admin Suite - RECOMMENDED (Work From Home Mode)
+echo   ACC District Nursing Admin Suite - RECOMMENDED (supervised session)
 echo   -------------------------------------------------------------------
-echo   This is the normal way to open the suite. One double-click starts:
+echo   This is the normal visible way to open the suite. One double-click
+echo   starts a supervisor that keeps helpers alive:
 echo     - ACC Suite app (minimized, local browser)
-echo     - Folder Watch (separate window, stays open)
-echo     - Email Sync (runs once here, then you are done)
+echo     - Folder Watch (kept alive; restarts if it dies mid-session)
+echo     - Email Sync (runs once at session start)
+echo   Closing the last app browser tab ends the session.
 echo.
-echo   Why this one: it also starts folder-watch + email-sync, so ACC
-echo   letters actually flow into the Review Queue. Use "Start ACC Suite.cmd"
-echo   only if you want the app alone with no sync (minimal fallback).
+echo   Why this one: folder-watch + email-sync so ACC letters flow into the
+echo   Review Queue. Prefer the quiet .vbs Desktop shortcut for no windows.
+echo   Use "Start ACC Suite.cmd" only if you want the app alone with no sync.
 echo.
 echo   Requires Outlook desktop open for email sync.
 echo   Individual Start *.cmd files still work for debugging.
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0wfh-mode.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0supervisor.ps1"
 if errorlevel 1 (
   echo [%date% %time%] PowerShell failed errorlevel %ERRORLEVEL% >> "%BOOTLOG%"
   pause

@@ -123,10 +123,13 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     id: 'faq-wfh',
     question: 'How do emails get into the Review Queue?',
     answer:
-      'On the work PC, use Start ACC Suite (recommended).cmd or the quiet .vbs Desktop shortcut. ' +
-      'It starts the app, folder-watch, and one Outlook sync of the configured shared mailbox. ' +
-      'Sync only stages items — you still accept each one in the Review Queue.',
-    tags: ['outlook', 'sync', 'wfh', 'launcher', 'review', 'quiet'],
+      'On the work PC, pin a Desktop shortcut to Start ACC Suite (quiet).vbs (preferred), ' +
+      'or use Start ACC Suite (recommended).cmd if you want a visible console. ' +
+      'A hidden supervisor starts the app, folder-watch, and one Outlook sync of the configured shared mailbox, ' +
+      'and silently restarts the app server / Folder Watch if they die mid-session. ' +
+      'Sync only stages items — you still accept each one in the Review Queue. ' +
+      'Closing the last app browser tab ends the session.',
+    tags: ['outlook', 'sync', 'wfh', 'launcher', 'review', 'quiet', 'supervisor'],
   },
   {
     id: 'faq-banners',

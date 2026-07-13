@@ -45,18 +45,26 @@ choose** (via the browser's File System Access API) and lets the app read ACC le
 local `/_acc/*` bridge. It stays **100% local**: the tiny built-in server binds to
 **`127.0.0.1` only** and only ever serves this one file.
 
-### Recommended: `Start ACC Suite (recommended).cmd`
+### Quiet (preferred Desktop shortcut): `Start ACC Suite (quiet).vbs`
 
-**Double-click `Start ACC Suite (recommended).cmd`.** This is the normal way to open the suite. In
-one double-click it starts everything you need:
+**Double-click `Start ACC Suite (quiet).vbs`** for day-to-day use with **no visible
+PowerShell/cmd windows**. It starts a hidden **supervisor** that opens the browser, keeps the app
+server and Folder Watch **Hidden** (and silently restarts them if they die mid-session), and runs
+one Outlook sync at session start. **Closing the last app browser tab** ends the session. Pin a
+Desktop shortcut to the **`.vbs`**.
 
-- the **ACC Suite app** (minimized window — keep it running),
-- **Folder Watch** (separate window — keep it open), and
-- **Email Sync** (runs once per launch).
+### Recommended (visible console): `Start ACC Suite (recommended).cmd`
+
+**Double-click `Start ACC Suite (recommended).cmd`** when you want to **see** progress in a console.
+Same supervised session as quiet mode:
+
+- the **ACC Suite app** (local server + `/_acc` bridge),
+- **Folder Watch** (kept alive by the supervisor), and
+- **Email Sync** (once at session start).
 
 Use this one because it also starts **folder-watch + email-sync**, so ACC letters actually flow
-into the **Review Queue** instead of you importing them by hand. (It runs the same all-in-one
-`wfh-mode.ps1` as the older `Start WFH Mode.cmd`, which is kept for existing shortcuts.) It needs
+into the **Review Queue** instead of you importing them by hand. (It runs `supervisor.ps1`; the
+older `Start WFH Mode.cmd` / `wfh-mode.ps1` forwarder is kept for existing shortcuts.) It needs
 **Outlook desktop open** for the email-sync step.
 
 ### Minimal fallback: `Start ACC Suite.cmd`

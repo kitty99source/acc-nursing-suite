@@ -1,11 +1,13 @@
 param()
 
-# Shared tab-close / companion-process lifecycle helpers for launch.ps1 and
-# folder-watch.ps1. Dot-sourced by both.
+# Shared tab-close / companion-process lifecycle helpers for launch.ps1,
+# folder-watch.ps1, and supervisor.ps1. Dot-sourced by those scripts.
 #
 # When the browser tab closes, the SPA POSTs /_acc/goodbye (and heartbeats stop).
-# launch.ps1 then exits its listen loop and asks folder-watch to stop via a
-# sentinel file under %USERPROFILE%\ACC-Suite\ (plus a best-effort PID kill).
+# launch.ps1 then exits its listen loop, writes session-ended, and asks
+# folder-watch to stop via a sentinel under %USERPROFILE%\ACC-Suite\
+# (plus a best-effort PID kill). supervisor.ps1 watches those signals so it
+# can restart crashed helpers mid-session, then exit cleanly on goodbye.
 
 function Get-AccSuiteDir {
     $dir = Join-Path $env:USERPROFILE 'ACC-Suite'
@@ -26,6 +28,44 @@ function Clear-AccPidFile {
     if (Test-Path -LiteralPath $path -PathType Leaf) {
         Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
     }
+}
+
+function Test-AccPidFileAlive {
+    # True when the named .pid file points at a still-running PowerShell process.
+    param([string]$Name)
+    $path = Join-Path (Get-AccSuiteDir) $Name
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $false }
+    $raw = ''
+    try { $raw = (Get-Content -LiteralPath $path -Raw -Encoding UTF8).Trim() } catch { return $false }
+    $procId = 0
+    if (-not [int]::TryParse($raw, [ref]$procId) -or $procId -le 0) { return $false }
+    try {
+        $proc = Get-Process -Id $procId -ErrorAction Stop
+        $name = [string]$proc.ProcessName
+        return ($name -eq 'powershell' -or $name -eq 'pwsh' -or $name -eq 'powershell_ise')
+    } catch {
+        return $false
+    }
+}
+
+function Write-AccSessionEnded {
+    # Intentional last-tab / idle shutdown (not a crash). Supervisor must exit,
+    # not restart helpers.
+    $path = Join-Path (Get-AccSuiteDir) 'session-ended'
+    try {
+        [System.IO.File]::WriteAllText($path, [DateTime]::UtcNow.ToString('o'))
+    } catch {}
+}
+
+function Clear-AccSessionEnded {
+    $path = Join-Path (Get-AccSuiteDir) 'session-ended'
+    if (Test-Path -LiteralPath $path -PathType Leaf) {
+        Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Test-AccSessionEnded {
+    return Test-Path -LiteralPath (Join-Path (Get-AccSuiteDir) 'session-ended') -PathType Leaf
 }
 
 function Clear-AccFolderWatchStopSentinel {
@@ -97,6 +137,7 @@ function Get-AccClientIdFromRequest {
             $obj = $text | ConvertFrom-Json
             if ($obj -and $obj.clientId) { return ([string]$obj.clientId).Trim() }
         }
+        # Plain text body fallback.
         return $text
     } catch {
         return $null

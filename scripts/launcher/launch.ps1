@@ -1,4 +1,8 @@
-param()
+param(
+    # Supervisor mid-session recovery: restart the listener without opening a
+    # second browser tab (the SPA is already open and will retry /_acc).
+    [switch]$NoBrowser
+)
 
 $bootstrapRoot = $PSScriptRoot
 if ([string]::IsNullOrEmpty($bootstrapRoot)) { $bootstrapRoot = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }
@@ -6,7 +10,7 @@ if ([string]::IsNullOrEmpty($bootstrapRoot)) { $bootstrapRoot = Split-Path -Lite
 . (Join-Path $bootstrapRoot 'lifecycle.ps1')
 $inboxConfig = Join-Path $bootstrapRoot 'inbox-config.ps1'
 if (Test-Path -LiteralPath $inboxConfig) { . $inboxConfig }
-Write-BootstrapLog 'launch.ps1 started'
+Write-BootstrapLog "launch.ps1 started NoBrowser=$($NoBrowser.IsPresent)"
 
 # ACC District Nursing Admin Suite - local launcher
 #
@@ -741,6 +745,9 @@ try {
     Write-Host ""
 
     # --- Open the browser (Edge preferred; multiple paths + cmd start fallback) -
+    # Skip when supervisor is recovering mid-session (-NoBrowser): the SPA tab
+    # is already open and will retry /_acc.
+    if (-not $NoBrowser) {
     Write-LauncherLogSafe 'Step: open browser'
     $browserOpened = $false
 
@@ -797,6 +804,10 @@ try {
     } else {
         Write-LauncherLogSafe 'Step: browser open succeeded'
     }
+    } else {
+        Write-BootstrapLog "Skipping browser open (NoBrowser) - serving $url"
+        Write-LauncherLogSafe "Step: skip browser (NoBrowser) - serving $url"
+    }
 
     $notFound = [System.Text.Encoding]::UTF8.GetBytes('404 Not Found')
 
@@ -804,6 +815,7 @@ try {
     $script:ClientHeartbeats = @{}
     $script:HadClients = $false
     $script:ShutdownRequested = $false
+    $script:SessionEndedCleanly = $false
     $script:ClientStaleSeconds = 60
 
     function Register-AccClientHeartbeat {
@@ -852,6 +864,7 @@ try {
         while (-not $script:ShutdownRequested) {
             if (Test-AccShouldShutdownForNoClients) {
                 Write-BootstrapLog 'No live browser tabs (goodbye or heartbeat stale) - shutting down'
+                $script:SessionEndedCleanly = $true
                 $script:ShutdownRequested = $true
                 break
             }
@@ -889,7 +902,10 @@ try {
                         } elseif (-not [string]::IsNullOrWhiteSpace($cid)) {
                             $shouldStop = $true
                         }
-                        if ($shouldStop) { $script:ShutdownRequested = $true }
+                        if ($shouldStop) {
+                            $script:SessionEndedCleanly = $true
+                            $script:ShutdownRequested = $true
+                        }
                         Send-AccJsonOk -Client $client -Obj ([ordered]@{
                             ok = $true
                             shutdown = [bool]$shouldStop
@@ -975,6 +991,10 @@ try {
             }
         }
     } finally {
+        if ($script:SessionEndedCleanly) {
+            Write-AccSessionEnded
+            Write-BootstrapLog 'Wrote session-ended (clean last-tab / idle shutdown)'
+        }
         Write-BootstrapLog 'Listen loop ended - stopping folder-watch companion if running'
         try { Request-AccFolderWatchStop } catch {}
         Clear-AccPidFile -Name 'launch.pid'

@@ -39,6 +39,11 @@ import {
   type StagingBridgeStatus,
 } from '../lib/localAccBridge';
 import {
+  bridgeEmptyQueueMessage,
+  bridgeUnavailableBannerCopy,
+  nextBridgePollIntervalMs,
+} from '../lib/bridgeReconnect';
+import {
   buildAdminIDriveRelativePath,
   buildStagingRelativePath,
   joinIDriveDisplayPath,
@@ -416,7 +421,21 @@ export function ReviewQueue() {
           ? autoAcceptEligible
           : sorted;
 
+  const bridgeStatusRef = useRef(bridgeStatus);
+  bridgeStatusRef.current = bridgeStatus;
+
   useEffect(() => {
+    let cancelled = false;
+    let timer: number | undefined;
+
+    const schedule = () => {
+      if (cancelled) return;
+      const ms = nextBridgePollIntervalMs(bridgeStatusRef.current);
+      timer = window.setTimeout(() => {
+        void autoImportFromLauncher().finally(() => schedule());
+      }, ms);
+    };
+
     void (async () => {
       if (!reconciledOnce.current) {
         reconciledOnce.current = true;
@@ -433,11 +452,13 @@ export function ReviewQueue() {
       }
       await refresh();
       await autoImportFromLauncher();
+      schedule();
     })();
-    const id = window.setInterval(() => {
-      void autoImportFromLauncher();
-    }, 30_000);
-    return () => window.clearInterval(id);
+
+    return () => {
+      cancelled = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
   }, [refresh, autoImportFromLauncher]);
 
   // Keep the list titles live while background pre-parse fills patient names,
@@ -647,7 +668,7 @@ export function ReviewQueue() {
         await confirm({
           title: 'Cannot reach letter files',
           message:
-            'Start WFH Mode (or Start ACC Suite) so the app can read letters from ACC-Inbox. Without it running, old filename-only rows cannot be renamed.',
+            'The local helper is not reachable right now. Keep this tab open — it reconnects automatically when the supervised launcher brings the bridge back. Or use Import below.',
           confirmLabel: 'OK',
         });
         return;
@@ -722,7 +743,7 @@ export function ReviewQueue() {
         await confirm({
           title: 'Cannot reach letter files',
           message:
-            'Start WFH Mode (or Start ACC Suite) so the app can read email dates from ACC-Inbox. Without it running, older rows cannot pick up their email date.',
+            'The local helper is not reachable right now. Keep this tab open — it reconnects automatically when the supervised launcher brings the bridge back.',
           confirmLabel: 'OK',
         });
         return;
@@ -1538,27 +1559,29 @@ export function ReviewQueue() {
         </p>
       )}
 
-      {bridgeStatus === 'unavailable' && (
-        <div
-          className="card mb-4 p-3 text-sm"
-          style={{ borderColor: 'var(--warn-fg)', background: 'var(--surface-2)' }}
-          role="status"
-        >
-          <strong>The helper program on this PC isn't running.</strong> This page can't
-          automatically bring in new letters until it is. Use{' '}
-          <strong>Start ACC Suite.cmd</strong> to start it, or use the Import buttons below to add
-          letters from <span className="font-mono">ACC-Inbox\.staging</span> yourself.
-        </div>
-      )}
+      {bridgeStatus === 'unavailable' && (() => {
+        const copy = bridgeUnavailableBannerCopy({
+          isDev: import.meta.env.DEV,
+          ingressNoun: 'letters',
+        });
+        return (
+          <div
+            className="card mb-4 p-3 text-sm"
+            style={{ borderColor: 'var(--warn-fg)', background: 'var(--surface-2)' }}
+            role="status"
+          >
+            <strong>{copy.title}</strong> {copy.body}
+          </div>
+        );
+      })()}
 
       {bridgeStatus === 'empty' && !sorted.length && (
         <div className="card mb-4 p-3 text-sm" style={{ background: 'var(--surface-2)' }} role="status">
           The helper program is running, but no new letters are waiting in{' '}
-          <span className="font-mono">ACC-Inbox\.staging</span> yet. Run{' '}
-          <span className="font-mono">Start Folder Watch.cmd</span> (or WFH Mode) so new letters get
-          picked up automatically. Letters already moved to the{' '}
+          <span className="font-mono">ACC-Inbox\.staging</span> yet. Letters already moved to the{' '}
           <span className="font-mono">processed</span> folder won't show up here — only ones still
-          waiting in <span className="font-mono">.staging</span> will.
+          waiting in <span className="font-mono">.staging</span> will. If nothing arrives, wait a
+          moment for Folder Watch (the supervisor restarts it automatically).
         </div>
       )}
 
@@ -1836,8 +1859,12 @@ export function ReviewQueue() {
           title="No letters under review"
           message={
             bridgeStatus === 'unavailable'
-              ? 'Automatic import needs the helper program running on this PC. Until then, use "Import ACC-Inbox .staging folder" below. Letters sitting only in the processed folder won\'t show up here.'
-              : '1. Run Start WFH Mode.cmd (or Start Folder Watch.cmd). 2. New letters are saved into ACC-Inbox\\.staging and picked up automatically here. 3. If nothing shows up, use "Import ACC-Inbox .staging folder" below.'
+              ? bridgeEmptyQueueMessage({
+                  isDev: import.meta.env.DEV,
+                  inboxFolderHint: 'ACC-Inbox',
+                }) +
+                ' Until then, use "Import ACC-Inbox .staging folder" below.'
+              : 'New letters are saved into ACC-Inbox\\.staging and picked up automatically here. If nothing shows up, use "Import ACC-Inbox .staging folder" below.'
           }
         />
       ) : (

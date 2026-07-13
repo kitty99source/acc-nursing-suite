@@ -10,12 +10,20 @@ This doc is the source of truth for the behaviour. The implementation
 `src/lib/easter/companionBehavior.ts` + `src/assets/easter/companionFrames.ts`)
 matches this.
 
-**v2 update (this doc):** the companion now uses **real multi-frame pixel
-sprites** (a 4-frame walk cycle, plus idle/sleep/annoyed frames), **falls asleep**
-with floating "z z z" after resting a while, and is **clickable** — poke it and it
-wakes up; poke it a few times quickly and it gets briefly annoyed. See sections
-C, E, J and M below. The original v1 (single static sprite + CSS bob, no
-interaction) cuts are kept at the bottom for history.
+**v3 update (this doc):** the companion now walks the **whole UI** along real
+component borders — top bar, sidebar (top edge *and* its vertical side), the tops
+of cards / panels / action rows, and the main content box — using a small **path
+graph**. When it reaches the end of a border it **hops** (a short parabolic jump)
+to a nearby border instead of reversing forever or walking off-screen; every
+position is **clamped to the viewport** so it can never disappear off the right
+edge. See sections D and E below.
+
+**v2 update:** the companion uses **real multi-frame pixel sprites** (a 4-frame
+walk cycle, plus idle/sleep/annoyed frames), **falls asleep** with floating
+"z z z" after resting a while, and is **clickable** — poke it and it wakes up;
+poke it a few times quickly and it gets briefly annoyed. See sections C, E, J and
+M below. The original v1 (single static sprite + CSS bob, no interaction) cuts
+are kept at the bottom for history.
 
 ---
 
@@ -60,36 +68,67 @@ interaction) cuts are kept at the bottom for history.
 
 ## D. The "walkable world" — how edges are found
 
-- A **walkable segment** is the *top edge* of a laid-out box: `{ x1, x2, y }`.
-- v1 queries a small, curated set of elements via `data-companion-edge`
-  attributes we add to stable chrome (top bar, sidebar header, main content
-  cards get them opportunistically) **plus** a generic fallback: the top bar
-  `<header>` and the sidebar `<aside>`.
-- For the **top bar** (`<header>` / `data-companion-ledge="bottom"`) we walk the
-  **bottom** edge so the sprite sits on the chrome and stays on-screen. Walking
-  the top edge at `y≈0` would place the sprite above the viewport and clip it.
-- For the sidebar / opted-in cards we take the top edge, then **clamp** `y` so a
-  30px sprite stays fully inside the viewport.
+- A **walkable segment** is an axis-aligned edge of a laid-out box, expressed as
+  a line `{ x1, y1, x2, y2, weight, kind }` in viewport coordinates. Horizontal
+  segments (`y1 === y2`) are card / top-bar / sidebar / main tops; vertical
+  segments (`x1 === x2`) are sidebar sides. Each segment carries a **weight**
+  (how strongly the pather prefers it) and a **kind** (for tuning).
+- **v3 auto-discovers the whole UI** each remeasure, not just curated chrome:
+  - **Top bar** — `header, [data-companion-ledge="bottom"]` → **bottom** edge
+    (`kind: topbar`, weight 1.0). Bottom edge so the sprite sits *on* the chrome;
+    the top edge at `y≈0` would clip above the viewport.
+  - **Sidebar** — `aside` → both the **top** edge (`sidebar-top`, weight 0.7)
+    **and** the **vertical right side** (`sidebar-side`, weight 0.35) so the
+    sprite can occasionally walk up/down the clean border between sidebar and
+    content.
+  - **Cards / panels / rows** — `[data-companion-edge], .card, .clickable-card,
+    .action-row` → **top** edge (`card`, weight 0.9). This auto-discovers the
+    common Admin surfaces; `data-companion-edge` remains an explicit opt-in.
+  - **Main content** — `main` → **top** edge (`main`, weight 0.5).
+- **Clamping:** every edge is trimmed by an inset and **clamped fully inside the
+  viewport** (x into `[inset, width-inset]`, y via `clampWalkY`); the final
+  sprite position is clamped again in `render`. The sprite can therefore never
+  walk off the right edge (or any edge) of the screen.
+- **Modals excluded:** elements inside `[role="dialog"]` (or `[data-companion-skip]`)
+  are skipped so the sprite doesn't try to walk on modal chrome it sits behind.
+- **Cleanup:** near-duplicate edges (nested cards, a card top on the top-bar
+  bottom) are collapsed (`dedupeSegments`, keeping the higher weight), and
+  segments shorter than a minimum length are discarded (`pruneSegments`).
 - If measurement finds no usable segment, a synthetic full-width top-bar ledge
   is always provided (never invisible / opacity 0).
-- Segments shorter than a minimum width are discarded (`pruneSegments`).
 - All geometry math lives in **pure, unit-tested helpers** in
-  `src/lib/easter/pathing.ts` (`rectToTopEdge`, `rectToBottomEdge`,
-  `clampWalkY`, `defaultTopBarSegment`, `pruneSegments`, `nearestSegment`,
-  `stepAlong`, `pickNextSegment`).
+  `src/lib/easter/pathing.ts` (`horizontalEdge`, `verticalEdge`, `rectToTopEdge`,
+  `rectToBottomEdge`, `clampWalkY`, `defaultTopBarSegment`, `pruneSegments`,
+  `dedupeSegments`, `nearestSegment`, `nearestParamOn`, `pointAt`, `stepAlong`,
+  `rankNextSegments`, `pickNextSegment`, `chooseNextSegment`, `hopArc`).
 
-## E. Pathing / movement
+## E. Pathing / movement — the path graph
 
+- Position along a border is tracked as a **parameter `t` in [0,1]** (via
+  `pointAt`), so the same loop drives horizontal *and* vertical walks.
 - One `requestAnimationFrame` loop. Each frame:
-  1. Advance the sprite along its current segment by `speed * dt` in the current
-     direction (`stepAlong`).
-  2. On reaching a segment end, pick the next segment (`pickNextSegment`:
-     nearest segment whose start is close to the current end, else the nearest
-     overall, else idle) and flip facing direction.
-  3. Occasionally (small random chance) enter a brief **idle** state (sit + look
-     around) before resuming — see "cuteness" below.
+  1. If dirty, remeasure the world and re-snap to the nearest surviving segment
+     (`nearestSegment` + `nearestParamOn`).
+  2. If mid-**hop**, interpolate along a parabolic arc (`hopArc`) toward the next
+     border; on landing, adopt that border and direction.
+  3. Otherwise, if walking, advance along the current border by `speed * dt`
+     (`stepAlong`).
+  4. On reaching a border end, choose the next border with **`chooseNextSegment`**
+     — a *score-weighted random* pick among the best few candidates, where score
+     = `weight / (1 + distance/falloff)`. This means it **prefers** top edges of
+     cards, the sidebar top, and the top-bar bottom, and only **occasionally**
+     takes a vertical sidebar walk, while still favouring nearby borders. Then:
+     - if the entry point is more than a few px away, **hop** to it (a short
+       parabolic jump, `beginHop`), rather than teleporting or walking off-screen;
+     - if it's adjacent, just step straight onto it;
+     - if it's the only border, turn around.
+  5. Occasionally (small random chance) enter a brief **idle** state (sit + look
+     around) at a border end before resuming — see "cuteness" below.
+- Facing (horizontal flip) follows the last horizontal travel direction, so
+  vertical walks keep the previous facing and hops face their target.
 - Movement is frame-time-scaled (`dt`) so it's speed-consistent regardless of
-  refresh rate.
+  refresh rate. `pickNextSegment` (deterministic best) and `rankNextSegments`
+  (full ranking) are also exported for testing.
 
 ### E.1 Rest → sleep → wake (v2)
 
@@ -117,9 +156,10 @@ interaction) cuts are kept at the bottom for history.
 
 ## F. Reacting to layout changes / scroll / resize
 
-- A `ResizeObserver` on `document.body` + a `window` `resize` listener +
-  `scroll` (capture) listener trigger a **re-measure** of segments (throttled to
-  once per rAF frame via a dirty flag).
+- A `ResizeObserver` on `document.body` + a `MutationObserver` on the `<main>`
+  subtree (catches module navigation and card churn) + a `window` `resize`
+  listener + `scroll` (capture) listener trigger a **re-measure** of segments
+  (throttled to once per rAF frame via a dirty flag).
 - Because segments are recomputed from live `getBoundingClientRect()`, scrolling
   and layout shifts are naturally handled: the sprite re-snaps to the nearest
   valid segment (`nearestSegment`) if its current one vanished.
@@ -198,26 +238,40 @@ Built in v2 (previously deferred):
   reaction, then it resumes.
 - **Real multi-frame walk cycle** (legs swing) instead of a single-image bob.
 
+Built in v3 (previously deferred):
+- **Whole-UI path graph:** auto-discovers card / panel / row tops, the main
+  content box, and both the sidebar top and its vertical side — not just the top
+  bar. Weighted preferences keep it mostly on the pleasant top edges.
+- **Hops between borders:** a short parabolic jump to the next border instead of
+  reversing forever or disappearing.
+- **Viewport clamping everywhere:** it can no longer walk off the right edge.
+- **Vertical walking** down the sidebar side (occasionally, when clean).
+- **Nav-aware remeasure** via a `MutationObserver` on `<main>`.
+
 Still deferred (documented, not built): day/night tint, reacting to save events,
-chasing the cursor, live-position persistence across reloads.
+chasing the cursor, live-position persistence across reloads, walking full box
+perimeters (only tops + sidebar side today).
 
 ---
 
-## v1 known limitations (historical — several resolved in v2)
+## v1 known limitations (historical — most resolved in v2 / v3)
 
-> Item 5 (spritesheet frames) is **resolved in v2**; the companion now has real
-> multi-frame walk/idle/sleep/annoyed sprites and a click interaction. The
-> remaining points (top-edges-only pathing, no live-position persistence,
-> opt-in card edges, walking behind modals) still stand.
+> Item 5 (spritesheet frames) is **resolved in v2**. Items 1 and 3 are
+> **resolved in v3**: card / row / main edges are now auto-discovered and the
+> sprite also walks the sidebar's vertical side. The remaining points
+> (no live-position persistence, walking behind modals) still stand.
 
 
-1. Walkable edges in v1 are the **top bar + sidebar header** (always present)
-   plus any element tagged `data-companion-edge`; general card edges are opt-in
-   rather than auto-discovered, to keep measurement cheap and predictable.
+1. ~~Walkable edges are top bar + sidebar only + opt-in `data-companion-edge`~~
+   **Resolved in v3:** cards, action rows, and the main content box are
+   auto-discovered (`.card, .clickable-card, .action-row`), alongside explicit
+   `data-companion-edge` opt-ins.
 2. No live-position persistence across reloads.
-3. The sprite walks along **top edges** only (not down vertical edges / around
-   full box perimeters) in v1 — simplest pathing that still reads as "walking on
-   the UI".
+3. ~~The sprite walks top edges only (no vertical edges)~~ **Resolved in v3:** it
+   also walks the sidebar's vertical side and hops between borders. Full box
+   perimeters are still out of scope.
 4. When a large modal is open, the companion keeps walking on the background
-   chrome (behind the modal) rather than pausing; acceptable since it's occluded.
-5. Idle/wave behaviours are lightweight CSS/state only; no spritesheet frames.
+   chrome (behind the modal) rather than pausing; modal chrome itself is now
+   explicitly skipped (`[role="dialog"]`).
+5. ~~Idle/wave behaviours are CSS/state only; no spritesheet frames~~ **Resolved
+   in v2:** real multi-frame walk/idle/sleep/annoyed sprites.

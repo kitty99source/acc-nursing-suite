@@ -107,7 +107,7 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     question: 'I Accepted by mistake — how do I put it back in the Review Queue?',
     answer:
       'Right after Accept, use Undo on the green banner (about 45 seconds) when that toast is available. ' +
-      'Later, open the accepted email/document on the patient and choose “Undo this accept” if shown — that restores the queue item when it is still soft-deleted. ' +
+      'Later, open the accepted document on the patient claim and choose “Undo this accept” if shown — that restores the queue item when it is still soft-deleted. ' +
       'Outlook mail is never moved or reopened by undo.',
     tags: ['undo', 'accept', 'mistake', 'review'],
   },

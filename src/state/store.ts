@@ -283,6 +283,8 @@ interface StoreState {
        * so it stays traceable/filterable later.
        */
       autoAccept?: boolean;
+      /** When set, stamps the created document for patient-side Accept undo. */
+      stagingItemId?: string;
     },
   ) => Promise<LetterImportCommitResult>;
   commitParsedDecline: (
@@ -296,6 +298,8 @@ interface StoreState {
       declineReceivedDate?: string;
       patientId?: string;
       claimId?: string;
+      /** When set, stamps the created document for patient-side Accept undo. */
+      stagingItemId?: string;
     },
   ) => Promise<LetterImportCommitResult>;
   attachDocumentOnly: (
@@ -306,6 +310,7 @@ interface StoreState {
       kind?: ClaimDocument['kind'];
       /** Parsed letter type — maps to acc-approval-letter / acc-decline-letter. */
       letterKind?: 'approval' | 'decline';
+      stagingItemId?: string;
     },
   ) => Promise<LetterImportCommitResult>;
   reparseDocument: (documentId: string) => Promise<void>;
@@ -384,6 +389,8 @@ interface StoreState {
 
   /** Undo a Review Queue Accept: restore staging + remove accept-created artifacts. */
   undoHrqAccept: (input: HrqAcceptUndoInput) => Promise<HrqAcceptUndoResult>;
+  /** Undo Accept using metadata stamped on the claim document (patient-side). */
+  undoHrqAcceptFromDocument: (documentId: string) => Promise<HrqAcceptUndoResult>;
 
   // complex case CRUD
   addComplexCase: (c: Omit<ComplexCase, 'id'>) => string;
@@ -872,6 +879,14 @@ export const useStore = create<StoreState>((set, get) => ({
           mimeType: file.type || 'application/pdf',
           sizeBytes: file.size,
           notes: noteParts.length ? noteParts.join(' · ') : undefined,
+          ...(opts.stagingItemId
+            ? {
+                stagingItemId: opts.stagingItemId,
+                fromReviewAccept: true,
+                reviewAcceptCreatedPatient: createdPatient || undefined,
+                reviewAcceptCreatedClaim: createdClaim || undefined,
+              }
+            : {}),
         },
         file,
       );
@@ -1017,6 +1032,14 @@ export const useStore = create<StoreState>((set, get) => ({
             fileName: file instanceof File ? file.name : 'decline-letter.pdf',
             mimeType: file.type || 'application/pdf',
             sizeBytes: file.size,
+            ...(opts.stagingItemId
+              ? {
+                  stagingItemId: opts.stagingItemId,
+                  fromReviewAccept: true,
+                  reviewAcceptCreatedPatient: createdPatient || undefined,
+                  reviewAcceptCreatedClaim: createdClaim || undefined,
+                }
+              : {}),
           },
           file,
         );
@@ -1090,7 +1113,7 @@ export const useStore = create<StoreState>((set, get) => ({
       sniffDocumentKindFromFileName(file.name) ??
       'other';
 
-    await state.addDocument(
+    const docId = await state.addDocument(
       {
         claimId,
         kind: docKind,
@@ -1098,12 +1121,18 @@ export const useStore = create<StoreState>((set, get) => ({
         mimeType: file.type || 'application/pdf',
         sizeBytes: file.size,
         notes: docKind === 'other' ? 'Attached without parsing' : 'Attached from letter import',
+        ...(opts?.stagingItemId
+          ? {
+              stagingItemId: opts.stagingItemId,
+              fromReviewAccept: true,
+            }
+          : {}),
       },
       file,
     );
 
     pushImportHistory(get, { fileName: file.name, kind: 'document-only', patientId, claimId, sizeBytes: file.size });
-    return { patientId, claimId, kind: 'document-only' };
+    return { patientId, claimId, kind: 'document-only', documentId: docId };
   },
 
   reparseDocument: async (documentId) => {
@@ -1885,6 +1914,14 @@ export const useStore = create<StoreState>((set, get) => ({
       await get().removeDocument(input.documentId);
     }
     for (const approvalId of input.approvalIds ?? []) {
+      const linkedLines = get().data.serviceLines.filter((l) => l.approvalId === approvalId);
+      for (const line of linkedLines) {
+        if ((line.consultCount ?? 0) > 0 || (line.interruptions?.length ?? 0) > 0) {
+          get().updateServiceLine(line.id, { approvalId: undefined });
+        } else {
+          get().removeServiceLine(line.id);
+        }
+      }
       get().removeApproval(approvalId);
     }
     if (input.declineId) {
@@ -1933,6 +1970,33 @@ export const useStore = create<StoreState>((set, get) => ({
     );
 
     return { restoredStaging, removedPatient, removedClaim };
+  },
+
+  undoHrqAcceptFromDocument: async (documentId) => {
+    const doc = get().data.documents.find((d) => d.id === documentId);
+    if (!doc?.fromReviewAccept || !doc.stagingItemId) {
+      throw new Error(
+        'This document was not created by a Review Queue Accept, so it cannot be undone that way.',
+      );
+    }
+    const claim = get().data.claims.find((c) => c.id === doc.claimId);
+    if (!claim) {
+      throw new Error('Claim for this document is missing.');
+    }
+    const approvalIds = get()
+      .data.approvals.filter((a) => a.sourceDocumentId === documentId)
+      .map((a) => a.id);
+    const declineId = get().data.declines.find((d) => d.sourceDocumentId === documentId)?.id;
+    return get().undoHrqAccept({
+      stagingItemId: doc.stagingItemId,
+      patientId: claim.patientId,
+      claimId: doc.claimId,
+      createdPatient: doc.reviewAcceptCreatedPatient,
+      createdClaim: doc.reviewAcceptCreatedClaim,
+      documentId: doc.id,
+      approvalIds,
+      declineId,
+    });
   },
 
 }));

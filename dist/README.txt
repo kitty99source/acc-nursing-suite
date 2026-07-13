@@ -14,12 +14,27 @@ Logs are in %USERPROFILE%\ACC-Suite\logs - NOT in this dist folder.
 
 HOW TO OPEN THE SUITE
 
-  Start ACC Suite (recommended).cmd = START HERE. All-in-one: ACC Suite app +
+  Start ACC Suite (quiet).vbs = BEST FOR DAY-TO-DAY / DESKTOP SHORTCUT.
+                             Double-click (or pin a Desktop shortcut to this
+                             file). Truly quiet: NO visible PowerShell or cmd
+                             windows. Starts WFH Mode with -Quiet so the app
+                             server and Folder Watch run Hidden, opens the
+                             browser, and runs one Outlook sync. Prefer this
+                             for coworkers - pin the .vbs, not a .cmd.
+                             Closing the last app browser tab stops the hidden
+                             server + Folder Watch.
+
+  Start ACC Suite (quiet).cmd = hands off to the quiet .vbs (exits immediately).
+                             A brief cmd flash is possible; use the .vbs for
+                             zero flash.
+
+  Start ACC Suite (recommended).cmd = START HERE if you want to SEE sync
+                             progress in a console. All-in-one: ACC Suite app +
                              Folder Watch + Email Sync in one double-click. This
-                             is the normal way to open the suite - it also starts
-                             folder-watch and email-sync so ACC letters actually
-                             flow into the Review Queue. (Same behaviour as
-                             Start WFH Mode.cmd, just the recommended default.)
+                             is the normal visible way to open the suite so ACC
+                             letters flow into the Review Queue. (Same behaviour
+                             as Start WFH Mode.cmd.)
+
   Start ACC Suite.cmd        = MINIMAL FALLBACK: the app alone, no sync. Use only
                              when you do not want folder-watch/email-sync running.
 
@@ -41,3 +56,5 @@ Folder watch (optional)    = double-click Start Folder Watch.cmd on work laptop.
                              Drop PDF or Word letters in %USERPROFILE%\ACC-Inbox
                              Sidecars land in ACC-Inbox\.staging\ - import in Review Queue.
                              Dev Mac: npm run wfh:folder-watch (Node, for testing only).
+                             Quiet/recommended mode starts Folder Watch for you; closing
+                             the last app tab also stops it.

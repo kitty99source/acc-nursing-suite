@@ -48,6 +48,7 @@ export interface LetterCommitDeps {
       claimPatch?: Partial<Claim>;
       rows: ParsedServiceRow[];
       historicRows?: ParsedPackageRow[];
+      stagingItemId?: string;
     },
   ) => Promise<LetterImportCommitResult>;
   commitParsedDecline: (
@@ -61,6 +62,7 @@ export interface LetterCommitDeps {
       declineReceivedDate?: string;
       patientId?: string;
       claimId?: string;
+      stagingItemId?: string;
     },
   ) => Promise<LetterImportCommitResult>;
 }
@@ -146,6 +148,7 @@ export async function commitLetterForm(
   file: File,
   fields: LetterCommitFormFields,
   deps: LetterCommitDeps,
+  opts?: { stagingItemId?: string },
 ): Promise<LetterImportCommitResult> {
   if (!fields.patientName.trim()) {
     throw new Error('Patient name is required before accepting.');
@@ -173,6 +176,7 @@ export async function commitLetterForm(
       },
       rows,
       historicRows: parsed.packageRows,
+      stagingItemId: opts?.stagingItemId,
     });
   }
 
@@ -184,6 +188,7 @@ export async function commitLetterForm(
     declineReceivedDate: fields.letterDate || undefined,
     patientId: fields.selectedPatientId || undefined,
     claimId: fields.selectedClaimId || undefined,
+    stagingItemId: opts?.stagingItemId,
   });
 }
 

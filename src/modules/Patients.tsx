@@ -1239,6 +1239,8 @@ function ClaimDocuments({ claimId }: { claimId: string }) {
   const removeDocument = useStore((s) => s.removeDocument);
   const getDocumentBlob = useStore((s) => s.getDocumentBlob);
   const reparseDocument = useStore((s) => s.reparseDocument);
+  const undoHrqAcceptFromDocument = useStore((s) => s.undoHrqAcceptFromDocument);
+  const showTopBarFlash = useStore((s) => s.showTopBarFlash);
   const [confirm, confirmDialog] = useConfirm();
   const fileInput = useRef<HTMLInputElement>(null);
   const [kind, setKind] = useState<DocumentKind>('acc-approval-letter');
@@ -1292,6 +1294,41 @@ function ClaimDocuments({ claimId }: { claimId: string }) {
       confirmLabel: 'Delete',
     });
     if (ok) await removeDocument(doc.id);
+  }
+
+  async function undoAccept(doc: ClaimDocument) {
+    const ok = await confirm({
+      title: 'Undo this accept?',
+      message: (
+        <div className="space-y-2 text-sm">
+          <p>
+            Removes this document and any approvals/decline created from it, and puts the letter
+            back in the Review Queue when the soft-deleted staging row is still available.
+          </p>
+          <p>Outlook mail is never moved or reopened by undo.</p>
+        </div>
+      ),
+      confirmLabel: 'Undo accept',
+      destructive: true,
+    });
+    if (!ok) return;
+    setBusy(true);
+    try {
+      const undo = await undoHrqAcceptFromDocument(doc.id);
+      showTopBarFlash(
+        undo.restoredStaging
+          ? 'Accept undone — letter is back in the review queue.'
+          : 'Accept undone — created records removed (queue item was already gone).',
+      );
+    } catch (err) {
+      await confirm({
+        title: 'Undo failed',
+        message: String(err instanceof Error ? err.message : err),
+        confirmLabel: 'OK',
+      });
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -1365,6 +1402,7 @@ function ClaimDocuments({ claimId }: { claimId: string }) {
                   >
                     {DOCUMENT_KIND_LABELS[doc.kind]}
                   </Badge>
+                  {doc.fromReviewAccept && <Badge tone="accent">From Review Queue</Badge>}
                   <span className="text-sm truncate">{doc.fileName}</span>
                 </div>
                 <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
@@ -1372,6 +1410,17 @@ function ClaimDocuments({ claimId }: { claimId: string }) {
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0 flex-wrap">
+                {doc.fromReviewAccept && doc.stagingItemId && (
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    disabled={busy}
+                    onClick={() => void undoAccept(doc)}
+                    title="Undo this accept"
+                  >
+                    Undo this accept
+                  </button>
+                )}
                 {(doc.kind === 'acc-approval-letter' || doc.kind === 'acc-decline-letter') && (
                   <button className="btn btn-sm" onClick={() => void reparseDocument(doc.id)}>
                     Re-extract

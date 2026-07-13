@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Card, Field, DateInput, NumberInput, SectionTitle, Badge } from '../components/ui';
+import { HelperTip } from '../components/HelperTip';
 import { IconPlus, IconTrash } from '../components/icons';
 import {
   determinePackage,
@@ -327,10 +328,12 @@ function RateReference() {
 export function CalculatorModule() {
   return (
     <div>
-      <SectionTitle
-        title="Package Calculator"
-        subtitle="Determine the correct package of care from duration, consults and interruptions."
-      />
+      <HelperTip tipId="tip-calculator" style={{ display: 'block', width: '100%' }}>
+        <SectionTitle
+          title="Package Calculator"
+          subtitle="Determine the correct package of care from duration, consults and interruptions."
+        />
+      </HelperTip>
       <div className="space-y-4">
         <PackageCalculatorPanel />
         <div className="grid lg:grid-cols-2 gap-4">

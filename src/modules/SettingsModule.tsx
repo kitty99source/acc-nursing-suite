@@ -264,12 +264,28 @@ export function SettingsModule({ onOpenHelp }: { onOpenHelp?: () => void } = {})
           <h3 className="card-title mb-2">Help &amp; instructions</h3>
           <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>
             Open the in-app guide and FAQ (quiet launcher, tab-close shutdown, Accept undo, and more).
+            Also available from <strong>Help</strong> in the top bar. Turn on <strong>Helper Mode</strong> (?) for hover tips.
           </p>
           <button type="button" className="btn btn-primary" onClick={onOpenHelp}>
             Open instruction guide
           </button>
         </Card>
       )}
+
+      <Card className="mb-4">
+        <h3 className="card-title mb-2">Helper Mode</h3>
+        <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>
+          When on, hovering or focusing key controls shows a short explainer. Off by default. Same as the ? button in the top bar.
+        </p>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={settings.helperModeEnabled}
+            onChange={(e) => updateSettings({ helperModeEnabled: e.target.checked })}
+          />
+          Enable Helper Mode
+        </label>
+      </Card>
 
       <Card className="mb-4">
         <h3 className="card-title mb-2">How saving works</h3>

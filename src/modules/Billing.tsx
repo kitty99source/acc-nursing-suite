@@ -3,6 +3,7 @@ import { useStore } from '../state/store';
 import { DataTable, customColumns, type Column } from '../components/DataTable';
 import { Modal } from '../components/Modal';
 import { useConfirm } from '../components/useConfirm';
+import { HelperTip } from '../components/HelperTip';
 import {
   SectionTitle,
   Badge,
@@ -407,20 +408,22 @@ export function Billing() {
         >
           Invoice lines ({data.invoiceLines.length})
         </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'review'}
-          className="subview-tab"
-          onClick={() => setTab('review')}
-        >
-          Needs review ({needsReviewCount})
-          {needsReviewCount > 0 && (
-            <span className="subview-tab-count" data-tone="danger">
-              {needsReviewCount}
-            </span>
-          )}
-        </button>
+        <HelperTip tipId="tip-needs-review">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'review'}
+            className="subview-tab"
+            onClick={() => setTab('review')}
+          >
+            Needs review ({needsReviewCount})
+            {needsReviewCount > 0 && (
+              <span className="subview-tab-count" data-tone="danger">
+                {needsReviewCount}
+              </span>
+            )}
+          </button>
+        </HelperTip>
         <button
           type="button"
           role="tab"
@@ -483,13 +486,15 @@ export function Billing() {
                       : ''}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-sm-danger shrink-0"
-                  onClick={() => void handleRemoveRemittanceBatch(batch.id, batch.sourceFileName)}
-                >
-                  Remove import
-                </button>
+                <HelperTip tipId="tip-remove-remittance">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-sm-danger shrink-0"
+                    onClick={() => void handleRemoveRemittanceBatch(batch.id, batch.sourceFileName)}
+                  >
+                    Remove import
+                  </button>
+                </HelperTip>
               </li>
             ))}
           </ul>

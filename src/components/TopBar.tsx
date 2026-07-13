@@ -57,6 +57,8 @@ export function TopBar({
   const lock = useStore((s) => s.lock);
   const topBarFlash = useStore((s) => s.topBarFlash);
   const clearTopBarFlash = useStore((s) => s.clearTopBarFlash);
+  const helperModeEnabled = useStore((s) => s.data.settings.helperModeEnabled);
+  const updateSettings = useStore((s) => s.updateSettings);
 
   const fileInput = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -352,14 +354,33 @@ export function TopBar({
         {onOpenHelp && (
           <button
             type="button"
-            className="btn btn-icon shrink-0"
+            className="btn btn-sm shrink-0"
             onClick={onOpenHelp}
-            title="Help Center"
+            title="Open instruction guide & FAQ"
             aria-label="Open Help Center"
           >
-            <IconHelp />
+            Help
           </button>
         )}
+        <button
+          type="button"
+          className="btn btn-icon shrink-0"
+          onClick={() => updateSettings({ helperModeEnabled: !helperModeEnabled })}
+          title={
+            helperModeEnabled
+              ? 'Helper Mode on — hover key controls for tips. Click to turn off.'
+              : 'Helper Mode off — click to show short tips when you hover key controls.'
+          }
+          aria-label={helperModeEnabled ? 'Turn off Helper Mode' : 'Turn on Helper Mode'}
+          aria-pressed={helperModeEnabled}
+          style={
+            helperModeEnabled
+              ? { background: 'var(--accent)', color: 'var(--accent-fg)', borderColor: 'var(--accent)' }
+              : undefined
+          }
+        >
+          <IconHelp />
+        </button>
         <button className="btn btn-icon shrink-0" onClick={lock} title="Lock the app">
           <IconLock />
         </button>

@@ -3,6 +3,7 @@ import { useStore } from '../state/store';
 import { SectionTitle, Card } from '../components/ui';
 import { Modal } from '../components/Modal';
 import { IconExport, IconBilling, IconFolder } from '../components/icons';
+import { HelperTip } from '../components/HelperTip';
 import { buildWorkbookBlob } from '../lib/excel';
 import { appendAudit } from '../lib/auditLog';
 import { logInfo } from '../lib/logger';
@@ -196,9 +197,11 @@ export function ExportCenter() {
             </div>
           )}
           <div className="mt-auto">
-            <button className="btn btn-primary" onClick={() => void exportExcel()} disabled={busy}>
-              <IconExport /> Export Excel workbook
-            </button>
+            <HelperTip tipId="tip-export-excel">
+              <button className="btn btn-primary" onClick={() => void exportExcel()} disabled={busy}>
+                <IconExport /> Export Excel workbook
+              </button>
+            </HelperTip>
           </div>
         </Card>
 

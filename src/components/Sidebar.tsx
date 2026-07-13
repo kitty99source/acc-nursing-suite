@@ -16,6 +16,7 @@ import {
   IconInbox,
   IconMail,
 } from './icons';
+import { HelperTip } from './HelperTip';
 import { useStore } from '../state/store';
 
 export type ModuleId =
@@ -167,14 +168,16 @@ export function Sidebar({
                   <span className="shrink-0">{e.icon}</span>
                   <span className="flex-1">{e.label}</span>
                   {badgeLabel ? (
-                    <span
-                      className="badge"
-                      style={{ background: 'var(--salmon)', color: 'var(--salmon-fg)' }}
-                      title={badgeTitle}
-                      aria-label={badgeAria}
-                    >
-                      {badgeLabel}
-                    </span>
+                    <HelperTip tipId="tip-sidebar-badges">
+                      <span
+                        className="badge"
+                        style={{ background: 'var(--salmon)', color: 'var(--salmon-fg)' }}
+                        title={badgeTitle}
+                        aria-label={badgeAria}
+                      >
+                        {badgeLabel}
+                      </span>
+                    </HelperTip>
                   ) : null}
                 </button>
                 );

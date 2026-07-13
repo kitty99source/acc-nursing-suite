@@ -1,13 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Modal } from './Modal';
 import { FAQ_ENTRIES, GUIDE_SECTIONS, filterFaq, type FaqEntry } from '../lib/helpContent';
 
 export type HelpTab = 'guide' | 'faq';
 
-function FaqItem({ entry }: { entry: FaqEntry }) {
-  const [open, setOpen] = useState(false);
+function FaqItem({ entry, forceOpen }: { entry: FaqEntry; forceOpen?: boolean }) {
+  const [open, setOpen] = useState(!!forceOpen);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (forceOpen) {
+      setOpen(true);
+      ref.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [forceOpen]);
+
   return (
     <div
+      ref={ref}
+      id={`help-faq-${entry.id}`}
       className="rounded-card border overflow-hidden"
       style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
     >
@@ -34,21 +45,26 @@ function FaqItem({ entry }: { entry: FaqEntry }) {
 export function HelpCenterModal({
   open,
   initialTab = 'guide',
+  initialFaqId,
   onClose,
 }: {
   open: boolean;
   initialTab?: HelpTab;
+  /** When set with FAQ tab, expands and scrolls to this entry. */
+  initialFaqId?: string;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<HelpTab>(initialTab);
   const [faqQuery, setFaqQuery] = useState('');
+  const [focusFaqId, setFocusFaqId] = useState<string | undefined>(initialFaqId);
 
   useEffect(() => {
     if (open) {
-      setTab(initialTab);
+      setTab(initialFaqId ? 'faq' : initialTab);
       setFaqQuery('');
+      setFocusFaqId(initialFaqId);
     }
-  }, [open, initialTab]);
+  }, [open, initialTab, initialFaqId]);
 
   if (!open) return null;
 
@@ -69,7 +85,8 @@ export function HelpCenterModal({
       <div className="space-y-4">
         <p className="text-sm" style={{ color: 'var(--muted)' }}>
           A short walkthrough of each area of the suite, plus answers to common questions. You can reopen this
-          any time from the Help button in the top bar or from Settings.
+          any time from Help in the top bar or from Settings. Turn on Helper Mode (?) for hover tips on key
+          controls.
         </p>
 
         <div
@@ -132,7 +149,7 @@ export function HelpCenterModal({
               <input
                 type="search"
                 className="input w-full"
-                placeholder="Search FAQ (e.g. quiet, undo, backup)…"
+                placeholder="Search FAQ (e.g. staging, quiet, helper, backup)…"
                 value={faqQuery}
                 onChange={(e) => setFaqQuery(e.target.value)}
               />
@@ -144,7 +161,7 @@ export function HelpCenterModal({
             ) : (
               <div className="space-y-2">
                 {faqVisible.map((entry) => (
-                  <FaqItem key={entry.id} entry={entry} />
+                  <FaqItem key={entry.id} entry={entry} forceOpen={entry.id === focusFaqId} />
                 ))}
               </div>
             )}

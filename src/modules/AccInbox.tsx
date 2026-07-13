@@ -119,8 +119,8 @@ export function AccInbox() {
       if (result.phase === 'stopped') {
         setMessage(
           result.status?.errors?.[0]
-            ? `Sync stopped — ${result.status.errors[0]}. Press Refresh to try again. Outlook must be open and signed in.`
-            : 'Sync stopped — press Refresh to try again. Outlook must be open and signed in.',
+            ? `Sync stopped — ${result.status.errors[0]}. Press Refresh to try again. Keep Outlook open (not as Administrator), then use the quiet starter.`
+            : 'Mail check did not finish — press Refresh to try again. Outlook must be open and signed in; start the suite with the quiet desktop shortcut (not as Administrator).',
         );
         if (result.status) setSyncStatus(result.status);
         return;

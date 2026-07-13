@@ -20,6 +20,12 @@ export type SyncRefreshPhase =
   | 'stopped';
 
 export const SYNC_REFRESH_POLL_MS = 2_000;
+/** After POST, how long to wait for a new lastRunAt (sync actually started). */
+export const SYNC_REFRESH_START_TIMEOUT_MS = 45_000;
+/** Once a run is underway, max wait for outcome to leave "running". */
+export const SYNC_REFRESH_RUNNING_TIMEOUT_MS = 8 * 60_000;
+/** On load (no trigger), do not hang forever on a stale outcome=running report. */
+export const SYNC_REFRESH_STALE_RUNNING_MS = 90_000;
 export const LOCAL_EMAIL_SYNC_TRIGGER_URL = '/_acc/email-sync';
 
 export function formatElapsedMs(ms: number): string {
@@ -104,20 +110,41 @@ export interface RefreshEmailSyncResult {
   triggered: boolean;
 }
 
+function isTerminalOutcome(outcome: EmailSyncStatus['outcome'] | undefined): boolean {
+  return (
+    outcome === 'ok' ||
+    outcome === 'fail' ||
+    outcome === 'paused' ||
+    outcome === 'connection-lost'
+  );
+}
+
+function isNewRun(status: EmailSyncStatus | null, baselineRunAt: string | null): boolean {
+  if (!status?.lastRunAt) return false;
+  if (!baselineRunAt) return true;
+  return status.lastRunAt !== baselineRunAt;
+}
+
 /**
  * Trigger Outlook sync (when the helper is up), then poll email-sync-status
  * until it leaves "running". Soft-cancel via `signal` stops waiting in the UI.
- * If sync dies mid-refresh, auto-retries the trigger once.
+ * Always ends: success, fail/stopped, cancel, helper-down error, or timeout.
  */
 export async function refreshEmailSyncStatus(opts?: {
   signal?: AbortSignal;
   pollIntervalMs?: number;
+  startTimeoutMs?: number;
+  runningTimeoutMs?: number;
+  staleRunningMs?: number;
   /** When false, only re-read the last report (no new Outlook sync). Default true. */
   triggerSync?: boolean;
   onPhase?: (phase: SyncRefreshPhase, status: EmailSyncStatus | null) => void;
 }): Promise<RefreshEmailSyncResult> {
   const signal = opts?.signal;
   const pollMs = opts?.pollIntervalMs ?? SYNC_REFRESH_POLL_MS;
+  const startTimeoutMs = opts?.startTimeoutMs ?? SYNC_REFRESH_START_TIMEOUT_MS;
+  const runningTimeoutMs = opts?.runningTimeoutMs ?? SYNC_REFRESH_RUNNING_TIMEOUT_MS;
+  const staleRunningMs = opts?.staleRunningMs ?? SYNC_REFRESH_STALE_RUNNING_MS;
   const shouldTrigger = opts?.triggerSync !== false;
   const onPhase = opts?.onPhase;
 
@@ -143,7 +170,21 @@ export async function refreshEmailSyncStatus(opts?: {
     return triggerEmailSync({ signal });
   };
 
+  const finishStopped = (status: EmailSyncStatus | null): RefreshEmailSyncResult => {
+    emit('stopped', status);
+    return { status, phase: 'stopped', cancelled: false, triggered };
+  };
+
+  const finishDone = (status: EmailSyncStatus | null): RefreshEmailSyncResult => {
+    emit('done', status);
+    return { status, phase: 'done', cancelled: false, triggered };
+  };
+
   try {
+    // Snapshot before trigger so we can tell a NEW run from a stale "running" file.
+    let baseline = await fetchOnce();
+    const baselineRunAt = baseline?.lastRunAt ?? null;
+
     if (shouldTrigger) {
       const trig = await requestSync();
       if (signal?.aborted) {
@@ -151,17 +192,18 @@ export async function refreshEmailSyncStatus(opts?: {
         return { status: null, phase: 'cancelled', cancelled: true, triggered: false };
       }
       if (trig.unavailable) {
-        // Helper down — still try to read any leftover report for the UI.
         emit('checking', null);
         const leftover = await fetchOnce().catch(() => null);
-        if (leftover) {
-          emit('done', leftover);
-          return { status: leftover, phase: 'done', cancelled: false, triggered: false };
-        }
+        if (leftover) return finishDone(leftover);
         emit('error', null);
         return { status: null, phase: 'error', cancelled: false, triggered: false };
       }
-      triggered = trig.ok;
+      if (!trig.ok) {
+        // Helper answered but could not queue — coworker-safe stop, not an infinite spinner.
+        const leftover = await fetchOnce().catch(() => null);
+        return finishStopped(leftover);
+      }
+      triggered = true;
     }
 
     emit('checking', null);
@@ -171,80 +213,94 @@ export async function refreshEmailSyncStatus(opts?: {
       return { status, phase: 'cancelled', cancelled: true, triggered };
     }
 
-    // After a trigger, wait briefly for outcome=running to appear.
-    if (triggered && status?.outcome !== 'running') {
-      for (let i = 0; i < 5; i++) {
+    if (triggered) {
+      // Wait until lastRunAt advances (new sync wrote status) or we time out.
+      const startDeadline = Date.now() + startTimeoutMs;
+      while (!isNewRun(status, baselineRunAt) && Date.now() < startDeadline) {
+        if (status && isTerminalOutcome(status.outcome) && status.lastRunAt !== baselineRunAt) {
+          break;
+        }
         await sleep(pollMs, signal);
         if (signal?.aborted) {
           emit('cancelled', status);
           return { status, phase: 'cancelled', cancelled: true, triggered };
         }
         status = await fetchOnce();
-        if (status?.outcome === 'running') break;
-      }
-    }
-
-    let retried = false;
-    while (status?.outcome === 'running') {
-      emit('running', status);
-      await sleep(pollMs, signal);
-      if (signal?.aborted) {
-        emit('cancelled', status);
-        return { status, phase: 'cancelled', cancelled: true, triggered };
-      }
-      const prevSaved = status.savedCount;
-      const prevRunAt = status.lastRunAt;
-      status = await fetchOnce();
-      if (signal?.aborted) {
-        emit('cancelled', status);
-        return { status, phase: 'cancelled', cancelled: true, triggered };
       }
 
-      // Sync process died: status stuck on running but PID gone / report stale,
-      // or flipped to fail — auto-retry trigger once.
-      if (
-        shouldTrigger &&
-        !retried &&
-        status &&
-        (status.outcome === 'fail' || status.outcome === 'connection-lost')
-      ) {
-        retried = true;
-        emit('starting', status);
-        await requestSync();
-        status = await fetchOnce();
-        continue;
+      if (!isNewRun(status, baselineRunAt)) {
+        // Sync never started (supervisor stuck, Outlook missing, elevation, etc.).
+        return finishStopped(status);
       }
-
-      // If the report vanished mid-run, retry once then surface "Sync stopped".
-      if (triggered && !status && !retried) {
-        retried = true;
-        emit('starting', null);
-        await requestSync();
-        status = await fetchOnce();
-        if (!status) {
-          emit('stopped', null);
-          return { status: null, phase: 'stopped', cancelled: false, triggered };
+    } else if (status?.outcome === 'running') {
+      // Mount / re-read only: do not hang forever on a stale running report.
+      const staleDeadline = Date.now() + staleRunningMs;
+      while (status?.outcome === 'running' && Date.now() < staleDeadline) {
+        emit('running', status);
+        await sleep(pollMs, signal);
+        if (signal?.aborted) {
+          emit('cancelled', status);
+          return { status, phase: 'cancelled', cancelled: true, triggered };
         }
-        continue;
+        status = await fetchOnce();
       }
-
-      // Guard unused vars for lint clarity if lastRunAt unused — keep for future.
-      void prevSaved;
-      void prevRunAt;
+      if (status?.outcome === 'running') {
+        return finishDone(status);
+      }
     }
 
-    if (!status && triggered) {
-      emit('stopped', null);
-      return { status: null, phase: 'stopped', cancelled: false, triggered };
+    // Active run: wait until outcome leaves running, with a hard timeout.
+    if (status?.outcome === 'running') {
+      const runDeadline = Date.now() + runningTimeoutMs;
+      let retried = false;
+      while (status?.outcome === 'running') {
+        emit('running', status);
+        if (Date.now() >= runDeadline) {
+          return finishStopped(status);
+        }
+        await sleep(pollMs, signal);
+        if (signal?.aborted) {
+          emit('cancelled', status);
+          return { status, phase: 'cancelled', cancelled: true, triggered };
+        }
+        status = await fetchOnce();
+        if (signal?.aborted) {
+          emit('cancelled', status);
+          return { status, phase: 'cancelled', cancelled: true, triggered };
+        }
+
+        if (
+          shouldTrigger &&
+          !retried &&
+          status &&
+          (status.outcome === 'fail' || status.outcome === 'connection-lost')
+        ) {
+          retried = true;
+          baseline = status;
+          emit('starting', status);
+          await requestSync();
+          status = await fetchOnce();
+          continue;
+        }
+
+        if (triggered && !status && !retried) {
+          retried = true;
+          emit('starting', null);
+          await requestSync();
+          status = await fetchOnce();
+          if (!status) return finishStopped(null);
+          continue;
+        }
+      }
     }
+
+    if (!status && triggered) return finishStopped(null);
 
     if (status?.outcome === 'fail' || status?.outcome === 'connection-lost') {
-      emit('stopped', status);
-      return { status, phase: 'stopped', cancelled: false, triggered };
+      return finishStopped(status);
     }
 
-    emit('done', status);
-    return { status, phase: 'done', cancelled: false, triggered };
+    return finishDone(status);
   } catch (err) {
     if (signal?.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
       emit('cancelled', null);

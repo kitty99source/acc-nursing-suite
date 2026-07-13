@@ -410,6 +410,7 @@ interface StoreState {
 
   // document attachments (metadata in `data.documents`, bytes in IndexedDB)
   addDocument: (meta: Omit<ClaimDocument, 'id' | 'addedDate'>, blob: Blob) => Promise<string>;
+  updateDocument: (id: string, patch: Partial<ClaimDocument>) => void;
   removeDocument: (id: string) => Promise<void>;
   getDocumentBlob: (id: string) => Promise<Blob | undefined>;
 
@@ -1869,6 +1870,11 @@ export const useStore = create<StoreState>((set, get) => ({
     mutate(get, (data) => ({ ...data, documents: [...data.documents, doc] }));
     return id;
   },
+  updateDocument: (id, patch) =>
+    mutate(get, (data) => ({
+      ...data,
+      documents: data.documents.map((d) => (d.id === id ? { ...d, ...patch } : d)),
+    })),
   removeDocument: async (id) => {
     const doc = get().data.documents.find((d) => d.id === id);
     try {

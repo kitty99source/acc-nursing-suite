@@ -3,6 +3,7 @@ import {
   BRIDGE_POLL_HEALTHY_MS,
   BRIDGE_POLL_RECONNECT_MS,
   bridgeEmptyQueueMessage,
+  bridgeIDriveWriteFailedMessage,
   bridgeMissingFileMessage,
   bridgeUnavailableBannerCopy,
   nextBridgePollIntervalMs,
@@ -40,5 +41,14 @@ describe('empty / missing-file copy', () => {
     expect(empty).toMatch(/ACC-LoanEq-Inbox/);
     expect(empty).not.toMatch(/Start WFH/i);
     expect(bridgeMissingFileMessage({ isDev: false })).not.toMatch(/Start WFH/i);
+  });
+});
+
+describe('bridgeIDriveWriteFailedMessage', () => {
+  it('suggests soft reconnect / retry in production', () => {
+    const msg = bridgeIDriveWriteFailedMessage({ isDev: false, error: 'Failed to fetch' });
+    expect(msg).toMatch(/Failed to fetch/);
+    expect(msg).toMatch(/reconnect/i);
+    expect(msg).not.toMatch(/Start WFH/i);
   });
 });

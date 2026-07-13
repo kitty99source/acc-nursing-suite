@@ -121,3 +121,11 @@ export function joinIDriveDisplayPath(root: string, relativePath: string): strin
   const rel = relativePath.replace(/^[\\/]+/, '');
   return `${r}\\${rel}`;
 }
+
+/** True when a Review-accept document was never staged (checkbox off or failed write). */
+export function needsInitialAdminIDriveStaging(doc: {
+  fromReviewAccept?: boolean;
+  lastIDriveFiling?: { relativePath: string; filedAt: string };
+}): boolean {
+  return !!doc.fromReviewAccept && !doc.lastIDriveFiling;
+}

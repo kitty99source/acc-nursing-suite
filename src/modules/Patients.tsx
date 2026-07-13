@@ -27,6 +27,13 @@ import { formatDate, todayISO } from '../lib/format';
 import { validateNhi } from '../lib/validation';
 import { downloadBlob } from '../lib/storage';
 import {
+  buildAdminIDriveRelativePath,
+  buildStagingRelativePath,
+  needsInitialAdminIDriveStaging,
+} from '../lib/idriveFiling';
+import { postFileToIDrive } from '../lib/localAccBridge';
+import { bridgeIDriveWriteFailedMessage } from '../lib/bridgeReconnect';
+import {
   LetterImportButton,
   LETTER_IMPORT_FULL_TOOLTIP,
   PREFILL_FROM_LETTER_LABEL,
@@ -1236,18 +1243,25 @@ function formatBytes(n: number): string {
 function ClaimDocuments({ claimId }: { claimId: string }) {
   const data = useStore((s) => s.data);
   const addDocument = useStore((s) => s.addDocument);
+  const updateDocument = useStore((s) => s.updateDocument);
   const removeDocument = useStore((s) => s.removeDocument);
   const getDocumentBlob = useStore((s) => s.getDocumentBlob);
   const reparseDocument = useStore((s) => s.reparseDocument);
   const undoHrqAcceptFromDocument = useStore((s) => s.undoHrqAcceptFromDocument);
   const showTopBarFlash = useStore((s) => s.showTopBarFlash);
+  const iDriveRootPath = useStore((s) => s.data.settings.iDriveRootPath);
+  const iDriveStagingSubfolder = useStore((s) => s.data.settings.iDriveStagingSubfolder);
   const [confirm, confirmDialog] = useConfirm();
   const fileInput = useRef<HTMLInputElement>(null);
   const [kind, setKind] = useState<DocumentKind>('acc-approval-letter');
   const [busy, setBusy] = useState(false);
+  const [stageBusyId, setStageBusyId] = useState<string | null>(null);
+  const [stageError, setStageError] = useState<string | null>(null);
 
   const docs = data.documents.filter((d) => d.claimId === claimId);
   const claim = data.claims.find((c) => c.id === claimId);
+  const patientName =
+    data.patients.find((p) => p.id === claim?.patientId)?.name?.trim() || 'Unknown';
 
   async function handleFiles(files: FileList) {
     setBusy(true);
@@ -1296,6 +1310,57 @@ function ClaimDocuments({ claimId }: { claimId: string }) {
     if (ok) await removeDocument(doc.id);
   }
 
+  async function stageToIDrive(doc: ClaimDocument) {
+    setStageError(null);
+    setStageBusyId(doc.id);
+    try {
+      const blob = await getDocumentBlob(doc.id);
+      if (!blob) {
+        setStageError('The original file is missing from local storage — cannot stage to I-drive.');
+        return;
+      }
+      const live = buildAdminIDriveRelativePath({
+        patientName,
+        claimNumber: claim?.claimNumber || undefined,
+        letterDate: doc.addedDate?.slice(0, 10),
+        sourceFileName: doc.fileName,
+      });
+      const stagingRel = buildStagingRelativePath(
+        live.relativePath,
+        iDriveStagingSubfolder || '_Staging',
+      );
+      const buf = await blob.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!);
+      const filed = await postFileToIDrive({
+        relativePath: stagingRel,
+        fileBase64: btoa(binary),
+        rootPath: iDriveRootPath,
+      });
+      if (!filed.ok) {
+        setStageError(
+          bridgeIDriveWriteFailedMessage({
+            isDev: import.meta.env.DEV,
+            error: filed.error,
+          }),
+        );
+        return;
+      }
+      updateDocument(doc.id, {
+        lastIDriveFiling: {
+          relativePath: stagingRel,
+          filedAt: todayISO(),
+        },
+      });
+      showTopBarFlash(`Staged to I-drive: ${stagingRel}`);
+    } catch (err) {
+      setStageError((err as Error).message || 'Stage to I-drive failed');
+    } finally {
+      setStageBusyId(null);
+    }
+  }
+
   async function undoAccept(doc: ClaimDocument) {
     const ok = await confirm({
       title: 'Undo this accept?',
@@ -1305,6 +1370,13 @@ function ClaimDocuments({ claimId }: { claimId: string }) {
             Removes this document and any approvals/decline created from it, and puts the letter
             back in the Review Queue when the soft-deleted staging row is still available.
           </p>
+          {doc.lastIDriveFiling ? (
+            <p>
+              This document was also staged on I-drive under{' '}
+              <span className="font-mono text-xs">{doc.lastIDriveFiling.relativePath}</span>. The suite
+              cannot delete that file — remove it in Explorer if you no longer need it.
+            </p>
+          ) : null}
           <p>Outlook mail is never moved or reopened by undo.</p>
         </div>
       ),
@@ -1375,6 +1447,11 @@ function ClaimDocuments({ claimId }: { claimId: string }) {
       <p className="text-xs mb-2" style={{ color: 'var(--muted)' }}>
         Approval or decline letter — parser auto-detects type, files records, and keeps the PDF on this claim.
       </p>
+      {stageError && (
+        <p className="text-xs mb-2" style={{ color: 'var(--danger-fg)' }}>
+          {stageError}
+        </p>
+      )}
       {docs.length === 0 ? (
         <p className="text-sm" style={{ color: 'var(--muted)' }}>
           No documents. Attach the ACC approval letter or the approval request you sent.
@@ -1407,9 +1484,26 @@ function ClaimDocuments({ claimId }: { claimId: string }) {
                 </div>
                 <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
                   {formatBytes(doc.sizeBytes)} · added {formatDate(doc.addedDate.slice(0, 10))}
+                  {doc.lastIDriveFiling ? (
+                    <>
+                      {' · '}
+                      I-drive: <span className="font-mono">{doc.lastIDriveFiling.relativePath}</span>
+                    </>
+                  ) : null}
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0 flex-wrap">
+                {needsInitialAdminIDriveStaging(doc) && (
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    disabled={busy || stageBusyId === doc.id}
+                    title="Writes under _Staging only; does not overwrite live I-drive folders"
+                    onClick={() => void stageToIDrive(doc)}
+                  >
+                    {stageBusyId === doc.id ? 'Staging…' : 'Stage to I-drive'}
+                  </button>
+                )}
                 {doc.fromReviewAccept && doc.stagingItemId && (
                   <button
                     type="button"

@@ -213,6 +213,16 @@ export interface ClaimDocument {
   reviewAcceptCreatedPatient?: boolean;
   /** Accept created the claim — safe to remove on undo if empty afterward. */
   reviewAcceptCreatedClaim?: boolean;
+  /**
+   * Last successful I-drive staging write for this document (Accept checkbox or
+   * later "Stage to I-drive"). Undefined when never staged / failed write.
+   */
+  lastIDriveFiling?: {
+    /** Staging-prefixed relative path under Settings.iDriveRootPath. */
+    relativePath: string;
+    /** ISO date the file was staged. */
+    filedAt: string;
+  };
 }
 
 export type ThemeName = 'clinical-light' | 'warm-light' | 'dark' | 'high-contrast';

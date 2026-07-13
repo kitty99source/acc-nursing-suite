@@ -4,6 +4,7 @@ import {
   buildStagingRelativePath,
   formatNameLastFirst,
   joinIDriveDisplayPath,
+  needsInitialAdminIDriveStaging,
 } from './idriveFiling';
 
 describe('idriveFiling (Admin District Nursing)', () => {
@@ -33,5 +34,17 @@ describe('idriveFiling (Admin District Nursing)', () => {
     expect(joinIDriveDisplayPath('I:\\ACC\\District Nursing', '_Staging\\Letters\\a.pdf')).toBe(
       'I:\\ACC\\District Nursing\\_Staging\\Letters\\a.pdf',
     );
+  });
+
+  it('needsInitialAdminIDriveStaging only for Accepts without filing metadata', () => {
+    expect(needsInitialAdminIDriveStaging({ fromReviewAccept: true })).toBe(true);
+    expect(
+      needsInitialAdminIDriveStaging({
+        fromReviewAccept: true,
+        lastIDriveFiling: { relativePath: '_Staging\\Letters\\x.pdf', filedAt: '2026-07-01' },
+      }),
+    ).toBe(false);
+    expect(needsInitialAdminIDriveStaging({ fromReviewAccept: false })).toBe(false);
+    expect(needsInitialAdminIDriveStaging({})).toBe(false);
   });
 });

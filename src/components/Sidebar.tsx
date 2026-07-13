@@ -14,6 +14,7 @@ import {
   IconShield,
   IconReview,
   IconInbox,
+  IconMail,
 } from './icons';
 import { useStore } from '../state/store';
 
@@ -31,6 +32,7 @@ export type ModuleId =
   | 'accinbox'
   | 'export'
   | 'imported'
+  | 'mail-reference'
   | 'settings';
 
 interface NavEntry {
@@ -90,6 +92,7 @@ export function Sidebar({
         ...(quickPasteEnabled ? [{ id: 'quickpaste' as ModuleId, label: 'Quick Paste-In', icon: <IconPaste /> }] : []),
         ...(hasImportedTables ? [{ id: 'imported' as ModuleId, label: 'Imported Tables', icon: <IconFolder /> }] : []),
         { id: 'export', label: 'Export Center', icon: <IconExport /> },
+        { id: 'mail-reference', label: 'Mail Reference', icon: <IconMail /> },
         { id: 'settings', label: 'Settings', icon: <IconSettings /> },
       ],
     },

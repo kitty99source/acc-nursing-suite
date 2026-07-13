@@ -29,6 +29,7 @@ import { parseRemittanceCsv, parseRemittanceXlsx, type ParsedRemittanceSheet } f
 import { lookupReasonCode } from '../lib/reasonCodes';
 import type { RemittanceImportSummary } from '../lib/billingReconcile';
 import { invoiceNeedsBillingAttention, pinAttentionFirst } from '../lib/sidebarBadges';
+import { PAGE_SIZE_OPTIONS, paginate, type PageSize } from '../lib/listPagination';
 
 const STATUSES: InvoiceStatus[] = ['Awaiting Billing', 'Billed', 'Remittance'];
 
@@ -95,6 +96,9 @@ export function Billing() {
   const [remittanceError, setRemittanceError] = useState<string | null>(null);
   const [remittanceResult, setRemittanceResult] = useState<RemittanceImportSummary | null>(null);
   const [removeFlash, setRemoveFlash] = useState<string | null>(null);
+  const [tab, setTab] = useState<'invoices' | 'review' | 'imports'>('invoices');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<PageSize>(25);
 
   const focus = useStore((s) => s.focus);
   const clearFocus = useStore((s) => s.clearFocus);
@@ -144,6 +148,18 @@ export function Billing() {
   }, [data.invoiceLines, search, statusFilter, codeFilter, sheetFilter, reviewOnly]);
 
   const remittanceImports = data.remittanceImports ?? [];
+  const needsReviewCount = useMemo(
+    () => data.invoiceLines.filter((i) => i.needsReview).length,
+    [data.invoiceLines],
+  );
+  const displayRows = useMemo(() => {
+    if (tab === 'review') return rows.filter((r) => Boolean(r.needsReview));
+    return rows;
+  }, [rows, tab]);
+  const pageSlice = useMemo(() => paginate(displayRows, page, pageSize), [displayRows, page, pageSize]);
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, codeFilter, sheetFilter, reviewOnly, tab, pageSize]);
 
   const totals = useMemo(() => {
     let invoiced = 0;
@@ -380,6 +396,42 @@ export function Billing() {
           </div>
         }
       />
+
+      <div className="subview-tabs mb-4" role="tablist" aria-label="Billing views">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'invoices'}
+          className="subview-tab"
+          onClick={() => setTab('invoices')}
+        >
+          Invoice lines ({data.invoiceLines.length})
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'review'}
+          className="subview-tab"
+          onClick={() => setTab('review')}
+        >
+          Needs review ({needsReviewCount})
+          {needsReviewCount > 0 && (
+            <span className="subview-tab-count" data-tone="danger">
+              {needsReviewCount}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'imports'}
+          className="subview-tab"
+          onClick={() => setTab('imports')}
+        >
+          Import tools &amp; history
+        </button>
+      </div>
+
       <input
         ref={scheduleInput}
         type="file"
@@ -407,7 +459,7 @@ export function Billing() {
         </p>
       )}
 
-      {remittanceImports.length > 0 && (
+      {tab === 'imports' && remittanceImports.length > 0 && (
         <div className="card p-4 mb-4">
           <h3 className="card-title mb-1">Remittance imports history</h3>
           <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>
@@ -592,9 +644,11 @@ export function Billing() {
         </label>
       </div>
 
+      {(tab === 'invoices' || tab === 'review') && (
+      <>
       <DataTable
         columns={columns}
-        rows={rows}
+        rows={pageSlice.pageItems}
         rowKey={(r) => r.id}
         rowClassName={(r) => rowClass(r)}
         initialSort={{ key: 'invDate', dir: 'desc' }}
@@ -611,6 +665,48 @@ export function Billing() {
           />
         }
       />
+
+      <div className="flex flex-wrap items-center justify-between gap-2 mt-3 text-sm" style={{ color: 'var(--muted)' }}>
+        <span>
+          Showing {pageSlice.from}–{pageSlice.to} of {pageSlice.total}
+        </span>
+        <div className="flex items-center gap-2">
+          <Select
+            value={String(pageSize)}
+            className="w-auto"
+            onChange={(e) => setPageSize(Number(e.target.value) as PageSize)}
+          >
+            {PAGE_SIZE_OPTIONS.map((n) => (
+              <option key={n} value={n}>
+                {n} / page
+              </option>
+            ))}
+          </Select>
+          <button type="button" className="btn btn-sm" disabled={pageSlice.page <= 1} onClick={() => setPage((p) => p - 1)}>
+            Prev
+          </button>
+          <span>
+            Page {pageSlice.page}/{pageSlice.pageCount}
+          </span>
+          <button
+            type="button"
+            className="btn btn-sm"
+            disabled={pageSlice.page >= pageSlice.pageCount}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+      </>
+      )}
+
+      {tab === 'imports' && (
+        <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>
+          Use the import buttons above to load an ACC invoice schedule or remittance CSV/XLSX. Remittance
+          import history (with Remove import) appears here when batches exist.
+        </p>
+      )}
 
       <Modal
         open={creating || !!editing}

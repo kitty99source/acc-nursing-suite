@@ -143,3 +143,48 @@ export async function fetchInboxFileForStaging(opts: {
   if ((!preferred || preferred === file.name) && type === file.type) return file;
   return new File([file], preferred || file.name, { type });
 }
+
+const FILE_TO_IDRIVE_URL = '/_acc/file-to-idrive';
+
+export interface FileToIDriveResult {
+  ok: boolean;
+  path?: string;
+  error?: string;
+}
+
+/**
+ * Opt-in writeback: POST an accepted attachment to I-drive via launch.ps1.
+ * Body: `{ relativePath, fileBase64, rootPath? }`.
+ */
+export async function postFileToIDrive(input: {
+  relativePath: string;
+  fileBase64: string;
+  rootPath?: string;
+}): Promise<FileToIDriveResult> {
+  try {
+    const res = await fetch(FILE_TO_IDRIVE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify({
+        relativePath: input.relativePath,
+        fileBase64: input.fileBase64,
+        rootPath: input.rootPath,
+      }),
+    });
+    if (!res.ok) {
+      let error = `HTTP ${res.status}`;
+      try {
+        const raw = (await res.json()) as { error?: string };
+        if (raw?.error) error = raw.error;
+      } catch {
+        /* ignore */
+      }
+      return { ok: false, error };
+    }
+    const raw = (await res.json()) as { path?: string };
+    return { ok: true, path: raw.path };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+

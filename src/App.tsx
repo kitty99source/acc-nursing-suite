@@ -26,6 +26,7 @@ import { ImportedTables } from './modules/ImportedTables';
 import { SettingsModule } from './modules/SettingsModule';
 import { ReviewQueue } from './modules/ReviewQueue';
 import { AccInbox } from './modules/AccInbox';
+import { MailReference } from './modules/MailReference';
 import { LetterImportModal } from './components/LetterImportModal';
 import { RecoveryModal } from './components/RecoveryModal';
 import { BackupReminderModal } from './components/BackupReminderModal';
@@ -36,6 +37,7 @@ import { logInfo } from './lib/logger';
 import { startLauncherSessionLifecycle } from './lib/launcherLifecycle';
 import { AccInboxConfigBanner } from './components/AccInboxConfigBanner';
 import { RemittanceStaleBanner } from './components/RemittanceStaleBanner';
+import { IDriveFilingBanner } from './components/IDriveFilingBanner';
 import { computeSidebarBadges } from './lib/sidebarBadges';
 
 export default function App() {
@@ -350,6 +352,9 @@ export default function App() {
         <div className="px-5 pt-2 space-y-1">
           {(module === 'dashboard' || module === 'accinbox' || module === 'review') && <AccInboxConfigBanner />}
           {(module === 'dashboard' || module === 'billing') && <RemittanceStaleBanner />}
+          {(module === 'dashboard' || module === 'review' || module === 'settings') && (
+            <IDriveFilingBanner />
+          )}
         </div>
         <main className="flex-1 overflow-y-auto p-5">
           {module === 'dashboard' && <Dashboard onNavigate={setModule} />}
@@ -365,6 +370,7 @@ export default function App() {
           {module === 'accinbox' && <AccInbox />}
           {module === 'export' && <ExportCenter />}
           {module === 'imported' && <ImportedTables />}
+          {module === 'mail-reference' && <MailReference />}
           {module === 'settings' && <SettingsModule onOpenHelp={() => openHelp('guide')} />}
         </main>
       </div>

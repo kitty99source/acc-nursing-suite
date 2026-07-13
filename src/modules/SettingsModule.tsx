@@ -466,6 +466,26 @@ export function SettingsModule({ onOpenHelp }: { onOpenHelp?: () => void } = {})
                 onChange={(e) => updateSettings({ remittanceStaleDays: Math.max(1, Number(e.target.value)) })}
               />
             </Field>
+            <Field
+              label="I-drive root path"
+              hint="Parent folder for optional Accept writeback (District Nursing Letters tree)."
+            >
+              <TextInput
+                value={settings.iDriveRootPath}
+                onChange={(e) => updateSettings({ iDriveRootPath: e.target.value })}
+                placeholder="I:\ACC\District Nursing"
+              />
+            </Field>
+            <Field
+              label="I-drive staging subfolder"
+              hint="Writeback always lands under this subfolder (default _Staging), never the live archive."
+            >
+              <TextInput
+                value={settings.iDriveStagingSubfolder}
+                onChange={(e) => updateSettings({ iDriveStagingSubfolder: e.target.value || '_Staging' })}
+                placeholder="_Staging"
+              />
+            </Field>
             <Field label="Compliance rules version" hint="ACC Schedule / OG edition encoded in Flagged checks.">
               <TextInput value={settings.complianceRulesVersion ?? '2025-03'} readOnly />
             </Field>

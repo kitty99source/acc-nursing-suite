@@ -240,7 +240,7 @@ body {
   }
 
   .clickable-card {
-    @apply w-full text-left rounded-lg transition-colors cursor-pointer;
+    @apply w-full h-full min-w-0 text-left rounded-lg transition-colors cursor-pointer flex flex-col;
     border: 1px solid transparent;
   }
   .clickable-card:hover {

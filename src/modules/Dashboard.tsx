@@ -211,8 +211,8 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 lg:grid-cols-7 gap-3 mb-4">
-        <button className="clickable-card" onClick={() => onNavigate('compliance')}>
+      <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-3 mb-4 items-stretch lg:grid-cols-[repeat(7,minmax(0,1fr))]">
+        <button className="clickable-card h-full min-w-0" onClick={() => onNavigate('compliance')}>
           <StatCard
             label="Contract flags"
             value={compliance.violations}
@@ -220,7 +220,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
             hint={`${compliance.warnings} warning(s) · ${compliance.predictive} heads-up`}
           />
         </button>
-        <button className="clickable-card" onClick={() => onNavigate('approvals')}>
+        <button className="clickable-card h-full min-w-0" onClick={() => onNavigate('approvals')}>
           <StatCard
             label="Approvals expiring ≤30d"
             value={m.expiringApprovals.filter((x) => x.computed.status === 'Expiring Soon (<30 days)').length}
@@ -228,13 +228,13 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
             hint={`${m.expiringApprovals.filter((x) => x.computed.status === 'EXPIRED').length} already expired`}
           />
         </button>
-        <button className="clickable-card" onClick={() => onNavigate('approvals')}>
+        <button className="clickable-card h-full min-w-0" onClick={() => onNavigate('approvals')}>
           <StatCard label="Coverage gaps" value={m.coverageGaps} tone={m.coverageGaps ? 'danger' : 'good'} hint="Active NS04/NS05 with no current PO" />
         </button>
-        <button className="clickable-card" onClick={() => onNavigate('billing')}>
+        <button className="clickable-card h-full min-w-0" onClick={() => onNavigate('billing')}>
           <StatCard label="Outstanding $" value={formatCurrency(m.outstandingTotal)} tone="warn" hint="Invoiced, not yet paid" />
         </button>
-        <button className="clickable-card" onClick={() => onNavigate('billing')}>
+        <button className="clickable-card h-full min-w-0" onClick={() => onNavigate('billing')}>
           <StatCard
             label="Billing needs review"
             value={billingNeedsReview}
@@ -242,10 +242,10 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
             hint="Held/short-paid remittance lines"
           />
         </button>
-        <button className="clickable-card" onClick={() => onNavigate('complex')}>
+        <button className="clickable-card h-full min-w-0" onClick={() => onNavigate('complex')}>
           <StatCard label="Complex reviews due" value={m.complexDue} tone={m.complexDue ? 'salmon' : 'good'} />
         </button>
-        <button className="clickable-card" onClick={() => onNavigate('patients')}>
+        <button className="clickable-card h-full min-w-0" onClick={() => onNavigate('patients')}>
           <StatCard
             label="Memos to nurses"
             value={memos.total}

@@ -148,18 +148,25 @@ export function StatCard({
     accent: 'var(--accent)',
   };
   return (
-    <div className="card p-4">
-      <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>
+    <div className="card p-4 h-full min-w-0 flex flex-col">
+      <div
+        className="text-xs font-semibold uppercase tracking-wide min-h-[2.5rem] line-clamp-2"
+        style={{ color: 'var(--muted)' }}
+        title={label}
+      >
         {label}
       </div>
       <div className="text-2xl font-bold mt-1" style={{ color: accentColor[tone] }}>
         {value}
       </div>
-      {hint && (
-        <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
-          {hint}
-        </div>
-      )}
+      {/* Reserved subtitle row keeps metric cards equal height when hint is missing. */}
+      <div
+        className="text-xs mt-1 min-h-[1.25rem] truncate"
+        style={{ color: 'var(--muted)' }}
+        title={hint || undefined}
+      >
+        {hint || '\u00a0'}
+      </div>
     </div>
   );
 }

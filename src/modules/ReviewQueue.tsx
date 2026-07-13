@@ -89,6 +89,7 @@ import {
   type LetterCommitFormFields,
 } from '../lib/letterCommit';
 import { formatDate, todayISO } from '../lib/format';
+import { findMatchingPatient } from '../lib/patients';
 import type { LetterParseResult, ParsedLetter, ParsedServiceRow } from '../lib/letterImport';
 import {
   hashBlob,
@@ -1392,13 +1393,22 @@ export function ReviewQueue() {
         let createdPatient = false;
         let createdClaim = false;
         if (!patientId) {
-          patientId = addPatient({
+          const match = findMatchingPatient(useStore.getState().data.patients, {
             name: fields.patientName.trim(),
             nhi: fields.nhi,
             dob: fields.dob,
-            notes: '',
           });
-          createdPatient = true;
+          if (match) {
+            patientId = match.patient.id;
+          } else {
+            patientId = addPatient({
+              name: fields.patientName.trim(),
+              nhi: fields.nhi,
+              dob: fields.dob,
+              notes: '',
+            });
+            createdPatient = true;
+          }
         }
         if (!claimId) {
           claimId = addClaim({

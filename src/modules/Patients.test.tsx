@@ -109,3 +109,49 @@ describe('<Patients /> memo panel', () => {
     expect(useStore.getState().data.memos).toHaveLength(0);
   });
 });
+
+describe('<Patients /> duplicate-patient check', () => {
+  it('reports and merges NHI duplicates into the richer survivor', async () => {
+    const thin: Patient = { id: 'p-thin', name: 'Paul Blake', nhi: 'BTY3497', dob: '', notes: '' };
+    const rich: Patient = {
+      id: 'p-rich',
+      name: 'Paul Phillip Blake',
+      nhi: 'BTY3497',
+      dob: '1960-05-12',
+      notes: '',
+    };
+    useStore.setState({
+      data: {
+        ...emptyData(),
+        patients: [thin, rich],
+        claims: [
+          {
+            id: 'c1',
+            patientId: 'p-rich',
+            claimNumber: '100',
+            acc45Number: '',
+            poNumber: '',
+            injuryDescription: '',
+            type: 'original',
+            status: 'active',
+            day1Date: '',
+          },
+        ],
+      },
+    });
+    act(() => {
+      root.render(<Patients />);
+    });
+
+    clickButtonByText('Check for duplicate patients');
+    expect(container.textContent).toContain('Found 1 duplicate patient');
+
+    clickButtonByText('Merge 1 duplicate(s)');
+    await flush();
+
+    const patients = useStore.getState().data.patients;
+    expect(patients).toHaveLength(1);
+    expect(patients[0].id).toBe('p-rich');
+    expect(useStore.getState().data.claims[0].patientId).toBe('p-rich');
+  });
+});

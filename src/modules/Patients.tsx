@@ -26,6 +26,8 @@ import { getComplianceFindings, filterFindingsForPatient } from '../lib/complian
 import { formatCurrency, serviceCodeLabel, visibleServiceCodes } from '../lib/serviceCodes';
 import { formatDate, todayISO } from '../lib/format';
 import { validateNhi } from '../lib/validation';
+import { findMatchingPatient, findDuplicatePatientGroups } from '../lib/patients';
+import { appendAudit } from '../lib/auditLog';
 import { downloadBlob } from '../lib/storage';
 import {
   buildAdminIDriveRelativePath,
@@ -60,6 +62,7 @@ export function Patients() {
   const addPatient = useStore((s) => s.addPatient);
   const updatePatient = useStore((s) => s.updatePatient);
   const removePatient = useStore((s) => s.removePatient);
+  const mergePatients = useStore((s) => s.mergePatients);
   const [confirm, confirmDialog] = useConfirm();
 
   const [search, setSearch] = useState('');
@@ -125,14 +128,58 @@ export function Patients() {
     setPatientForm({ name: p.name, nhi: p.nhi, dob: p.dob, notes: p.notes });
     setPatientModal({ mode: 'edit', patient: p });
   }
-  function savePatient() {
+  async function savePatient() {
     const payload = { ...patientForm, nhi: nhiCheck.normalized };
     if (patientModal?.mode === 'create') {
+      const match = findMatchingPatient(data.patients, payload);
+      if (match) {
+        const byNhi = match.kind === 'nhi';
+        const ok = await confirm({
+          title: byNhi ? 'Patient already exists' : 'Possible duplicate patient',
+          message: byNhi ? (
+            <p>
+              A patient with NHI <strong>{match.patient.nhi}</strong> already exists (
+              {match.patient.name}). Opening the existing record instead of creating a duplicate.
+            </p>
+          ) : (
+            <p>
+              <strong>{match.patient.name}</strong> (DOB {formatDate(match.patient.dob) || '—'})
+              looks like the same person. Open the existing record instead of creating a duplicate?
+            </p>
+          ),
+          confirmLabel: 'Open existing',
+          cancelLabel: byNhi ? 'Cancel' : 'Create anyway',
+        });
+        if (ok) {
+          setSelectedId(match.patient.id);
+          setPatientModal(null);
+          return;
+        }
+        if (byNhi) return; // hard block on NHI match
+      }
       const id = addPatient(payload);
       setSelectedId(id);
       const idx = useStore.getState().data.patients.findIndex((p) => p.id === id);
       if (idx >= 0) setPage(Math.floor(idx / PATIENTS_PAGE_SIZE) + 1);
     } else if (patientModal?.patient) {
+      const match = findMatchingPatient(data.patients, payload, {
+        excludeId: patientModal.patient.id,
+      });
+      if (match?.kind === 'nhi') {
+        const ok = await confirm({
+          title: 'NHI already used',
+          message: (
+            <p>
+              NHI <strong>{match.patient.nhi}</strong> belongs to {match.patient.name}. Saving this
+              would create a duplicate identity — open the Check for duplicate patients tool to merge
+              instead. Save anyway?
+            </p>
+          ),
+          confirmLabel: 'Save anyway',
+          destructive: true,
+        });
+        if (!ok) return;
+      }
       updatePatient(patientModal.patient.id, payload);
     }
     setPatientModal(null);
@@ -150,14 +197,79 @@ export function Patients() {
     }
   }
 
+  async function checkDuplicatePatients() {
+    const groups = findDuplicatePatientGroups(data.patients, data);
+    const redundantCount = groups.reduce((sum, g) => sum + g.redundant.length, 0);
+    const ok = await confirm({
+      title: 'Check for duplicate patients',
+      message:
+        groups.length === 0 ? (
+          <p style={{ color: 'var(--muted)' }}>
+            No duplicates found. Every patient has a unique NHI (or unique name + date of birth when
+            NHI is blank).
+          </p>
+        ) : (
+          <div className="space-y-2 text-sm">
+            <p>
+              Found <strong>{redundantCount}</strong> duplicate patient record(s) across{' '}
+              <strong>{groups.length}</strong> group(s). Matching is by NHI first, then name + DOB.
+              Merging keeps the suggested survivor (most linked claims/approvals), reattaches claims,
+              approvals, documents, memos and declines, then removes the duplicate row. This cannot be
+              undone from here — confirm carefully.
+            </p>
+            <div className="space-y-1 max-h-64 overflow-y-auto">
+              {groups.map((g) => (
+                <div key={g.key} className="rounded-card p-2" style={{ background: 'var(--surface-2)' }}>
+                  <div className="font-medium">
+                    Keep {g.keep.name}
+                    {g.keep.nhi ? ` · ${g.keep.nhi}` : ''}
+                  </div>
+                  <div className="text-xs" style={{ color: 'var(--muted)' }}>
+                    Merge {g.redundant.map((p) => p.name + (p.nhi ? ` (${p.nhi})` : '')).join(', ')}{' '}
+                    into the survivor ({g.kind === 'nhi' ? 'same NHI' : 'same name + DOB'}).
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ),
+      confirmLabel: groups.length === 0 ? 'Close' : `Merge ${redundantCount} duplicate(s)`,
+      destructive: groups.length > 0,
+    });
+    if (ok && groups.length > 0) {
+      for (const g of groups) {
+        mergePatients(
+          g.keep.id,
+          g.redundant.map((p) => p.id),
+        );
+      }
+      if (selectedId && groups.some((g) => g.redundant.some((p) => p.id === selectedId))) {
+        const survivor = groups.find((g) => g.redundant.some((p) => p.id === selectedId))?.keep;
+        if (survivor) setSelectedId(survivor.id);
+      }
+      await appendAudit({
+        action: 'patient-dedupe',
+        entityType: 'patient',
+        summary: `Merged ${redundantCount} duplicate patient(s) across ${groups.length} group(s)`,
+      });
+    }
+  }
+
   return (
     <div>
       <SectionTitle
         title="Patients & Cases"
         subtitle="Search patients and manage their claims, service lines and approvals."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <LetterImportButton opts={{ entryPoint: 'patients' }} title={LETTER_IMPORT_FULL_TOOLTIP} />
+            <button
+              className="btn btn-sm"
+              onClick={() => void checkDuplicatePatients()}
+              title="Find patients sharing an NHI (or the same name and date of birth), and merge duplicates into one survivor after review."
+            >
+              Check for duplicate patients
+            </button>
             <button className="btn btn-primary" onClick={openCreatePatient}>
               <IconPlus /> New patient
             </button>
@@ -377,15 +489,17 @@ function PatientDetail({
   return (
     <div className="space-y-4">
       <Card>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-bold">{patient.name}</h2>
+        <div className="flex items-start justify-between gap-3 min-w-0">
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold truncate" title={patient.name}>
+              {patient.name}
+            </h2>
             <div className="text-sm" style={{ color: 'var(--muted)' }}>
               NHI {patient.nhi || '—'} · DOB {formatDate(patient.dob) || '—'}
             </div>
             {patient.notes && <p className="text-sm mt-2 whitespace-pre-wrap">{patient.notes}</p>}
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             <button className="btn btn-icon" onClick={onEdit} aria-label="Edit patient">
               <IconEdit width={16} height={16} />
             </button>
@@ -810,8 +924,8 @@ function ClaimCard({
 
   return (
     <Card>
-      <div className="flex items-start justify-between gap-3">
-        <div>
+      <div className="flex items-start justify-between gap-3 min-w-0">
+        <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold">{claim.claimNumber}</span>
             <Badge tone={claim.type === 'subsequent' ? 'warn' : 'neutral'}>

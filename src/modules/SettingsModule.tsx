@@ -15,7 +15,15 @@ import {
 import { compareDocumentBlobs } from '../lib/integrity';
 import { listDocumentIds } from '../lib/idb';
 import { STORAGE_QUOTA_GUIDANCE } from '../lib/storageQuota';
-import type { DensityMode, ServiceCode, ThemeName } from '../types';
+import type { CompanionCharacter, CursorStyle, DensityMode, ServiceCode, ThemeName } from '../types';
+import { CURSOR_OPTIONS } from '../lib/easter/cursors';
+import { SPRITE_SVGS, svgToDataUrl } from '../assets/easter/sprites';
+
+const COMPANION_CHARACTERS: { value: CompanionCharacter; label: string }[] = [
+  { value: 'cat', label: 'Cat' },
+  { value: 'panda', label: 'Panda' },
+  { value: 'fox', label: 'Fox' },
+];
 
 const THEMES: { value: ThemeName; label: string }[] = [
   { value: 'clinical-light', label: 'Clinical Light' },
@@ -285,6 +293,94 @@ export function SettingsModule({ onOpenHelp }: { onOpenHelp?: () => void } = {})
           />
           Enable Helper Mode
         </label>
+      </Card>
+
+      <Card className="mb-4">
+        <h3 className="card-title mb-2">Fun / Easter eggs</h3>
+        <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>
+          Purely decorative extras. All off by default, and they never touch your data. Motion is
+          gentled automatically if your system prefers reduced motion.
+        </p>
+
+        <label className="flex items-center justify-between gap-3 text-sm mb-3">
+          <span>
+            <span className="font-medium">Dancing disco cats</span>
+            <span className="block text-xs" style={{ color: 'var(--muted)' }}>
+              A mini disco of pixel cats in the corner. Tip: triple-click the “NS” badge to toggle it too.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={settings.discoCatsEnabled}
+            onChange={(e) => updateSettings({ discoCatsEnabled: e.target.checked })}
+            className="w-5 h-5"
+          />
+        </label>
+
+        <Field label="Mouse cursor">
+          <Select
+            value={settings.cursorStyle}
+            onChange={(e) => updateSettings({ cursorStyle: e.target.value as CursorStyle })}
+          >
+            {CURSOR_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <div className="flex items-center gap-2 mt-2 mb-4">
+          {CURSOR_OPTIONS.filter((o) => o.sprite).map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => updateSettings({ cursorStyle: o.value })}
+              title={o.label}
+              aria-label={o.label}
+              className="rounded-lg p-1 flex items-center justify-center"
+              style={{
+                border:
+                  settings.cursorStyle === o.value
+                    ? '2px solid var(--accent)'
+                    : '1px solid var(--border)',
+                background: 'var(--surface-2)',
+              }}
+            >
+              <img src={svgToDataUrl(SPRITE_SVGS[o.sprite!])} alt="" width={24} height={24} />
+            </button>
+          ))}
+        </div>
+
+        <label className="flex items-center justify-between gap-3 text-sm mb-3">
+          <span>
+            <span className="font-medium">Walking companion</span>
+            <span className="block text-xs" style={{ color: 'var(--muted)' }}>
+              A little friend that strolls along the top bar and sidebar as you work.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={settings.companionEnabled}
+            onChange={(e) => updateSettings({ companionEnabled: e.target.checked })}
+            className="w-5 h-5"
+          />
+        </label>
+        {settings.companionEnabled && (
+          <Field label="Companion character">
+            <Select
+              value={settings.companionCharacter}
+              onChange={(e) =>
+                updateSettings({ companionCharacter: e.target.value as CompanionCharacter })
+              }
+            >
+              {COMPANION_CHARACTERS.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
       </Card>
 
       <Card className="mb-4">

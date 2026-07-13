@@ -252,6 +252,14 @@ interface StoreState {
   showTopBarFlash: (text: string, tone?: TopBarFlashTone) => void;
   clearTopBarFlash: () => void;
 
+  /**
+   * Easter egg: transient (never-persisted) session flag for the disco-cats
+   * overlay. Toggled by triple-clicking the NS brand mark; the persisted
+   * `settings.discoCatsEnabled` toggle is independent and always-on.
+   */
+  discoActive: boolean;
+  setDiscoActive: (active: boolean) => void;
+
   // ACC letter import (approval / decline PDFs)
   openLetterImport: (file: File, opts?: { context?: LetterImportContext; prefillOnly?: boolean; onPrefill?: (patches: ReturnType<typeof prefillFromParsed>) => void; entryPoint?: import('../components/LetterImportButton').LetterImportEntryPoint; stagingItemId?: string; onImportComplete?: () => void }) => void;
   closeLetterImport: () => void;
@@ -634,6 +642,7 @@ export const useStore = create<StoreState>((set, get) => ({
   recentFiles: [],
   integrityWarnings: [],
   excelImportRollbackAvailable: false,
+  discoActive: false,
 
   init: async () => {
     let handle: FileSystemFileHandle | null = null;
@@ -800,6 +809,8 @@ export const useStore = create<StoreState>((set, get) => ({
   showTopBarFlash: (text, tone = 'good') =>
     set({ topBarFlash: { text, tone, nonce: Date.now() } }),
   clearTopBarFlash: () => set({ topBarFlash: undefined }),
+
+  setDiscoActive: (active) => set({ discoActive: active }),
 
   openLetterImport: (file, opts) =>
     set({

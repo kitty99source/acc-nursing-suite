@@ -472,3 +472,96 @@ body {
     }
   }
 }
+
+/* ===========================================================================
+   Easter eggs ("Fun" settings). Purely decorative. Motion is intentionally
+   slow/soft (no fast flashing) and is reduced to a gentle bob — or removed —
+   when the user prefers reduced motion.
+   =========================================================================== */
+@keyframes easter-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(4deg);
+  }
+}
+@keyframes easter-bob-alt {
+  0%,
+  100% {
+    transform: translateY(-5px) rotate(5deg);
+  }
+  50% {
+    transform: translateY(0) rotate(-5deg);
+  }
+}
+@keyframes easter-ball-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes easter-floor {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+@keyframes easter-companion-step {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.easter-disco-cat {
+  animation: easter-bob 0.9s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+.easter-disco-cat:nth-child(2n) {
+  animation-name: easter-bob-alt;
+  animation-duration: 1.05s;
+}
+.easter-disco-cat:nth-child(3n) {
+  animation-duration: 1.2s;
+}
+.easter-disco-ball {
+  animation: easter-ball-spin 6s linear infinite;
+}
+.easter-disco-floor > span {
+  animation: easter-floor 2.4s ease-in-out infinite;
+}
+.easter-companion-sprite {
+  animation: easter-companion-step 0.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .easter-disco-cat,
+  .easter-disco-cat:nth-child(2n),
+  .easter-disco-cat:nth-child(3n) {
+    animation: easter-bob 2.6s ease-in-out infinite;
+  }
+  .easter-disco-ball {
+    animation: easter-ball-spin 30s linear infinite;
+  }
+  .easter-disco-floor > span {
+    animation: none;
+    opacity: 0.5;
+  }
+  .easter-companion-sprite {
+    animation: none;
+  }
+}
+
+@media print {
+  .easter-companion-layer,
+  .easter-disco-cat {
+    display: none !important;
+  }
+}

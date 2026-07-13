@@ -16,8 +16,10 @@ import {
   IconInbox,
   IconMail,
 } from './icons';
+import { useRef } from 'react';
 import { HelperTip } from './HelperTip';
 import { useStore } from '../state/store';
+import { emptyClickBurst, registerClick, type ClickBurstState } from '../lib/easter/clickCounter';
 
 export type ModuleId =
   | 'dashboard'
@@ -62,6 +64,16 @@ export function Sidebar({
 }) {
   const quickPasteEnabled = useStore((s) => s.data.settings.quickPasteInEnabled);
   const hasImportedTables = useStore((s) => (s.data.customSheets?.length ?? 0) > 0);
+  const setDiscoActive = useStore((s) => s.setDiscoActive);
+  const discoActive = useStore((s) => s.discoActive);
+
+  // Easter egg: triple-click the NS brand mark within 1.5s to toggle the disco.
+  const brandClickRef = useRef<ClickBurstState>(emptyClickBurst());
+  const onBrandClick = () => {
+    const res = registerClick(brandClickRef.current, Date.now(), { threshold: 3, windowMs: 1500 });
+    brandClickRef.current = res.state;
+    if (res.triggered) setDiscoActive(!discoActive);
+  };
 
   // Grouped by daily workflow frequency: triage first, then records, then tools.
   const sections: NavSection[] = [
@@ -119,8 +131,10 @@ export function Sidebar({
       <div className="px-4 py-4 border-b flex items-center justify-between gap-2" style={{ borderColor: 'var(--border)' }}>
         <div className="flex items-center gap-2 min-w-0">
           <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm"
+            className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm select-none cursor-pointer"
             style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+            onClick={onBrandClick}
+            title="ACC District Nursing"
           >
             NS
           </div>

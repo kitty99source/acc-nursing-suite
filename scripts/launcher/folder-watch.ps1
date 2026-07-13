@@ -7,6 +7,7 @@ $bootstrapRoot = $PSScriptRoot
 if ([string]::IsNullOrEmpty($bootstrapRoot)) { $bootstrapRoot = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }
 . (Join-Path $bootstrapRoot 'bootstrap-log.ps1') -LogName 'folder-watch'
 . (Join-Path $bootstrapRoot 'inbox-config.ps1')
+. (Join-Path $bootstrapRoot 'lifecycle.ps1')
 Write-BootstrapLog 'folder-watch.ps1 started'
 
 # ACC Folder Watch - work laptop (PowerShell only, no Node.js)
@@ -354,14 +355,25 @@ try {
         Write-Host '  (re-run with -VerboseSkips or set ACC_FOLDER_WATCH_VERBOSE=1 for per-file detail)' -ForegroundColor DarkGray
     }
     Write-Host ''
-    Write-Host '  Press Ctrl+C to stop.' -ForegroundColor Gray
+    Write-Host '  Press Ctrl+C to stop (or close the app browser tab - quiet mode stops this automatically).' -ForegroundColor Gray
     Write-Host ''
+
+    # Fresh start: clear any leftover stop sentinel from a previous tab-close shutdown.
+    Clear-AccFolderWatchStopSentinel
+    Write-AccPidFile -Name 'folder-watch.pid' | Out-Null
+    Write-BootstrapLog "Wrote folder-watch.pid ($PID)"
 
     # Poll for genuinely new drops. Already-seen files are cached, so this loop
     # is silent unless a new file arrives (or an occasional idle heartbeat).
     $idleTicks = 0
     $heartbeatEvery = 150  # ~5 min at 2s/tick
     while ($true) {
+        if (Test-AccFolderWatchStopRequested) {
+            Write-BootstrapLog 'Stop sentinel seen - exiting folder-watch'
+            Write-Host '  Stop requested by app server (browser tab closed) - exiting.' -ForegroundColor Yellow
+            Clear-AccFolderWatchStopSentinel
+            break
+        }
         Start-Sleep -Seconds 2
         $r = Invoke-ScanInbox -Inbox $script:InboxPath
         if ($r.staged -gt 0 -or $r.errors -gt 0) {
@@ -383,6 +395,7 @@ try {
     Read-Host 'Press Enter to close'
     exit 1
 } finally {
+    Clear-AccPidFile -Name 'folder-watch.pid'
     if ($script:LauncherLogEnabled -and (Get-Command Complete-LauncherLog -ErrorAction SilentlyContinue)) {
         Complete-LauncherLog -Title 'ACC Folder Watch'
     }

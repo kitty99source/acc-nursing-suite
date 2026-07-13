@@ -127,6 +127,37 @@ body {
     border-color: var(--border);
   }
 
+  /* ---- Typography scale ----------------------------------------------------
+     Page title / section heading / body / helper — shared by SectionTitle and
+     card headings so modules stop blending together. */
+  .page-title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    color: var(--text);
+  }
+  .page-subtitle {
+    font-size: 0.9rem;
+    font-weight: 500;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+  .card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+    color: var(--text);
+  }
+  .section-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+  }
+
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors;
     border: 1px solid var(--border);
@@ -312,5 +343,50 @@ body {
     .patients-layout-grid {
       grid-template-columns: 1fr !important;
     }
+  }
+
+  /* Assumption/decision banners: soft warn tint + left rule. */
+  .assumption-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: var(--radius);
+    border: 1px solid color-mix(in srgb, var(--warn-fg) 30%, var(--border));
+    border-left: 3px solid var(--warn-fg);
+    background: color-mix(in srgb, var(--warn) 55%, var(--surface));
+    color: var(--warn-fg);
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+  .assumption-banner-icon {
+    flex-shrink: 0;
+    margin-top: 0.05rem;
+  }
+  .assumption-banner-body {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+  }
+  .assumption-banner-dismiss {
+    flex-shrink: 0;
+    align-self: center;
+    border: 1px solid color-mix(in srgb, var(--warn-fg) 40%, transparent);
+    background: transparent;
+    color: var(--warn-fg);
+    border-radius: 0.5rem;
+    padding: 0.15rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .assumption-banner-dismiss:hover {
+    background: color-mix(in srgb, var(--warn-fg) 12%, transparent);
+  }
+  .assumption-banner-dismiss:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
   }
 }

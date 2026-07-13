@@ -234,6 +234,12 @@ export interface Settings {
   accInboxSubjectPatterns: string[];
   /** Dismiss dashboard letter-import discoverability card (P5-014). */
   dismissLetterDiscoverCard: boolean;
+  /** First-run Help Center auto-open; set true after the user closes it once. */
+  hasSeenWelcomeGuide: boolean;
+  /** Dismiss ACC Inbox filter assumption banner (sender allowlist / subjects). */
+  accInboxConfigBannerDismissed: boolean;
+  /** Dismiss remittance-stale-days assumption banner. */
+  remittanceStaleBannerDismissed: boolean;
   // Defaults to every code; lets an office hide the ones they never use.
   enabledServiceCodes: ServiceCode[];
   // Editable per-contract rates (dollars excl GST) keyed by service code.
@@ -327,6 +333,9 @@ export const DEFAULT_SETTINGS: Settings = {
     'ACC\\s+letter',
   ],
   dismissLetterDiscoverCard: false,
+  hasSeenWelcomeGuide: false,
+  accInboxConfigBannerDismissed: false,
+  remittanceStaleBannerDismissed: false,
   enabledServiceCodes: [...ALL_SERVICE_CODES],
   serviceRates: { ...DEFAULT_RATES },
 };

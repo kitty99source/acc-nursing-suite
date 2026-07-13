@@ -456,4 +456,19 @@ body {
     background: var(--salmon);
     color: var(--salmon-fg);
   }
+
+  .spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 999px;
+    border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+    border-top-color: currentColor;
+    animation: spinner-rotate 0.7s linear infinite;
+  }
+  @keyframes spinner-rotate {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 }

@@ -11,6 +11,9 @@ const STAGING_URL = '/_acc/staging';
 const INBOX_FILE_URL = '/_acc/inbox-file';
 const EMAIL_META_URL = '/_acc/email-meta';
 
+/** Cap hung `/_acc/staging` probes so UI can flip Connecting → Reconnecting quickly. */
+export const BRIDGE_PROBE_TIMEOUT_MS = 2500;
+
 /** Result of probing launch.ps1 `/_acc/staging` (folder-watch sidecar list). */
 export type StagingBridgeStatus = 'ok' | 'empty' | 'unavailable';
 
@@ -22,12 +25,16 @@ export interface StagingBridgeProbe {
 /**
  * Probe the local launcher staging endpoint.
  * - `ok` / `empty`: launch.ps1 answered with a JSON array (possibly empty).
- * - `unavailable`: 404, network error, or non-array body — typical when the app
- *   was opened via `npm run dev`, file://, or a static host without `/_acc/*`.
+ * - `unavailable`: 404, network error, abort/timeout, or non-array body — typical when
+ *   the app was opened via `npm run dev`, file://, or a static host without `/_acc/*`.
  */
-export async function probeLocalStagingBridge(): Promise<StagingBridgeProbe> {
+export async function probeLocalStagingBridge(
+  timeoutMs = BRIDGE_PROBE_TIMEOUT_MS,
+): Promise<StagingBridgeProbe> {
+  const ctrl = new AbortController();
+  const timer = window.setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(STAGING_URL, { cache: 'no-store' });
+    const res = await fetch(STAGING_URL, { cache: 'no-store', signal: ctrl.signal });
     if (!res.ok) return { status: 'unavailable', sidecars: [] };
     const raw = (await res.json()) as unknown;
     if (!Array.isArray(raw)) return { status: 'unavailable', sidecars: [] };
@@ -39,6 +46,8 @@ export async function probeLocalStagingBridge(): Promise<StagingBridgeProbe> {
     return { status: sidecars.length ? 'ok' : 'empty', sidecars };
   } catch {
     return { status: 'unavailable', sidecars: [] };
+  } finally {
+    window.clearTimeout(timer);
   }
 }
 

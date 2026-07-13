@@ -43,7 +43,6 @@ Durable inventory of coworker-facing FAQs. In-app source of truth:
 ### Billing, Calculator & tools
 - Needs review tab
 - Remove remittance import
-- Quick Paste-In
 - Package Calculator quirks
 - Contract rates (excl GST)
 - Mail Reference sheet
@@ -68,7 +67,7 @@ Durable inventory of coworker-facing FAQs. In-app source of truth:
 `tip-export-excel`, `tip-export-accdata`, `tip-export-zip`, `tip-excel-import`,
 `tip-calculator`, `tip-helper-mode`, `tip-quiet-launcher`, `tip-hrq`,
 `tip-queue-tabs`, `tip-auto-accept`, `tip-discard-unnamed`, `tip-letter-import`,
-`tip-save-load`, `tip-mail-reference`, `tip-fun-easter`, `tip-quick-paste`,
+`tip-save-load`, `tip-mail-reference`, `tip-fun-easter`,
 `tip-approvals`, `tip-compliance`
 
 ## Residual (optional polish)

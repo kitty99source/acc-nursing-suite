@@ -84,8 +84,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     title: 'Billing Log & Remittances',
     body:
       'Invoice lines, remittance status, Needs review flags, and import history. Wrong remittance file? Use Remove import on that batch when available — ' +
-      'it drops those payment lines and re-checks only the invoices that batch touched. ' +
-      'Quick Paste-In (when enabled in Settings) pastes billing-report rows into invoice lines.',
+      'it drops those payment lines and re-checks only the invoices that batch touched.',
   },
   {
     id: 'complex',
@@ -365,14 +364,6 @@ export const FAQ_ENTRIES: FaqEntry[] = [
       'On Billing, open Remittance imports history and choose Remove import on that batch when available. ' +
       'It deletes only that file’s payment lines and re-checks status from any remittances that remain.',
     tags: ['remittance', 'billing', 'undo', 'remove', 'import'],
-  },
-  {
-    id: 'faq-quick-paste',
-    question: 'What is Quick Paste-In?',
-    answer:
-      'Optional tool (enable in Settings) to paste tab- or comma-separated rows from a billing report, map columns, preview, then commit invoice lines locally. ' +
-      'Nothing is sent anywhere. Prefer remittance/Excel import when you have those files; Quick Paste is for ad-hoc report rows.',
-    tags: ['quickpaste', 'billing', 'paste', 'invoice'],
   },
   {
     id: 'faq-calculator',

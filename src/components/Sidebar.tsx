@@ -9,7 +9,6 @@ import {
   IconDecline,
   IconExport,
   IconSettings,
-  IconPaste,
   IconFolder,
   IconShield,
   IconReview,
@@ -30,7 +29,6 @@ export type ModuleId =
   | 'billing'
   | 'complex'
   | 'declines'
-  | 'quickpaste'
   | 'review'
   | 'accinbox'
   | 'export'
@@ -62,7 +60,6 @@ export function Sidebar({
   open?: boolean;
   onToggle?: () => void;
 }) {
-  const quickPasteEnabled = useStore((s) => s.data.settings.quickPasteInEnabled);
   const hasImportedTables = useStore((s) => (s.data.customSheets?.length ?? 0) > 0);
   const setDiscoActive = useStore((s) => s.setDiscoActive);
 
@@ -104,7 +101,6 @@ export function Sidebar({
       label: 'Tools',
       entries: [
         { id: 'calculator', label: 'Package Calculator', icon: <IconCalculator /> },
-        ...(quickPasteEnabled ? [{ id: 'quickpaste' as ModuleId, label: 'Quick Paste-In', icon: <IconPaste /> }] : []),
         ...(hasImportedTables ? [{ id: 'imported' as ModuleId, label: 'Imported Tables', icon: <IconFolder /> }] : []),
         { id: 'export', label: 'Export Center', icon: <IconExport /> },
         { id: 'mail-reference', label: 'Mail Reference', icon: <IconMail /> },

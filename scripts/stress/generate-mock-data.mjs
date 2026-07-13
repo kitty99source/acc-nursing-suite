@@ -36,7 +36,6 @@ const DEFAULT_SETTINGS = {
   expiryThresholdDays: 30,
   idleLockMinutes: 15,
   encryptionEnabled: false,
-  quickPasteInEnabled: true,
   enabledServiceCodes: SERVICE_CODES,
   serviceRates: Object.fromEntries(SERVICE_CODES.map((c) => [c, 100 + SERVICE_CODES.indexOf(c) * 50])),
 };

@@ -201,7 +201,6 @@ export function SettingsModule({ onOpenHelp }: { onOpenHelp?: () => void } = {})
         backupReminderDays: settings.backupReminderDays,
         remittanceStaleDays: settings.remittanceStaleDays,
         complianceRulesVersion: settings.complianceRulesVersion,
-        quickPasteInEnabled: settings.quickPasteInEnabled,
         productionMode: settings.productionMode,
         enabledServiceCodes: settings.enabledServiceCodes,
         serviceRates: settings.serviceRates,
@@ -621,20 +620,6 @@ export function SettingsModule({ onOpenHelp }: { onOpenHelp?: () => void } = {})
             <Field label="Compliance rules version" hint="ACC Schedule / OG edition encoded in Flagged checks.">
               <TextInput value={settings.complianceRulesVersion ?? '2025-03'} readOnly />
             </Field>
-            <label className="flex items-center justify-between gap-3 text-sm">
-              <span>
-                <span className="font-medium">Quick Paste-In</span>
-                <span className="block text-xs" style={{ color: 'var(--muted)' }}>
-                  Show the paste-and-map importer in the sidebar.
-                </span>
-              </span>
-              <input
-                type="checkbox"
-                checked={settings.quickPasteInEnabled}
-                onChange={(e) => updateSettings({ quickPasteInEnabled: e.target.checked })}
-                className="w-5 h-5"
-              />
-            </label>
             <label className="flex items-center justify-between gap-3 text-sm">
               <span>
                 <span className="font-medium">Hold all automation (SUPER WFH)</span>

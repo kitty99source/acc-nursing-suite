@@ -20,7 +20,6 @@ import { Approvals } from './modules/Approvals';
 import { Billing } from './modules/Billing';
 import { ComplexCases } from './modules/ComplexCases';
 import { Declines } from './modules/Declines';
-import { QuickPaste } from './modules/QuickPaste';
 import { ExportCenter } from './modules/ExportCenter';
 import { ImportedTables } from './modules/ImportedTables';
 import { SettingsModule } from './modules/SettingsModule';
@@ -384,7 +383,6 @@ export default function App() {
           {module === 'billing' && <Billing />}
           {module === 'complex' && <ComplexCases />}
           {module === 'declines' && <Declines />}
-          {module === 'quickpaste' && <QuickPaste onNavigate={setModule} />}
           {module === 'review' && <ReviewQueue />}
           {module === 'accinbox' && <AccInbox />}
           {module === 'export' && <ExportCenter />}

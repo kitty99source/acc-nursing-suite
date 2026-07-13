@@ -50,7 +50,6 @@
     "backupReminderDays": 7,
     "remittanceStaleDays": 60,
     "complianceRulesVersion": "2025-03",
-    "quickPasteInEnabled": true,
     "productionMode": true,
     "enabledServiceCodes": ["NS01", "NS02", "NS03", "NS04", "NS05", "NS06", "NS07", "NS10", "NS20", "NS20T", "NSTD10", "NSTT1", "NSTT1D", "NSAC"],
     "userDisplayName": "District Nurse — North",

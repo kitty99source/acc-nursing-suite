@@ -197,13 +197,6 @@ export const HELPER_TIPS: HelperTipDef[] = [
       'Disco cats, cute cursors, walking companion — decorative only. Near top of Settings. Triple-click teal NS badge for session disco.',
   },
   {
-    id: 'tip-quick-paste',
-    faqId: 'faq-quick-paste',
-    title: 'Quick Paste-In',
-    body:
-      'Paste billing-report rows, map columns, preview, commit invoice lines locally. Enable in Settings first.',
-  },
-  {
     id: 'tip-approvals',
     faqId: 'faq-approvals',
     title: 'Approvals (NS04/NS05)',

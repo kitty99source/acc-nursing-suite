@@ -141,4 +141,37 @@ describe('importInvoiceSchedule + importRemittanceBatch (store)', () => {
     // The existing (unrelated) invoice line must be untouched.
     expect(useStore.getState().data.invoiceLines[0].status).toBe('Awaiting Billing');
   });
+
+  it('removeRemittanceImport drops that batch and re-reconciles affected invoices', () => {
+    useStore.getState().addInvoiceLine({
+      patientName: 'David Belk',
+      nhi: 'ARA0568',
+      claimNumber: 'NH48372',
+      poNumber: '',
+      acc45Number: '',
+      serviceCode: 'NS05',
+      invoiceSheet: 'ONNMAR26',
+      invoiceDate: '2026-03-09',
+      amountInvoiced: 42.5,
+      status: 'Awaiting Billing',
+      notes: '',
+    });
+
+    const parsed = parseRemittanceGrid([
+      ['ACC45 Ref', 'ACC Claim Number', 'Client Name', 'Amount Invoiced', 'Paid (GST incl.)', 'Comments/Reason'],
+      ['NH48372', '10035566973', 'D. Belk', '42.50', '42.50', ''],
+    ]);
+    const summary = useStore.getState().importRemittanceBatch(parsed.lines, { fileName: 'test-remit.csv' });
+    expect(summary.batchId).toBeTruthy();
+    expect(useStore.getState().data.invoiceLines[0].status).toBe('Billed');
+    expect(useStore.getState().data.remittanceImports).toHaveLength(1);
+
+    const removed = useStore.getState().removeRemittanceImport(summary.batchId);
+    expect(removed.ok).toBe(true);
+    expect(removed.removedLineCount).toBe(1);
+    expect(useStore.getState().data.remittanceImports).toHaveLength(0);
+    expect(useStore.getState().data.remittancePayments).toHaveLength(0);
+    expect(useStore.getState().data.invoiceLines[0].status).toBe('Awaiting Billing');
+    expect(useStore.getState().data.invoiceLines[0].amountPaid).toBeUndefined();
+  });
 });

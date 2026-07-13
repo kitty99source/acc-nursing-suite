@@ -28,6 +28,7 @@ import {
 import { parseRemittanceCsv, parseRemittanceXlsx, type ParsedRemittanceSheet } from '../lib/remittanceImport';
 import { lookupReasonCode } from '../lib/reasonCodes';
 import type { RemittanceImportSummary } from '../lib/billingReconcile';
+import { invoiceNeedsBillingAttention, pinAttentionFirst } from '../lib/sidebarBadges';
 
 const STATUSES: InvoiceStatus[] = ['Awaiting Billing', 'Billed', 'Remittance'];
 
@@ -50,9 +51,9 @@ function emptyLine(): Omit<InvoiceLine, 'id'> {
 }
 
 function rowClass(line: InvoiceLine): string {
-  if (line.needsReview) return 'row-salmon';
+  if (line.needsReview) return 'row-salmon attention-row-danger';
   if (line.status === 'Billed') return 'row-good';
-  return 'row-salmon'; // Awaiting Billing & Remittance
+  return 'row-salmon attention-row'; // Awaiting Billing & Remittance
 }
 
 function sheetNameFromFile(fileName: string): string {
@@ -66,6 +67,7 @@ export function Billing() {
   const removeInvoiceLine = useStore((s) => s.removeInvoiceLine);
   const importInvoiceSchedule = useStore((s) => s.importInvoiceSchedule);
   const importRemittanceBatch = useStore((s) => s.importRemittanceBatch);
+  const removeRemittanceImport = useStore((s) => s.removeRemittanceImport);
   const [confirm, confirmDialog] = useConfirm();
 
   const [creating, setCreating] = useState(false);
@@ -89,8 +91,10 @@ export function Billing() {
   // Remittance import.
   const remittanceInput = useRef<HTMLInputElement>(null);
   const [remittancePreview, setRemittancePreview] = useState<ParsedRemittanceSheet | null>(null);
+  const [remittanceFileName, setRemittanceFileName] = useState('');
   const [remittanceError, setRemittanceError] = useState<string | null>(null);
   const [remittanceResult, setRemittanceResult] = useState<RemittanceImportSummary | null>(null);
+  const [removeFlash, setRemoveFlash] = useState<string | null>(null);
 
   const focus = useStore((s) => s.focus);
   const clearFocus = useStore((s) => s.clearFocus);
@@ -125,7 +129,7 @@ export function Billing() {
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return data.invoiceLines.filter((i) => {
+    const filtered = data.invoiceLines.filter((i) => {
       if (statusFilter !== 'all' && i.status !== statusFilter) return false;
       if (codeFilter !== 'all' && i.serviceCode !== codeFilter) return false;
       if (sheetFilter && i.invoiceSheet !== sheetFilter) return false;
@@ -136,7 +140,10 @@ export function Billing() {
       }
       return true;
     });
+    return pinAttentionFirst(filtered, invoiceNeedsBillingAttention);
   }, [data.invoiceLines, search, statusFilter, codeFilter, sheetFilter, reviewOnly]);
+
+  const remittanceImports = data.remittanceImports ?? [];
 
   const totals = useMemo(() => {
     let invoiced = 0;
@@ -194,6 +201,7 @@ export function Billing() {
         setRemittanceError("Couldn't recognise that as a remittance export — no claim-number + paid-amount block was found.");
         return;
       }
+      setRemittanceFileName(file.name);
       setRemittancePreview(parsed);
     } catch (err) {
       setRemittanceError(`Could not read that file: ${(err as Error).message}`);
@@ -204,9 +212,34 @@ export function Billing() {
 
   function confirmRemittanceImport() {
     if (!remittancePreview) return;
-    const result = importRemittanceBatch(remittancePreview.lines);
+    const result = importRemittanceBatch(remittancePreview.lines, { fileName: remittanceFileName });
     setRemittanceResult(result);
     setRemittancePreview(null);
+    setRemittanceFileName('');
+  }
+
+  async function handleRemoveRemittanceBatch(batchId: string, fileName: string) {
+    const ok = await confirm({
+      title: 'Remove remittance import?',
+      message: (
+        <p className="text-sm">
+          Remove <strong>{fileName}</strong>? Payment lines from this import are dropped and only the
+          invoices that batch touched are re-checked. Other remittance imports stay.
+        </p>
+      ),
+      confirmLabel: 'Remove import',
+      destructive: true,
+    });
+    if (!ok) return;
+    const result = removeRemittanceImport(batchId);
+    if (!result.ok) {
+      setRemoveFlash(result.error ?? 'Could not remove that import.');
+      return;
+    }
+    setRemoveFlash(
+      `Removed "${result.fileName}" (${result.removedLineCount ?? 0} payment line(s), ${result.affectedInvoiceCount ?? 0} invoice(s) re-reconciled).`,
+    );
+    window.setTimeout(() => setRemoveFlash(null), 8000);
   }
 
   function openCreate() {
@@ -367,6 +400,49 @@ export function Billing() {
           if (f) void handleRemittanceFile(f);
         }}
       />
+
+      {removeFlash && (
+        <p className="text-sm mb-3 font-medium" style={{ color: 'var(--good-fg)' }} role="status">
+          {removeFlash}
+        </p>
+      )}
+
+      {remittanceImports.length > 0 && (
+        <div className="card p-4 mb-4">
+          <h3 className="card-title mb-1">Remittance imports history</h3>
+          <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>
+            Wrong, duplicate, or test file? Use <strong>Remove import</strong> on that batch to drop its payment
+            lines and re-check only the invoices it touched.
+          </p>
+          <ul className="space-y-2">
+            {[...remittanceImports].reverse().map((batch) => (
+              <li
+                key={batch.id}
+                className="flex flex-wrap items-center gap-2 text-sm justify-between border-b pb-2"
+                style={{ borderColor: 'var(--border)' }}
+              >
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{batch.sourceFileName}</div>
+                  <div className="text-xs" style={{ color: 'var(--muted)' }}>
+                    {new Date(batch.importedAt).toLocaleString('en-NZ')} · {batch.matchedCount}/{batch.lineCount}{' '}
+                    matched
+                    {batch.unmatchedClaimNumbers.length
+                      ? ` · ${batch.unmatchedClaimNumbers.length} unmatched`
+                      : ''}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-sm-danger shrink-0"
+                  onClick={() => void handleRemoveRemittanceBatch(batch.id, batch.sourceFileName)}
+                >
+                  Remove import
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {(scheduleError || scheduleResult) && (
         <div className="flex flex-wrap items-start justify-between gap-3 mb-3">

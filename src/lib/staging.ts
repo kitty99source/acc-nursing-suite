@@ -176,6 +176,19 @@ export async function dismissStagingItems(
   await addDismissedStagingKeys(items.map((i) => stagingIngressDedupKey(i)));
 }
 
+/** Clear dismissal tombstones so an undone Accept can reappear in the queue. */
+export async function removeDismissedStagingKeys(
+  keys: Array<string | null | undefined>,
+): Promise<void> {
+  const want = new Set(
+    keys.filter((k): k is string => typeof k === 'string' && k.trim().length > 0),
+  );
+  if (want.size === 0) return;
+  const existing = await idbLoadDismissed();
+  const next = existing.filter((k) => !want.has(k));
+  if (next.length !== existing.length) await idbSaveDismissed(next);
+}
+
 export async function addStagingItem(item: StagingItem): Promise<void> {
   const existing = await idbLoadStaging();
   if (existing.some((e) => isStagingIngressDuplicate(e, item))) {

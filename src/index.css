@@ -345,6 +345,20 @@ body {
     }
   }
 
+  /* Attention rows: pin-tint left edge for due/review items. */
+  .attention-row {
+    box-shadow: inset 3px 0 0 var(--warn-fg);
+  }
+  .attention-row-danger {
+    box-shadow: inset 3px 0 0 var(--danger-fg);
+  }
+  .data-table tbody tr.attention-row-danger:hover {
+    background: color-mix(in srgb, var(--danger) 35%, var(--surface-2));
+  }
+  .attention-row-selected {
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
   /* Assumption/decision banners: soft warn tint + left rule. */
   .assumption-banner {
     display: flex;

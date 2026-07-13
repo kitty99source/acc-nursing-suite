@@ -53,7 +53,7 @@ export function Sidebar({
 }: {
   current: ModuleId;
   onNavigate: (id: ModuleId) => void;
-  badges: Partial<Record<ModuleId, number>>;
+  badges: Partial<Record<ModuleId, number | { count: number; label: string; title?: string; ariaLabel?: string }>>;
   open?: boolean;
   onToggle?: () => void;
 }) {
@@ -145,7 +145,15 @@ export function Sidebar({
               </div>
             )}
             <div className="space-y-0.5">
-              {section.entries.map((e) => (
+              {section.entries.map((e) => {
+                const badge = badges[e.id];
+                const badgeLabel =
+                  typeof badge === 'object' && badge ? badge.label : badge != null ? String(badge) : null;
+                const badgeTitle =
+                  typeof badge === 'object' && badge ? badge.title : undefined;
+                const badgeAria =
+                  typeof badge === 'object' && badge ? badge.ariaLabel ?? badge.title : undefined;
+                return (
                 <button
                   key={e.id}
                   className="nav-item w-full text-left"
@@ -155,16 +163,19 @@ export function Sidebar({
                 >
                   <span className="shrink-0">{e.icon}</span>
                   <span className="flex-1">{e.label}</span>
-                  {badges[e.id] ? (
+                  {badgeLabel ? (
                     <span
                       className="badge"
                       style={{ background: 'var(--salmon)', color: 'var(--salmon-fg)' }}
+                      title={badgeTitle}
+                      aria-label={badgeAria}
                     >
-                      {badges[e.id]}
+                      {badgeLabel}
                     </span>
                   ) : null}
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}

@@ -74,6 +74,18 @@ import { buildInvoiceClaimIndex, claimKey, matchRemittanceToInvoice } from '../l
 import type { ParsedRemittanceLine } from '../lib/remittanceImport';
 import type { RemittanceImportSummary } from '../lib/billingReconcile';
 import {
+  recomputeInvoiceFromPayments,
+  type RemittanceImportBatch,
+  type RemittancePayment,
+  type RemittanceRemoveResult,
+} from '../lib/remittancePayments';
+import {
+  loadAllStagingItems,
+  removeDismissedStagingKeys,
+  stagingIngressDedupKey,
+  updateStagingItem,
+} from '../lib/staging';
+import {
   parseLetterFile as parseLetterFileLib,
   type LetterImportContext,
   type LetterParseResult,
@@ -94,6 +106,30 @@ export interface LetterImportCommitResult {
   claimId: string;
   kind: 'approval' | 'decline' | 'document-only';
   billingHint?: string;
+  /** True when Accept created this patient (safe to remove on undo if empty). */
+  createdPatient?: boolean;
+  /** True when Accept created this claim (safe to remove on undo if empty). */
+  createdClaim?: boolean;
+  documentId?: string;
+  approvalIds?: string[];
+  declineId?: string;
+}
+
+export interface HrqAcceptUndoInput {
+  stagingItemId: string;
+  patientId: string;
+  claimId: string;
+  createdPatient?: boolean;
+  createdClaim?: boolean;
+  documentId?: string;
+  approvalIds?: string[];
+  declineId?: string;
+}
+
+export interface HrqAcceptUndoResult {
+  restoredStaging: boolean;
+  removedPatient: boolean;
+  removedClaim: boolean;
 }
 
 // In-memory only. Never persisted, never logged, cleared on lock.
@@ -339,7 +375,15 @@ interface StoreState {
   importInvoiceSchedule: (rows: Omit<InvoiceLine, 'id' | 'status'>[]) => { created: number; updated: number };
   // Remittance import: match each remittance line to an invoice line by
   // claim key (never by name) and update its paid/status/review fields.
-  importRemittanceBatch: (lines: ParsedRemittanceLine[]) => RemittanceImportSummary;
+  // Persists a batch + payment applications so Remove import can re-reconcile.
+  importRemittanceBatch: (
+    lines: ParsedRemittanceLine[],
+    opts?: { fileName?: string },
+  ) => RemittanceImportSummary & { batchId: string };
+  removeRemittanceImport: (batchId: string) => RemittanceRemoveResult;
+
+  /** Undo a Review Queue Accept: restore staging + remove accept-created artifacts. */
+  undoHrqAccept: (input: HrqAcceptUndoInput) => Promise<HrqAcceptUndoResult>;
 
   // complex case CRUD
   addComplexCase: (c: Omit<ComplexCase, 'id'>) => string;
@@ -776,6 +820,9 @@ export const useStore = create<StoreState>((set, get) => ({
       const state = get();
       let patientId = opts.patientId;
       let claimId = opts.claimId;
+      const createdPatient = !patientId;
+      const createdClaim = !claimId;
+      const approvalIds: string[] = [];
 
       if (!patientId && opts.patientPatch?.name) {
         patientId = state.addPatient({
@@ -855,6 +902,7 @@ export const useStore = create<StoreState>((set, get) => ({
           sourceDocumentId: docId,
           ...(opts.autoAccept ? { autoAccepted: true, autoAcceptedAt: Date.now() } : {}),
         });
+        approvalIds.push(id);
         if (row.recordStatus === 'current') currentApprovalId = id;
       }
 
@@ -889,7 +937,16 @@ export const useStore = create<StoreState>((set, get) => ({
         sizeBytes: file.size,
       });
       const billingHint = billingHintForClaim(get().data, claimId);
-      return { patientId, claimId, kind: 'approval', billingHint };
+      return {
+        patientId,
+        claimId,
+        kind: 'approval',
+        billingHint,
+        createdPatient,
+        createdClaim,
+        documentId: docId,
+        approvalIds,
+      };
     } catch (err) {
       // Nothing partially created should survive a failed accept: put the
       // patient/claim/approval/service-line arrays back exactly as they were,
@@ -911,6 +968,9 @@ export const useStore = create<StoreState>((set, get) => ({
       const claimNumber = opts.claimNumber ?? parsed.claim.claimNumber ?? '';
       let patientId = opts.patientId;
       let claimId = opts.claimId ?? state.data.claims.find((c) => c.claimNumber.replace(/\s/g, '') === claimNumber.replace(/\s/g, ''))?.id;
+      let createdPatient = !patientId;
+      let createdClaim = !claimId;
+      let declineId: string | undefined;
 
       if (!patientId && claimId) {
         patientId = state.data.claims.find((c) => c.id === claimId)?.patientId;
@@ -920,6 +980,7 @@ export const useStore = create<StoreState>((set, get) => ({
           (p) => p.nhi && parsed.patient.nhi && p.nhi.toUpperCase() === parsed.patient.nhi.toUpperCase(),
         )?.id;
       }
+      if (patientId) createdPatient = false;
       if (!patientId) {
         const name = (opts.patientName ?? parsed.patient.name ?? '').trim();
         if (name) {
@@ -932,7 +993,9 @@ export const useStore = create<StoreState>((set, get) => ({
         }
       }
 
+      if (claimId) createdClaim = false;
       if (!claimId && claimNumber && patientId) {
+        createdClaim = true;
         claimId = state.addClaim({
           patientId,
           claimNumber,
@@ -960,7 +1023,7 @@ export const useStore = create<StoreState>((set, get) => ({
         createdDocId = docId;
       }
 
-      state.addDecline({
+      declineId = state.addDecline({
         patientId,
         claimId,
         patientName: opts.patientName ?? parsed.patient.name ?? '',
@@ -981,9 +1044,25 @@ export const useStore = create<StoreState>((set, get) => ({
         sizeBytes: file.size,
       });
       if (!patientId || !claimId) {
-        return { patientId: patientId ?? '', claimId: claimId ?? '', kind: 'decline' };
+        return {
+          patientId: patientId ?? '',
+          claimId: claimId ?? '',
+          kind: 'decline',
+          createdPatient,
+          createdClaim,
+          documentId: docId,
+          declineId,
+        };
       }
-      return { patientId, claimId, kind: 'decline' };
+      return {
+        patientId,
+        claimId,
+        kind: 'decline',
+        createdPatient,
+        createdClaim,
+        documentId: docId,
+        declineId,
+      };
     } catch (err) {
       useStore.setState((s) => ({ data: priorData, status: { ...s.status, dirty: priorDirty } }));
       if (createdDocId) await deleteDocumentBlob(createdDocId).catch(() => {});
@@ -1598,59 +1677,109 @@ export const useStore = create<StoreState>((set, get) => ({
     return { created, updated };
   },
 
-  importRemittanceBatch: (lines) => {
-    const summary: RemittanceImportSummary = {
+  importRemittanceBatch: (lines, opts) => {
+    const batchId = uid('rbatch');
+    const summary: RemittanceImportSummary & { batchId: string } = {
       matchedCount: 0,
       paidInFullCount: 0,
       heldCount: 0,
       unmatchedCount: 0,
       unmatched: [],
+      batchId,
     };
+    const unmatchedClaims: string[] = [];
+    const newPayments: RemittancePayment[] = [];
     mutate(get, (data) => {
       const invoiceLines = [...data.invoiceLines];
-      // Index is built once from the pre-batch snapshot: real remittance batches carry at
-      // most one paid line per claim/service-code, so re-resolving "the outstanding line for
-      // this claim" per remittance row (rather than after every single update) is the simple,
-      // correct-for-the-real-shape choice — it avoids O(n^2) re-indexing on large batches.
       const index = buildInvoiceClaimIndex(invoiceLines);
       for (const rem of lines) {
         const matched = matchRemittanceToInvoice(rem, index);
         if (!matched) {
           summary.unmatchedCount += 1;
+          unmatchedClaims.push(rem.claimNumber);
           summary.unmatched.push({ claimNumber: rem.claimNumber, clientName: rem.clientName, amountPaid: rem.amountPaid });
           continue;
         }
         summary.matchedCount += 1;
         const idx = invoiceLines.findIndex((l) => l.id === matched.id);
         if (idx < 0) continue;
-        const current = invoiceLines[idx];
-        const totalPaid = (current.amountPaid ?? 0) + rem.amountPaid;
-        const paidInFull = totalPaid + 0.005 >= current.amountInvoiced;
-        const needsReview = rem.lineNeedsReview && !paidInFull;
-        if (needsReview) summary.heldCount += 1;
-        else if (paidInFull) summary.paidInFullCount += 1;
-        invoiceLines[idx] = {
-          ...current,
-          amountPaid: totalPaid,
-          datePaid: rem.amountPaid > 0 ? current.datePaid ?? todayISO() : current.datePaid,
-          status: paidInFull ? 'Billed' : 'Remittance',
-          needsReview,
-          heldReasonCode: needsReview ? rem.reasonCode : undefined,
-          heldReason: needsReview ? rem.reasonText : undefined,
+        const payment: RemittancePayment = {
+          id: uid('rpay'),
+          batchId,
+          invoiceLineId: matched.id,
+          claimNumber: rem.claimNumber,
+          amountPaid: rem.amountPaid,
+          paymentDate: rem.amountPaid > 0 ? todayISO() : undefined,
+          reasonCode: rem.reasonCode,
+          reasonText: rem.reasonText,
+          lineNeedsReview: Boolean(rem.lineNeedsReview),
         };
+        newPayments.push(payment);
+        const allPayments = [...(data.remittancePayments ?? []), ...newPayments].filter(
+          (p) => p.invoiceLineId === matched.id,
+        );
+        const patch = recomputeInvoiceFromPayments(invoiceLines[idx], allPayments);
+        if (patch.needsReview) summary.heldCount += 1;
+        else if (patch.status === 'Billed') summary.paidInFullCount += 1;
+        invoiceLines[idx] = { ...invoiceLines[idx], ...patch };
       }
-      return { ...data, invoiceLines };
+      const batch: RemittanceImportBatch = {
+        id: batchId,
+        importedAt: Date.now(),
+        sourceFileName: opts?.fileName?.trim() || 'remittance-import',
+        lineCount: lines.length,
+        matchedCount: summary.matchedCount,
+        unmatchedClaimNumbers: unmatchedClaims,
+      };
+      return {
+        ...data,
+        invoiceLines,
+        remittanceImports: [...(data.remittanceImports ?? []), batch],
+        remittancePayments: [...(data.remittancePayments ?? []), ...newPayments],
+      };
     });
     audit(
       'import',
       'invoiceLine',
-      undefined,
-      `Imported remittance: ${summary.matchedCount} matched (${summary.paidInFullCount} paid in full, ${summary.heldCount} need review), ${summary.unmatchedCount} unmatched`,
+      batchId,
+      `Imported remittance "${opts?.fileName ?? 'file'}": ${summary.matchedCount} matched (${summary.paidInFullCount} paid in full, ${summary.heldCount} need review), ${summary.unmatchedCount} unmatched`,
     );
     return summary;
   },
 
-  addComplexCase: (c) => {
+  removeRemittanceImport: (batchId) => {
+    const data = get().data;
+    const batch = (data.remittanceImports ?? []).find((b) => b.id === batchId);
+    if (!batch) {
+      return { ok: false, error: 'That remittance import was not found — it may already have been removed.' };
+    }
+    const removedPayments = (data.remittancePayments ?? []).filter((p) => p.batchId === batchId);
+    const affectedInvoiceIds = new Set(removedPayments.map((p) => p.invoiceLineId));
+    mutate(get, (next) => {
+      const remittancePayments = (next.remittancePayments ?? []).filter((p) => p.batchId !== batchId);
+      const remittanceImports = (next.remittanceImports ?? []).filter((b) => b.id !== batchId);
+      const invoiceLines = next.invoiceLines.map((line) => {
+        if (!affectedInvoiceIds.has(line.id)) return line;
+        return { ...line, ...recomputeInvoiceFromPayments(line, remittancePayments) };
+      });
+      return { ...next, remittancePayments, remittanceImports, invoiceLines };
+    });
+    audit(
+      'delete',
+      'invoiceLine',
+      batchId,
+      `Removed remittance import "${batch.sourceFileName}" (${removedPayments.length} payment(s), ${affectedInvoiceIds.size} invoice(s) re-reconciled)`,
+    );
+    return {
+      ok: true,
+      batchId,
+      fileName: batch.sourceFileName,
+      removedLineCount: removedPayments.length,
+      affectedInvoiceCount: affectedInvoiceIds.size,
+    };
+  },
+
+    addComplexCase: (c) => {
     const id = uid('cx');
     mutate(get, (data) => ({ ...data, complexCases: [...data.complexCases, { ...c, id }] }));
     return id;
@@ -1747,6 +1876,65 @@ export const useStore = create<StoreState>((set, get) => ({
       throw err;
     }
   },
+
+  undoHrqAccept: async (input) => {
+    const allStaging = await loadAllStagingItems();
+    const stagingItem = allStaging.find((i) => i.id === input.stagingItemId);
+
+    if (input.documentId) {
+      await get().removeDocument(input.documentId);
+    }
+    for (const approvalId of input.approvalIds ?? []) {
+      get().removeApproval(approvalId);
+    }
+    if (input.declineId) {
+      get().removeDecline(input.declineId);
+    }
+
+    let removedClaim = false;
+    if (input.createdClaim && input.claimId) {
+      const remainingDocs = get().data.documents.filter((d) => d.claimId === input.claimId);
+      const remainingApprovals = get().data.approvals.filter((a) => a.claimId === input.claimId);
+      const remainingDeclines = get().data.declines.filter((d) => d.claimId === input.claimId);
+      const remainingLines = get().data.serviceLines.filter((l) => l.claimId === input.claimId);
+      if (
+        remainingDocs.length === 0 &&
+        remainingApprovals.length === 0 &&
+        remainingDeclines.length === 0 &&
+        remainingLines.length === 0
+      ) {
+        get().removeClaim(input.claimId);
+        removedClaim = true;
+      }
+    }
+
+    let removedPatient = false;
+    if (input.createdPatient && input.patientId) {
+      const remainingClaims = get().data.claims.filter((c) => c.patientId === input.patientId);
+      const remainingDeclines = get().data.declines.filter((d) => d.patientId === input.patientId);
+      if (remainingClaims.length === 0 && remainingDeclines.length === 0) {
+        get().removePatient(input.patientId);
+        removedPatient = true;
+      }
+    }
+
+    let restoredStaging = false;
+    if (stagingItem) {
+      await updateStagingItem(input.stagingItemId, { status: 'pending' });
+      await removeDismissedStagingKeys([stagingIngressDedupKey(stagingItem)]);
+      restoredStaging = true;
+    }
+
+    audit(
+      'delete',
+      'staging',
+      input.stagingItemId,
+      `Undid Review Queue Accept${restoredStaging ? ' — letter restored to queue' : ''}`,
+    );
+
+    return { restoredStaging, removedPatient, removedClaim };
+  },
+
 }));
 
 export function hasSessionPassphrase(): boolean {

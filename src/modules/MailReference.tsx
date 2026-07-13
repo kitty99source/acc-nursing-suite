@@ -4,6 +4,7 @@ import { useConfirm } from '../components/useConfirm';
 import { SectionTitle, Card, Field, TextInput, EmptyState, Badge } from '../components/ui';
 import { IconPlus, IconTrash, IconSearch, IconMail } from '../components/icons';
 import { MailReferenceBanner } from '../components/MailReferenceBanner';
+import { HelperTip } from '../components/HelperTip';
 import { uid } from '../lib/format';
 import {
   DEFAULT_MAIL_REFERENCE_ENTRIES,
@@ -93,20 +94,22 @@ export function MailReference() {
   return (
     <div>
       <MailReferenceBanner />
-      <SectionTitle
-        title="Mail Reference Sheet"
-        subtitle="Where each ACC form / mail type goes — seeded from the 2024 Team Processes sheet. Edit freely."
-        actions={
-          <div className="flex gap-2">
-            <button type="button" className="btn" onClick={() => void resetDefaults()}>
-              Reset to 2024 defaults
-            </button>
-            <button type="button" className="btn btn-primary" onClick={() => setAddOpen((v) => !v)}>
-              <IconPlus width={14} height={14} /> {addOpen ? 'Cancel' : 'Add row'}
-            </button>
-          </div>
-        }
-      />
+      <HelperTip tipId="tip-mail-reference" style={{ display: 'block', width: '100%' }}>
+        <SectionTitle
+          title="Mail Reference Sheet"
+          subtitle="Where each ACC form / mail type goes — seeded from the 2024 Team Processes sheet. Edit freely."
+          actions={
+            <div className="flex gap-2">
+              <button type="button" className="btn" onClick={() => void resetDefaults()}>
+                Reset to 2024 defaults
+              </button>
+              <button type="button" className="btn btn-primary" onClick={() => setAddOpen((v) => !v)}>
+                <IconPlus width={14} height={14} /> {addOpen ? 'Cancel' : 'Add row'}
+              </button>
+            </div>
+          }
+        />
+      </HelperTip>
 
       <div className="mb-3 flex items-center gap-2">
         <div className="relative flex-1 min-w-0">

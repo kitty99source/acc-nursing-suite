@@ -1508,15 +1508,17 @@ function ClaimDocuments({ claimId }: { claimId: string }) {
                   </HelperTip>
                 )}
                 {doc.fromReviewAccept && doc.stagingItemId && (
-                  <button
-                    type="button"
-                    className="btn btn-sm"
-                    disabled={busy}
-                    onClick={() => void undoAccept(doc)}
-                    title="Undo this accept"
-                  >
-                    Undo this accept
-                  </button>
+                  <HelperTip tipId="tip-undo-accept">
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      disabled={busy}
+                      onClick={() => void undoAccept(doc)}
+                      title="Undo this accept"
+                    >
+                      Undo this accept
+                    </button>
+                  </HelperTip>
                 )}
                 {(doc.kind === 'acc-approval-letter' || doc.kind === 'acc-decline-letter') && (
                   <button className="btn btn-sm" onClick={() => void reparseDocument(doc.id)}>

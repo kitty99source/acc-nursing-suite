@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useStore } from '../state/store';
 import { SectionTitle, Card, Select, TextArea, Badge, EmptyState } from '../components/ui';
 import { IconPaste } from '../components/icons';
+import { HelperTip } from '../components/HelperTip';
 import type { ModuleId } from '../components/Sidebar';
 import type { InvoiceLine, InvoiceStatus, ServiceCode } from '../types';
 import { ALL_SERVICE_CODES } from '../lib/serviceCodes';
@@ -192,10 +193,12 @@ export function QuickPaste({ onNavigate }: { onNavigate: (id: ModuleId) => void 
 
   return (
     <div>
-      <SectionTitle
-        title="Quick Paste-In"
-        subtitle="Paste tab- or comma-separated rows from your billing report, map the columns, then review before committing. Purely local — nothing is sent anywhere."
-      />
+      <HelperTip tipId="tip-quick-paste" style={{ display: 'block', width: '100%' }}>
+        <SectionTitle
+          title="Quick Paste-In"
+          subtitle="Paste tab- or comma-separated rows from your billing report, map the columns, then review before committing. Purely local — nothing is sent anywhere."
+        />
+      </HelperTip>
 
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>

@@ -16,6 +16,7 @@ import {
 } from '../components/ui';
 import { IconPlus, IconEdit, IconTrash, IconApprovals } from '../components/icons';
 import { LetterImportButton } from '../components/LetterImportButton';
+import { HelperTip } from '../components/HelperTip';
 import { computeApproval } from '../lib/analytics';
 import { findDuplicateApprovalsByPO } from '../lib/approvals';
 import { appendAudit } from '../lib/auditLog';
@@ -350,7 +351,9 @@ export function Approvals() {
         subtitle="Track approval periods and PO expiry. Import approval PDFs here to file NS04/NS05 and attach the letter."
         actions={
           <div className="flex items-center gap-2">
-            <LetterImportButton opts={{ context: letterContext.current, entryPoint: 'approvals' }} />
+            <HelperTip tipId="tip-approvals">
+              <LetterImportButton opts={{ context: letterContext.current, entryPoint: 'approvals' }} />
+            </HelperTip>
             <button
               className="btn btn-sm"
               onClick={() => void checkDuplicateApprovals()}

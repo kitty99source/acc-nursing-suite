@@ -1591,17 +1591,19 @@ export function ReviewQueue() {
         });
         if (!copy) return null;
         return (
-          <div
-            className="card mb-4 p-3 text-sm flex items-start gap-2"
-            style={{ borderColor: 'var(--warn-fg)', background: 'var(--surface-2)', color: 'var(--warn-fg)' }}
-            role="status"
-            aria-live="polite"
-          >
-            <span className="spinner shrink-0 mt-0.5" aria-hidden />
-            <span>
-              <strong>{copy.title}</strong> {copy.body}
-            </span>
-          </div>
+          <HelperTip tipId="tip-connecting" style={{ display: 'block', width: '100%' }}>
+            <div
+              className="card mb-4 p-3 text-sm flex items-start gap-2"
+              style={{ borderColor: 'var(--warn-fg)', background: 'var(--surface-2)', color: 'var(--warn-fg)' }}
+              role="status"
+              aria-live="polite"
+            >
+              <span className="spinner shrink-0 mt-0.5" aria-hidden />
+              <span>
+                <strong>{copy.title}</strong> {copy.body}
+              </span>
+            </div>
+          </HelperTip>
         );
       })()}
 
@@ -1746,15 +1748,17 @@ export function ReviewQueue() {
         )}
         <div className="flex flex-wrap items-center gap-2 ml-auto">
           {autoAcceptEligible.length > 0 && (
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              disabled={busy}
-              onClick={() => void autoAcceptReady()}
-              title="File every 100%-confidence approval letter with no outstanding issues, without individually reviewing each one."
-            >
-              Auto-accept ready ({autoAcceptEligible.length})
-            </button>
+            <HelperTip tipId="tip-auto-accept">
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                disabled={busy}
+                onClick={() => void autoAcceptReady()}
+                title="File every 100%-confidence approval letter with no outstanding issues, without individually reviewing each one."
+              >
+                Auto-accept ready ({autoAcceptEligible.length})
+              </button>
+            </HelperTip>
           )}
           {unnamedCount > 0 && (
             <button
@@ -1768,15 +1772,17 @@ export function ReviewQueue() {
             </button>
           )}
           {unnamedCount > 0 && (
-            <button
-              type="button"
-              className="btn btn-danger btn-sm"
-              disabled={busy}
-              onClick={() => void discardUnnamed()}
-              title="Clear rows that still show a filename only. Try “Fix names now” first for any that are genuinely readable."
-            >
-              Discard unnamed ({unnamedCount})
-            </button>
+            <HelperTip tipId="tip-discard-unnamed">
+              <button
+                type="button"
+                className="btn btn-danger btn-sm"
+                disabled={busy}
+                onClick={() => void discardUnnamed()}
+                title="Clear rows that still show a filename only. Try “Fix names now” first for any that are genuinely readable."
+              >
+                Discard unnamed ({unnamedCount})
+              </button>
+            </HelperTip>
           )}
           <button
             type="button"
@@ -1912,67 +1918,69 @@ export function ReviewQueue() {
               overflow: 'hidden',
             }}
           >
-            <div
-              className="flex items-center gap-1 p-1.5 flex-wrap"
-              style={{ borderBottom: '1px solid var(--border)' }}
-              role="tablist"
-              aria-label="Review list view"
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={viewMode === 'pending'}
-                className="btn btn-sm flex-1"
-                style={viewMode === 'pending' ? undefined : { background: 'transparent', border: '1px solid transparent' }}
-                onClick={() => {
-                  setViewMode('pending');
-                  setSelectedId(sorted[0]?.id ?? null);
-                }}
+            <HelperTip tipId="tip-queue-tabs" style={{ display: 'block', width: '100%' }}>
+              <div
+                className="flex items-center gap-1 p-1.5 flex-wrap"
+                style={{ borderBottom: '1px solid var(--border)' }}
+                role="tablist"
+                aria-label="Review list view"
               >
-                Under review ({sorted.length})
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={viewMode === 'unnamed'}
-                className="btn btn-sm flex-1"
-                style={viewMode === 'unnamed' ? undefined : { background: 'transparent', border: '1px solid transparent' }}
-                onClick={() => {
-                  setViewMode('unnamed');
-                  setSelectedId(unnamedSorted[0]?.id ?? null);
-                }}
-                title="Pending letters that still show a filename only — no patient name resolved yet"
-              >
-                Unnamed ({unnamedCount})
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={viewMode === 'deferred'}
-                className="btn btn-sm flex-1"
-                style={viewMode === 'deferred' ? undefined : { background: 'transparent', border: '1px solid transparent' }}
-                onClick={() => {
-                  setViewMode('deferred');
-                  setSelectedId(deferredSorted[0]?.id ?? null);
-                }}
-              >
-                Deferred ({deferredSorted.length})
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={viewMode === 'autoAccept'}
-                className="btn btn-sm flex-1"
-                style={viewMode === 'autoAccept' ? undefined : { background: 'transparent', border: '1px solid transparent' }}
-                onClick={() => {
-                  setViewMode('autoAccept');
-                  setSelectedId(autoAcceptEligible[0]?.id ?? null);
-                }}
-                title="Pending letters that are eligible for one-click auto-accept — 100% confidence, no outstanding issues"
-              >
-                Auto-approve ({autoAcceptEligible.length})
-              </button>
-            </div>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewMode === 'pending'}
+                  className="btn btn-sm flex-1"
+                  style={viewMode === 'pending' ? undefined : { background: 'transparent', border: '1px solid transparent' }}
+                  onClick={() => {
+                    setViewMode('pending');
+                    setSelectedId(sorted[0]?.id ?? null);
+                  }}
+                >
+                  Under review ({sorted.length})
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewMode === 'unnamed'}
+                  className="btn btn-sm flex-1"
+                  style={viewMode === 'unnamed' ? undefined : { background: 'transparent', border: '1px solid transparent' }}
+                  onClick={() => {
+                    setViewMode('unnamed');
+                    setSelectedId(unnamedSorted[0]?.id ?? null);
+                  }}
+                  title="Pending letters that still show a filename only — no patient name resolved yet"
+                >
+                  Unnamed ({unnamedCount})
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewMode === 'deferred'}
+                  className="btn btn-sm flex-1"
+                  style={viewMode === 'deferred' ? undefined : { background: 'transparent', border: '1px solid transparent' }}
+                  onClick={() => {
+                    setViewMode('deferred');
+                    setSelectedId(deferredSorted[0]?.id ?? null);
+                  }}
+                >
+                  Deferred ({deferredSorted.length})
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewMode === 'autoAccept'}
+                  className="btn btn-sm flex-1"
+                  style={viewMode === 'autoAccept' ? undefined : { background: 'transparent', border: '1px solid transparent' }}
+                  onClick={() => {
+                    setViewMode('autoAccept');
+                    setSelectedId(autoAcceptEligible[0]?.id ?? null);
+                  }}
+                  title="Pending letters that are eligible for one-click auto-accept — 100% confidence, no outstanding issues"
+                >
+                  Auto-approve ({autoAcceptEligible.length})
+                </button>
+              </div>
+            </HelperTip>
             <div
               className="px-3 py-2 text-xs font-semibold uppercase tracking-wide flex items-center justify-between"
               style={{ color: 'var(--muted)', borderBottom: '1px solid var(--border)' }}

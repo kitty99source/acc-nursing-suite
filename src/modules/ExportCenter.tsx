@@ -170,13 +170,13 @@ export function ExportCenter() {
         subtitle="One-click Excel workbook (replaces your toolkit), Excel import, and JSON backup / restore. Everything stays on this machine."
       />
 
-      <div className="grid lg:grid-cols-2 gap-4">
-        <Card>
+      <div className="grid lg:grid-cols-2 gap-4 items-stretch">
+        <Card className="h-full flex flex-col">
           <div className="flex items-center gap-2 mb-2">
             <IconBilling />
             <h3 className="font-semibold">Excel workbook (.xlsx)</h3>
           </div>
-          <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>
+          <p className="text-sm mb-4 flex-1" style={{ color: 'var(--muted)' }}>
             Exports all tabs (Start Here, Billing Log, Year Summary, NS04-NS05 Approvals, Complex
             Cases, Decline Tracker, Management Summary) with dropdowns, conditional formatting and
             computed totals — opens clean in Excel. Any custom fields/tables you imported are written
@@ -195,46 +195,50 @@ export function ExportCenter() {
               </div>
             </div>
           )}
-          <button className="btn btn-primary" onClick={() => void exportExcel()} disabled={busy}>
-            <IconExport /> Export Excel workbook
-          </button>
+          <div className="mt-auto">
+            <button className="btn btn-primary" onClick={() => void exportExcel()} disabled={busy}>
+              <IconExport /> Export Excel workbook
+            </button>
+          </div>
         </Card>
 
-        <Card>
+        <Card className="h-full flex flex-col">
           <div className="flex items-center gap-2 mb-2">
             <IconBilling />
             <h3 className="font-semibold">Import from Excel (.xlsx)</h3>
           </div>
-          <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>
+          <p className="text-sm mb-4 flex-1" style={{ color: 'var(--muted)' }}>
             Read an Excel workbook back into the app. Recognised tabs (Billing Log, Approvals, Complex
             Cases, Decline Tracker) map to your data; unknown columns are kept as custom fields and
             unknown sheets as custom tables. You'll get a preview before anything changes.
           </p>
-          <button className="btn btn-primary" onClick={() => excelInput.current?.click()} disabled={busy}>
-            <IconFolder /> Choose Excel file…
-          </button>
-          <input
-            ref={excelInput}
-            type="file"
-            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void handleExcelFile(f);
-            }}
-          />
+          <div className="mt-auto">
+            <button className="btn btn-primary" onClick={() => excelInput.current?.click()} disabled={busy}>
+              <IconFolder /> Choose Excel file…
+            </button>
+            <input
+              ref={excelInput}
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void handleExcelFile(f);
+              }}
+            />
+          </div>
         </Card>
 
-        <Card>
+        <Card className="h-full flex flex-col">
           <div className="flex items-center gap-2 mb-2">
             <IconFolder />
             <h3 className="font-semibold">JSON backup &amp; restore</h3>
           </div>
-          <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>
+          <p className="text-sm mb-4 flex-1" style={{ color: 'var(--muted)' }}>
             Download a plain-JSON backup of everything, or restore from a backup / unencrypted
             <span className="font-mono"> .accdata</span> file. Restoring replaces all current data.
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="mt-auto flex flex-wrap gap-2">
             <button className="btn" onClick={exportJsonDownload} disabled={busy}>
               <IconExport /> Download JSON backup
             </button>
@@ -254,12 +258,12 @@ export function ExportCenter() {
           </div>
         </Card>
 
-        <Card>
+        <Card className="h-full flex flex-col">
           <div className="flex items-center gap-2 mb-2">
             <IconFolder />
             <h3 className="font-semibold">Full backup with documents (.zip)</h3>
           </div>
-          <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>
+          <p className="text-sm mb-4 flex-1" style={{ color: 'var(--muted)' }}>
             Your everyday <span className="font-mono">.accdata</span> file stays small because attached
             files (ACC approval letters, requests you sent) are stored separately on this machine. Use
             this to bundle <span className="font-medium">everything — data and every stored file</span> —
@@ -267,7 +271,7 @@ export function ExportCenter() {
             <span className="font-mono">manifest.json</span> with SHA-256 checksums so corrupt archives
             are rejected on restore. Restoring replaces current data and re-imports the files.
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="mt-auto flex flex-wrap gap-2">
             <button className="btn" onClick={() => void exportZipBackup()} disabled={busy}>
               <IconExport /> Export full backup (.zip)
             </button>

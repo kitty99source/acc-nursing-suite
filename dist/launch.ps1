@@ -3,6 +3,7 @@
 $bootstrapRoot = $PSScriptRoot
 if ([string]::IsNullOrEmpty($bootstrapRoot)) { $bootstrapRoot = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }
 . (Join-Path $bootstrapRoot 'bootstrap-log.ps1') -LogName 'acc'
+. (Join-Path $bootstrapRoot 'lifecycle.ps1')
 $inboxConfig = Join-Path $bootstrapRoot 'inbox-config.ps1'
 if (Test-Path -LiteralPath $inboxConfig) { . $inboxConfig }
 Write-BootstrapLog 'launch.ps1 started'
@@ -122,6 +123,73 @@ function Get-RequestQueryValue {
         try { return [System.Uri]::UnescapeDataString($v) } catch { return $v }
     }
     return $null
+}
+
+function Get-RequestHeaderValue {
+    param([string]$HeaderText, [string]$Name)
+    $m = [regex]::Match($HeaderText, "(?im)^$([regex]::Escape($Name)):\s*(.*)\r?$")
+    if ($m.Success) { return $m.Groups[1].Value.Trim() }
+    return $null
+}
+
+# Reads one full HTTP request (request line + headers + body) for POST endpoints
+# (/_acc/heartbeat, /_acc/goodbye). GETs still work with empty bodies.
+function Read-HttpRequest {
+    param([System.Net.Sockets.TcpClient]$Client)
+    $stream = $Client.GetStream()
+    $latin1 = [System.Text.Encoding]::GetEncoding('ISO-8859-1')
+    $raw = New-Object System.IO.MemoryStream
+    $buffer = New-Object byte[] 8192
+    $deadline = [DateTime]::UtcNow.AddSeconds(5)
+    $headerEnd = -1
+    $headerText = ''
+    while ([DateTime]::UtcNow -lt $deadline -and $headerEnd -lt 0) {
+        if ($stream.DataAvailable -or $Client.Available -gt 0) {
+            $read = $stream.Read($buffer, 0, $buffer.Length)
+            if ($read -le 0) { break }
+            $raw.Write($buffer, 0, $read)
+            $text = $latin1.GetString($raw.ToArray())
+            $idx = $text.IndexOf("`r`n`r`n")
+            if ($idx -ge 0) { $headerEnd = $idx + 4; $headerText = $text.Substring(0, $idx) }
+            elseif ($raw.Length -gt 1MB) { break }
+        } else {
+            Start-Sleep -Milliseconds 10
+        }
+    }
+    if ($headerEnd -lt 0) { return @{ RequestLine = ''; Method = ''; Body = [byte[]]@() } }
+
+    $lines = $headerText -split "`r`n"
+    $requestLine = if ($lines.Length -gt 0) { $lines[0].Trim() } else { '' }
+    $method = ''
+    if ($requestLine) {
+        $parts = $requestLine.Split(' ')
+        if ($parts.Length -ge 1) { $method = $parts[0].ToUpperInvariant() }
+    }
+
+    $contentLength = 0
+    $clHeader = Get-RequestHeaderValue -HeaderText $headerText -Name 'Content-Length'
+    if ($clHeader) { [void][int]::TryParse($clHeader, [ref]$contentLength) }
+
+    if ($contentLength -gt 0) {
+        $deadline = [DateTime]::UtcNow.AddSeconds([Math]::Max(30, [Math]::Min(300, [Math]::Ceiling($contentLength / 50000.0) + 15)))
+    }
+
+    $allBytes = $raw.ToArray()
+    $bodySoFar = $allBytes.Length - $headerEnd
+    while ($bodySoFar -lt $contentLength -and [DateTime]::UtcNow -lt $deadline) {
+        if ($stream.DataAvailable -or $Client.Available -gt 0) {
+            $read = $stream.Read($buffer, 0, $buffer.Length)
+            if ($read -le 0) { break }
+            $raw.Write($buffer, 0, $read)
+            $bodySoFar += $read
+        } else {
+            Start-Sleep -Milliseconds 10
+        }
+    }
+    $allBytes = $raw.ToArray()
+    $bodyLen = [Math]::Min($contentLength, [Math]::Max(0, $allBytes.Length - $headerEnd))
+    $body = if ($bodyLen -gt 0) { $allBytes[$headerEnd..($headerEnd + $bodyLen - 1)] } else { [byte[]]@() }
+    return @{ RequestLine = $requestLine; Method = $method; Body = $body }
 }
 
 $script:StagingListCacheBody = $null
@@ -432,6 +500,81 @@ function Get-StaticContentType {
     }
 }
 
+function Save-IDriveFile {
+    param([byte[]]$BodyBytes)
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    $allowedExt = @('.pdf', '.docx', '.doc', '.xlsx', '.xls', '.msg', '.eml', '.rtf', '.tif', '.html', '.txt')
+    $defaultRoot = 'I:\ACC\District Nursing'
+    try {
+        if ($null -eq $BodyBytes -or $BodyBytes.Length -eq 0) {
+            return @{ Ok = $false; Status = 400; Error = 'Empty body' }
+        }
+        $jsonText = $utf8.GetString($BodyBytes)
+        $payload = $jsonText | ConvertFrom-Json
+        $rel = [string]$payload.relativePath
+        $b64 = [string]$payload.fileBase64
+        $rootIn = [string]$payload.rootPath
+        if ([string]::IsNullOrWhiteSpace($rel) -or [string]::IsNullOrWhiteSpace($b64)) {
+            return @{ Ok = $false; Status = 400; Error = 'relativePath and fileBase64 are required' }
+        }
+        $root = if ([string]::IsNullOrWhiteSpace($rootIn)) { $defaultRoot } else { $rootIn.Trim() }
+        if (-not (Test-Path -LiteralPath $root -PathType Container)) {
+            return @{ Ok = $false; Status = 400; Error = ("I-drive root not found: " + $root) }
+        }
+        $rootFull = [System.IO.Path]::GetFullPath($root)
+        $rootPrefix = $rootFull.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
+
+        $normRel = ($rel -replace '/', '\').TrimStart('\')
+        foreach ($seg in $normRel.Split('\')) {
+            if ($seg -eq '..' -or $seg -eq '.') {
+                return @{ Ok = $false; Status = 400; Error = 'Path traversal rejected' }
+            }
+            if ($seg -match '[:*?"<>|]') {
+                return @{ Ok = $false; Status = 400; Error = 'Illegal path characters' }
+            }
+        }
+        $candidate = Join-Path $rootFull $normRel
+        $full = [System.IO.Path]::GetFullPath($candidate)
+        if (-not $full.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return @{ Ok = $false; Status = 400; Error = 'Resolved path escapes I-drive root' }
+        }
+        $ext = [System.IO.Path]::GetExtension($full).ToLowerInvariant()
+        if (-not ($allowedExt -contains $ext)) {
+            return @{ Ok = $false; Status = 400; Error = ("Extension not allowed: " + $ext) }
+        }
+
+        $dir = [System.IO.Path]::GetDirectoryName($full)
+        if (-not (Test-Path -LiteralPath $dir -PathType Container)) {
+            [void][System.IO.Directory]::CreateDirectory($dir)
+        }
+
+        $finalPath = $full
+        if (Test-Path -LiteralPath $finalPath -PathType Leaf) {
+            $baseName = [System.IO.Path]::GetFileNameWithoutExtension($full)
+            $dirName = [System.IO.Path]::GetDirectoryName($full)
+            $n = 2
+            while ($true) {
+                $tryName = "{0} ({1}){2}" -f $baseName, $n, $ext
+                $tryPath = Join-Path $dirName $tryName
+                if (-not (Test-Path -LiteralPath $tryPath -PathType Leaf)) {
+                    $finalPath = $tryPath
+                    break
+                }
+                $n += 1
+                if ($n -gt 999) {
+                    return @{ Ok = $false; Status = 409; Error = 'Too many name collisions' }
+                }
+            }
+        }
+
+        $bytes = [Convert]::FromBase64String($b64)
+        [System.IO.File]::WriteAllBytes($finalPath, $bytes)
+        return @{ Ok = $true; Status = 200; Path = $finalPath }
+    } catch {
+        return @{ Ok = $false; Status = 500; Error = $_.Exception.Message }
+    }
+}
+
 function Get-EmailSyncStatusBody {
     $statusPath = Join-Path $env:USERPROFILE 'ACC-Suite\email-sync-status.json'
     if (Test-Path -LiteralPath $statusPath -PathType Leaf) {
@@ -593,7 +736,8 @@ try {
     Write-Host "  URL=$url"
     Write-Host ""
     Write-Host "  This is LOCAL ONLY (loopback 127.0.0.1) - nothing is exposed to the network." -ForegroundColor Gray
-    Write-Host "  Keep this window open while you use the app; close it (or press Ctrl+C) to stop." -ForegroundColor Yellow
+    Write-Host "  Keep this window open while you use the app; close the browser tab (or this window / Ctrl+C) to stop." -ForegroundColor Yellow
+    Write-Host "  Closing the last app tab also stops Folder Watch in the background." -ForegroundColor Gray
     Write-Host ""
 
     # --- Open the browser (Edge preferred; multiple paths + cmd start fallback) -
@@ -656,47 +800,122 @@ try {
 
     $notFound = [System.Text.Encoding]::UTF8.GetBytes('404 Not Found')
 
-    # --- Serve loop: resilient, one bad connection never kills the server -----
+    # Tab lifecycle: SPA heartbeats + goodbye (see src/lib/launcherLifecycle.ts).
+    $script:ClientHeartbeats = @{}
+    $script:HadClients = $false
+    $script:ShutdownRequested = $false
+    $script:ClientStaleSeconds = 60
+
+    function Register-AccClientHeartbeat {
+        param([string]$ClientId)
+        if ([string]::IsNullOrWhiteSpace($ClientId)) { return $false }
+        if ($ClientId.Length -gt 128) { return $false }
+        $script:ClientHeartbeats[$ClientId] = [DateTime]::UtcNow
+        $script:HadClients = $true
+        return $true
+    }
+
+    function Unregister-AccClient {
+        param([string]$ClientId)
+        if ([string]::IsNullOrWhiteSpace($ClientId)) { return }
+        if ($script:ClientHeartbeats.ContainsKey($ClientId)) {
+            $script:ClientHeartbeats.Remove($ClientId)
+        }
+    }
+
+    function Clear-AccStaleClients {
+        if ($script:ClientHeartbeats.Count -eq 0) { return }
+        $cutoff = [DateTime]::UtcNow.AddSeconds(-$script:ClientStaleSeconds)
+        $stale = @($script:ClientHeartbeats.Keys | Where-Object { $script:ClientHeartbeats[$_] -lt $cutoff })
+        foreach ($id in $stale) { $script:ClientHeartbeats.Remove($id) }
+    }
+
+    function Test-AccShouldShutdownForNoClients {
+        if (-not $script:HadClients) { return $false }
+        Clear-AccStaleClients
+        return ($script:ClientHeartbeats.Count -eq 0)
+    }
+
+    function Send-AccJsonOk {
+        param([System.Net.Sockets.TcpClient]$Client, $Obj)
+        $json = ($Obj | ConvertTo-Json -Depth 3 -Compress:$false)
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
+        Send-Response -Client $Client -StatusCode 200 -StatusText 'OK' -Body $bytes -ContentType 'application/json; charset=utf-8'
+    }
+
+    # --- Serve loop: resilient; tab-close can shut down quietly --------------------
     Write-LauncherLogSafe 'Step: enter serve loop'
     try {
-        while ($true) {
+        Write-AccPidFile -Name 'launch.pid' | Out-Null
+        Write-BootstrapLog "Wrote launch.pid ($PID)"
+
+        while (-not $script:ShutdownRequested) {
+            if (Test-AccShouldShutdownForNoClients) {
+                Write-BootstrapLog 'No live browser tabs (goodbye or heartbeat stale) - shutting down'
+                $script:ShutdownRequested = $true
+                break
+            }
+
+            if (-not $listener.Pending()) {
+                Start-Sleep -Milliseconds 250
+                continue
+            }
+
             $client = $null
             try {
                 $client = $listener.AcceptTcpClient()
                 $client.ReceiveTimeout = 5000
                 $client.SendTimeout = 5000
 
-                $stream = $client.GetStream()
+                $req = Read-HttpRequest -Client $client
+                $requestLine = $req.RequestLine
+                $method = $req.Method
 
-                $buffer = New-Object byte[] 8192
-                $sb = New-Object System.Text.StringBuilder
-                $requestLine = ''
-                $deadline = [DateTime]::UtcNow.AddSeconds(5)
-
-                while ([DateTime]::UtcNow -lt $deadline) {
-                    if ($stream.DataAvailable -or $client.Available -gt 0) {
-                        $read = $stream.Read($buffer, 0, $buffer.Length)
-                        if ($read -le 0) { break }
-                        [void]$sb.Append([System.Text.Encoding]::ASCII.GetString($buffer, 0, $read))
-                        $text = $sb.ToString()
-                        $nl = $text.IndexOf("`n")
-                        if ($nl -ge 0) {
-                            $requestLine = $text.Substring(0, $nl).Trim()
-                            break
+                if ($method -eq 'POST') {
+                    $reqPath = Get-RequestPath -RequestLine $requestLine
+                    if ($reqPath -eq '/_acc/heartbeat') {
+                        $cid = Get-AccClientIdFromRequest -RequestLine $requestLine -BodyBytes $req.Body
+                        $ok = Register-AccClientHeartbeat -ClientId $cid
+                        Send-AccJsonOk -Client $client -Obj ([ordered]@{
+                            ok = [bool]$ok
+                            clients = $script:ClientHeartbeats.Count
+                        })
+                    } elseif ($reqPath -eq '/_acc/goodbye') {
+                        $cid = Get-AccClientIdFromRequest -RequestLine $requestLine -BodyBytes $req.Body
+                        Unregister-AccClient -ClientId $cid
+                        $shouldStop = $false
+                        if ($script:HadClients) {
+                            $shouldStop = Test-AccShouldShutdownForNoClients
+                        } elseif (-not [string]::IsNullOrWhiteSpace($cid)) {
+                            $shouldStop = $true
                         }
-                        if ($sb.Length -gt 65536) { break }
+                        if ($shouldStop) { $script:ShutdownRequested = $true }
+                        Send-AccJsonOk -Client $client -Obj ([ordered]@{
+                            ok = $true
+                            shutdown = [bool]$shouldStop
+                            clients = $script:ClientHeartbeats.Count
+                        })
+                        if ($shouldStop) {
+                            Write-BootstrapLog "Goodbye from last tab (clientId=$cid) - shutting down"
+                        }
+                    } elseif ($reqPath -eq '/_acc/file-to-idrive') {
+                        $result = Save-IDriveFile -BodyBytes $req.Body
+                        if ($result.Ok) {
+                            $outObj = [ordered]@{ ok = $true; path = [string]$result.Path }
+                            $outJson = ($outObj | ConvertTo-Json -Depth 3 -Compress:$false)
+                            $outBytes = [System.Text.Encoding]::UTF8.GetBytes($outJson)
+                            Send-Response -Client $client -StatusCode 200 -StatusText 'OK' -Body $outBytes -ContentType 'application/json; charset=utf-8'
+                        } else {
+                            $errObj = [ordered]@{ ok = $false; error = [string]$result.Error }
+                            $errJson = ($errObj | ConvertTo-Json -Depth 3 -Compress:$false)
+                            $errBytes = [System.Text.Encoding]::UTF8.GetBytes($errJson)
+                            $code = if ($result.Status) { [int]$result.Status } else { 400 }
+                            Send-Response -Client $client -StatusCode $code -StatusText 'Error' -Body $errBytes -ContentType 'application/json; charset=utf-8'
+                        }
                     } else {
-                        Start-Sleep -Milliseconds 10
+                        Send-Response -Client $client -StatusCode 404 -StatusText 'Not Found' -Body $notFound -ContentType 'text/plain; charset=utf-8'
                     }
-                }
-
-                $method = ''
-                if ($requestLine) {
-                    $parts = $requestLine.Split(' ')
-                    if ($parts.Length -ge 1) { $method = $parts[0].ToUpperInvariant() }
-                }
-
-                if ($method -eq 'GET') {
+                } elseif ($method -eq 'GET') {
                     $reqPath = Get-RequestPath -RequestLine $requestLine
                     if ($reqPath -eq '/_acc/email-sync-status.json') {
                         $body = Get-EmailSyncStatusBody
@@ -756,6 +975,9 @@ try {
             }
         }
     } finally {
+        Write-BootstrapLog 'Listen loop ended - stopping folder-watch companion if running'
+        try { Request-AccFolderWatchStop } catch {}
+        Clear-AccPidFile -Name 'launch.pid'
         if ($listener) { try { $listener.Stop() } catch {} }
         Write-LauncherLogSafe 'Step: server stopped'
         Write-Host ""

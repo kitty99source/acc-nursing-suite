@@ -58,6 +58,7 @@ export interface BatchCommitDeps {
       claimPatch?: StagingParsedPreview['claimPatch'];
       rows: ParsedServiceRow[];
       autoAccept?: boolean;
+      stagingItemId?: string;
     },
   ) => Promise<{ patientId: string; claimId: string }>;
   commitParsedDecline: (
@@ -70,6 +71,7 @@ export interface BatchCommitDeps {
       claimNumber?: string;
       reason?: string;
       servicePeriodDeclined?: string;
+      stagingItemId?: string;
     },
   ) => Promise<{ patientId: string; claimId: string }>;
 }
@@ -142,6 +144,7 @@ export async function commitBatchStagingItem(
       patientPatch: preview.patientPatch,
       claimPatch: preview.claimPatch,
       rows,
+      stagingItemId: item.id,
     });
     return { ...result, kind: 'approval' };
   }
@@ -156,6 +159,7 @@ export async function commitBatchStagingItem(
     claimNumber: preview.claimNumber ?? preview.parsed.claim.claimNumber,
     reason: preview.reason ?? preview.parsed.reason,
     servicePeriodDeclined: preview.servicePeriodDeclined ?? preview.parsed.serviceRequested,
+    stagingItemId: item.id,
   });
   return { ...result, kind: 'decline' };
 }
@@ -262,6 +266,7 @@ export async function commitAutoAcceptItem(
     claimPatch: preview.claimPatch,
     rows,
     autoAccept: true,
+    stagingItemId: item.id,
   });
 }
 

@@ -1209,7 +1209,7 @@ export function ReviewQueue() {
       const result = await commitLetterForm(parsed, file, fields, {
         commitParsedApproval,
         commitParsedDecline,
-      });
+      }, { stagingItemId: selected.id });
       let iDriveNote = '';
       if (fileToIDrive) {
         const live = buildAdminIDriveRelativePath({

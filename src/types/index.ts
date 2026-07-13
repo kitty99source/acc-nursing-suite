@@ -205,6 +205,14 @@ export interface ClaimDocument {
   sizeBytes: number;
   addedDate: string; // ISO date
   notes?: string;
+  /** Staging row id when this document was created by Review Queue Accept (enables later undo). */
+  stagingItemId?: string;
+  /** True when Accept created this document (patient-side “Undo this accept”). */
+  fromReviewAccept?: boolean;
+  /** Accept created the patient — safe to remove on undo if empty afterward. */
+  reviewAcceptCreatedPatient?: boolean;
+  /** Accept created the claim — safe to remove on undo if empty afterward. */
+  reviewAcceptCreatedClaim?: boolean;
 }
 
 export type ThemeName = 'clinical-light' | 'warm-light' | 'dark' | 'high-contrast';

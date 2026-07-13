@@ -566,6 +566,7 @@ export function LetterImportModal() {
               claimPatch: pre.claim,
               rows: r.parsed.serviceRows,
               historicRows: r.parsed.packageRows,
+              stagingItemId: letterImport.stagingItemId,
             });
             setCommitResult(commitRes);
             announceLetterImportSuccess(commitRes);
@@ -580,6 +581,7 @@ export function LetterImportModal() {
               reason: r.parsed.reason,
               patientId: r.match.patientId,
               claimId: r.match.claimId,
+              stagingItemId: letterImport.stagingItemId,
             });
             setCommitResult(commitRes);
             announceLetterImportSuccess(commitRes);
@@ -658,6 +660,7 @@ export function LetterImportModal() {
         claimId: selectedClaimId || letterImport.context?.claimId,
         patientId: selectedPatientId || letterImport.context?.patientId,
         letterKind: letterKind === 'approval' || letterKind === 'decline' ? letterKind : undefined,
+        stagingItemId: letterImport.stagingItemId,
       });
       setCommitResult(res);
       announceLetterImportSuccess(res);
@@ -717,6 +720,7 @@ export function LetterImportModal() {
           selectedClaimId,
         },
         { commitParsedApproval, commitParsedDecline },
+        { stagingItemId: letterImport.stagingItemId },
       );
       setCommitResult(commitRes);
       announceLetterImportSuccess(commitRes);

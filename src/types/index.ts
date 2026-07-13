@@ -273,6 +273,11 @@ export interface Settings {
   iDriveRootPath: string;
   /** Staging subfolder under the root (default `_Staging`). */
   iDriveStagingSubfolder: string;
+  /**
+   * Helper Mode: when true, hovering/focusing key controls shows short explainers.
+   * Default off; toggled from the top-bar ? or Settings.
+   */
+  helperModeEnabled: boolean;
   // Defaults to every code; lets an office hide the ones they never use.
   enabledServiceCodes: ServiceCode[];
   // Editable per-contract rates (dollars excl GST) keyed by service code.
@@ -378,6 +383,7 @@ export const DEFAULT_SETTINGS: Settings = {
   iDriveFilingBannerDismissed: false,
   iDriveRootPath: 'I:\\ACC\\District Nursing',
   iDriveStagingSubfolder: '_Staging',
+  helperModeEnabled: false,
   enabledServiceCodes: [...ALL_SERVICE_CODES],
   serviceRates: { ...DEFAULT_RATES },
 };

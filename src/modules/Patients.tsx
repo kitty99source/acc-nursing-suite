@@ -3,6 +3,7 @@ import { useStore } from '../state/store';
 import { inferDocumentKindForPdf } from '../lib/letterImport';
 import { Modal } from '../components/Modal';
 import { useConfirm } from '../components/useConfirm';
+import { HelperTip } from '../components/HelperTip';
 import {
   SectionTitle,
   Card,
@@ -1494,15 +1495,17 @@ function ClaimDocuments({ claimId }: { claimId: string }) {
               </div>
               <div className="flex items-center gap-1 shrink-0 flex-wrap">
                 {needsInitialAdminIDriveStaging(doc) && (
-                  <button
-                    type="button"
-                    className="btn btn-sm"
-                    disabled={busy || stageBusyId === doc.id}
-                    title="Writes under _Staging only; does not overwrite live I-drive folders"
-                    onClick={() => void stageToIDrive(doc)}
-                  >
-                    {stageBusyId === doc.id ? 'Staging…' : 'Stage to I-drive'}
-                  </button>
+                  <HelperTip tipId="tip-stage-later">
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      disabled={busy || stageBusyId === doc.id}
+                      title="Writes under _Staging only; does not overwrite live I-drive folders"
+                      onClick={() => void stageToIDrive(doc)}
+                    >
+                      {stageBusyId === doc.id ? 'Staging…' : 'Stage to I-drive'}
+                    </button>
+                  </HelperTip>
                 )}
                 {doc.fromReviewAccept && doc.stagingItemId && (
                   <button

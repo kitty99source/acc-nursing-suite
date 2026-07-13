@@ -31,6 +31,7 @@ import { LetterImportModal } from './components/LetterImportModal';
 import { RecoveryModal } from './components/RecoveryModal';
 import { BackupReminderModal } from './components/BackupReminderModal';
 import { HelpCenterModal, type HelpTab } from './components/HelpCenterModal';
+import { HelperUiProvider } from './components/HelperUiContext';
 import { ConfirmDialog } from './components/Modal';
 import { loadBackupSnoozeUntil } from './lib/idb';
 import { logInfo } from './lib/logger';
@@ -66,6 +67,7 @@ export default function App() {
   const tabIdRef = useRef(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpTab, setHelpTab] = useState<HelpTab>('guide');
+  const [helpFaqId, setHelpFaqId] = useState<string | undefined>();
   const helpAutoOpenedRef = useRef(false);
 
   // A cross-module focus request (e.g. from the Flagged page) switches the
@@ -281,12 +283,20 @@ export default function App() {
   }, [ready, locked, recovery, settings.hasSeenWelcomeGuide]);
 
   function openHelp(tab: HelpTab = 'guide') {
+    setHelpFaqId(undefined);
     setHelpTab(tab);
+    setHelpOpen(true);
+  }
+
+  function openFaq(faqId: string) {
+    setHelpFaqId(faqId);
+    setHelpTab('faq');
     setHelpOpen(true);
   }
 
   function closeHelp() {
     setHelpOpen(false);
+    setHelpFaqId(undefined);
     if (!settings.hasSeenWelcomeGuide) {
       updateSettings({ hasSeenWelcomeGuide: true });
     }
@@ -328,6 +338,7 @@ export default function App() {
   }
 
   return (
+    <HelperUiProvider value={{ openFaq, openHelp }}>
     <div className="h-full flex relative" style={{ background: 'var(--bg)' }}>
       {dragOver && (
         <div className="fixed inset-0 z-[60] pointer-events-none flex items-center justify-center p-4" style={{ background: 'rgba(47,143,131,0.15)', border: '3px dashed var(--accent)' }}>
@@ -375,7 +386,12 @@ export default function App() {
         </main>
       </div>
       <LetterImportModal />
-      <HelpCenterModal open={helpOpen} initialTab={helpTab} onClose={closeHelp} />
+      <HelpCenterModal
+        open={helpOpen}
+        initialTab={helpTab}
+        initialFaqId={helpFaqId}
+        onClose={closeHelp}
+      />
       <ConfirmDialog
         open={idleWarningOpen}
         title="Session expiring"
@@ -406,5 +422,6 @@ export default function App() {
         onDismiss={() => setBackupReminderOpen(false)}
       />
     </div>
+    </HelperUiProvider>
   );
 }

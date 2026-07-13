@@ -13,6 +13,7 @@ import { PdfPreview } from '../components/PdfPreview';
 import { Modal } from '../components/Modal';
 import { IconExpand } from '../components/icons';
 import { useConfirm } from '../components/useConfirm';
+import { HelperTip } from '../components/HelperTip';
 import {
   loadStagingItems,
   loadAllStagingItems,
@@ -2077,23 +2078,27 @@ export function ReviewQueue() {
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none" style={{ color: 'var(--muted)' }}>
-                      <input
-                        type="checkbox"
-                        checked={fileToIDrive}
-                        onChange={(e) => setFileToIDrive(e.target.checked)}
-                      />
-                      Also stage to I-drive (_Staging mirror)
-                    </label>
+                    <HelperTip tipId="tip-idrive-checkbox">
+                      <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none" style={{ color: 'var(--muted)' }}>
+                        <input
+                          type="checkbox"
+                          checked={fileToIDrive}
+                          onChange={(e) => setFileToIDrive(e.target.checked)}
+                        />
+                        Also stage to I-drive (_Staging mirror)
+                      </label>
+                    </HelperTip>
                     <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-sm"
-                      disabled={!canAccept}
-                      onClick={() => void acceptItem()}
-                    >
-                      Accept
-                    </button>
+                    <HelperTip tipId="tip-accept">
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        disabled={!canAccept}
+                        onClick={() => void acceptItem()}
+                      >
+                        Accept
+                      </button>
+                    </HelperTip>
                     {selected.status === 'deferred' ? (
                       <button
                         type="button"

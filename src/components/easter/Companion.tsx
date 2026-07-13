@@ -11,7 +11,10 @@ import {
   nearestSegment,
   pickNextSegment,
   pruneSegments,
+  rectToBottomEdge,
   rectToTopEdge,
+  clampWalkY,
+  defaultTopBarSegment,
   stepAlong,
   type Direction,
   type Segment,
@@ -27,6 +30,10 @@ import {
  * sprite is clickable (only the sprite has pointer-events), wakes when poked,
  * and gets briefly annoyed after a few pokes in a short window. Still a single
  * rAF loop that pauses when the tab is hidden.
+ *
+ * Visibility note: chrome at the top of the viewport (header / aside) uses the
+ * *bottom* edge as the walk ledge so the sprite sits on-screen. A synthetic
+ * top-bar fallback is always available if measurement finds nothing.
  */
 
 const SPRITE_SIZE = 30;
@@ -50,17 +57,53 @@ function prefersReducedMotion(): boolean {
 }
 
 function measureSegments(): Segment[] {
-  if (typeof document === 'undefined') return [];
-  const els = document.querySelectorAll<HTMLElement>('[data-companion-edge], header, aside');
+  if (typeof document === 'undefined' || typeof window === 'undefined') return [];
   const segs: Segment[] = [];
-  els.forEach((el) => {
+  const seen = new Set<HTMLElement>();
+
+  const addBottom = (el: HTMLElement) => {
+    if (seen.has(el)) return;
+    seen.add(el);
+    const r = el.getBoundingClientRect();
+    if (r.width <= 0 || r.height <= 0) return;
+    if (r.bottom < 0 || r.top > window.innerHeight) return;
+    const seg = rectToBottomEdge(
+      { left: r.left, right: r.right, top: r.top, bottom: r.bottom },
+      EDGE_INSET,
+    );
+    if (seg) {
+      segs.push({ ...seg, y: clampWalkY(seg.y, SPRITE_SIZE, window.innerHeight) });
+    }
+  };
+
+  const addTop = (el: HTMLElement) => {
+    if (seen.has(el)) return;
+    seen.add(el);
     const r = el.getBoundingClientRect();
     if (r.width <= 0 || r.height <= 0) return;
     if (r.top < -40 || r.top > window.innerHeight - 8) return;
     const seg = rectToTopEdge({ left: r.left, right: r.right, top: r.top }, EDGE_INSET);
-    if (seg) segs.push(seg);
-  });
-  return pruneSegments(segs, MIN_SEGMENT_WIDTH);
+    if (seg) {
+      segs.push({ ...seg, y: clampWalkY(seg.y, SPRITE_SIZE, window.innerHeight) });
+    }
+  };
+
+  // Top bar: walk the *bottom* edge so the sprite sits on the chrome, not
+  // above the viewport (top edge at y≈0 would clip under overflow-hidden).
+  document.querySelectorAll<HTMLElement>('header, [data-companion-ledge="bottom"]').forEach(addBottom);
+
+  // Sidebar + opted-in cards: prefer top edge, but clamp y so the sprite stays visible.
+  document.querySelectorAll<HTMLElement>('[data-companion-edge], aside').forEach(addTop);
+
+  const pruned = pruneSegments(segs, MIN_SEGMENT_WIDTH);
+  if (pruned.length > 0) return pruned;
+
+  // Zero-path fallback: full-width ledge under a typical top bar.
+  const header = document.querySelector('header');
+  const preferredY = header ? header.getBoundingClientRect().bottom || 48 : 48;
+  return [
+    defaultTopBarSegment(window.innerWidth, window.innerHeight, EDGE_INSET, preferredY),
+  ];
 }
 
 function randBetween([lo, hi]: [number, number]): number {
@@ -84,8 +127,8 @@ export function Companion() {
     let segments: Segment[] = [];
     let current: Segment | null = null;
     let dir: Direction = 1;
-    let x = 0;
-    let y = 0;
+    let x = EDGE_INSET + 24;
+    let y = SPRITE_SIZE;
     let idleUntil = 0;
     let idleStartedAt = 0;
     let annoyedUntil = 0;
@@ -102,8 +145,9 @@ export function Companion() {
 
     const ensureCurrent = () => {
       if (segments.length === 0) {
-        current = null;
-        return;
+        segments = [
+          defaultTopBarSegment(window.innerWidth, window.innerHeight, EDGE_INSET, 48),
+        ];
       }
       if (!current || !segments.some((s) => s === current)) {
         const snap = nearestSegment(segments, { x, y });
@@ -152,14 +196,14 @@ export function Companion() {
         // A little shake while annoyed (never under reduced motion).
         if (state === 'annoyed' && !reduced) left += Math.sin(now / 28) * 1.6;
         pos.style.transform = `translate3d(${left}px, ${top}px, 0)`;
-        pos.style.opacity = current ? '1' : '0';
+        // Always visible once mounted — fallback path guarantees a segment.
+        pos.style.opacity = '1';
       }
 
       if (zzz) {
         zzz.style.opacity = state === 'sleep' ? '1' : '0';
       }
 
-      // Report whether we actually moved this frame (unused today, keeps signature clear).
       void moving;
     };
 
@@ -234,6 +278,10 @@ export function Companion() {
     const spriteEl = spriteRef.current;
     spriteEl?.addEventListener('click', onClick);
 
+    // First measure synchronously so the sprite appears within a frame.
+    segments = measureSegments();
+    ensureCurrent();
+    render(performance.now(), true);
     rafId = requestAnimationFrame(frame);
 
     return () => {
@@ -251,12 +299,13 @@ export function Companion() {
   return (
     <div
       aria-hidden
-      className="easter-companion-layer fixed inset-0 z-[45] pointer-events-none overflow-hidden"
+      className="easter-companion-layer fixed inset-0 z-[48] pointer-events-none overflow-hidden"
+      data-testid="walking-companion"
     >
       <div
         ref={posRef}
         className="easter-companion-pos absolute top-0 left-0"
-        style={{ opacity: 0, willChange: 'transform' }}
+        style={{ opacity: 1, willChange: 'transform' }}
       >
         {/* Floating snore "z z z" (only visible while sleeping). */}
         <div

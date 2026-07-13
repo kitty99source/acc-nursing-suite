@@ -319,6 +319,11 @@ body {
     border-bottom: 1px solid var(--border);
     vertical-align: top;
   }
+  /* Fixed-layout tables (Billing Log, Approvals): keep cells from forcing H-scroll. */
+  .data-table-fixed td,
+  .data-table-fixed th {
+    overflow: hidden;
+  }
   .data-table tbody tr:hover {
     background: var(--surface-2);
   }

@@ -46,6 +46,38 @@ export function rectToTopEdge(rect: RectLike, inset = 6): Segment | null {
   return { x1, x2, y: rect.top };
 }
 
+/** Bottom-edge segment — preferred for chrome at the top of the viewport so a
+ *  sprite sitting *on* the edge stays on-screen (top-edge at y≈0 clips away). */
+export function rectToBottomEdge(
+  rect: RectLike & { bottom: number },
+  inset = 6,
+): Segment | null {
+  const x1 = rect.left + inset;
+  const x2 = rect.right - inset;
+  if (x2 - x1 <= 0) return null;
+  return { x1, x2, y: rect.bottom };
+}
+
+/** Ensure a walk y keeps a sprite of `spriteSize` fully inside the viewport. */
+export function clampWalkY(y: number, spriteSize: number, viewportHeight: number): number {
+  const min = spriteSize;
+  const max = Math.max(min, viewportHeight - 4);
+  return Math.min(Math.max(y, min), max);
+}
+
+/** Full-width fallback ledge near the top of the viewport (typical top-bar bottom). */
+export function defaultTopBarSegment(
+  viewportWidth: number,
+  viewportHeight: number,
+  inset = 8,
+  preferredY = 48,
+): Segment {
+  const x1 = inset;
+  const x2 = Math.max(x1 + 48, viewportWidth - inset);
+  const y = clampWalkY(preferredY, 30, viewportHeight);
+  return { x1, x2, y };
+}
+
 /** Drop segments narrower than `minWidth` (not worth walking on). */
 export function pruneSegments(segments: Segment[], minWidth = 24): Segment[] {
   return segments.filter((s) => segmentWidth(s) >= minWidth);

@@ -103,8 +103,6 @@ copy work in every mode.
   inline status editing, filters and totals. Salmon = follow-up needed, green = billed.
 - **Complex Cases** — structured "don't make me re-research this" log; highlights overdue reviews.
 - **Decline Tracker** — receipt → nurse emailed → resubmission → outcome, with status dropdown.
-- **Quick Paste-In** — paste rows from your billing report, map the columns, review, then commit
-  them as invoice lines. (Toggle off in Settings if you don't want it.)
 - **Export Center** — one-click `.xlsx` workbook (reproduces your toolkit exactly), **Excel import**
   (`.xlsx` → JSON, with a preview + merge/replace), and JSON backup/restore.
 - **Imported Tables** — appears in the sidebar only after you import a workbook containing sheets
@@ -245,7 +243,7 @@ acc-nursing-suite/
 │  ├─ state/store.ts          # Zustand store: entities, CRUD, autosave, lock
 │  ├─ components/             # Sidebar, TopBar, LockScreen, DataTable, Modal, UI, icons
 │  └─ modules/                # Dashboard, Patients, CalculatorModule, Approvals,
-│                             # Billing, ComplexCases, Declines, QuickPaste,
+│                             # Billing, ComplexCases, Declines,
 │                             # ExportCenter, ImportedTables, SettingsModule
 ├─ samples/                   # AdminSuite-DEMODATA.xlsx (fake demo data for import testing)
 └─ scripts/verify-build.mjs   # checks the built file is offline + Excel is valid

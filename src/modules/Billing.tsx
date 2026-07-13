@@ -730,7 +730,7 @@ export function Billing() {
           <EmptyState
             icon={<IconBilling width={32} height={32} />}
             title="No invoice lines"
-            message="Add invoice lines manually, or use Quick Paste-In to import rows from your billing report."
+            message="Add invoice lines manually, or import from Excel / remittance in Billing."
             action={
               <button className="btn btn-primary" onClick={openCreate}>
                 <IconPlus /> New invoice line

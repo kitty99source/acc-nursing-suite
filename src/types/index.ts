@@ -241,7 +241,6 @@ export interface Settings {
   expiryThresholdDays: number; // default 30
   idleLockMinutes: number; // default 15
   encryptionEnabled: boolean;
-  quickPasteInEnabled: boolean; // default true
   /** Production config — disables letter auto-commit and dev-only recovery paths. */
   productionMode: boolean;
   /** Dev-only: allow 100% confidence letters to auto-file (requires productionMode false). */
@@ -361,7 +360,6 @@ export const DEFAULT_SETTINGS: Settings = {
   expiryThresholdDays: 30,
   idleLockMinutes: 15,
   encryptionEnabled: false,
-  quickPasteInEnabled: true,
   productionMode: true,
   letterImportAutoCommit: false,
   backupReminderDays: 7,

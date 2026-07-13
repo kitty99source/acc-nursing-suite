@@ -112,6 +112,14 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     tags: ['undo', 'accept', 'mistake', 'review'],
   },
   {
+    id: 'faq-stage-to-idrive',
+    question: 'I Accepted without filing to I-drive — can I stage later?',
+    answer:
+      'Yes. On the claim document (From Review Queue), use "Stage to I-drive" when the file is still stored locally and no staging path is recorded yet. ' +
+      'It writes under _Staging using the Letters path grammar and saves the path so you can see it next time.',
+    tags: ['idrive', 'staging', 'accept', 'retry', 'filing'],
+  },
+  {
     id: 'faq-remove-remittance',
     question: 'I imported the wrong remittance file — how do I undo it?',
     answer:

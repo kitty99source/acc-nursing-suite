@@ -40,6 +40,7 @@ import {
 } from '../lib/localAccBridge';
 import {
   bridgeEmptyQueueMessage,
+  bridgeIDriveWriteFailedMessage,
   bridgeUnavailableBannerCopy,
   nextBridgePollIntervalMs,
 } from '../lib/bridgeReconnect';
@@ -77,7 +78,7 @@ import {
   stagingPreviewOf,
   type LetterCommitFormFields,
 } from '../lib/letterCommit';
-import { formatDate } from '../lib/format';
+import { formatDate, todayISO } from '../lib/format';
 import type { LetterParseResult, ParsedLetter, ParsedServiceRow } from '../lib/letterImport';
 import {
   hashBlob,
@@ -223,6 +224,7 @@ export function ReviewQueue() {
   const commitParsedDecline = useStore((s) => s.commitParsedDecline);
   const undoHrqAccept = useStore((s) => s.undoHrqAccept);
   const parseLetterFile = useStore((s) => s.parseLetterFile);
+  const updateDocument = useStore((s) => s.updateDocument);
   const data = useStore((s) => s.data);
   const setFocus = useStore((s) => s.setFocus);
   const userName = useStore((s) => s.data.settings.userDisplayName?.trim() || undefined);
@@ -1251,8 +1253,19 @@ export function ReviewQueue() {
         });
         if (filed.ok) {
           iDriveNote = ` Staged to I-drive: ${joinIDriveDisplayPath(settings.iDriveRootPath, stagingRel)}.`;
+          if (result.documentId) {
+            updateDocument(result.documentId, {
+              lastIDriveFiling: {
+                relativePath: stagingRel,
+                filedAt: todayISO(),
+              },
+            });
+          }
         } else {
-          iDriveNote = ` I-drive staging failed (${filed.error ?? 'unknown'}) — patient case was still created.`;
+          iDriveNote = ` ${bridgeIDriveWriteFailedMessage({
+            isDev: import.meta.env.DEV,
+            error: filed.error,
+          })} Patient case was still created.`;
         }
       }
       await updateStagingItem(selected.id, { status: 'approved' });

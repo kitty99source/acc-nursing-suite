@@ -77,3 +77,19 @@ export function bridgeMissingFileMessage(opts: { isDev: boolean }): string {
     'Wait a moment, or pick the file below to continue.'
   );
 }
+
+/** I-drive POST failed — soft reconnect / retry, not "start WFH Mode.cmd". */
+export function bridgeIDriveWriteFailedMessage(opts: { isDev: boolean; error?: string }): string {
+  const detail = (opts.error ?? '').trim();
+  const prefix = detail ? `I-drive staging failed: ${detail}. ` : 'I-drive staging failed. ';
+  if (opts.isDev) {
+    return (
+      prefix +
+      'Start the quiet .vbs / recommended launcher so the /_acc bridge can write, then retry Stage to I-drive.'
+    );
+  }
+  return (
+    prefix +
+    'The local helper may be reconnecting — wait a moment and retry Stage to I-drive. You do not need to open a .cmd.'
+  );
+}

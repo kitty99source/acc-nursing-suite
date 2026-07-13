@@ -131,8 +131,8 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     id: 'fun',
     title: 'Fun / Easter eggs',
     body:
-      'Optional decorative extras in Settings → Fun / Easter eggs: dancing disco cats, cute mouse cursors, and a walking companion. ' +
-      'All off by default; they never touch patient or billing data. Triple-click the sidebar “NS” badge to toggle disco cats for this session.',
+      'Optional decorative extras near the top of Settings → Fun / Easter eggs: dancing disco cats, cute mouse cursors, and a walking companion. ' +
+      'All off by default; they never touch patient or billing data. Triple-click the teal “NS” badge at the top of the sidebar to toggle disco cats for this session.',
   },
   {
     id: 'save-load',
@@ -449,9 +449,10 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     id: 'faq-easter-eggs',
     question: 'How do I turn on disco cats, cute cursors, or the walking companion?',
     answer:
-      'Open Settings → Fun / Easter eggs. Toggle Dancing disco cats, pick a Mouse cursor style, and/or enable Walking companion (pick a character). ' +
+      'Open Settings (sidebar → Settings). The Fun / Easter eggs card is near the top, just under About. Toggle Dancing disco cats, pick a Mouse cursor style, and/or enable Walking companion (pick a character). ' +
       'All are off by default, decorative only, and never change patient or billing data. Motion gentles if your system prefers reduced motion. ' +
-      'Shortcut: triple-click the sidebar “NS” badge to toggle disco cats for this browser session (session toggle is separate from the Settings checkbox that stays on across launches).',
+      'If you do not see that card, you are on an older zip/build — use a rebuilt dist that includes the Fun easter eggs commits. ' +
+      'Shortcut: triple-click the teal sidebar “NS” badge (top-left) to toggle disco cats for this browser session (session toggle is separate from the Settings checkbox that stays on across launches).',
     tags: ['fun', 'easter', 'disco', 'cats', 'cursor', 'companion', 'NS'],
   },
   {

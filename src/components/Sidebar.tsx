@@ -65,14 +65,16 @@ export function Sidebar({
   const quickPasteEnabled = useStore((s) => s.data.settings.quickPasteInEnabled);
   const hasImportedTables = useStore((s) => (s.data.customSheets?.length ?? 0) > 0);
   const setDiscoActive = useStore((s) => s.setDiscoActive);
-  const discoActive = useStore((s) => s.discoActive);
 
   // Easter egg: triple-click the NS brand mark within 1.5s to toggle the disco.
   const brandClickRef = useRef<ClickBurstState>(emptyClickBurst());
   const onBrandClick = () => {
     const res = registerClick(brandClickRef.current, Date.now(), { threshold: 3, windowMs: 1500 });
     brandClickRef.current = res.state;
-    if (res.triggered) setDiscoActive(!discoActive);
+    if (res.triggered) {
+      // Read fresh store state so rapid bursts don't toggle from a stale closure.
+      setDiscoActive(!useStore.getState().discoActive);
+    }
   };
 
   // Grouped by daily workflow frequency: triage first, then records, then tools.
@@ -130,15 +132,17 @@ export function Sidebar({
       >
       <div className="px-4 py-4 border-b flex items-center justify-between gap-2" style={{ borderColor: 'var(--border)' }}>
         <div className="flex items-center gap-2 min-w-0">
-          <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm select-none cursor-pointer"
+          <button
+            type="button"
+            className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm select-none cursor-pointer shrink-0 border-0"
             style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
             onClick={onBrandClick}
-            title="ACC District Nursing"
+            title="Fun surprise"
+            aria-label="NS brand — triple-click for a fun surprise"
           >
             NS
-          </div>
-          <div>
+          </button>
+          <div className="min-w-0">
             <div className="font-bold text-sm leading-tight">ACC District Nursing</div>
             <div className="text-xs" style={{ color: 'var(--muted)' }}>
               Admin Suite

@@ -228,6 +228,11 @@ export interface ClaimDocument {
 export type ThemeName = 'clinical-light' | 'warm-light' | 'dark' | 'high-contrast';
 export type DensityMode = 'comfortable' | 'compact';
 
+/** Cute mouse-cursor easter egg options. `default` restores the OS cursor. */
+export type CursorStyle = 'default' | 'cat' | 'butterfly' | 'panda' | 'ladybug' | 'fox';
+/** Walking-companion sprite characters (reuses the cute cursor family). */
+export type CompanionCharacter = 'cat' | 'panda' | 'fox';
+
 export interface Settings {
   theme: ThemeName;
   accentColor: string; // hex
@@ -278,6 +283,14 @@ export interface Settings {
    * Default off; toggled from the top-bar ? or Settings.
    */
   helperModeEnabled: boolean;
+  /** Easter egg: dancing disco cats overlay (also toggled by triple-clicking the NS mark). */
+  discoCatsEnabled: boolean;
+  /** Easter egg: cute mouse cursor. `default` = untouched OS cursor. */
+  cursorStyle: CursorStyle;
+  /** Easter egg: a little sprite that walks along the UI chrome. */
+  companionEnabled: boolean;
+  /** Which companion sprite walks around when the companion is enabled. */
+  companionCharacter: CompanionCharacter;
   // Defaults to every code; lets an office hide the ones they never use.
   enabledServiceCodes: ServiceCode[];
   // Editable per-contract rates (dollars excl GST) keyed by service code.
@@ -384,6 +397,10 @@ export const DEFAULT_SETTINGS: Settings = {
   iDriveRootPath: 'I:\\ACC\\District Nursing',
   iDriveStagingSubfolder: '_Staging',
   helperModeEnabled: false,
+  discoCatsEnabled: false,
+  cursorStyle: 'default',
+  companionEnabled: false,
+  companionCharacter: 'cat',
   enabledServiceCodes: [...ALL_SERVICE_CODES],
   serviceRates: { ...DEFAULT_RATES },
 };

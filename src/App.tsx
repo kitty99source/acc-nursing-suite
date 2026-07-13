@@ -40,6 +40,9 @@ import { AccInboxConfigBanner } from './components/AccInboxConfigBanner';
 import { RemittanceStaleBanner } from './components/RemittanceStaleBanner';
 import { IDriveFilingBanner } from './components/IDriveFilingBanner';
 import { computeSidebarBadges } from './lib/sidebarBadges';
+import { DiscoCats } from './components/easter/DiscoCats';
+import { Companion } from './components/easter/Companion';
+import { applyCursorStyle } from './lib/easter/cursors';
 
 export default function App() {
   const ready = useStore((s) => s.ready);
@@ -92,6 +95,11 @@ export default function App() {
   useEffect(() => {
     applyTheme(settings);
   }, [settings]);
+
+  // Easter egg: apply the chosen cute mouse cursor globally.
+  useEffect(() => {
+    applyCursorStyle(settings.cursorStyle);
+  }, [settings.cursorStyle]);
 
   // Warn before leaving with unsaved (un-exported) changes. Only fires the
   // browser's native "leave site?" prompt when there are dirty changes; in-app
@@ -386,6 +394,8 @@ export default function App() {
         </main>
       </div>
       <LetterImportModal />
+      <DiscoCats />
+      <Companion />
       <HelpCenterModal
         open={helpOpen}
         initialTab={helpTab}

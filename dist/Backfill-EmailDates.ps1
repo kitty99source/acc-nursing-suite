@@ -3,6 +3,7 @@
 $bootstrapRoot = $PSScriptRoot
 if ([string]::IsNullOrEmpty($bootstrapRoot)) { $bootstrapRoot = Split-Path -LiteralPath $MyInvocation.MyCommand.Path -Parent }
 . (Join-Path $bootstrapRoot 'bootstrap-log.ps1') -LogName 'email-sync'
+. (Join-Path $bootstrapRoot 'mailbox-config.ps1')
 . (Join-Path $bootstrapRoot 'inbox-config.ps1')
 Write-BootstrapLog 'Backfill-EmailDates.ps1 started'
 
@@ -57,11 +58,11 @@ if ($missing.Count -eq 0) {
 $outlook = $null
 $namespace = $null
 try {
-    Write-Host 'Connecting to Outlook.Application COM object (for exact received times)...' -ForegroundColor Gray
-    $outlook = New-Object -ComObject Outlook.Application
+    Write-Host 'Connecting to the running Outlook (COM-safe attach)...' -ForegroundColor Gray
+    $outlook = Connect-RunningOutlook
     $namespace = $outlook.GetNamespace('MAPI')
-    [void]$namespace.Logon($null, $null, $false, $true)
-    Write-Host 'OK - Outlook COM connected.' -ForegroundColor Green
+    try { [void]$namespace.Logon($null, $null, $false, $false) } catch {}
+    Write-Host 'OK - attached to Outlook.' -ForegroundColor Green
 } catch {
     Write-Host "WARN - could not connect to Outlook ($($_.Exception.Message)); falling back to file timestamps for all items." -ForegroundColor Yellow
     $namespace = $null

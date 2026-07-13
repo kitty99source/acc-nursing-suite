@@ -183,17 +183,13 @@ try {
         $sharedMailbox = Resolve-SharedMailbox
         Write-SupervisorHost ''
         Write-SupervisorHost "Checking mail in Outlook (mailbox: $sharedMailbox)..."
-        Write-BootstrapLog "Starting outlook-sync.ps1 once at session start (mailbox: $sharedMailbox)"
-        # Run in-process at start so Quiet mode still finishes sync before the
-        # monitor loop (same as before). Mid-session Refresh uses Start-Process.
-        & $syncPs1 -SharedMailbox $sharedMailbox
-        $syncExit = if ($null -ne $LASTEXITCODE) { $LASTEXITCODE } else { 0 }
-        $statusPath = Join-Path (Get-AccSuiteDir) 'email-sync-status.json'
-        Write-BootstrapLog "outlook-sync.ps1 finished exit=$syncExit statusExists=$(Test-Path -LiteralPath $statusPath)"
-        if ($syncExit -ne 0) {
-            Write-SupervisorHost '  Email sync had a problem (app stays up - press Refresh in ACC Inbox to try again).'
+        Write-BootstrapLog "Starting outlook-sync.ps1 at session start (mailbox: $sharedMailbox)"
+        # Out-of-process so a hung COM attach cannot block the Refresh monitor
+        # loop (in-process & sync used to leave request-email-sync forever queued).
+        if (Start-AccEmailSyncProcess -Reason 'session-start') {
+            Write-SupervisorHost '  Email sync started (Refresh in ACC Inbox will re-check mail later).'
         } else {
-            Write-SupervisorHost '  Email sync finished.'
+            Write-SupervisorHost '  Email sync already running.'
         }
         Write-SupervisorHost ''
     }

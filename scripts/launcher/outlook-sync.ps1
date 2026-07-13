@@ -5,6 +5,7 @@ param(
     [int]$DaysBack = 14,
     [switch]$IgnoreWorkHours,
     [switch]$Scheduled,
+    [switch]$AllowStart,
     [Alias('Backfill')]
     [switch]$IncludeActioned
 )
@@ -21,11 +22,15 @@ Write-BootstrapLog "Wrote email-sync.pid ($PID)"
 
 # ACC Outlook COM sync - work laptop only
 #
-# Reads filtered inbox from open Outlook session.
+# Reads filtered inbox from the ALREADY-RUNNING Outlook session.
 # Saves PDF/DOCX attachments to %USERPROFILE%\ACC-Inbox for folder watch + HRQ.
 # Default mode: incremental backlog (oldest ACC letters first, batched per run).
 # Writes email-sync-status.json for ACC Inbox UI and email-sync-state.json for checkpoint resume.
 # Does NOT delete, move, send mail, or auto-import into the app.
+#
+# COM SAFETY (see mailbox-config.ps1 Connect-RunningOutlook):
+#   - Attach via GetActiveObject; New-Object only when safe.
+#   - NEVER Logon with NewSession=$true (hangs / OOMs on the work PC).
 
 $DefaultSenders = @(
     'Bec.Williams@acc.co.nz',
@@ -891,14 +896,17 @@ $cutoff = (Get-Date).AddDays(-1 * [Math]::Max(1, $DaysBack))
 $outlook = $null
 
 try {
-    Write-SyncLine 'Connecting to Outlook.Application COM object...'
-    $outlook = New-Object -ComObject Outlook.Application
+    Write-SyncLine 'Connecting to the running Outlook (COM-safe attach)...'
+    Write-BootstrapLog 'Connect-RunningOutlook begin'
+    $outlook = Connect-RunningOutlook -AllowStart:$AllowStart
     $namespace = $outlook.GetNamespace('MAPI')
-    [void]$namespace.Logon($null, $null, $false, $true)
+    # Reuse the existing session (NewSession = $false). NEVER open a 2nd session.
+    try { [void]$namespace.Logon($null, $null, $false, $false) } catch {}
+    Write-BootstrapLog 'Connect-RunningOutlook ok'
 
     $folder = Get-SharedInboxFolder -Namespace $namespace -SharedName $SharedMailbox
     $resolution = Get-LastMailboxResolution
-    Write-SyncLine "OK - COM connected (shared inbox: $SharedMailbox)"
+    Write-SyncLine "OK - attached to Outlook (shared inbox: $SharedMailbox)"
     if ($resolution) {
         Write-SyncLine "Mailbox resolved via: $resolution"
     }

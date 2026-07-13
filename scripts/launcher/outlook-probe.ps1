@@ -46,15 +46,15 @@ Write-ProbeLine "Using mailbox: $SharedMailbox"
 
 $outlook = $null
 try {
-    Write-ProbeLine 'Connecting to Outlook.Application COM object...'
-    $outlook = New-Object -ComObject Outlook.Application
+    Write-ProbeLine 'Connecting to the running Outlook (COM-safe attach)...'
+    $outlook = Connect-RunningOutlook
     $namespace = $outlook.GetNamespace('MAPI')
-    [void]$namespace.Logon($null, $null, $false, $true)
+    try { [void]$namespace.Logon($null, $null, $false, $false) } catch {}
 
     $inbox = Get-SharedInboxFolder -Namespace $namespace -SharedName $SharedMailbox
     $resolution = Get-LastMailboxResolution
 
-    Write-ProbeLine "OK - COM connected (shared inbox: $SharedMailbox)"
+    Write-ProbeLine "OK - attached to Outlook (shared inbox: $SharedMailbox)"
     if ($resolution) {
         Write-ProbeLine "Mailbox resolved via: $resolution"
     }

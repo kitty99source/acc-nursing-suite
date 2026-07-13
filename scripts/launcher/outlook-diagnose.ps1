@@ -322,10 +322,10 @@ $outlook = $null
 $script:DiagExitCode = 0
 $reportProduced = $false
 try {
-    Write-DiagLine 'Connecting to Outlook.Application COM object...'
-    $outlook = New-Object -ComObject Outlook.Application
+    Write-DiagLine 'Connecting to the running Outlook (COM-safe attach)...'
+    $outlook = Connect-RunningOutlook
     $namespace = $outlook.GetNamespace('MAPI')
-    [void]$namespace.Logon($null, $null, $false, $true)
+    try { [void]$namespace.Logon($null, $null, $false, $false) } catch {}
 
     # --- Optional visible-stores listing (OFF by default, -ListStores opt-in) ---
     # We NEVER iterate $namespace.Stores in the normal path: on this mailbox even

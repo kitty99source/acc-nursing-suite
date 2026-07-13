@@ -933,18 +933,26 @@ try {
                         # no supervisor is alive). Never run COM inside this loop.
                         $queued = Request-AccEmailSync
                         $startedHere = $false
-                        if ($queued -and -not (Test-AccSupervisorAlive) -and -not (Test-AccPidFileAlive -Name 'email-sync.pid')) {
-                            $syncPs1 = Join-Path $PSScriptRoot 'outlook-sync.ps1'
-                            if (Test-Path -LiteralPath $syncPs1) {
-                                Clear-AccEmailSyncRequest
-                                Start-Process -FilePath 'powershell.exe' -ArgumentList @(
-                                    '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $syncPs1
-                                ) -WindowStyle Hidden | Out-Null
-                                $startedHere = $true
-                                Write-BootstrapLog 'POST /_acc/email-sync - started outlook-sync.ps1 (no supervisor)'
+                        if ($queued -and -not (Test-AccPidFileAlive -Name 'email-sync.pid')) {
+                            # Prefer supervisor to start sync; if it is missing/dead, start here
+                            # so Refresh never queues forever with nobody watching the sentinel.
+                            if (-not (Test-AccSupervisorAlive)) {
+                                $syncPs1 = Join-Path $PSScriptRoot 'outlook-sync.ps1'
+                                if (Test-Path -LiteralPath $syncPs1) {
+                                    Clear-AccEmailSyncRequest
+                                    Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+                                        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $syncPs1
+                                    ) -WindowStyle Hidden | Out-Null
+                                    $startedHere = $true
+                                    Write-BootstrapLog 'POST /_acc/email-sync - started outlook-sync.ps1 (no supervisor)'
+                                } else {
+                                    Write-BootstrapLog 'POST /_acc/email-sync - queued but outlook-sync.ps1 missing'
+                                }
+                            } else {
+                                Write-BootstrapLog "POST /_acc/email-sync - queued for supervisor (pid alive)"
                             }
                         } else {
-                            Write-BootstrapLog "POST /_acc/email-sync - queued=$queued supervisor=$(Test-AccSupervisorAlive)"
+                            Write-BootstrapLog "POST /_acc/email-sync - queued=$queued supervisor=$(Test-AccSupervisorAlive) syncAlive=$(Test-AccPidFileAlive -Name 'email-sync.pid')"
                         }
                         Send-AccJsonOk -Client $client -Obj ([ordered]@{
                             ok = [bool]$queued

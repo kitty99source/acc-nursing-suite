@@ -251,8 +251,9 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     question: 'Why does Refresh sync status show a loading panel with elapsed time?',
     answer:
       'Refresh asks the local helper to check Outlook mail again, then waits for the report with a live elapsed timer (Starting local helper… / Checking mail…). ' +
-      'Cancel wait only stops waiting in ACC Inbox — it does not cancel Outlook. If sync stops, you will see “Sync stopped — retry”. ' +
-      'Outlook must be open and signed in. If leftovers from an old session fight the new one, run Stop ACC District Nursing Suite (force).',
+      'The wait always ends — success, Sync stopped with Retry, helper-down, or cancel. It will not spin forever on a stuck report. ' +
+      'Cancel wait only stops waiting in ACC Inbox — it does not cancel Outlook. ' +
+      'Outlook must be open and signed in (not as Administrator). If leftovers from an old session fight the new one, run Stop ACC District Nursing Suite (force).',
     tags: ['inbox', 'sync', 'refresh', 'loading'],
   },
   {

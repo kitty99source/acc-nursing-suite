@@ -1,8 +1,56 @@
 ﻿# Shared mailbox resolution for Outlook COM scripts (sync + probe + diagnose).
 # Priority: CLI override > office-config.json > ACC_SHARED_MAILBOX env > ACCDistrictNursing default.
+#
+# COM-SAFE CONNECT (same rules as Loan Eq / Dump-LoanEqFolder.ps1):
+#   - Attach to the ALREADY-RUNNING Outlook via Marshal.GetActiveObject.
+#   - Fall back to New-Object ONLY when Outlook is not running AND we are not elevated
+#     (or when Outlook is running as the same user and GetActiveObject flaked).
+#   - NEVER Logon with NewSession=$true (a 2nd MAPI session OOMs / hangs).
+#   - Elevation mismatch (admin script + normal-user Outlook) must throw a clear message,
+#     not silently spawn a second Outlook that mounts every mailbox.
 
 $script:DefaultSharedMailbox = 'ACCDistrictNursing'
 $script:LastMailboxResolution = ''
+
+# Returns the Outlook.Application COM object, or throws with a coworker-safe message.
+function Connect-RunningOutlook {
+    param([switch]$AllowStart)
+
+    $outlook = $null
+    $attached = $false
+    for ($try = 1; $try -le 3 -and -not $attached; $try++) {
+        try {
+            $outlook = [System.Runtime.InteropServices.Marshal]::GetActiveObject('Outlook.Application')
+            $attached = $true
+        } catch {
+            if ($try -lt 3) { Start-Sleep -Seconds 2 }
+        }
+    }
+
+    if (-not $attached) {
+        $isAdmin = $false
+        try {
+            $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+        } catch {}
+        $olRunning = $false
+        try { if (Get-Process -Name OUTLOOK -ErrorAction SilentlyContinue) { $olRunning = $true } } catch {}
+
+        if ($isAdmin -and $olRunning) {
+            throw 'This window is running AS ADMINISTRATOR but Outlook is running as a normal user. COM cannot cross that boundary, and starting a fresh Outlook here would mount all mailboxes and run out of memory. FIX: close this admin window and start the suite from a NORMAL (non-admin) quiet shortcut with Outlook already open.'
+        } elseif ($olRunning) {
+            # Same user - New-Object returns the existing instance (does not spawn a second one).
+            try { $outlook = New-Object -ComObject Outlook.Application; $attached = $true } catch {}
+        } elseif ($AllowStart) {
+            try { $outlook = New-Object -ComObject Outlook.Application; $attached = $true } catch {}
+        } else {
+            throw 'Outlook does not appear to be running. Open the Outlook DESKTOP app (signed in, ACCDistrictNursing shared mailbox available), then press Refresh again.'
+        }
+    }
+    if (-not $attached -or -not $outlook) {
+        throw 'Could not obtain an Outlook COM object.'
+    }
+    return $outlook
+}
 
 function Resolve-AccSuiteDir {
     return Join-Path $env:USERPROFILE 'ACC-Suite'

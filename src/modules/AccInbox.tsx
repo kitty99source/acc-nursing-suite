@@ -228,9 +228,9 @@ export function AccInbox() {
           </>
         ) : (
           <p className="text-sm mb-2" style={{ color: 'var(--muted)' }}>
-            No sync report loaded. On work laptop: run <span className="font-mono">Start Email Sync.cmd</span> or{' '}
-            <span className="font-mono">Start WFH Mode.cmd</span> — status auto-loads when served by{' '}
-            <span className="font-mono">launch.ps1</span>, or pick{' '}
+            No sync report loaded. On work laptop: Email Sync runs once when you start via the quiet .vbs /
+            recommended launcher (or run <span className="font-mono">Start Email Sync.cmd</span>). Status
+            auto-loads when served by <span className="font-mono">launch.ps1</span>, or pick{' '}
             <span className="font-mono">{EMAIL_SYNC_STATUS_HINT_PATH}</span> below (not email-sync-state.json).
           </p>
         )}

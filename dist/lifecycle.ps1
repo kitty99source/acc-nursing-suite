@@ -1,4 +1,4 @@
-param()
+﻿param()
 
 # Shared tab-close / companion-process lifecycle helpers for launch.ps1,
 # folder-watch.ps1, and supervisor.ps1. Dot-sourced by those scripts.

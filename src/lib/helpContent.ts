@@ -250,8 +250,9 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     id: 'faq-acc-inbox-refresh',
     question: 'Why does Refresh sync status show a loading panel with elapsed time?',
     answer:
-      'Reading email-sync-status.json (and waiting while Outlook sync still reports “running”) can take a while and used to look hung. ' +
-      'The panel shows Connecting / Fetching / still running with a live elapsed timer. Cancel wait only stops waiting in ACC Inbox — it does not cancel Outlook sync on the laptop.',
+      'Refresh asks the local helper to check Outlook mail again, then waits for the report with a live elapsed timer (Starting local helper… / Checking mail…). ' +
+      'Cancel wait only stops waiting in ACC Inbox — it does not cancel Outlook. If sync stops, you will see “Sync stopped — retry”. ' +
+      'Outlook must be open and signed in. If leftovers from an old session fight the new one, run Stop ACC District Nursing Suite (force).',
     tags: ['inbox', 'sync', 'refresh', 'loading'],
   },
   {

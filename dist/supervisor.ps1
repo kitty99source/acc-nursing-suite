@@ -26,14 +26,12 @@ Write-BootstrapLog "supervisor.ps1 started Quiet=$($Quiet.IsPresent) SkipEmailSy
 
 # Hidden session supervisor for ACC District Nursing Admin Suite.
 # Quiet .vbs and recommended/WFH entry points start THIS script, which:
-#   1. Starts/ensures launch.ps1 (app + /_acc bridge)
+#   1. Starts/ensures launch.ps1 (app + /_acc bridge) - only ONE supervisor
 #   2. Starts/ensures folder-watch.ps1
-#   3. Optionally runs one Outlook sync at session start (never mid-session)
-#   4. Monitors PIDs; silently restarts launch/folder-watch if they die while
-#      the session is active (before session-ended)
-#   5. On last-tab goodbye / idle timeout (session-ended), stops children and exits
-#
-# Email Sync is one-shot COM - do NOT re-run Outlook on helper restarts.
+#   3. Runs Outlook email-sync at session start
+#   4. Re-runs Outlook email-sync when ACC Inbox Refresh queues a request
+#   5. Monitors PIDs; silently restarts launch/folder-watch if they die
+#   6. On last-tab goodbye / idle timeout (session-ended), stops children and exits
 
 $launcherDir = $bootstrapRoot
 $launchPs1 = Join-Path $launcherDir 'launch.ps1'
@@ -88,6 +86,23 @@ function Start-AccFolderWatchProcess {
     Start-Sleep -Seconds 2
 }
 
+function Start-AccEmailSyncProcess {
+    param([string]$Reason = 'on-demand')
+    if (Test-AccPidFileAlive -Name 'email-sync.pid') {
+        Write-BootstrapLog "Email sync already running - skip start ($Reason)"
+        return $false
+    }
+    Clear-AccEmailSyncRequest
+    $sharedMailbox = Resolve-SharedMailbox
+    $style = if ($Quiet) { 'Hidden' } else { 'Minimized' }
+    Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $syncPs1,
+        '-SharedMailbox', $sharedMailbox
+    ) -WindowStyle $style | Out-Null
+    Write-BootstrapLog "Started outlook-sync.ps1 ($Reason, mailbox=$sharedMailbox, WindowStyle=$style)"
+    return $true
+}
+
 function Ensure-AccAppServer {
     param([switch]$Recovery)
     if (Test-AccSuitePortOpen -Port $appPort) {
@@ -122,15 +137,23 @@ function Ensure-AccFolderWatch {
     Start-AccFolderWatchProcess
 }
 
+# Single supervisor only - a second quiet/recommended click must not fight.
+if (Test-AccPidFileAlive -Name 'supervisor.pid') {
+    Write-BootstrapLog 'Another supervisor.pid is alive - opening browser and exiting (single instance)'
+    Write-SupervisorHost 'ACC Suite supervisor is already running - opening the app.'
+    try { Start-Process "http://127.0.0.1:$appPort/" | Out-Null } catch {}
+    exit 0
+}
+
 Write-SupervisorHost ''
 Write-SupervisorHost 'ACC Suite - Session Supervisor'
 Write-SupervisorHost '=============================='
 Write-SupervisorHost ''
 Write-SupervisorHost 'Keeping helpers alive for this session:'
-Write-SupervisorHost '  1. App server + /_acc bridge'
+Write-SupervisorHost '  1. App server + local helper bridge'
 Write-SupervisorHost '  2. Folder Watch'
 if (-not $SkipEmailSync) {
-    Write-SupervisorHost '  3. One Outlook email-sync at start (not restarted later)'
+    Write-SupervisorHost '  3. Email sync at start, and again when you press Refresh in ACC Inbox'
 }
 Write-SupervisorHost ''
 Write-SupervisorHost 'Closing the last app browser tab ends the session.'
@@ -145,11 +168,12 @@ foreach ($required in @($launchPs1, $watchPs1, $syncPs1)) {
 }
 
 Clear-AccSessionEnded
+Clear-AccEmailSyncRequest
 Write-AccPidFile -Name 'supervisor.pid' | Out-Null
 Write-BootstrapLog "Wrote supervisor.pid ($PID)"
 
 try {
-    Write-SupervisorHost 'Starting app server...'
+    Write-SupervisorHost 'Starting app...'
     Ensure-AccAppServer
 
     Write-SupervisorHost 'Starting Folder Watch...'
@@ -157,17 +181,19 @@ try {
 
     if (-not $SkipEmailSync) {
         $sharedMailbox = Resolve-SharedMailbox
-        $statusPath = Join-Path $env:USERPROFILE 'ACC-Suite\email-sync-status.json'
         Write-SupervisorHost ''
-        Write-SupervisorHost "Running one Email Sync (Outlook COM, mailbox: $sharedMailbox)..."
+        Write-SupervisorHost "Checking mail in Outlook (mailbox: $sharedMailbox)..."
         Write-BootstrapLog "Starting outlook-sync.ps1 once at session start (mailbox: $sharedMailbox)"
+        # Run in-process at start so Quiet mode still finishes sync before the
+        # monitor loop (same as before). Mid-session Refresh uses Start-Process.
         & $syncPs1 -SharedMailbox $sharedMailbox
         $syncExit = if ($null -ne $LASTEXITCODE) { $LASTEXITCODE } else { 0 }
+        $statusPath = Join-Path (Get-AccSuiteDir) 'email-sync-status.json'
         Write-BootstrapLog "outlook-sync.ps1 finished exit=$syncExit statusExists=$(Test-Path -LiteralPath $statusPath)"
         if ($syncExit -ne 0) {
-            Write-SupervisorHost "  Email Sync exited $syncExit (helpers stay up; re-run Start Email Sync.cmd later if needed)."
+            Write-SupervisorHost '  Email sync had a problem (app stays up - press Refresh in ACC Inbox to try again).'
         } else {
-            Write-SupervisorHost '  Email Sync finished.'
+            Write-SupervisorHost '  Email sync finished.'
         }
         Write-SupervisorHost ''
     }
@@ -193,6 +219,16 @@ try {
             Ensure-AccFolderWatch -Recovery
         }
 
+        # ACC Inbox Refresh queues request-email-sync; start Outlook sync once.
+        if (-not $SkipEmailSync -and (Test-AccEmailSyncRequested)) {
+            if (Start-AccEmailSyncProcess -Reason 'inbox-refresh') {
+                Write-SupervisorHost '  Checking mail again (Refresh requested)...'
+            } else {
+                # Already running - drop the duplicate request so UI can poll status.
+                Clear-AccEmailSyncRequest
+            }
+        }
+
         Start-Sleep -Seconds $pollSeconds
     }
 } finally {
@@ -208,8 +244,19 @@ try {
                 try { Stop-Process -Id $launchPid -Force -ErrorAction SilentlyContinue } catch {}
             }
         }
+        if (Test-AccPidFileAlive -Name 'email-sync.pid') {
+            $path = Join-Path (Get-AccSuiteDir) 'email-sync.pid'
+            $raw = ''
+            try { $raw = (Get-Content -LiteralPath $path -Raw -Encoding UTF8).Trim() } catch {}
+            $syncPid = 0
+            if ([int]::TryParse($raw, [ref]$syncPid) -and $syncPid -gt 0 -and $syncPid -ne $PID) {
+                try { Stop-Process -Id $syncPid -Force -ErrorAction SilentlyContinue } catch {}
+            }
+            Clear-AccPidFile -Name 'email-sync.pid'
+        }
         Write-AccSessionEnded
     }
+    Clear-AccEmailSyncRequest
     Clear-AccPidFile -Name 'supervisor.pid'
     Write-BootstrapLog 'supervisor.ps1 exiting'
 }

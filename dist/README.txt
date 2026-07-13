@@ -19,11 +19,19 @@ HOW TO OPEN THE SUITE
                              file). Truly quiet: NO visible PowerShell or cmd
                              windows. Starts supervisor.ps1 -Quiet so the app
                              server and Folder Watch run Hidden, opens the
-                             browser, runs one Outlook sync at session start,
-                             and silently restarts helpers if they die mid-
-                             session. Prefer this for coworkers - pin the .vbs,
-                             not a .cmd. Closing the last app browser tab ends
-                             the session (supervisor + helpers stop).
+                             browser, checks mail once at session start, and
+                             silently restarts helpers if they die mid-session.
+                             Press Refresh in ACC Inbox to check mail again.
+                             Prefer this for coworkers - pin the .vbs, not a
+                             .cmd. Closing the last app browser tab ends the
+                             session (supervisor + helpers stop). Only ONE
+                             supervisor runs at a time.
+
+  Stop ACC District Nursing Suite (force).cmd / .vbs
+                             If the app acts weird or you can't delete the
+                             folder, run Stop … (force). It closes leftover
+                             helpers for this suite only and clears stale
+                             PID files under %USERPROFILE%\ACC-Suite\.
 
   Start ACC Suite (quiet).cmd = hands off to the quiet .vbs (exits immediately).
                              A brief cmd flash is possible; use the .vbs for
@@ -32,11 +40,13 @@ HOW TO OPEN THE SUITE
   Start ACC Suite (recommended).cmd = START HERE if you want to SEE progress in
                              a console. Same supervised session as the quiet
                              .vbs: ACC Suite app + Folder Watch (kept alive) +
-                             one Email Sync at session start. (Same as
-                             Start WFH Mode.cmd / wfh-mode.ps1 forwarder.)
+                             Email Sync at session start (and again on Refresh).
+                             (Same as Start WFH Mode.cmd / wfh-mode.ps1.)
 
   Start ACC Suite.cmd        = MINIMAL FALLBACK: the app alone, no sync. Use only
                              when you do not want folder-watch/email-sync running.
+                             ACC Inbox Refresh can still start a one-off mail
+                             check if the helper is up.
 
 Other launchers
 

@@ -928,6 +928,29 @@ try {
                             $code = if ($result.Status) { [int]$result.Status } else { 400 }
                             Send-Response -Client $client -StatusCode $code -StatusText 'Error' -Body $errBytes -ContentType 'application/json; charset=utf-8'
                         }
+                    } elseif ($reqPath -eq '/_acc/email-sync') {
+                        # Queue Outlook sync for the supervisor (or start it here if
+                        # no supervisor is alive). Never run COM inside this loop.
+                        $queued = Request-AccEmailSync
+                        $startedHere = $false
+                        if ($queued -and -not (Test-AccSupervisorAlive) -and -not (Test-AccPidFileAlive -Name 'email-sync.pid')) {
+                            $syncPs1 = Join-Path $PSScriptRoot 'outlook-sync.ps1'
+                            if (Test-Path -LiteralPath $syncPs1) {
+                                Clear-AccEmailSyncRequest
+                                Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+                                    '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $syncPs1
+                                ) -WindowStyle Hidden | Out-Null
+                                $startedHere = $true
+                                Write-BootstrapLog 'POST /_acc/email-sync - started outlook-sync.ps1 (no supervisor)'
+                            }
+                        } else {
+                            Write-BootstrapLog "POST /_acc/email-sync - queued=$queued supervisor=$(Test-AccSupervisorAlive)"
+                        }
+                        Send-AccJsonOk -Client $client -Obj ([ordered]@{
+                            ok = [bool]$queued
+                            queued = [bool]$queued
+                            started = [bool]$startedHere
+                        })
                     } else {
                         Send-Response -Client $client -StatusCode 404 -StatusText 'Not Found' -Body $notFound -ContentType 'text/plain; charset=utf-8'
                     }

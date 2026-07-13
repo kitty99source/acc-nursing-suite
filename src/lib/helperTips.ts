@@ -152,7 +152,7 @@ export const HELPER_TIPS: HelperTipDef[] = [
     faqId: 'faq-acc-inbox-refresh',
     title: 'Inbox refresh progress',
     body:
-      'Refresh shows Connecting / Fetching / still running with elapsed time. Cancel wait stops waiting here only — Outlook sync keeps going.',
+      'Refresh checks mail again via the local helper. Status is plain language with elapsed time. Cancel wait stops waiting here only. If things fight, use Stop … (force).',
   },
   {
     id: 'tip-auto-accept',

@@ -6,6 +6,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import fixture from '../lib/__fixtures__/email-sync-status.sample.json';
 import { LOCAL_EMAIL_SYNC_STATUS_URL } from '../lib/emailSyncStatus';
+import { LOCAL_EMAIL_SYNC_TRIGGER_URL } from '../lib/emailSyncRefresh';
 
 // Staging reads/writes IndexedDB, which jsdom lacks — stub it so the component
 // mounts. This does NOT edit staging.ts; it only isolates the render.
@@ -33,14 +34,23 @@ beforeEach(() => {
   useStore.setState({ data: emptyData(), accInboxSyncStatus: undefined });
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (url: string) => {
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url) === LOCAL_EMAIL_SYNC_TRIGGER_URL) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ ok: true, queued: true }),
+        } as unknown as Response;
+      }
       if (String(url) === LOCAL_EMAIL_SYNC_STATUS_URL) {
         return {
           ok: true,
+          status: 200,
           text: async () => JSON.stringify(fixture),
         } as unknown as Response;
       }
-      return { ok: false, text: async () => '' } as unknown as Response;
+      void init;
+      return { ok: false, status: 404, text: async () => '' } as unknown as Response;
     }),
   );
   container = document.createElement('div');
@@ -111,10 +121,17 @@ describe('<AccInbox /> render from synthetic sync fixture', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string) => {
-        if (String(url) === LOCAL_EMAIL_SYNC_STATUS_URL) {
-          return { ok: true, text: async () => JSON.stringify(nameOnlyStatus) } as unknown as Response;
+        if (String(url) === LOCAL_EMAIL_SYNC_TRIGGER_URL) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ ok: true, queued: true }),
+          } as unknown as Response;
         }
-        return { ok: false, text: async () => '' } as unknown as Response;
+        if (String(url) === LOCAL_EMAIL_SYNC_STATUS_URL) {
+          return { ok: true, status: 200, text: async () => JSON.stringify(nameOnlyStatus) } as unknown as Response;
+        }
+        return { ok: false, status: 404, text: async () => '' } as unknown as Response;
       }),
     );
 
@@ -143,11 +160,16 @@ describe('<AccInbox /> render from synthetic sync fixture', () => {
     // Simulate leaving ACC Inbox (unmount) — mirrors switching modules in App.
     act(() => root.unmount());
 
-    // While away, launch.ps1 stops serving the report (fetch now 404s). Before
+    // While away, helper stops serving the report (fetch now 404s). Before
     // the fix, the remount would clobber state with null → "No sync yet".
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => ({ ok: false, text: async () => '' }) as unknown as Response),
+      vi.fn(async (url: string) => {
+        if (String(url) === LOCAL_EMAIL_SYNC_TRIGGER_URL) {
+          return { ok: false, status: 404, json: async () => ({}) } as unknown as Response;
+        }
+        return { ok: false, status: 404, text: async () => '' } as unknown as Response;
+      }),
     );
 
     // Return to ACC Inbox: fresh component instance, same store.

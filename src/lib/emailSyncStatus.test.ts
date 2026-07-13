@@ -237,8 +237,8 @@ describe('emailSyncStatus', () => {
   });
 
   it('describes inbox empty states', () => {
-    expect(describeInboxEmptyState(null, true).title).toContain('Loading');
-    expect(describeInboxEmptyState(null, false).title).toBe('No sync yet');
+    expect(describeInboxEmptyState(null, true).title).toContain('Checking mail');
+    expect(describeInboxEmptyState(null, false).title).toBe('No mail check yet');
     const zeroSave = parseEmailSyncStatus({
       version: 1,
       lastRunAt: '2026-07-08T10:00:00.000Z',

@@ -8,10 +8,9 @@ import { Sidebar, type ModuleId } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { AutosaveErrorBanner } from './components/AutosaveErrorBanner';
 import { LockScreen } from './components/LockScreen';
-import { buildActionQueue, computeApproval, isBillingApproval } from './lib/analytics';
+import { buildActionQueue } from './lib/analytics';
 import { complianceSummary } from './lib/compliance';
 import { getComplianceFindings } from './lib/complianceCache';
-import { daysUntil } from './lib/format';
 
 import { Dashboard } from './modules/Dashboard';
 import { Compliance } from './modules/Compliance';
@@ -37,6 +36,7 @@ import { logInfo } from './lib/logger';
 import { startLauncherSessionLifecycle } from './lib/launcherLifecycle';
 import { AccInboxConfigBanner } from './components/AccInboxConfigBanner';
 import { RemittanceStaleBanner } from './components/RemittanceStaleBanner';
+import { computeSidebarBadges } from './lib/sidebarBadges';
 
 export default function App() {
   const ready = useStore((s) => s.ready);
@@ -290,40 +290,21 @@ export default function App() {
     }
   }
 
-  // Sidebar attention badges — cheap counters + cached compliance (P1-004).
+  // Sidebar attention badges — labelled action counts, not bare page totals.
   const badges = useMemo(() => {
-    const result: Partial<Record<ModuleId, number>> = {};
     const findings = getComplianceFindings(data);
     const actions = buildActionQueue(data, findings);
-    if (actions.length) result.dashboard = actions.length;
-
-    const approvalsAttention = data.approvals.filter(
-      (a) => isBillingApproval(a) && computeApproval(a, settings.expiryThresholdDays).status !== 'Active',
-    ).length;
-    if (approvalsAttention) result.approvals = approvalsAttention;
-
-    const billingAttention = data.invoiceLines.filter(
-      (i) => i.status === 'Awaiting Billing' || i.status === 'Remittance',
-    ).length;
-    if (billingAttention) result.billing = billingAttention;
-
-    const declineAttention = data.declines.filter(
-      (d) => d.status === 'Awaiting nursing docs for resubmission' || d.status === 'Awaiting response from ACC',
-    ).length;
-    if (declineAttention) result.declines = declineAttention;
-
-    const complexAttention = data.complexCases.filter(
-      (c) => c.status !== 'Resolved' && c.nextReviewDate && daysUntil(c.nextReviewDate) <= 0,
-    ).length;
-    if (complexAttention) result.complex = complexAttention;
-
     const compliance = complianceSummary(findings);
-    const complianceAttention = compliance.violations + compliance.warnings;
-    if (complianceAttention) result.compliance = complianceAttention;
-
-    if (reviewBadge) result.review = reviewBadge;
-
-    return result;
+    return computeSidebarBadges({
+      approvals: data.approvals,
+      invoiceLines: data.invoiceLines,
+      declines: data.declines,
+      complexCases: data.complexCases,
+      expiryThresholdDays: settings.expiryThresholdDays,
+      complianceAttention: compliance.violations + compliance.warnings,
+      actionQueueCount: actions.length,
+      reviewPendingCount: reviewBadge,
+    });
   }, [data, settings.expiryThresholdDays, reviewBadge]);
 
   if (!ready) {

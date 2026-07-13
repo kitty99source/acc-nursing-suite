@@ -7,6 +7,9 @@
 // this module with `import type` only, so this is a one-way runtime dependency
 // (no import cycle at runtime).
 import { ALL_SERVICE_CODES, DEFAULT_RATES } from '../lib/serviceCodes';
+import type { RemittanceImportBatch, RemittancePayment } from '../lib/remittancePayments';
+
+export type { RemittanceImportBatch, RemittancePayment };
 
 export type ServiceCode =
   | 'NS01'
@@ -294,6 +297,10 @@ export interface AppData {
   documents: ClaimDocument[];
   importHistory?: ImportHistoryEntry[];
   memos: Memo[];
+  /** Remittance CSV/XLSX import batches (for Remove import + re-reconcile). */
+  remittanceImports?: RemittanceImportBatch[];
+  /** Matched remittance payment applications tied to a batch + invoice line. */
+  remittancePayments?: RemittancePayment[];
 }
 
 export const SCHEMA_VERSION = 3;

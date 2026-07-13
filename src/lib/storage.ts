@@ -89,12 +89,23 @@ export function normalizeData(data: AppData): AppData {
   const documents = Array.isArray(data.documents) ? data.documents : [];
   // Older files predate the memo table — ensure it always exists (P-memo-001).
   const memos = Array.isArray(data.memos) ? data.memos : [];
+  const remittanceImports = Array.isArray(data.remittanceImports) ? data.remittanceImports : [];
+  const remittancePayments = Array.isArray(data.remittancePayments) ? data.remittancePayments : [];
   const approvals = (data.approvals ?? []).map((a) => ({
     ...a,
     recordStatus: a.recordStatus ?? 'current',
   }));
   const schemaVersion = data.schemaVersion ?? SCHEMA_VERSION;
-  return { ...data, schemaVersion, settings, documents, memos, approvals };
+  return {
+    ...data,
+    schemaVersion,
+    settings,
+    documents,
+    memos,
+    remittanceImports,
+    remittancePayments,
+    approvals,
+  };
 }
 
 function applyFileMigrations(data: AppData, fileVersion: number): AppData {

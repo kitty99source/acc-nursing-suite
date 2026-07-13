@@ -25,6 +25,8 @@ export function emptyData(): AppData {
     settings: { ...DEFAULT_SETTINGS },
     documents: [],
     memos: [],
+    remittanceImports: [],
+    remittancePayments: [],
   };
 }
 

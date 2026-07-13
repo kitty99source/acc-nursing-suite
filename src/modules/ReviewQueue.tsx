@@ -210,6 +210,7 @@ const StagingRow = memo(
 export function ReviewQueue() {
   const commitParsedApproval = useStore((s) => s.commitParsedApproval);
   const commitParsedDecline = useStore((s) => s.commitParsedDecline);
+  const undoHrqAccept = useStore((s) => s.undoHrqAccept);
   const parseLetterFile = useStore((s) => s.parseLetterFile);
   const data = useStore((s) => s.data);
   const setFocus = useStore((s) => s.setFocus);
@@ -227,6 +228,18 @@ export function ReviewQueue() {
   const [bridgeStatus, setBridgeStatus] = useState<StagingBridgeStatus | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const [acceptFlash, setAcceptFlash] = useState<{
+    stagingItemId: string;
+    patientId: string;
+    claimId: string;
+    message: string;
+    createdPatient?: boolean;
+    createdClaim?: boolean;
+    documentId?: string;
+    approvalIds?: string[];
+    declineId?: string;
+  } | null>(null);
+  const acceptFlashTimer = useRef<number | null>(null);
   const [query, setQuery] = useState('');
   const [fixProgress, setFixProgress] = useState<string | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -1207,8 +1220,20 @@ export function ReviewQueue() {
       });
       const name = fields.patientName.trim();
       const advanceTo = nextAfter(selected.id);
-      setFlash(`Patient case created for ${name}.`);
-      window.setTimeout(() => setFlash(null), 5000);
+      if (acceptFlashTimer.current) window.clearTimeout(acceptFlashTimer.current);
+      setAcceptFlash({
+        stagingItemId: selected.id,
+        patientId: result.patientId,
+        claimId: result.claimId,
+        message: `Patient case created for ${name}.`,
+        createdPatient: result.createdPatient,
+        createdClaim: result.createdClaim,
+        documentId: result.documentId,
+        approvalIds: result.approvalIds,
+        declineId: result.declineId,
+      });
+      acceptFlashTimer.current = window.setTimeout(() => setAcceptFlash(null), 45_000);
+      setFlash(null);
       await refresh();
       setSelectedId(advanceTo);
       const openPatient = await confirm({
@@ -1521,6 +1546,67 @@ export function ReviewQueue() {
         <p className="text-sm mb-3" style={{ color: 'var(--muted)' }} role="status">
           {bgReadingNote}
         </p>
+      )}
+
+      {acceptFlash && (
+        <div
+          className="flex flex-wrap items-center gap-2 mb-3 rounded-card px-3 py-2 text-sm"
+          style={{ border: '1px solid var(--good)', background: 'var(--surface)', color: 'var(--good-fg)' }}
+          role="status"
+        >
+          <span className="font-medium flex-1 min-w-[12rem]">{acceptFlash.message}</span>
+          <button
+            type="button"
+            className="btn btn-sm"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                const undo = await undoHrqAccept({
+                  stagingItemId: acceptFlash.stagingItemId,
+                  patientId: acceptFlash.patientId,
+                  claimId: acceptFlash.claimId,
+                  createdPatient: acceptFlash.createdPatient,
+                  createdClaim: acceptFlash.createdClaim,
+                  documentId: acceptFlash.documentId,
+                  approvalIds: acceptFlash.approvalIds,
+                  declineId: acceptFlash.declineId,
+                });
+                if (acceptFlashTimer.current) window.clearTimeout(acceptFlashTimer.current);
+                setAcceptFlash(null);
+                await refresh();
+                setFlash(
+                  undo.restoredStaging
+                    ? 'Accept undone — letter is back in the review queue.'
+                    : 'Accept undone — created records removed (queue item was already gone).',
+                );
+                window.setTimeout(() => setFlash(null), 8000);
+              } catch (err) {
+                setFlash(`Undo failed: ${formatStorageError(err)}`);
+                window.setTimeout(() => setFlash(null), 8000);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Undo
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-primary"
+            onClick={() => {
+              setFocus({
+                module: 'patients',
+                patientId: acceptFlash.patientId,
+                claimId: acceptFlash.claimId,
+              });
+              if (acceptFlashTimer.current) window.clearTimeout(acceptFlashTimer.current);
+              setAcceptFlash(null);
+            }}
+          >
+            Open in Patients
+          </button>
+        </div>
       )}
 
       {flash && (

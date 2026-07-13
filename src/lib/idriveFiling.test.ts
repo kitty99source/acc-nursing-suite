@@ -24,6 +24,19 @@ describe('idriveFiling (Admin District Nursing)', () => {
     );
   });
 
+  it('builds Approval Requests\\… path for approval-request document kind', () => {
+    const built = buildAdminIDriveRelativePath({
+      patientName: 'Jane Doe',
+      claimNumber: 'NH00001',
+      letterDate: '2026-03-09',
+      sourceFileName: 'request.pdf',
+      documentKind: 'approval-request',
+    });
+    expect(built.relativePath).toBe(
+      'Approval Requests\\2026\\March\\DOE, Jane NH00001\\request.pdf',
+    );
+  });
+
   it('prefixes _Staging for writeback', () => {
     expect(buildStagingRelativePath('Letters\\2026\\March\\x.pdf', '_Staging')).toBe(
       '_Staging\\Letters\\2026\\March\\x.pdf',

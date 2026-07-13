@@ -21,6 +21,8 @@ const pendingItems: StagingItem[] = [
     title: 'Folder: named.pdf',
     summary: '',
     patientName: 'Jane Doe',
+    sourceFileName: '1_NUR02_Nursing_services_approve_-_vendor.docx',
+    emailSubject: 'Jane Doe - Claim:90000000001',
   },
   {
     id: 'unnamed-1',
@@ -32,6 +34,7 @@ const pendingItems: StagingItem[] = [
     title: 'Folder: unnamed-1.pdf',
     summary: '',
     sourceHash: 'a'.repeat(64),
+    sourceFileName: '1_NUR02_Nursing_services_approve_-_vendor-1.docx',
   },
   {
     id: 'unnamed-2',
@@ -42,6 +45,7 @@ const pendingItems: StagingItem[] = [
     severity: 'info',
     title: 'Folder: unnamed-2.pdf',
     summary: '',
+    sourceFileName: '1_NUR02_approve.pdf',
   },
 ];
 

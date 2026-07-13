@@ -51,6 +51,15 @@ import {
   joinIDriveDisplayPath,
 } from '../lib/idriveFiling';
 import {
+  classifyStagingReviewCategories,
+  DEFAULT_REVIEW_MAIL_KIND_FILTER,
+  DEFAULT_REVIEW_SERVICE_FILTER,
+  REVIEW_MAIL_KIND_LABEL,
+  REVIEW_SERVICE_LABEL,
+  type ReviewMailKind,
+  type ReviewServiceCategory,
+} from '../lib/reviewQueueCategories';
+import {
   enqueueStagingPreparse,
   buildStagingPreview,
   retryUnnamedStagingPreparse,
@@ -92,8 +101,32 @@ import {
   extractPatientName,
   extractInjuryDescription,
 } from '../lib/letterImport';
-import type { ApprovalServiceCode } from '../types';
+import type { ApprovalServiceCode, DocumentKind } from '../types';
 
+type MailKindFilter = ReviewMailKind | 'all';
+type ServiceFilter = ReviewServiceCategory | 'all';
+
+/** Accept outcome the user chose — maps to document kind + I-drive folder. */
+type SaveAsOutcome = 'acc-approval-letter' | 'approval-request' | 'acc-decline-letter';
+
+const MAIL_KIND_FILTER_OPTIONS: { value: MailKindFilter; label: string }[] = [
+  { value: 'all', label: 'All mail kinds' },
+  { value: 'acc-approval-letter', label: REVIEW_MAIL_KIND_LABEL['acc-approval-letter'] },
+  { value: 'approval-request', label: REVIEW_MAIL_KIND_LABEL['approval-request'] },
+  { value: 'acc-decline-letter', label: REVIEW_MAIL_KIND_LABEL['acc-decline-letter'] },
+  { value: 'other', label: REVIEW_MAIL_KIND_LABEL.other },
+];
+
+const SERVICE_FILTER_OPTIONS: { value: ServiceFilter; label: string }[] = [
+  { value: 'all', label: 'All services' },
+  { value: 'NS04', label: REVIEW_SERVICE_LABEL.NS04 },
+  { value: 'NS05', label: REVIEW_SERVICE_LABEL.NS05 },
+  { value: 'unknown', label: REVIEW_SERVICE_LABEL.unknown },
+];
+
+function itemCategories(item: StagingItem) {
+  return classifyStagingReviewCategories(item);
+}
 function typeLabel(type: StagingItem['type']): string {
   switch (type) {
     case 'letter-import-pending':
@@ -136,8 +169,8 @@ function listTitle(item: StagingItem): string {
 
 // Fixed row height for the virtualized review list (Decision 3): must stay
 // in sync with the row markup below (padding + one title line + one meta
-// line). Kept generous enough that long claim numbers/age labels never wrap.
-const STAGING_ROW_HEIGHT = 66;
+// line with category). Kept generous enough that long claim numbers/age labels never wrap.
+const STAGING_ROW_HEIGHT = 72;
 
 interface StagingRowData {
   items: StagingItem[];
@@ -158,6 +191,7 @@ const StagingRow = memo(
     const item = data.items[index];
     if (!item) return null;
     const preview = stagingPreviewOf(item);
+    const cats = itemCategories(item);
     const active = item.id === data.selectedId;
     const ready = Boolean(item.patientName?.trim() || preview?.patientName?.trim());
     const claim = item.claimNumber || preview?.claimNumber;
@@ -194,6 +228,8 @@ const StagingRow = memo(
             {claim && <span className="font-mono">{claim}</span>}
             <span>{stagingAgeLabel(item.createdAt)}</span>
             {preview && <span>· {Math.round(preview.confidence)}%</span>}
+            <span>· {REVIEW_MAIL_KIND_LABEL[cats.mailKind]}</span>
+            {cats.service !== 'unknown' && <span>· {cats.service}</span>}
           </div>
         </button>
       </div>
@@ -209,13 +245,17 @@ const StagingRow = memo(
     if (a === b) return true;
     const pa = stagingPreviewOf(a);
     const pb = stagingPreviewOf(b);
+    const ca = itemCategories(a);
+    const cb = itemCategories(b);
     return (
       listTitle(a) === listTitle(b) &&
       Boolean(a.patientName?.trim() || pa?.patientName?.trim()) ===
         Boolean(b.patientName?.trim() || pb?.patientName?.trim()) &&
       (a.claimNumber || pa?.claimNumber) === (b.claimNumber || pb?.claimNumber) &&
       Math.round(pa?.confidence ?? -1) === Math.round(pb?.confidence ?? -1) &&
-      a.createdAt === b.createdAt
+      a.createdAt === b.createdAt &&
+      ca.mailKind === cb.mailKind &&
+      ca.service === cb.service
     );
   },
 );
@@ -223,6 +263,9 @@ const StagingRow = memo(
 export function ReviewQueue() {
   const commitParsedApproval = useStore((s) => s.commitParsedApproval);
   const commitParsedDecline = useStore((s) => s.commitParsedDecline);
+  const attachDocumentOnly = useStore((s) => s.attachDocumentOnly);
+  const addPatient = useStore((s) => s.addPatient);
+  const addClaim = useStore((s) => s.addClaim);
   const undoHrqAccept = useStore((s) => s.undoHrqAccept);
   const parseLetterFile = useStore((s) => s.parseLetterFile);
   const updateDocument = useStore((s) => s.updateDocument);
@@ -235,6 +278,9 @@ export function ReviewQueue() {
   const [viewMode, setViewMode] = useState<'pending' | 'unnamed' | 'deferred' | 'autoAccept'>(
     'pending',
   );
+  const [mailKindFilter, setMailKindFilter] = useState<MailKindFilter>(DEFAULT_REVIEW_MAIL_KIND_FILTER);
+  const [serviceFilter, setServiceFilter] = useState<ServiceFilter>(DEFAULT_REVIEW_SERVICE_FILTER);
+  const [saveAsOutcome, setSaveAsOutcome] = useState<SaveAsOutcome>('acc-approval-letter');
   const [busy, setBusy] = useState(false);
   const [autoImportNote, setAutoImportNote] = useState<string | null>(null);
   const [importProgress, setImportProgress] = useState<string | null>(null);
@@ -432,6 +478,32 @@ export function ReviewQueue() {
           ? autoAcceptEligible
           : sorted;
 
+  // Category counts for the CURRENT tab (before category filter) — same Loan Eq pattern.
+  const mailKindCounts = useMemo(() => {
+    const counts: Record<MailKindFilter, number> = {
+      all: listItems.length,
+      'acc-approval-letter': 0,
+      'approval-request': 0,
+      'acc-decline-letter': 0,
+      other: 0,
+    };
+    for (const item of listItems) counts[itemCategories(item).mailKind] += 1;
+    return counts;
+  }, [listItems]);
+
+  const serviceCounts = useMemo(() => {
+    const counts: Record<ServiceFilter, number> = {
+      all: listItems.length,
+      NS04: 0,
+      NS05: 0,
+      unknown: 0,
+    };
+    for (const item of listItems) counts[itemCategories(item).service] += 1;
+    return counts;
+  }, [listItems]);
+
+  const categoryFilterActive = mailKindFilter !== 'all' || serviceFilter !== 'all';
+
   const bridgeStatusRef = useRef(bridgeStatus);
   bridgeStatusRef.current = bridgeStatus;
 
@@ -496,26 +568,48 @@ export function ReviewQueue() {
   }, [unnamedCount, busy, refresh]);
 
   const visible = useMemo(() => {
+    let next = listItems;
+    if (categoryFilterActive) {
+      next = next.filter((item) => {
+        const cats = itemCategories(item);
+        if (mailKindFilter !== 'all' && cats.mailKind !== mailKindFilter) return false;
+        if (serviceFilter !== 'all' && cats.service !== serviceFilter) return false;
+        return true;
+      });
+    }
     const q = query.trim().toLowerCase();
-    if (!q) return listItems;
-    return listItems.filter((item) => {
+    if (!q) return next;
+    return next.filter((item) => {
       const haystack = [
         listTitle(item),
         item.patientName,
         item.claimNumber,
         item.sourceFileName,
         item.accId,
+        item.emailSubject,
+        REVIEW_MAIL_KIND_LABEL[itemCategories(item).mailKind],
+        itemCategories(item).service,
       ]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
       return haystack.includes(q);
     });
-  }, [listItems, query]);
+  }, [listItems, query, categoryFilterActive, mailKindFilter, serviceFilter]);
   const selected = useMemo(
     () => listItems.find((i) => i.id === selectedId) ?? null,
     [listItems, selectedId],
   );
+
+  // When the selected letter changes, default Save-as from its classifier.
+  useEffect(() => {
+    if (!selected) return;
+    const cats = itemCategories(selected);
+    if (cats.mailKind === 'approval-request') setSaveAsOutcome('approval-request');
+    else if (cats.mailKind === 'acc-decline-letter') setSaveAsOutcome('acc-decline-letter');
+    else setSaveAsOutcome('acc-approval-letter');
+  }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps -- reset only on selection change
+
   async function discardUnnamed() {
     if (busy) return;
     setBusy(true);
@@ -1197,7 +1291,7 @@ export function ReviewQueue() {
   }
 
   async function acceptItem() {
-    if (!selected || !parsed || !file) {
+    if (!selected || !file) {
       await confirm({
         title: 'Cannot accept yet',
         message: !file
@@ -1216,8 +1310,33 @@ export function ReviewQueue() {
       return;
     }
 
+    const savingAsRequest = saveAsOutcome === 'approval-request';
+    const savingAsDecline = saveAsOutcome === 'acc-decline-letter';
+
+    if (!savingAsRequest && !parsed) {
+      await confirm({
+        title: 'Cannot accept yet',
+        message: 'Letter has not been parsed into a patient form yet. Or choose “Save as approval request”.',
+        confirmLabel: 'OK',
+      });
+      return;
+    }
+
+    if (savingAsRequest && !fields.claimNumber.trim()) {
+      await confirm({
+        title: 'Claim number required',
+        message: 'Enter the claim number before saving an approval request.',
+        confirmLabel: 'OK',
+      });
+      return;
+    }
+
     const ok = await confirm({
-      title: 'Accept → create patient case?',
+      title: savingAsRequest
+        ? 'Save as approval request?'
+        : savingAsDecline
+          ? 'Accept → file decline?'
+          : 'Accept → file ACC approval letter?',
       message: (
         <div className="space-y-2 text-sm">
           <p>
@@ -1229,21 +1348,112 @@ export function ReviewQueue() {
                 / claim <strong>{fields.claimNumber.trim()}</strong>
               </>
             ) : null}
-            , attach the letter, and remove this item from the review queue. It will then appear in
-            Patients &amp; Cases and count toward metrics.
+            {savingAsRequest ? (
+              <>
+                , attach the file as an <strong>approval request</strong> (no NS04/NS05 periods), and
+                remove this item from the review queue. I-drive staging uses{' '}
+                <span className="font-mono">Approval Requests\…</span>.
+              </>
+            ) : savingAsDecline ? (
+              <>, attach the decline letter, and remove this item from the review queue.</>
+            ) : (
+              <>
+                , file NS04/NS05 approval periods from the ACC letter, and remove this item from the
+                review queue. I-drive staging uses <span className="font-mono">Letters\…</span>.
+              </>
+            )}
           </p>
         </div>
       ),
-      confirmLabel: 'Accept → create patient case',
+      confirmLabel: savingAsRequest
+        ? 'Save as approval request'
+        : savingAsDecline
+          ? 'Accept → file decline'
+          : 'Accept → file ACC approval letter',
     });
     if (!ok) return;
 
     setBusy(true);
     try {
-      const result = await commitLetterForm(parsed, file, fields, {
-        commitParsedApproval,
-        commitParsedDecline,
-      }, { stagingItemId: selected.id });
+      let result: {
+        patientId: string;
+        claimId: string;
+        kind: string;
+        documentId?: string;
+        createdPatient?: boolean;
+        createdClaim?: boolean;
+        approvalIds?: string[];
+        declineId?: string;
+      };
+
+      if (savingAsRequest) {
+        let patientId = fields.selectedPatientId || undefined;
+        let claimId = fields.selectedClaimId || undefined;
+        let createdPatient = false;
+        let createdClaim = false;
+        if (!patientId) {
+          patientId = addPatient({
+            name: fields.patientName.trim(),
+            nhi: fields.nhi,
+            dob: fields.dob,
+            notes: '',
+          });
+          createdPatient = true;
+        }
+        if (!claimId) {
+          claimId = addClaim({
+            patientId,
+            claimNumber: fields.claimNumber.trim(),
+            acc45Number: fields.acc45,
+            poNumber: fields.poNumber,
+            injuryDescription: fields.injury,
+            type: 'original',
+            status: 'active',
+            day1Date: fields.day1 || todayISO(),
+          });
+          createdClaim = true;
+        }
+        const attached = await attachDocumentOnly(file, {
+          patientId,
+          claimId,
+          kind: 'approval-request',
+          stagingItemId: selected.id,
+        });
+        if (attached.documentId && (createdPatient || createdClaim)) {
+          updateDocument(attached.documentId, {
+            reviewAcceptCreatedPatient: createdPatient || undefined,
+            reviewAcceptCreatedClaim: createdClaim || undefined,
+          });
+        }
+        result = {
+          ...attached,
+          createdPatient,
+          createdClaim,
+        };
+      } else {
+        if (!parsed) throw new Error('Letter is not parsed.');
+        if (savingAsDecline && parsed.kind !== 'decline') {
+          throw new Error(
+            'This file did not parse as an ACC decline letter. Choose “Save as approval request” or re-check the attachment.',
+          );
+        }
+        if (!savingAsDecline && parsed.kind !== 'approval') {
+          throw new Error(
+            'This file did not parse as an ACC approval letter. Choose “Save as approval request” or pick Decline if it is a NUR04.',
+          );
+        }
+        result = await commitLetterForm(parsed, file, fields, {
+          commitParsedApproval,
+          commitParsedDecline,
+        }, { stagingItemId: selected.id });
+      }
+
+      const docKind: DocumentKind = savingAsRequest
+        ? 'approval-request'
+        : savingAsDecline
+          ? 'acc-decline-letter'
+          : 'acc-approval-letter';
+
       let iDriveNote = '';
       if (fileToIDrive) {
         const live = buildAdminIDriveRelativePath({
@@ -1251,6 +1461,7 @@ export function ReviewQueue() {
           claimNumber: fields.claimNumber.trim() || undefined,
           letterDate: fields.letterDate || undefined,
           sourceFileName: file.name,
+          documentKind: docKind,
         });
         const stagingRel = buildStagingRelativePath(
           live.relativePath,
@@ -1293,7 +1504,7 @@ export function ReviewQueue() {
         afterStatus: 'approved',
         user: userName,
         runId: selected.runId,
-        detail: `filed ${result.kind} → claim ${result.claimId}`,
+        detail: `filed ${result.kind} (${docKind}) → claim ${result.claimId}`,
       });
       const name = fields.patientName.trim();
       const advanceTo = nextAfter(selected.id);
@@ -1549,11 +1760,13 @@ export function ReviewQueue() {
 
   const canAccept =
     !!selected &&
-    !!parsed &&
     !!file &&
     !!fields.patientName.trim() &&
     !parseMeta.loading &&
-    !busy;
+    !busy &&
+    (saveAsOutcome === 'approval-request'
+      ? !!fields.claimNumber.trim()
+      : !!parsed);
 
   return (
     <div>
@@ -1981,6 +2194,49 @@ export function ReviewQueue() {
                 </button>
               </div>
             </HelperTip>
+            <HelperTip tipId="tip-review-categories" style={{ display: 'block', width: '100%' }}>
+              <div
+                className="flex flex-wrap items-center gap-2 px-2 py-1.5"
+                style={{ borderBottom: '1px solid var(--border)' }}
+              >
+                <select
+                  className="btn btn-sm"
+                  aria-label="Filter by mail kind"
+                  value={mailKindFilter}
+                  onChange={(e) => setMailKindFilter(e.target.value as MailKindFilter)}
+                >
+                  {MAIL_KIND_FILTER_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label} ({mailKindCounts[o.value]})
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="btn btn-sm"
+                  aria-label="Filter by latest approval service"
+                  value={serviceFilter}
+                  onChange={(e) => setServiceFilter(e.target.value as ServiceFilter)}
+                >
+                  {SERVICE_FILTER_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label} ({serviceCounts[o.value]})
+                    </option>
+                  ))}
+                </select>
+                {categoryFilterActive && (
+                  <button
+                    type="button"
+                    className="btn btn-sm shrink-0"
+                    onClick={() => {
+                      setMailKindFilter('all');
+                      setServiceFilter('all');
+                    }}
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+            </HelperTip>
             <div
               className="px-3 py-2 text-xs font-semibold uppercase tracking-wide flex items-center justify-between"
               style={{ color: 'var(--muted)', borderBottom: '1px solid var(--border)' }}
@@ -1993,14 +2249,17 @@ export function ReviewQueue() {
                     : viewMode === 'autoAccept'
                       ? 'Auto-approve ready'
                       : 'Letters under review'}
+                {categoryFilterActive ? ' (filtered)' : ''}
               </span>
-              <span>{query ? `${visible.length}/${listItems.length}` : listItems.length}</span>
+              <span>{query || categoryFilterActive ? `${visible.length}/${listItems.length}` : listItems.length}</span>
             </div>
             <div ref={listPanelRef} className="flex-1 overflow-hidden">
               {visible.length === 0 ? (
                 <p className="text-sm text-center py-6" style={{ color: 'var(--muted)' }}>
                   {query
                     ? `No letters match “${query}”.`
+                    : categoryFilterActive
+                      ? 'No letters match these category filters — try Clear filters or All mail kinds.'
                     : viewMode === 'deferred'
                       ? 'No deferred letters.'
                       : viewMode === 'unnamed'
@@ -2096,6 +2355,21 @@ export function ReviewQueue() {
                         Also stage to I-drive (_Staging mirror)
                       </label>
                     </HelperTip>
+                    <HelperTip tipId="tip-save-as-outcome">
+                      <label className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--muted)' }}>
+                        Save as
+                        <select
+                          className="btn btn-sm"
+                          aria-label="Save as document kind"
+                          value={saveAsOutcome}
+                          onChange={(e) => setSaveAsOutcome(e.target.value as SaveAsOutcome)}
+                        >
+                          <option value="acc-approval-letter">ACC approval letter</option>
+                          <option value="approval-request">Approval request</option>
+                          <option value="acc-decline-letter">ACC decline letter</option>
+                        </select>
+                      </label>
+                    </HelperTip>
                     <div className="flex items-center gap-1.5">
                     <HelperTip tipId="tip-accept">
                       <button
@@ -2104,7 +2378,11 @@ export function ReviewQueue() {
                         disabled={!canAccept}
                         onClick={() => void acceptItem()}
                       >
-                        Accept
+                        {saveAsOutcome === 'approval-request'
+                          ? 'Save as approval request'
+                          : saveAsOutcome === 'acc-decline-letter'
+                            ? 'Accept decline'
+                            : 'Accept approval letter'}
                       </button>
                     </HelperTip>
                     {selected.status === 'deferred' ? (

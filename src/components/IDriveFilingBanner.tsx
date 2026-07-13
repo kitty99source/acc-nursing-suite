@@ -16,7 +16,8 @@ export function IDriveFilingBanner() {
       onDismiss={() => updateSettings({ iDriveFilingBannerDismissed: true })}
     >
       Optional Accept writeback lands under <span className="font-mono">{staging}</span> that mirrors
-      District Nursing <span className="font-mono">Letters\year\month\…</span> paths — not the live
+      District Nursing <span className="font-mono">Letters\…</span> or{' '}
+      <span className="font-mono">Approval Requests\…</span> paths (by document kind) — not the live
       archive. Moving files into the live tree stays a manual Explorer step.
     </AssumptionBanner>
   );

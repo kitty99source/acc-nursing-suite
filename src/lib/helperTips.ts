@@ -40,7 +40,7 @@ export const HELPER_TIPS: HelperTipDef[] = [
     faqId: 'faq-stage-to-idrive',
     title: 'Also file to I-drive',
     body:
-      'Optional. When checked, Accept also stages a copy under _Staging using the Letters path grammar — not straight into the live District Nursing archive.',
+      'Optional. When checked, Accept also stages a copy under _Staging using Letters or Approval Requests path grammar — not straight into the live District Nursing archive.',
   },
   {
     id: 'tip-stage-later',
@@ -132,6 +132,27 @@ export const HELPER_TIPS: HelperTipDef[] = [
     title: 'Review list tabs',
     body:
       'Under review / Unnamed / Deferred / Auto-approve slices of the same pending work. Deferred is set-aside; Unnamed still needs a patient name.',
+  },
+  {
+    id: 'tip-review-categories',
+    faqId: 'faq-review-categories',
+    title: 'Review categories',
+    body:
+      'Filter by ACC approval letter vs approval request vs decline, and by latest NS04/NS05. Default is ACC approval letters so requests sit aside until you choose them.',
+  },
+  {
+    id: 'tip-save-as-outcome',
+    faqId: 'faq-save-as-outcome',
+    title: 'Save as letter vs request',
+    body:
+      'ACC approval letter files NS04/NS05 periods. Approval request attaches only (no periods) and stages under Approval Requests on I-drive.',
+  },
+  {
+    id: 'tip-acc-inbox-refresh',
+    faqId: 'faq-acc-inbox-refresh',
+    title: 'Inbox refresh progress',
+    body:
+      'Refresh shows Connecting / Fetching / still running with elapsed time. Cancel wait stops waiting here only — Outlook sync keeps going.',
   },
   {
     id: 'tip-auto-accept',

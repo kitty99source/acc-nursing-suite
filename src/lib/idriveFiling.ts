@@ -3,11 +3,15 @@
 //
 // Admin path grammar (NOT Enable/Ramps):
 //   Letters\{year}\{MonthName}\{LASTNAME, Firstname} {CLAIM}\{fileName}
+//   Approval Requests\{year}\{MonthName}\{LASTNAME, Firstname} {CLAIM}\{fileName}
 //
+// Top folder follows DocumentKind (approval-request → Approval Requests; else Letters).
 // Writeback always lands under Settings.iDriveStagingSubfolder (default `_Staging`)
 // via buildStagingRelativePath — moving into the live archive is a manual step.
 // ============================================================================
 
+import type { DocumentKind } from '../types';
+import { adminIDriveTopFolderForKind } from './reviewQueueCategories';
 import { todayISO } from './format';
 
 export const DEFAULT_IDRIVE_ROOT = 'I:\\ACC\\District Nursing';
@@ -34,6 +38,11 @@ export interface AdminIDriveFilingInput {
   /** ISO date (YYYY-MM-DD) for year/month folders; defaults to today. */
   letterDate?: string;
   sourceFileName?: string;
+  /**
+   * When `approval-request`, paths use `Approval Requests\…` instead of `Letters\…`
+   * so Accept outcomes match how files land under the District Nursing I-drive tree.
+   */
+  documentKind?: DocumentKind;
 }
 
 export interface AdminIDriveFilingPath {
@@ -97,12 +106,14 @@ export function buildAdminIDriveRelativePath(input: AdminIDriveFilingInput): Adm
   const claim = sanitisePathSegment((input.claimNumber ?? '').trim() || 'NOCLAIM', 'NOCLAIM');
   const patientFolder = `${namePart} ${claim}`;
   const ext = fileExtension(input.sourceFileName);
+  const top = adminIDriveTopFolderForKind(input.documentKind ?? 'acc-approval-letter');
+  const defaultBase = top === 'Approval Requests' ? `Approval request ${claim}` : `ACC letter ${claim}`;
   const base =
     sanitisePathSegment(
-      (input.sourceFileName ?? '').replace(/\.[^.]+$/, '') || `ACC letter ${claim}`,
-      `ACC letter ${claim}`,
+      (input.sourceFileName ?? '').replace(/\.[^.]+$/, '') || defaultBase,
+      defaultBase,
     ) + ext;
-  const relativePath = ['Letters', year, monthName, patientFolder, base].join('\\');
+  const relativePath = [top, year, monthName, patientFolder, base].join('\\');
   return { relativePath, patientFolder, fileName: base };
 }
 

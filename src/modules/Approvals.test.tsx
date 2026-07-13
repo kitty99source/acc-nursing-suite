@@ -167,7 +167,7 @@ describe('<Approvals /> auto-accepted badge + filter', () => {
       root.render(<Approvals />);
     });
     const badges = badgeTexts();
-    expect(badges.filter((t) => t === 'Auto-accepted')).toHaveLength(1);
+    expect(badges.filter((t) => t === 'Auto')).toHaveLength(1);
     // Both rows still render by default ("All approvals").
     expect(container.textContent).toContain('NS04');
     expect(container.textContent).toContain('NS05');
@@ -188,7 +188,7 @@ describe('<Approvals /> auto-accepted badge + filter', () => {
     // Only the auto-accepted NS05 row remains; the manual NS04 row is filtered out.
     const rows = container.querySelectorAll('tbody tr');
     expect(rows.length).toBe(1);
-    expect(badgeTexts().filter((t) => t === 'Auto-accepted')).toHaveLength(1);
+    expect(badgeTexts().filter((t) => t === 'Auto')).toHaveLength(1);
   });
 
   it('does not show the auto-accepted filter control when there are no auto-accepted approvals', () => {

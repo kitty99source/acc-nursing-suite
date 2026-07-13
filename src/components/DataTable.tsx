@@ -10,6 +10,8 @@ export interface Column<T> {
   align?: 'left' | 'right' | 'center';
   /** Number = pixels; string is used verbatim (e.g. a percentage, for fluid `tableLayout="fixed"` tables). */
   width?: number | string;
+  /** Pin the column to the right edge (e.g. action buttons that must stay visible). */
+  sticky?: 'right';
 }
 
 /** Rows above this count use windowed rendering (~30 DOM nodes regardless of total). */
@@ -58,7 +60,11 @@ function TableRow<T>({
   return (
     <tr key={rowKey(row)} className={rowClassName?.(row) ?? ''}>
       {columns.map((col) => (
-        <td key={col.key} style={{ textAlign: col.align ?? 'left' }}>
+        <td
+          key={col.key}
+          className={col.sticky === 'right' ? 'data-table-sticky-right' : undefined}
+          style={{ textAlign: col.align ?? 'left' }}
+        >
           {col.render(row)}
         </td>
       ))}
@@ -162,7 +168,9 @@ export function DataTable<T>({
             {columns.map((col) => (
               <th
                 key={col.key}
-                className={col.sortable ? 'sortable' : ''}
+                className={[col.sortable ? 'sortable' : '', col.sticky === 'right' ? 'data-table-sticky-right' : '']
+                  .filter(Boolean)
+                  .join(' ')}
                 style={{
                   textAlign: col.align ?? 'left',
                   width: typeof col.width === 'number' ? `${col.width}px` : col.width,

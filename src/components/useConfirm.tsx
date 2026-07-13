@@ -5,6 +5,7 @@ interface ConfirmOptions {
   title: string;
   message: ReactNode;
   confirmLabel?: string;
+  cancelLabel?: string;
   destructive?: boolean;
 }
 
@@ -28,6 +29,7 @@ export function useConfirm(): [(opts: ConfirmOptions) => Promise<boolean>, React
       title={pending.title}
       message={pending.message}
       confirmLabel={pending.confirmLabel}
+      cancelLabel={pending.cancelLabel}
       destructive={pending.destructive}
       onConfirm={() => {
         pending.resolve(true);

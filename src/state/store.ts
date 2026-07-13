@@ -14,6 +14,7 @@ import type {
   Settings,
 } from '../types';
 import { emptyData, sampleData, isSampleData } from '../lib/sampleData';
+import { findMatchingPatient, mergePatientsIntoData } from '../lib/patients';
 import {
   serialize,
   deserialize,
@@ -358,6 +359,8 @@ interface StoreState {
   addPatient: (p: Omit<Patient, 'id'>) => string;
   updatePatient: (id: string, patch: Partial<Patient>) => void;
   removePatient: (id: string) => void;
+  /** Merge duplicate patient rows into keepId (reattach claims/approvals/docs/memos). */
+  mergePatients: (keepId: string, dropIds: string[]) => void;
 
   // claim CRUD
   addClaim: (c: Omit<Claim, 'id'>) => string;
@@ -839,17 +842,28 @@ export const useStore = create<StoreState>((set, get) => ({
       const state = get();
       let patientId = opts.patientId;
       let claimId = opts.claimId;
-      const createdPatient = !patientId;
+      let createdPatient = !patientId;
       const createdClaim = !claimId;
       const approvalIds: string[] = [];
 
       if (!patientId && opts.patientPatch?.name) {
-        patientId = state.addPatient({
+        const match = findMatchingPatient(state.data.patients, {
           name: opts.patientPatch.name,
           nhi: opts.patientPatch.nhi ?? parsed.patient.nhi ?? '',
           dob: opts.patientPatch.dob ?? parsed.patient.dob ?? '',
-          notes: '',
         });
+        if (match) {
+          patientId = match.patient.id;
+          createdPatient = false;
+          if (opts.patientPatch) state.updatePatient(patientId, opts.patientPatch);
+        } else {
+          patientId = state.addPatient({
+            name: opts.patientPatch.name,
+            nhi: opts.patientPatch.nhi ?? parsed.patient.nhi ?? '',
+            dob: opts.patientPatch.dob ?? parsed.patient.dob ?? '',
+            notes: '',
+          });
+        }
       } else if (patientId && opts.patientPatch) {
         state.updatePatient(patientId, opts.patientPatch);
       }
@@ -1002,10 +1016,13 @@ export const useStore = create<StoreState>((set, get) => ({
       if (!patientId && claimId) {
         patientId = state.data.claims.find((c) => c.id === claimId)?.patientId;
       }
-      if (!patientId && parsed.patient.nhi) {
-        patientId = state.data.patients.find(
-          (p) => p.nhi && parsed.patient.nhi && p.nhi.toUpperCase() === parsed.patient.nhi.toUpperCase(),
-        )?.id;
+      if (!patientId) {
+        const match = findMatchingPatient(state.data.patients, {
+          name: opts.patientName ?? parsed.patient.name ?? '',
+          nhi: parsed.patient.nhi ?? '',
+          dob: parsed.patient.dob ?? '',
+        });
+        if (match) patientId = match.patient.id;
       }
       if (patientId) createdPatient = false;
       if (!patientId) {
@@ -1524,6 +1541,18 @@ export const useStore = create<StoreState>((set, get) => ({
       };
     });
     audit('delete', 'patient', id, `Removed patient ${name}`);
+  },
+  mergePatients: (keepId, dropIds) => {
+    const drops = dropIds.filter((id) => id !== keepId);
+    if (drops.length === 0) return;
+    const keepName = get().data.patients.find((p) => p.id === keepId)?.name ?? keepId;
+    mutate(get, (data) => mergePatientsIntoData(data, keepId, drops));
+    audit(
+      'update',
+      'patient',
+      keepId,
+      `Merged ${drops.length} duplicate patient(s) into ${keepName}`,
+    );
   },
 
   addClaim: (c) => {

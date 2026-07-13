@@ -205,7 +205,7 @@ export function Approvals() {
     {
       key: 'patient',
       header: 'Patient',
-      width: '15%',
+      width: '16%',
       sortable: true,
       sortValue: (r) => data.patients.find((p) => p.id === r.approval.patientId)?.name ?? '',
       render: (r) => {
@@ -225,16 +225,16 @@ export function Approvals() {
     {
       key: 'code',
       header: 'Code',
-      width: '12%',
+      width: '9%',
       sortable: true,
       sortValue: (r) => r.approval.serviceCode,
       render: (r) => (
-        <div className="flex items-center gap-1 flex-wrap">
+        <div className="flex items-center gap-1 flex-wrap min-w-0">
           <Badge tone="accent">{r.approval.serviceCode}</Badge>
           {r.approval.autoAccepted && (
             <Badge tone="neutral">
               <span title="Filed by Auto-accept ready — created without individual human review.">
-                Auto-accepted
+                Auto
               </span>
             </Badge>
           )}
@@ -243,7 +243,7 @@ export function Approvals() {
     },
     {
       key: 'po',
-      header: 'PO Number',
+      header: 'PO',
       width: '10%',
       sortable: true,
       sortValue: (r) => r.approval.poNumber,
@@ -263,8 +263,8 @@ export function Approvals() {
     },
     {
       key: 'end',
-      header: 'End / PO Expiry',
-      width: '10%',
+      header: 'End',
+      width: '9%',
       sortable: true,
       sortValue: (r) => r.approval.approvalEndDate,
       render: (r) => formatDate(r.approval.approvalEndDate),
@@ -272,18 +272,18 @@ export function Approvals() {
     {
       key: 'qty',
       header: 'Approved',
-      width: '11%',
+      width: '10%',
       align: 'right',
       sortable: true,
       sortValue: (r) => r.approval.approvedHoursOrConsults,
       render: (r) => (
-        <span>
+        <span className="truncate block" title={`${r.approval.approvedHoursOrConsults}${r.approval.serviceCode === 'NS05' ? ' hrs' : ' consults'}`}>
           {r.approval.approvedHoursOrConsults}
-          {r.approval.serviceCode === 'NS05' ? ' hrs' : ' consults'}
+          {r.approval.serviceCode === 'NS05' ? 'h' : 'c'}
           {r.approval.consultsUsed != null && (
             <span className="text-xs" style={{ color: 'var(--muted)' }}>
               {' '}
-              ({r.approval.consultsUsed} used)
+              ({r.approval.consultsUsed})
             </span>
           )}
         </span>
@@ -291,8 +291,8 @@ export function Approvals() {
     },
     {
       key: 'days',
-      header: 'Days to expiry',
-      width: '8%',
+      header: 'Days',
+      width: '7%',
       align: 'right',
       sortable: true,
       sortValue: (r) => r.computed.daysUntilExpiry,
@@ -301,32 +301,41 @@ export function Approvals() {
     {
       key: 'status',
       header: 'Status',
-      width: '9%',
+      width: '10%',
       sortable: true,
       sortValue: (r) => r.computed.status,
       render: (r) => {
         if (r.approval.recordStatus === 'historical') return <Badge tone="neutral">Historical</Badge>;
         if (r.computed.status === 'EXPIRED') return <Badge tone="danger">EXPIRED</Badge>;
         if (r.computed.status === 'Expiring Soon (<30 days)')
-          return <Badge tone="salmon">Expiring Soon</Badge>;
+          return <Badge tone="salmon">Expiring</Badge>;
         return <Badge tone="good">Active</Badge>;
       },
     },
     {
       key: 'renewal',
-      header: 'Renewal emailed',
+      header: 'Renewed',
       width: '9%',
-      render: (r) => formatDate(r.approval.accEmailedRenewalDate) || '—',
+      render: (r) => (
+        <span className="truncate block" title={formatDate(r.approval.accEmailedRenewalDate) || undefined}>
+          {formatDate(r.approval.accEmailedRenewalDate) || '—'}
+        </span>
+      ),
     },
     {
       key: 'actions',
       header: '',
-      width: '7%',
+      width: 148,
+      sticky: 'right',
       render: (r) => (
-        <div className="flex items-center gap-1 justify-end">
+        <div className="flex items-center gap-1 justify-end shrink-0">
           {r.approval.sourceDocumentId && (
-            <button className="btn btn-sm" onClick={() => void viewLetter(r.approval)}>
-              View letter
+            <button
+              className="btn btn-sm"
+              onClick={() => void viewLetter(r.approval)}
+              title="View letter"
+            >
+              Letter
             </button>
           )}
           <button className="btn btn-icon" onClick={() => openEdit(r.approval)} aria-label="Edit">

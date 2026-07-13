@@ -42,8 +42,9 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     title: 'Review Queue (HRQ)',
     body:
       'Human Review Queue: synced or manually staged emails/attachments wait for a human accept. ' +
-      'Tabs split Under review / Unnamed / Deferred / Auto-approve. SLA highlighting and confidence scores help you work the queue. ' +
-      'Accept attaches the item to a patient/claim; optional I-drive checkbox stages under _Staging only. ' +
+      'Tabs split Under review / Unnamed / Deferred / Auto-approve. Category filters split ACC approval letters, approval requests, declines, and NS04 vs NS05. ' +
+      'Default filter shows ACC approval letters (most actionable). Save as chooses approval letter vs approval request vs decline — requests do not create NS04/NS05 periods. ' +
+      'Accept attaches the item to a patient/claim; optional I-drive checkbox stages under _Staging (Letters or Approval Requests). ' +
       'Auto-accept ready only runs when you click it, and only for 100%-confidence eligible items.',
   },
   {
@@ -51,6 +52,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     title: 'ACC Inbox',
     body:
       'Shows what Outlook sync / Folder Watch last saw in the configured shared mailbox and ACC-Inbox staging folder. ' +
+      'Refresh sync status shows a progress panel with elapsed time (Connecting / Fetching / still running) — Cancel wait only stops waiting in the UI, not Outlook. ' +
       'Open Review Queue jumps to HRQ; Advanced stage writes a queue row without waiting for folder-watch. ' +
       'Sender allowlist and subject patterns live in Settings.',
   },
@@ -226,6 +228,33 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     tags: ['review', 'tabs', 'unnamed', 'deferred', 'auto-accept', 'hrq'],
   },
   {
+    id: 'faq-review-categories',
+    question: 'How do Review Queue categories (NS04/NS05 and approval vs request) work?',
+    answer:
+      'Category filters sit under the status tabs and split the current list by mail kind and latest approval service. ' +
+      'ACC approval letter = NUR02-style ACC letter that can file NS04/NS05 periods. Approval request = a request that is not yet an ACC approval — set these aside and Save as approval request (no periods). ' +
+      'NS04 / NS05 come from parsed service rows when available, otherwise from subject/filename tokens; Unknown means neither code was detected yet. ' +
+      'Default filter is ACC approval letters so ~hundreds of mixed emails are not one flat list.',
+    tags: ['review', 'categories', 'NS04', 'NS05', 'approval', 'request', 'hrq'],
+  },
+  {
+    id: 'faq-save-as-outcome',
+    question: 'What is the difference between Save as ACC approval letter vs approval request?',
+    answer:
+      'ACC approval letter Accept parses and files NS04/NS05 approval periods onto the claim, and stages under Letters\\… on I-drive when checked. ' +
+      'Approval request attaches the file as document kind approval-request only (no periods) and stages under Approval Requests\\… — use this for requests you sent or mail that is not yet an ACC letter. ' +
+      'Decline uses the decline Accept path. You can override the classifier with the Save as dropdown before accepting.',
+    tags: ['review', 'accept', 'approval', 'request', 'idrive', 'hrq'],
+  },
+  {
+    id: 'faq-acc-inbox-refresh',
+    question: 'Why does Refresh sync status show a loading panel with elapsed time?',
+    answer:
+      'Reading email-sync-status.json (and waiting while Outlook sync still reports “running”) can take a while and used to look hung. ' +
+      'The panel shows Connecting / Fetching / still running with a live elapsed timer. Cancel wait only stops waiting in ACC Inbox — it does not cancel Outlook sync on the laptop.',
+    tags: ['inbox', 'sync', 'refresh', 'loading'],
+  },
+  {
     id: 'faq-auto-accept',
     question: 'Is Auto-accept safe? What does “Auto-accept ready (N)” do?',
     answer:
@@ -254,7 +283,7 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     id: 'faq-stage-to-idrive',
     question: 'What does the I-drive checkbox / Stage to I-drive do?',
     answer:
-      'Optional “Also file to I-drive” on Accept stages a copy under _Staging using the Letters path grammar — not into the live District Nursing archive. ' +
+      'Optional “Also file to I-drive” on Accept stages a copy under _Staging using Letters\\… or Approval Requests\\… (by Save as / document kind) — not into the live District Nursing archive. ' +
       'If you Accepted without filing, use “Stage to I-drive” on the claim document when the file is still stored locally and no staging path is recorded yet. ' +
       'I-drive root and staging subfolder are editable in Settings.',
     tags: ['idrive', 'staging', 'accept', 'retry', 'filing', 'settings'],

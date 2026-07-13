@@ -1325,6 +1325,7 @@ function ClaimDocuments({ claimId }: { claimId: string }) {
         claimNumber: claim?.claimNumber || undefined,
         letterDate: doc.addedDate?.slice(0, 10),
         sourceFileName: doc.fileName,
+        documentKind: doc.kind,
       });
       const stagingRel = buildStagingRelativePath(
         live.relativePath,

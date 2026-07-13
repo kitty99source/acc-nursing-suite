@@ -216,9 +216,11 @@ export function ExportCenter() {
             unknown sheets as custom tables. You'll get a preview before anything changes.
           </p>
           <div className="mt-auto">
-            <button className="btn btn-primary" onClick={() => excelInput.current?.click()} disabled={busy}>
-              <IconFolder /> Choose Excel file…
-            </button>
+            <HelperTip tipId="tip-excel-import">
+              <button className="btn btn-primary" onClick={() => excelInput.current?.click()} disabled={busy}>
+                <IconFolder /> Choose Excel file…
+              </button>
+            </HelperTip>
             <input
               ref={excelInput}
               type="file"
@@ -242,12 +244,16 @@ export function ExportCenter() {
             <span className="font-mono"> .accdata</span> file. Restoring replaces all current data.
           </p>
           <div className="mt-auto flex flex-wrap gap-2">
-            <button className="btn" onClick={exportJsonDownload} disabled={busy}>
-              <IconExport /> Download JSON backup
-            </button>
-            <button className="btn" onClick={() => fileInput.current?.click()} disabled={busy}>
-              <IconFolder /> Restore from JSON…
-            </button>
+            <HelperTip tipId="tip-export-accdata">
+              <button className="btn" onClick={exportJsonDownload} disabled={busy}>
+                <IconExport /> Download JSON backup
+              </button>
+            </HelperTip>
+            <HelperTip tipId="tip-export-accdata">
+              <button className="btn" onClick={() => fileInput.current?.click()} disabled={busy}>
+                <IconFolder /> Restore from JSON…
+              </button>
+            </HelperTip>
             <input
               ref={fileInput}
               type="file"
@@ -275,12 +281,16 @@ export function ExportCenter() {
             are rejected on restore. Restoring replaces current data and re-imports the files.
           </p>
           <div className="mt-auto flex flex-wrap gap-2">
-            <button className="btn" onClick={() => void exportZipBackup()} disabled={busy}>
-              <IconExport /> Export full backup (.zip)
-            </button>
-            <button className="btn" onClick={() => zipInput.current?.click()} disabled={busy}>
-              <IconFolder /> Restore full backup…
-            </button>
+            <HelperTip tipId="tip-export-zip">
+              <button className="btn" onClick={() => void exportZipBackup()} disabled={busy}>
+                <IconExport /> Export full backup (.zip)
+              </button>
+            </HelperTip>
+            <HelperTip tipId="tip-export-zip">
+              <button className="btn" onClick={() => zipInput.current?.click()} disabled={busy}>
+                <IconFolder /> Restore full backup…
+              </button>
+            </HelperTip>
             <input
               ref={zipInput}
               type="file"

@@ -31,6 +31,7 @@ import { formatDate } from '../lib/format';
 import { loadStagingItems } from '../lib/staging';
 import { fetchLocalEmailSyncStatus, formatSyncOutcome, type EmailSyncStatus } from '../lib/emailSyncStatus';
 import { LetterImportButton, LETTER_IMPORT_FULL_TOOLTIP } from '../components/LetterImportButton';
+import { HelperTip } from '../components/HelperTip';
 
 function useThemeColors() {
   const settings = useStore((s) => s.data.settings);
@@ -116,11 +117,13 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
           message="Import an ACC letter to file your first patient, claim and approvals in one step — or add a patient manually."
           action={
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <LetterImportButton
-                className="btn btn-primary"
-                opts={{ entryPoint: 'global' }}
-                title={LETTER_IMPORT_FULL_TOOLTIP}
-              />
+              <HelperTip tipId="tip-letter-import">
+                <LetterImportButton
+                  className="btn btn-primary"
+                  opts={{ entryPoint: 'global' }}
+                  title={LETTER_IMPORT_FULL_TOOLTIP}
+                />
+              </HelperTip>
               <button className="btn" onClick={() => onNavigate('patients')}>
                 Add a patient manually
               </button>
@@ -201,7 +204,9 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
                 Open Review Queue
               </button>
             )}
-            <LetterImportButton opts={{ entryPoint: 'global' }} title={LETTER_IMPORT_FULL_TOOLTIP} />
+            <HelperTip tipId="tip-letter-import">
+              <LetterImportButton opts={{ entryPoint: 'global' }} title={LETTER_IMPORT_FULL_TOOLTIP} />
+            </HelperTip>
           </div>
         </div>
       </Card>

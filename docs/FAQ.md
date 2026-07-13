@@ -3,7 +3,7 @@
 Durable inventory of coworker-facing FAQs. In-app source of truth:
 `src/lib/helpContent.ts` (Help Center) and `src/lib/helperTips.ts` (Helper Mode short blurbs).
 
-**Count:** 19 FAQ entries in `src/lib/helpContent.ts`.
+**Count:** 38 FAQ entries in `src/lib/helpContent.ts` (keep this file in sync when adding entries).
 
 ## How to use Help & Helper Mode
 
@@ -20,36 +20,58 @@ Durable inventory of coworker-facing FAQs. In-app source of truth:
 - Connecting vs Reconnecting
 - Folder Watch / ACC-Inbox
 - Outlook sync → HRQ
+- Concurrent-tab warning
 
-### Review Queue (HRQ) & I-drive
+### Dashboard, Review Queue & I-drive
+- Dashboard first steps / action queue
 - What HRQ means
+- Queue tabs (Under review / Unnamed / Deferred / Auto-approve)
+- Auto-accept ready
+- Discard unnamed
 - Accept / Undo accept
 - Also stage to I-drive / Stage later
-- Settings I-drive + inbox filter paths
+- ACC Inbox vs Review Queue
+- Import ACC letter (PDF/Word) entry points
 
-### Navigation & Billing
-- Sidebar badges = attention ≠ totals
+### Records modules
+- Patients & Cases / claims / documents
+- Approvals NS04/NS05 (NS03 no longer needs approval)
+- Decline Tracker
+- Complex Cases
+- Flagged (Compliance)
+
+### Billing, Calculator & tools
 - Needs review tab
 - Remove remittance import
+- Quick Paste-In
+- Package Calculator quirks
+- Contract rates (excl GST)
+- Mail Reference sheet
 
-### Calculator & Export
-- Package Calculator quirks (NS01–NS03, excl GST, editable rates)
-- Export Center Excel workbook vs .accdata
-
-### Data & Help
+### Export, data & Settings
+- Excel workbook + Undo Excel import
+- Excel vs JSON vs ZIP vs top-bar Save
+- Save / Load vs IndexedDB
+- Settings paths (inbox, I-drive, filters)
 - Assumption banners
-- Backup / IndexedDB
-- Offline
+- Offline / no internet
 - Helper Mode / reopen Help
+
+### Fun / Easter eggs
+- Enable disco cats, cute cursors, walking companion (Settings → Fun)
+- NS triple-click session disco + how to turn off
 
 ## Helper tips wired (this pass)
 
-`tip-sidebar-badges`, `tip-accept`, `tip-idrive-checkbox`, `tip-stage-later`,
-`tip-needs-review`, `tip-remove-remittance`, `tip-export-excel`, `tip-calculator`,
-plus registry entries for connecting / quiet / helper / hrq / backup (wire UI as practical).
+`tip-sidebar-badges`, `tip-accept`, `tip-undo-accept`, `tip-idrive-checkbox`,
+`tip-stage-later`, `tip-needs-review`, `tip-remove-remittance`, `tip-connecting`,
+`tip-export-excel`, `tip-export-accdata`, `tip-export-zip`, `tip-excel-import`,
+`tip-calculator`, `tip-helper-mode`, `tip-quiet-launcher`, `tip-hrq`,
+`tip-queue-tabs`, `tip-auto-accept`, `tip-discard-unnamed`, `tip-letter-import`,
+`tip-save-load`, `tip-mail-reference`, `tip-fun-easter`, `tip-quick-paste`,
+`tip-approvals`, `tip-compliance`
 
-## Honest gaps (follow-up)
+## Residual (optional polish)
 
-Connecting/Reconnecting loading banner, Auto-accept button, ACC Inbox module controls,
-Compliance/Approvals/Declines primary actions, Mail Reference, Quick Paste, JSON backup
-button in Export Center, assumption banner dismiss, concurrent-tab warning.
+`tip-quiet-launcher` remains mostly registry-only (no in-app launcher control).
+Assumption-banner dismiss controls inherit page context; no separate tip id per banner.

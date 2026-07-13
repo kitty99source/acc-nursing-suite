@@ -18,6 +18,7 @@ import { STORAGE_QUOTA_GUIDANCE } from '../lib/storageQuota';
 import type { CompanionCharacter, CursorStyle, DensityMode, ServiceCode, ThemeName } from '../types';
 import { CURSOR_OPTIONS } from '../lib/easter/cursors';
 import { SPRITE_SVGS, svgToDataUrl } from '../assets/easter/sprites';
+import { HelperTip } from '../components/HelperTip';
 
 const COMPANION_CHARACTERS: { value: CompanionCharacter; label: string }[] = [
   { value: 'cat', label: 'Cat' },
@@ -285,37 +286,40 @@ export function SettingsModule({ onOpenHelp }: { onOpenHelp?: () => void } = {})
         <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>
           When on, hovering or focusing key controls shows a short explainer. Off by default. Same as the ? button in the top bar.
         </p>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={settings.helperModeEnabled}
-            onChange={(e) => updateSettings({ helperModeEnabled: e.target.checked })}
-          />
-          Enable Helper Mode
-        </label>
+        <HelperTip tipId="tip-helper-mode">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={settings.helperModeEnabled}
+              onChange={(e) => updateSettings({ helperModeEnabled: e.target.checked })}
+            />
+            Enable Helper Mode
+          </label>
+        </HelperTip>
       </Card>
 
-      <Card className="mb-4">
-        <h3 className="card-title mb-2">Fun / Easter eggs</h3>
-        <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>
-          Purely decorative extras. All off by default, and they never touch your data. Motion is
-          gentled automatically if your system prefers reduced motion.
-        </p>
+      <HelperTip tipId="tip-fun-easter" style={{ display: 'block', width: '100%' }}>
+        <Card className="mb-4">
+          <h3 className="card-title mb-2">Fun / Easter eggs</h3>
+          <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>
+            Purely decorative extras. All off by default, and they never touch your data. Motion is
+            gentled automatically if your system prefers reduced motion.
+          </p>
 
-        <label className="flex items-center justify-between gap-3 text-sm mb-3">
-          <span>
-            <span className="font-medium">Dancing disco cats</span>
-            <span className="block text-xs" style={{ color: 'var(--muted)' }}>
-              A mini disco of pixel cats in the corner. Tip: triple-click the “NS” badge to toggle it too.
+          <label className="flex items-center justify-between gap-3 text-sm mb-3">
+            <span>
+              <span className="font-medium">Dancing disco cats</span>
+              <span className="block text-xs" style={{ color: 'var(--muted)' }}>
+                A mini disco of pixel cats in the corner. Tip: triple-click the “NS” badge to toggle it too.
+              </span>
             </span>
-          </span>
-          <input
-            type="checkbox"
-            checked={settings.discoCatsEnabled}
-            onChange={(e) => updateSettings({ discoCatsEnabled: e.target.checked })}
-            className="w-5 h-5"
-          />
-        </label>
+            <input
+              type="checkbox"
+              checked={settings.discoCatsEnabled}
+              onChange={(e) => updateSettings({ discoCatsEnabled: e.target.checked })}
+              className="w-5 h-5"
+            />
+          </label>
 
         <Field label="Mouse cursor">
           <Select
@@ -382,6 +386,7 @@ export function SettingsModule({ onOpenHelp }: { onOpenHelp?: () => void } = {})
           </Field>
         )}
       </Card>
+      </HelperTip>
 
       <Card className="mb-4">
         <h3 className="card-title mb-2">How saving works</h3>

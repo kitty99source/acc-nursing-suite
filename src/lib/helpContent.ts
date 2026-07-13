@@ -27,29 +27,77 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     body:
       'ACC District Nursing letters arrive in Outlook and are synced (or dropped) into ACC-Inbox, then staged into the Review Queue (HRQ). ' +
       'You accept each item onto a patient/claim. Approvals, declines, billing invoices, remittances, complex cases, compliance, Package Calculator, and Export Center all live in their own modules. ' +
-      'Everything stays offline on this PC (IndexedDB + optional .accdata / Excel backup).',
+      'Everything stays offline on this PC (IndexedDB + optional .accdata / Excel / ZIP backup).',
   },
   {
     id: 'dashboard',
     title: 'Dashboard',
     body:
       'At-a-glance action queue: approvals nearing expiry, remittance follow-ups, declines waiting on docs, complex-case reviews, and compliance findings. ' +
-      'Use it as the daily start page, then jump into the module that owns each item. Sidebar badges are attention counts — not page totals.',
-  },
-  {
-    id: 'patients',
-    title: 'Patients',
-    body:
-      'Patient demographics plus linked claims, service lines, and documents. Attach ACC letters here or via Review Queue accept. ' +
-      'If Accept skipped I-drive, use Stage to I-drive on the claim document. Notes and memos are local scratch — not sent to ACC automatically.',
+      'Use it as the daily start page, then jump into the module that owns each item. Sidebar badges are attention counts — not page totals. ' +
+      'Import ACC letter is also available here for a one-step patient/claim/approval filing.',
   },
   {
     id: 'review',
     title: 'Review Queue (HRQ)',
     body:
       'Human Review Queue: synced or manually staged emails/attachments wait for a human accept. ' +
-      'Status tabs, SLA highlighting, and confidence scores help you work the queue. ' +
-      'Accept attaches the item to a patient/claim; optional I-drive checkbox stages under _Staging only. Nothing is auto-filed without you.',
+      'Tabs split Under review / Unnamed / Deferred / Auto-approve. SLA highlighting and confidence scores help you work the queue. ' +
+      'Accept attaches the item to a patient/claim; optional I-drive checkbox stages under _Staging only. ' +
+      'Auto-accept ready only runs when you click it, and only for 100%-confidence eligible items.',
+  },
+  {
+    id: 'accinbox',
+    title: 'ACC Inbox',
+    body:
+      'Shows what Outlook sync / Folder Watch last saw in the configured shared mailbox and ACC-Inbox staging folder. ' +
+      'Open Review Queue jumps to HRQ; Advanced stage writes a queue row without waiting for folder-watch. ' +
+      'Sender allowlist and subject patterns live in Settings.',
+  },
+  {
+    id: 'patients',
+    title: 'Patients & Cases',
+    body:
+      'Patient demographics plus linked claims, service lines, and documents. Attach ACC letters here or via Review Queue accept. ' +
+      'If Accept skipped I-drive, use Stage to I-drive on the claim document. Use Undo this accept when you need the letter back in HRQ. ' +
+      'Notes and memos are local scratch — not sent to ACC automatically.',
+  },
+  {
+    id: 'approvals',
+    title: 'Approvals (NS04/NS05)',
+    body:
+      'Tracks NS04/NS05 approval periods and expiry. Import an ACC approval letter (NUR02-style) to file periods onto a claim. ' +
+      'NS03 packages no longer need approval (ACC change, March 2025) — those letters can be filed as historic records without billing. ' +
+      'Sidebar Approvals badge counts approvals that are not Active.',
+  },
+  {
+    id: 'declines',
+    title: 'Decline Tracker',
+    body:
+      'Declined letters and follow-up status. Import a decline letter from Declines or Patients. ' +
+      'Work items that still need documentation or a re-request; the sidebar badge counts open follow-ups.',
+  },
+  {
+    id: 'billing',
+    title: 'Billing Log & Remittances',
+    body:
+      'Invoice lines, remittance status, Needs review flags, and import history. Wrong remittance file? Use Remove import on that batch when available — ' +
+      'it drops those payment lines and re-checks only the invoices that batch touched. ' +
+      'Quick Paste-In (when enabled in Settings) pastes billing-report rows into invoice lines.',
+  },
+  {
+    id: 'complex',
+    title: 'Complex Cases',
+    body:
+      'Longer-running or exception cases that need review outside the normal package flow. ' +
+      'Export Center includes a Complex Cases Excel tab; import can merge those rows back.',
+  },
+  {
+    id: 'compliance',
+    title: 'Flagged (Compliance)',
+    body:
+      'Contract-compliance findings (e.g. missing approvals). Import an approval letter from here to file NS04/NS05 periods and clear related flags. ' +
+      'Sidebar badge counts open findings that need attention.',
   },
   {
     id: 'calculator',
@@ -59,31 +107,39 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       'Rates come from Settings → Contract pricing (excl GST). The calculator does not submit claims to ACC.',
   },
   {
-    id: 'billing',
-    title: 'Billing & Remittances',
-    body:
-      'Invoice lines, remittance status, Needs review flags, and import history. Wrong remittance file? Use Remove import on that batch when available — ' +
-      'it drops those payment lines and re-checks only the invoices that batch touched.',
-  },
-  {
     id: 'export',
     title: 'Export Center',
     body:
-      'Excel workbook export/import (multi-tab toolkit replacement), plus JSON/.accdata backup and restore. Everything stays on this machine.',
+      'Excel workbook export/import (multi-tab toolkit replacement), JSON/.accdata backup and restore, and full ZIP with document blobs. ' +
+      'Excel import shows a preview and can be rolled back. Everything stays on this machine.',
+  },
+  {
+    id: 'mail-reference',
+    title: 'Mail Reference',
+    body:
+      'Searchable office reference for ACC form codes and where they go (email / CC / hand-off). ' +
+      'Seeded from the 2024 Team Processes sheet — edit freely; Reset to 2024 defaults restores the seed. Not patient data.',
   },
   {
     id: 'settings',
     title: 'Settings',
     body:
-      'Appearance, idle lock, thresholds, ACC Inbox filters, service rates, I-drive paths, backups, Helper Mode, and dismissible assumption banners. ' +
+      'Appearance, idle lock, thresholds, ACC Inbox filters, service rates, I-drive paths, backups, Helper Mode, Fun/easter eggs, and dismissible assumption banners. ' +
       'Reopen Help from the top bar or Settings any time; use ? for Helper Mode hover tips.',
+  },
+  {
+    id: 'fun',
+    title: 'Fun / Easter eggs',
+    body:
+      'Optional decorative extras in Settings → Fun / Easter eggs: dancing disco cats, cute mouse cursors, and a walking companion. ' +
+      'All off by default; they never touch patient or billing data. Triple-click the sidebar “NS” badge to toggle disco cats for this session.',
   },
   {
     id: 'save-load',
     title: 'Saving & loading your data',
     body:
       'The suite autosaves to this browser\'s IndexedDB. Use "Save my data" / "Load my data" in the top bar for a portable .accdata backup ' +
-      '(optionally encrypted). IndexedDB protects against browser crashes; .accdata / Excel protect against disk wipes or a new PC.',
+      '(optionally encrypted). IndexedDB protects against browser crashes; .accdata / Excel / ZIP protect against disk wipes or a new PC.',
   },
 ];
 
@@ -144,12 +200,46 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     tags: ['sidebar', 'badge', 'navigation', 'attention'],
   },
   {
+    id: 'faq-dashboard',
+    question: 'What should I do first on the Dashboard?',
+    answer:
+      'Treat Dashboard as today’s work list: open action-queue rows (expiring approvals, remittance follow-ups, declines, complex cases, compliance), ' +
+      'then the “letters waiting in Review Queue” card. Use Import ACC letter when a PDF/Word arrived outside Outlook sync. ' +
+      'Sidebar Dashboard badge = open action items, not every chart total on the page.',
+    tags: ['dashboard', 'action', 'queue', 'start'],
+  },
+  {
     id: 'faq-hrq',
     question: 'What is HRQ / the Review Queue?',
     answer:
       'HRQ means Human Review Queue — the Review Queue module. Letters synced from Outlook or dropped into ACC-Inbox land here for you to check and Accept onto a patient/claim. ' +
       'Nothing counts toward metrics until accepted. There is an optional auto-accept for high-confidence eligible items you explicitly run; it never files blindly in the background.',
     tags: ['hrq', 'review', 'accept', 'queue'],
+  },
+  {
+    id: 'faq-queue-tabs',
+    question: 'What is the difference between Under review, Unnamed, Deferred, and Auto-approve?',
+    answer:
+      'Under review = active pending letters. Unnamed = pending rows that still show a filename only (try Fix names now before Discard unnamed). ' +
+      'Deferred = letters you set aside; bring them back from that tab. Auto-approve = pending letters currently eligible for one-click Auto-accept ready ' +
+      '(100% confidence, no blockers) — still only files when you click the button.',
+    tags: ['review', 'tabs', 'unnamed', 'deferred', 'auto-accept', 'hrq'],
+  },
+  {
+    id: 'faq-auto-accept',
+    question: 'Is Auto-accept safe? What does “Auto-accept ready (N)” do?',
+    answer:
+      'It only appears when N letters score 100% confidence with no outstanding issues. Clicking it asks for confirmation, then Accepts those eligible items in batch. ' +
+      'Failures stay pending for manual review. It never runs in the background. Prefer individual Accept when anything looks odd.',
+    tags: ['auto-accept', 'review', 'hrq', 'confidence'],
+  },
+  {
+    id: 'faq-discard-unnamed',
+    question: 'What does Discard unnamed do?',
+    answer:
+      'Removes pending Review Queue rows that still show a filename only (no patient name resolved). Try Fix names now first for anything that might be readable. ' +
+      'Discarded items leave the queue; this is for junk/unreadable drops, not a soft defer.',
+    tags: ['discard', 'unnamed', 'review', 'hrq'],
   },
   {
     id: 'faq-undo-accept',
@@ -170,6 +260,66 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     tags: ['idrive', 'staging', 'accept', 'retry', 'filing', 'settings'],
   },
   {
+    id: 'faq-letter-import',
+    question: 'What does “Import ACC letter (PDF or Word)” do — and where should I use it?',
+    answer:
+      'Opens a letter parser that can create/update patient, claim, approvals/declines, and attach the PDF/Word. ' +
+      'Full-save entry points: Dashboard, Patients, Approvals, Declines, Compliance, claim Documents. ' +
+      'Prefill-from-letter on new patient/claim forms only fills fields — nothing saves until you click Save. ' +
+      'Review Queue Accept is for already-staged inbox items; letter import is for a file you pick yourself.',
+    tags: ['letter', 'import', 'pdf', 'word', 'approvals', 'patients'],
+  },
+  {
+    id: 'faq-patients',
+    question: 'How do Patients & Cases relate to claims and documents?',
+    answer:
+      'Each patient can have multiple claims; each claim holds service lines, approvals, and documents (including Review-accept attachments). ' +
+      'Open a claim to see documents, Stage to I-drive, Undo this accept, and Re-extract on approval/decline letters. ' +
+      'Local notes stay on this PC only.',
+    tags: ['patients', 'claims', 'documents', 'cases'],
+  },
+  {
+    id: 'faq-approvals',
+    question: 'What are Approvals (NS04/NS05) — and does NS03 still need approval?',
+    answer:
+      'Approvals tracks NS04/NS05 period coverage and expiry for billing. Import an ACC approval letter to file periods onto a claim. ' +
+      'NS03 packages no longer need approval (ACC change, March 2025); those letters can be stored as historic package records without creating billing periods. ' +
+      'Sidebar badge counts approvals that are not Active (e.g. nearing expiry / needing attention).',
+    tags: ['approvals', 'NS04', 'NS05', 'NS03', 'expiry'],
+  },
+  {
+    id: 'faq-declines',
+    question: 'What is the Decline Tracker for?',
+    answer:
+      'Tracks declined ACC letters and whether you still need docs or a follow-up. Import a decline letter from Declines or Patients. ' +
+      'Sidebar Declines badge counts open follow-ups — not every historical decline row.',
+    tags: ['declines', 'tracker', 'letter', 'follow-up'],
+  },
+  {
+    id: 'faq-complex',
+    question: 'What are Complex Cases?',
+    answer:
+      'A separate list for exception / longer-running cases outside the normal package path. Review them from Dashboard action items or the Complex Cases module. ' +
+      'They export/import with the Excel workbook Complex Cases tab.',
+    tags: ['complex', 'cases', 'exception'],
+  },
+  {
+    id: 'faq-compliance',
+    question: 'What does Flagged (Compliance) mean?',
+    answer:
+      'Contract-compliance findings such as missing NS04/NS05 approvals. Open a finding and import an approval letter to file periods and clear related flags when appropriate. ' +
+      'Sidebar badge = open findings needing attention.',
+    tags: ['compliance', 'flagged', 'approvals', 'contract'],
+  },
+  {
+    id: 'faq-acc-inbox',
+    question: 'What is the ACC Inbox module vs Review Queue?',
+    answer:
+      'ACC Inbox shows sync/staging visibility for the shared mailbox and ACC-Inbox folder. Review Queue (HRQ) is where you Accept items onto patients. ' +
+      'Open Review Queue only navigates; Advanced stage can write a queue row without the launcher. Prefer Folder Watch + quiet launcher for day-to-day.',
+    tags: ['accinbox', 'inbox', 'sync', 'review', 'hrq'],
+  },
+  {
     id: 'faq-needs-review',
     question: 'What does Billing “Needs review” mean?',
     answer:
@@ -186,6 +336,14 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     tags: ['remittance', 'billing', 'undo', 'remove', 'import'],
   },
   {
+    id: 'faq-quick-paste',
+    question: 'What is Quick Paste-In?',
+    answer:
+      'Optional tool (enable in Settings) to paste tab- or comma-separated rows from a billing report, map columns, preview, then commit invoice lines locally. ' +
+      'Nothing is sent anywhere. Prefer remittance/Excel import when you have those files; Quick Paste is for ad-hoc report rows.',
+    tags: ['quickpaste', 'billing', 'paste', 'invoice'],
+  },
+  {
     id: 'faq-calculator',
     question: 'How does the Package Calculator work (and what are the quirks)?',
     answer:
@@ -195,12 +353,43 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     tags: ['calculator', 'package', 'NS01', 'NS02', 'NS03', 'gst', 'rates'],
   },
   {
+    id: 'faq-service-rates',
+    question: 'Where do I edit NS01–NS03 (and other) contract rates?',
+    answer:
+      'Settings → Contract pricing. Rates are dollars excl GST and stay as you leave them (no factory reset). ' +
+      'Package Calculator and billing displays read these values. Update them when ACC publishes a new schedule.',
+    tags: ['settings', 'rates', 'pricing', 'NS01', 'gst'],
+  },
+  {
     id: 'faq-export-excel',
     question: 'What does Export Center’s Excel workbook do?',
     answer:
       'Export builds a multi-tab .xlsx (Start Here, Billing Log, Year Summary, NS04-NS05 Approvals, Complex Cases, Decline Tracker, Management Summary) with dropdowns and totals — it replaces the old toolkit spreadsheet. ' +
-      'Import reads recognised tabs back in (with a preview); unknown columns/sheets become custom fields/tables. JSON/.accdata backup is separate for full app restore.',
-    tags: ['export', 'excel', 'xlsx', 'toolkit', 'backup'],
+      'Import reads recognised tabs back in (with a preview); unknown columns/sheets become custom fields/tables. Use Undo Excel import when offered to roll back the last import snapshot.',
+    tags: ['export', 'excel', 'xlsx', 'toolkit', 'backup', 'import'],
+  },
+  {
+    id: 'faq-export-center',
+    question: 'What should I use in Export Center — Excel, JSON, or ZIP?',
+    answer:
+      'Excel workbook = day-to-day toolkit replacement (shareable tabs, import/merge). JSON / .accdata = portable app data without every attached letter blob. ' +
+      'Full ZIP = data + every stored document (best for moving PCs or deep archive). Top-bar Save my data is the everyday .accdata habit; Export Center is for toolkit/Excel and full archives.',
+    tags: ['export', 'excel', 'json', 'zip', 'accdata', 'backup'],
+  },
+  {
+    id: 'faq-save-load',
+    question: 'What is the difference between Save my data, IndexedDB autosave, and Export Center?',
+    answer:
+      'IndexedDB autosaves every edit in this browser (crash-safe) but does not clear the “unsaved” warning — that clears when you Save my data to a .accdata file. ' +
+      'Load my data restores from .accdata/JSON. Export Center adds Excel toolkit export/import and optional full ZIP with documents.',
+    tags: ['save', 'load', 'accdata', 'indexeddb', 'topbar', 'export'],
+  },
+  {
+    id: 'faq-concurrent-tabs',
+    question: 'Why does a yellow banner say another tab has the suite open?',
+    answer:
+      'Two browser tabs share the same IndexedDB. Last write wins — conflicting edits can overwrite each other. Close the extra tab and keep one open for editing.',
+    tags: ['concurrent', 'tabs', 'warning', 'indexeddb'],
   },
   {
     id: 'faq-settings-paths',
@@ -209,6 +398,14 @@ export const FAQ_ENTRIES: FaqEntry[] = [
       'ACC Inbox sender allowlist and subject patterns control what Outlook sync stages. I-drive root (default I:\\ACC\\District Nursing) and staging subfolder (default _Staging) control optional Accept writeback. ' +
       'Remittance stale days, expiry threshold, service rates, and assumption-banner dismiss flags also live here. Mirror launcher mailbox config into office-config.json when you change sync targets.',
     tags: ['settings', 'inbox', 'idrive', 'paths', 'filters'],
+  },
+  {
+    id: 'faq-mail-reference',
+    question: 'What is Mail Reference for?',
+    answer:
+      'An editable office cheat-sheet of ACC form codes and where each goes (email / CC / hand-off instructions), seeded from the 2024 Team Processes sheet. ' +
+      'Search, add, edit, or Reset to 2024 defaults. It is reference only — not patient records and not sent anywhere.',
+    tags: ['mail', 'reference', 'forms', 'routing'],
   },
   {
     id: 'faq-wfh',
@@ -235,7 +432,7 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     id: 'faq-backup',
     question: 'Why do .accdata backups matter if IndexedDB autosaves?',
     answer:
-      'Autosave keeps you safe from browser crashes on this PC. A .accdata export (or Export Center Excel/JSON) is what you need ' +
+      'Autosave keeps you safe from browser crashes on this PC. A .accdata export (or Export Center Excel/JSON/ZIP) is what you need ' +
       'if the disk is wiped, the browser profile is cleared, or you move to another computer. ' +
       'Use Save my data in the top bar regularly.',
     tags: ['backup', 'accdata', 'save', 'export'],
@@ -247,6 +444,23 @@ export const FAQ_ENTRIES: FaqEntry[] = [
       'No. It is 100% offline. Data lives in IndexedDB and whatever .accdata file you choose. ' +
       'The local launcher bridge talks only to 127.0.0.1 on your machine (Outlook COM / inbox paths via PowerShell).',
     tags: ['offline', 'privacy', 'network'],
+  },
+  {
+    id: 'faq-easter-eggs',
+    question: 'How do I turn on disco cats, cute cursors, or the walking companion?',
+    answer:
+      'Open Settings → Fun / Easter eggs. Toggle Dancing disco cats, pick a Mouse cursor style, and/or enable Walking companion (pick a character). ' +
+      'All are off by default, decorative only, and never change patient or billing data. Motion gentles if your system prefers reduced motion. ' +
+      'Shortcut: triple-click the sidebar “NS” badge to toggle disco cats for this browser session (session toggle is separate from the Settings checkbox that stays on across launches).',
+    tags: ['fun', 'easter', 'disco', 'cats', 'cursor', 'companion', 'NS'],
+  },
+  {
+    id: 'faq-disco-ns',
+    question: 'I triple-clicked “NS” and cats appeared — how do I turn that off?',
+    answer:
+      'Triple-clicking the sidebar NS mark toggles a session-only disco overlay. Click the disco panel’s off control, triple-click NS again, or turn off Dancing disco cats in Settings → Fun / Easter eggs ' +
+      '(that Settings toggle is the persistent always-on preference).',
+    tags: ['disco', 'NS', 'triple-click', 'fun', 'easter'],
   },
   {
     id: 'faq-help-again',

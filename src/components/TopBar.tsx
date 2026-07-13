@@ -4,6 +4,7 @@ import { IconSave, IconFolder, IconLock, IconHelp } from './icons';
 import { formatDate } from '../lib/format';
 import { readFileAsText, PassphraseRequiredError, WrongPassphraseError } from '../lib/storage';
 import { Modal } from './Modal';
+import { HelperTip } from './HelperTip';
 import { useFlash } from '../hooks/useFlash';
 
 const SAVE_FILENAME = 'acc-nursing-data.accdata';
@@ -224,32 +225,36 @@ export function TopBar({
 
         {/* Primary, always-visible persistence (works on file://). At narrow widths the
             labels collapse to icon-only so the controls never overlap the ☰ toggle. */}
-        <button
-          className="btn btn-primary shrink-0"
-          disabled={busy}
-          onClick={() => void handleSave()}
-          aria-label="Save my data"
-          title={
-            status.hasFileHandle && status.fileName
-              ? `Save into ${status.fileName} (overwrites the same file)`
-              : `Download a backup of all your data (${SAVE_FILENAME}). Tip: use “Save to file…” once to save into a fixed file instead of new downloads.`
-          }
-        >
-          <IconSave />
-          <span className="hidden sm:inline">
-            {status.hasFileHandle ? 'Save' : 'Save my data'}
-          </span>
-        </button>
-        <button
-          className="btn shrink-0"
-          disabled={busy}
-          onClick={() => fileInput.current?.click()}
-          aria-label="Load my data"
-          title="Load your data back from a saved file"
-        >
-          <IconFolder />
-          <span className="hidden sm:inline">Load my data</span>
-        </button>
+        <HelperTip tipId="tip-save-load">
+          <button
+            className="btn btn-primary shrink-0"
+            disabled={busy}
+            onClick={() => void handleSave()}
+            aria-label="Save my data"
+            title={
+              status.hasFileHandle && status.fileName
+                ? `Save into ${status.fileName} (overwrites the same file)`
+                : `Download a backup of all your data (${SAVE_FILENAME}). Tip: use “Save to file…” once to save into a fixed file instead of new downloads.`
+            }
+          >
+            <IconSave />
+            <span className="hidden sm:inline">
+              {status.hasFileHandle ? 'Save' : 'Save my data'}
+            </span>
+          </button>
+        </HelperTip>
+        <HelperTip tipId="tip-save-load">
+          <button
+            className="btn shrink-0"
+            disabled={busy}
+            onClick={() => fileInput.current?.click()}
+            aria-label="Load my data"
+            title="Load your data back from a saved file"
+          >
+            <IconFolder />
+            <span className="hidden sm:inline">Load my data</span>
+          </button>
+        </HelperTip>
         <input
           ref={fileInput}
           type="file"
@@ -362,25 +367,27 @@ export function TopBar({
             Help
           </button>
         )}
-        <button
-          type="button"
-          className="btn btn-icon shrink-0"
-          onClick={() => updateSettings({ helperModeEnabled: !helperModeEnabled })}
-          title={
-            helperModeEnabled
-              ? 'Helper Mode on — hover key controls for tips. Click to turn off.'
-              : 'Helper Mode off — click to show short tips when you hover key controls.'
-          }
-          aria-label={helperModeEnabled ? 'Turn off Helper Mode' : 'Turn on Helper Mode'}
-          aria-pressed={helperModeEnabled}
-          style={
-            helperModeEnabled
-              ? { background: 'var(--accent)', color: 'var(--accent-fg)', borderColor: 'var(--accent)' }
-              : undefined
-          }
-        >
-          <IconHelp />
-        </button>
+        <HelperTip tipId="tip-helper-mode">
+          <button
+            type="button"
+            className="btn btn-icon shrink-0"
+            onClick={() => updateSettings({ helperModeEnabled: !helperModeEnabled })}
+            title={
+              helperModeEnabled
+                ? 'Helper Mode on — hover key controls for tips. Click to turn off.'
+                : 'Helper Mode off — click to show short tips when you hover key controls.'
+            }
+            aria-label={helperModeEnabled ? 'Turn off Helper Mode' : 'Turn on Helper Mode'}
+            aria-pressed={helperModeEnabled}
+            style={
+              helperModeEnabled
+                ? { background: 'var(--accent)', color: 'var(--accent-fg)', borderColor: 'var(--accent)' }
+                : undefined
+            }
+          >
+            <IconHelp />
+          </button>
+        </HelperTip>
         <button className="btn btn-icon shrink-0" onClick={lock} title="Lock the app">
           <IconLock />
         </button>

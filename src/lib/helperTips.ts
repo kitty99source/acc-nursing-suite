@@ -29,6 +29,13 @@ export const HELPER_TIPS: HelperTipDef[] = [
       'Attaches this letter to a patient/claim. Nothing auto-files without you. Undo on the green banner (~45s) or later via “Undo this accept” on the claim document when shown.',
   },
   {
+    id: 'tip-undo-accept',
+    faqId: 'faq-undo-accept',
+    title: 'Undo this accept',
+    body:
+      'Puts the letter back in the Review Queue when the staging item is still soft-deleted. Does not reopen Outlook mail.',
+  },
+  {
     id: 'tip-idrive-checkbox',
     faqId: 'faq-stage-to-idrive',
     title: 'Also file to I-drive',
@@ -72,10 +79,24 @@ export const HELPER_TIPS: HelperTipDef[] = [
   },
   {
     id: 'tip-export-accdata',
-    faqId: 'faq-backup',
+    faqId: 'faq-export-center',
     title: 'JSON / .accdata backup',
     body:
-      'Portable working copy. IndexedDB autosaves on this PC; .accdata protects against disk wipe or a new computer.',
+      'Portable working copy without every letter blob. IndexedDB autosaves on this PC; use full ZIP when you need documents too.',
+  },
+  {
+    id: 'tip-export-zip',
+    faqId: 'faq-export-center',
+    title: 'Full ZIP backup',
+    body:
+      'Bundles data + every stored document for archive or a new PC. Everyday Save my data stays as .accdata.',
+  },
+  {
+    id: 'tip-excel-import',
+    faqId: 'faq-export-excel',
+    title: 'Import from Excel',
+    body:
+      'Preview first, then merge or replace recognised tabs. Use Undo Excel import when offered to roll back the last snapshot.',
   },
   {
     id: 'tip-calculator',
@@ -104,6 +125,76 @@ export const HELPER_TIPS: HelperTipDef[] = [
     title: 'Review Queue (HRQ)',
     body:
       'Human Review Queue: synced/dropped letters wait here until you Accept. Auto-accept only for high-confidence eligible items you choose to run.',
+  },
+  {
+    id: 'tip-queue-tabs',
+    faqId: 'faq-queue-tabs',
+    title: 'Review list tabs',
+    body:
+      'Under review / Unnamed / Deferred / Auto-approve slices of the same pending work. Deferred is set-aside; Unnamed still needs a patient name.',
+  },
+  {
+    id: 'tip-auto-accept',
+    faqId: 'faq-auto-accept',
+    title: 'Auto-accept ready',
+    body:
+      'Only 100%-confidence letters with no blockers. Confirms first; never runs in the background. Failures stay pending.',
+  },
+  {
+    id: 'tip-discard-unnamed',
+    faqId: 'faq-discard-unnamed',
+    title: 'Discard unnamed',
+    body:
+      'Clears filename-only queue rows. Try Fix names now first for anything that might still be readable.',
+  },
+  {
+    id: 'tip-letter-import',
+    faqId: 'faq-letter-import',
+    title: 'Import ACC letter',
+    body:
+      'Parse a PDF/Word you pick to create or update patient, claim, and approvals/declines. Prefill-only forms wait for Save.',
+  },
+  {
+    id: 'tip-save-load',
+    faqId: 'faq-save-load',
+    title: 'Save / Load my data',
+    body:
+      'Portable .accdata backup. IndexedDB autosaves here; Save clears the unsaved warning. Load restores from a file you choose.',
+  },
+  {
+    id: 'tip-mail-reference',
+    faqId: 'faq-mail-reference',
+    title: 'Mail Reference',
+    body:
+      'Office form-routing cheat-sheet (not patient data). Edit freely; Reset to 2024 defaults restores the seed.',
+  },
+  {
+    id: 'tip-fun-easter',
+    faqId: 'faq-easter-eggs',
+    title: 'Fun / Easter eggs',
+    body:
+      'Disco cats, cute cursors, walking companion — decorative only. Triple-click sidebar NS for session disco.',
+  },
+  {
+    id: 'tip-quick-paste',
+    faqId: 'faq-quick-paste',
+    title: 'Quick Paste-In',
+    body:
+      'Paste billing-report rows, map columns, preview, commit invoice lines locally. Enable in Settings first.',
+  },
+  {
+    id: 'tip-approvals',
+    faqId: 'faq-approvals',
+    title: 'Approvals (NS04/NS05)',
+    body:
+      'Tracks approval periods and expiry. Import an ACC letter to file periods. NS03 no longer needs approval (March 2025).',
+  },
+  {
+    id: 'tip-compliance',
+    faqId: 'faq-compliance',
+    title: 'Flagged (Compliance)',
+    body:
+      'Contract findings such as missing approvals. Import an approval letter here to file periods and clear related flags.',
   },
 ];
 

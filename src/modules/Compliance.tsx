@@ -3,6 +3,7 @@ import { useStore } from '../state/store';
 import { SectionTitle, Card, Badge, Select, EmptyState, StatCard } from '../components/ui';
 import { IconShield } from '../components/icons';
 import { LetterImportButton, LETTER_IMPORT_FULL_TOOLTIP } from '../components/LetterImportButton';
+import { HelperTip } from '../components/HelperTip';
 import {
   complianceSummary,
   COMPLIANCE_RULES,
@@ -113,10 +114,12 @@ export function Compliance() {
         title="Flagged — Contract Compliance"
         subtitle="Live checks of your claims and Billing Log against the ACC Nursing Service Schedule & Operational Guidelines. Fix issues in one click."
         actions={
-          <LetterImportButton
-            opts={{ entryPoint: 'compliance' }}
-            title={LETTER_IMPORT_FULL_TOOLTIP}
-          />
+          <HelperTip tipId="tip-compliance">
+            <LetterImportButton
+              opts={{ entryPoint: 'compliance' }}
+              title={LETTER_IMPORT_FULL_TOOLTIP}
+            />
+          </HelperTip>
         }
       />
 

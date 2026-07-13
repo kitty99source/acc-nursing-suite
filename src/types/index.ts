@@ -8,8 +8,10 @@
 // (no import cycle at runtime).
 import { ALL_SERVICE_CODES, DEFAULT_RATES } from '../lib/serviceCodes';
 import type { RemittanceImportBatch, RemittancePayment } from '../lib/remittancePayments';
+import type { MailReferenceEntry } from '../lib/mailReference';
+import { DEFAULT_MAIL_REFERENCE_ENTRIES } from '../lib/mailReference';
 
-export type { RemittanceImportBatch, RemittancePayment };
+export type { RemittanceImportBatch, RemittancePayment, MailReferenceEntry };
 
 export type ServiceCode =
   | 'NS01'
@@ -243,6 +245,16 @@ export interface Settings {
   accInboxConfigBannerDismissed: boolean;
   /** Dismiss remittance-stale-days assumption banner. */
   remittanceStaleBannerDismissed: boolean;
+  /** Dismiss Mail Reference age assumption banner. */
+  mailReferenceBannerDismissed: boolean;
+  /** Editable ACC form-routing cheat-sheet (seeded from Mail Reference Sheet). */
+  mailReferenceEntries: MailReferenceEntry[];
+  /** Dismiss I-drive staging assumption banner. */
+  iDriveFilingBannerDismissed: boolean;
+  /** I-drive root for optional Accept writeback (District Nursing tree). */
+  iDriveRootPath: string;
+  /** Staging subfolder under the root (default `_Staging`). */
+  iDriveStagingSubfolder: string;
   // Defaults to every code; lets an office hide the ones they never use.
   enabledServiceCodes: ServiceCode[];
   // Editable per-contract rates (dollars excl GST) keyed by service code.
@@ -343,6 +355,11 @@ export const DEFAULT_SETTINGS: Settings = {
   hasSeenWelcomeGuide: false,
   accInboxConfigBannerDismissed: false,
   remittanceStaleBannerDismissed: false,
+  mailReferenceBannerDismissed: false,
+  mailReferenceEntries: DEFAULT_MAIL_REFERENCE_ENTRIES.map((e) => ({ ...e })),
+  iDriveFilingBannerDismissed: false,
+  iDriveRootPath: 'I:\\ACC\\District Nursing',
+  iDriveStagingSubfolder: '_Staging',
   enabledServiceCodes: [...ALL_SERVICE_CODES],
   serviceRates: { ...DEFAULT_RATES },
 };

@@ -403,4 +403,57 @@ body {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
   }
+
+  /* Billing (and similar) subview tabs — underline active tab, no card soup. */
+  .subview-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .subview-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.85rem;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    background: none;
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .subview-tab:hover {
+    color: var(--text);
+  }
+  .subview-tab[aria-selected='true'] {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .subview-tab:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  .subview-tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    background: var(--surface-2);
+    color: var(--muted);
+  }
+  .subview-tab-count[data-tone='danger'] {
+    background: var(--salmon);
+    color: var(--salmon-fg);
+  }
 }

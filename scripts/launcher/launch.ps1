@@ -500,6 +500,81 @@ function Get-StaticContentType {
     }
 }
 
+function Save-IDriveFile {
+    param([byte[]]$BodyBytes)
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    $allowedExt = @('.pdf', '.docx', '.doc', '.xlsx', '.xls', '.msg', '.eml', '.rtf', '.tif', '.html', '.txt')
+    $defaultRoot = 'I:\ACC\District Nursing'
+    try {
+        if ($null -eq $BodyBytes -or $BodyBytes.Length -eq 0) {
+            return @{ Ok = $false; Status = 400; Error = 'Empty body' }
+        }
+        $jsonText = $utf8.GetString($BodyBytes)
+        $payload = $jsonText | ConvertFrom-Json
+        $rel = [string]$payload.relativePath
+        $b64 = [string]$payload.fileBase64
+        $rootIn = [string]$payload.rootPath
+        if ([string]::IsNullOrWhiteSpace($rel) -or [string]::IsNullOrWhiteSpace($b64)) {
+            return @{ Ok = $false; Status = 400; Error = 'relativePath and fileBase64 are required' }
+        }
+        $root = if ([string]::IsNullOrWhiteSpace($rootIn)) { $defaultRoot } else { $rootIn.Trim() }
+        if (-not (Test-Path -LiteralPath $root -PathType Container)) {
+            return @{ Ok = $false; Status = 400; Error = ("I-drive root not found: " + $root) }
+        }
+        $rootFull = [System.IO.Path]::GetFullPath($root)
+        $rootPrefix = $rootFull.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
+
+        $normRel = ($rel -replace '/', '\').TrimStart('\')
+        foreach ($seg in $normRel.Split('\')) {
+            if ($seg -eq '..' -or $seg -eq '.') {
+                return @{ Ok = $false; Status = 400; Error = 'Path traversal rejected' }
+            }
+            if ($seg -match '[:*?"<>|]') {
+                return @{ Ok = $false; Status = 400; Error = 'Illegal path characters' }
+            }
+        }
+        $candidate = Join-Path $rootFull $normRel
+        $full = [System.IO.Path]::GetFullPath($candidate)
+        if (-not $full.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return @{ Ok = $false; Status = 400; Error = 'Resolved path escapes I-drive root' }
+        }
+        $ext = [System.IO.Path]::GetExtension($full).ToLowerInvariant()
+        if (-not ($allowedExt -contains $ext)) {
+            return @{ Ok = $false; Status = 400; Error = ("Extension not allowed: " + $ext) }
+        }
+
+        $dir = [System.IO.Path]::GetDirectoryName($full)
+        if (-not (Test-Path -LiteralPath $dir -PathType Container)) {
+            [void][System.IO.Directory]::CreateDirectory($dir)
+        }
+
+        $finalPath = $full
+        if (Test-Path -LiteralPath $finalPath -PathType Leaf) {
+            $baseName = [System.IO.Path]::GetFileNameWithoutExtension($full)
+            $dirName = [System.IO.Path]::GetDirectoryName($full)
+            $n = 2
+            while ($true) {
+                $tryName = "{0} ({1}){2}" -f $baseName, $n, $ext
+                $tryPath = Join-Path $dirName $tryName
+                if (-not (Test-Path -LiteralPath $tryPath -PathType Leaf)) {
+                    $finalPath = $tryPath
+                    break
+                }
+                $n += 1
+                if ($n -gt 999) {
+                    return @{ Ok = $false; Status = 409; Error = 'Too many name collisions' }
+                }
+            }
+        }
+
+        $bytes = [Convert]::FromBase64String($b64)
+        [System.IO.File]::WriteAllBytes($finalPath, $bytes)
+        return @{ Ok = $true; Status = 200; Path = $finalPath }
+    } catch {
+        return @{ Ok = $false; Status = 500; Error = $_.Exception.Message }
+    }
+}
+
 function Get-EmailSyncStatusBody {
     $statusPath = Join-Path $env:USERPROFILE 'ACC-Suite\email-sync-status.json'
     if (Test-Path -LiteralPath $statusPath -PathType Leaf) {
@@ -822,6 +897,20 @@ try {
                         })
                         if ($shouldStop) {
                             Write-BootstrapLog "Goodbye from last tab (clientId=$cid) - shutting down"
+                        }
+                    } elseif ($reqPath -eq '/_acc/file-to-idrive') {
+                        $result = Save-IDriveFile -BodyBytes $req.Body
+                        if ($result.Ok) {
+                            $outObj = [ordered]@{ ok = $true; path = [string]$result.Path }
+                            $outJson = ($outObj | ConvertTo-Json -Depth 3 -Compress:$false)
+                            $outBytes = [System.Text.Encoding]::UTF8.GetBytes($outJson)
+                            Send-Response -Client $client -StatusCode 200 -StatusText 'OK' -Body $outBytes -ContentType 'application/json; charset=utf-8'
+                        } else {
+                            $errObj = [ordered]@{ ok = $false; error = [string]$result.Error }
+                            $errJson = ($errObj | ConvertTo-Json -Depth 3 -Compress:$false)
+                            $errBytes = [System.Text.Encoding]::UTF8.GetBytes($errJson)
+                            $code = if ($result.Status) { [int]$result.Status } else { 400 }
+                            Send-Response -Client $client -StatusCode $code -StatusText 'Error' -Body $errBytes -ContentType 'application/json; charset=utf-8'
                         }
                     } else {
                         Send-Response -Client $client -StatusCode 404 -StatusText 'Not Found' -Body $notFound -ContentType 'text/plain; charset=utf-8'

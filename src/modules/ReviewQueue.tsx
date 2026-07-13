@@ -35,8 +35,14 @@ import {
   fetchInboxFileForStaging,
   fetchEmailMetaForHash,
   probeLocalStagingBridge,
+  postFileToIDrive,
   type StagingBridgeStatus,
 } from '../lib/localAccBridge';
+import {
+  buildAdminIDriveRelativePath,
+  buildStagingRelativePath,
+  joinIDriveDisplayPath,
+} from '../lib/idriveFiling';
 import {
   enqueueStagingPreparse,
   buildStagingPreview,
@@ -240,6 +246,8 @@ export function ReviewQueue() {
     declineId?: string;
   } | null>(null);
   const acceptFlashTimer = useRef<number | null>(null);
+  const [fileToIDrive, setFileToIDrive] = useState(false);
+  const settings = useStore((s) => s.data.settings);
   const [query, setQuery] = useState('');
   const [fixProgress, setFixProgress] = useState<string | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -1202,6 +1210,30 @@ export function ReviewQueue() {
         commitParsedApproval,
         commitParsedDecline,
       });
+      let iDriveNote = '';
+      if (fileToIDrive) {
+        const live = buildAdminIDriveRelativePath({
+          patientName: fields.patientName.trim(),
+          claimNumber: fields.claimNumber.trim() || undefined,
+          letterDate: fields.letterDate || undefined,
+          sourceFileName: file.name,
+        });
+        const stagingRel = buildStagingRelativePath(
+          live.relativePath,
+          settings.iDriveStagingSubfolder || '_Staging',
+        );
+        const b64 = await blobToBase64(file);
+        const filed = await postFileToIDrive({
+          relativePath: stagingRel,
+          fileBase64: b64,
+          rootPath: settings.iDriveRootPath,
+        });
+        if (filed.ok) {
+          iDriveNote = ` Staged to I-drive: ${joinIDriveDisplayPath(settings.iDriveRootPath, stagingRel)}.`;
+        } else {
+          iDriveNote = ` I-drive staging failed (${filed.error ?? 'unknown'}) — patient case was still created.`;
+        }
+      }
       await updateStagingItem(selected.id, { status: 'approved' });
       // Tombstone the accepted letter's ingress key so its .staging sidecar
       // never re-imports as a fresh pending row after sign-off. Without this an
@@ -1225,7 +1257,7 @@ export function ReviewQueue() {
         stagingItemId: selected.id,
         patientId: result.patientId,
         claimId: result.claimId,
-        message: `Patient case created for ${name}.`,
+        message: `Patient case created for ${name}.${iDriveNote}`,
         createdPatient: result.createdPatient,
         createdClaim: result.createdClaim,
         documentId: result.documentId,
@@ -1988,7 +2020,16 @@ export function ReviewQueue() {
                       )}
                     </p>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none" style={{ color: 'var(--muted)' }}>
+                      <input
+                        type="checkbox"
+                        checked={fileToIDrive}
+                        onChange={(e) => setFileToIDrive(e.target.checked)}
+                      />
+                      Also stage to I-drive (_Staging mirror)
+                    </label>
+                    <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       className="btn btn-primary btn-sm"
@@ -2026,6 +2067,7 @@ export function ReviewQueue() {
                     >
                       Reject
                     </button>
+                    </div>
                   </div>
                 </div>
 

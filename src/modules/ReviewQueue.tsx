@@ -41,7 +41,7 @@ import {
 import {
   bridgeEmptyQueueMessage,
   bridgeIDriveWriteFailedMessage,
-  bridgeUnavailableBannerCopy,
+  bridgeStatusBannerCopy,
   nextBridgePollIntervalMs,
 } from '../lib/bridgeReconnect';
 import {
@@ -275,7 +275,14 @@ export function ReviewQueue() {
   const sidecarInput = useRef<HTMLInputElement>(null);
   const letterInput = useRef<HTMLInputElement>(null);
   const seenSidecarIds = useRef<Set<string>>(new Set());
+  /** Only the latest probe may write bridgeStatus — prevents a hung fetch from
+   *  re-showing Reconnecting after a newer probe already saw the helper back up. */
+  const bridgeProbeSeq = useRef(0);
   const loadGen = useRef(0);
+
+  const applyBridgeStatus = useCallback((status: StagingBridgeStatus, seq: number) => {
+    if (seq === bridgeProbeSeq.current) setBridgeStatus(status);
+  }, []);
 
   // Measured height for the virtualized review list (Decision 3) — react-window
   // needs an explicit pixel height, so track the actual size of its flex-1
@@ -339,8 +346,9 @@ export function ReviewQueue() {
   const IMPORT_PROGRESS_CHUNK = 25;
 
   const autoImportFromLauncher = useCallback(async () => {
+    const seq = ++bridgeProbeSeq.current;
     const probe = await probeLocalStagingBridge();
-    setBridgeStatus(probe.status);
+    applyBridgeStatus(probe.status, seq);
     if (!probe.sidecars.length) return;
     const fresh = probe.sidecars.filter((sc) => {
       if (seenSidecarIds.current.has(sc.item.id)) return false;
@@ -375,7 +383,7 @@ export function ReviewQueue() {
       setAutoImportNote(`Auto-imported ${added} letter(s) from ACC-Inbox\\.staging.`);
       await refresh();
     }
-  }, [refresh]);
+  }, [refresh, applyBridgeStatus]);
 
   const reconciledOnce = useRef(false);
 
@@ -664,8 +672,9 @@ export function ReviewQueue() {
     if (busy) return;
     setBusy(true);
     try {
+      const seq = ++bridgeProbeSeq.current;
       const probe = await probeLocalStagingBridge();
-      setBridgeStatus(probe.status);
+      applyBridgeStatus(probe.status, seq);
       if (probe.status === 'unavailable') {
         await confirm({
           title: 'Cannot reach letter files',
@@ -739,8 +748,9 @@ export function ReviewQueue() {
     if (busy) return;
     setBusy(true);
     try {
+      const seq = ++bridgeProbeSeq.current;
       const probe = await probeLocalStagingBridge();
-      setBridgeStatus(probe.status);
+      applyBridgeStatus(probe.status, seq);
       if (probe.status === 'unavailable') {
         await confirm({
           title: 'Cannot reach letter files',
@@ -1572,18 +1582,24 @@ export function ReviewQueue() {
         </p>
       )}
 
-      {bridgeStatus === 'unavailable' && (() => {
-        const copy = bridgeUnavailableBannerCopy({
+      {(() => {
+        const copy = bridgeStatusBannerCopy({
+          status: bridgeStatus,
           isDev: import.meta.env.DEV,
           ingressNoun: 'letters',
         });
+        if (!copy) return null;
         return (
           <div
-            className="card mb-4 p-3 text-sm"
-            style={{ borderColor: 'var(--warn-fg)', background: 'var(--surface-2)' }}
+            className="card mb-4 p-3 text-sm flex items-start gap-2"
+            style={{ borderColor: 'var(--warn-fg)', background: 'var(--surface-2)', color: 'var(--warn-fg)' }}
             role="status"
+            aria-live="polite"
           >
-            <strong>{copy.title}</strong> {copy.body}
+            <span className="spinner shrink-0 mt-0.5" aria-hidden />
+            <span>
+              <strong>{copy.title}</strong> {copy.body}
+            </span>
           </div>
         );
       })()}

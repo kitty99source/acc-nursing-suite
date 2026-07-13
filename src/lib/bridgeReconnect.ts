@@ -14,12 +14,44 @@ export const BRIDGE_POLL_HEALTHY_MS = 30_000;
 export const BRIDGE_POLL_RECONNECT_MS = 3_000;
 
 export function nextBridgePollIntervalMs(status: StagingBridgeStatus | null | undefined): number {
-  return status === 'unavailable' ? BRIDGE_POLL_RECONNECT_MS : BRIDGE_POLL_HEALTHY_MS;
+  // null = first probe still in flight — poll fast once it settles to unavailable.
+  return status === 'unavailable' || status == null ? BRIDGE_POLL_RECONNECT_MS : BRIDGE_POLL_HEALTHY_MS;
+}
+
+export type BridgeBannerPhase = 'connecting' | 'reconnecting';
+
+/** Live banner while status is unknown (null) or known-down. Hide when ok/empty. */
+export function bridgeBannerPhase(
+  status: StagingBridgeStatus | null | undefined,
+): BridgeBannerPhase | null {
+  if (status == null) return 'connecting';
+  if (status === 'unavailable') return 'reconnecting';
+  return null;
 }
 
 export interface BridgeUnavailableCopy {
   title: string;
   body: string;
+}
+
+/** Immediate feedback while the first `/_acc` probe is in flight. */
+export function bridgeConnectingBannerCopy(opts: {
+  isDev: boolean;
+  ingressNoun?: string;
+}): BridgeUnavailableCopy {
+  const noun = (opts.ingressNoun ?? 'emails').trim() || 'emails';
+  if (opts.isDev) {
+    return {
+      title: 'Connecting to local helper…',
+      body:
+        `Checking for the /_acc bridge (expected missing under \`npm run dev\`). ` +
+        `New ${noun} import automatically when the supervised launcher is running.`,
+    };
+  }
+  return {
+    title: 'Connecting to local helper…',
+    body: `Checking whether new ${noun} can import automatically…`,
+  };
 }
 
 /**
@@ -48,6 +80,18 @@ export function bridgeUnavailableBannerCopy(opts: {
       `New ${noun} will import again automatically once the helper is back. ` +
       'You do not need to open a terminal or run a .cmd — just keep this tab open.',
   };
+}
+
+/** Resolve Connecting vs Reconnecting copy from current probe status. */
+export function bridgeStatusBannerCopy(opts: {
+  status: StagingBridgeStatus | null | undefined;
+  isDev: boolean;
+  ingressNoun?: string;
+}): BridgeUnavailableCopy | null {
+  const phase = bridgeBannerPhase(opts.status);
+  if (phase === 'connecting') return bridgeConnectingBannerCopy(opts);
+  if (phase === 'reconnecting') return bridgeUnavailableBannerCopy(opts);
+  return null;
 }
 
 /** Empty Review Queue guidance — no "run Start WFH Mode.cmd" for coworkers. */

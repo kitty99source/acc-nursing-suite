@@ -213,7 +213,7 @@ function SubsequentInjuryTool() {
         When the original injury is resolved, the subsequent injury becomes the new primary. Its new
         Day 1 is the reassessment date (not backdated).
       </p>
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid sm:grid-cols-3 gap-3 items-end">
         <Field label="Reassessment date (new Day 1)" required>
           <DateInput value={reassessmentDate} onChange={(e) => setReassessmentDate(e.target.value)} />
         </Field>

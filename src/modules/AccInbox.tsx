@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { SectionTitle, Card, Badge, EmptyState } from '../components/ui';
 import { IconFolder } from '../components/icons';
+import { HelperTip } from '../components/HelperTip';
 import {
   accInboxConfigFromSettings,
   filterSavedAccInboxRows,
@@ -17,7 +18,6 @@ import {
   describeEmailSyncStatusRejectReason,
   describeInboxEmptyState,
   EMAIL_SYNC_STATUS_HINT_PATH,
-  fetchLocalEmailSyncStatus,
   formatScanStatsSummary,
   formatSyncOutcome,
   inboxRowsFromSyncStatus,
@@ -25,6 +25,12 @@ import {
   parseEmailSyncStateFallback,
   stripJsonBom,
 } from '../lib/emailSyncStatus';
+import {
+  formatElapsedMs,
+  refreshEmailSyncStatus,
+  syncRefreshStatusText,
+  type SyncRefreshPhase,
+} from '../lib/emailSyncRefresh';
 
 function formatWhen(ts: number): string {
   return new Date(ts).toLocaleString('en-NZ');
@@ -42,10 +48,14 @@ export function AccInbox() {
   const [ignored, setIgnored] = useState<Set<string>>(() => new Set());
   const [stagingCount, setStagingCount] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
-  // Only show the blocking "Loading…" state when nothing is cached yet; a cached
-  // report stays visible while we refresh in the background.
+  // Only show the blocking first-load empty state when nothing is cached yet;
+  // a cached report stays visible under the progress panel while we refresh.
   const [syncLoading, setSyncLoading] = useState(() => !useStore.getState().accInboxSyncStatus);
+  const [refreshPhase, setRefreshPhase] = useState<SyncRefreshPhase | null>(null);
+  const [elapsedMs, setElapsedMs] = useState(0);
   const syncInputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const refreshStartedAt = useRef<number | null>(null);
 
   const filterConfig = useMemo(
     () => accInboxConfigFromSettings(settings.accInboxSenderAllowlist, settings.accInboxSubjectPatterns),
@@ -58,37 +68,76 @@ export function AccInbox() {
   );
 
   const rows = useMemo(() => {
-    if (syncLoading || !syncStatus) return [];
-    // Saved files are already vetted by outlook-sync.ps1 (sender + supported attachment). We show
-    // them regardless of subject tokens — a name-only subject (no Claim:/ACCID:) must NOT hide a
-    // legitimately saved letter. Only a light sender/extension sanity check remains.
+    // Keep the last audit list visible during refresh so the screen doesn't look hung.
+    if (!syncStatus) return [];
     return filterSavedAccInboxRows(syncRows, filterConfig).filter((r) => !ignored.has(r.id));
-  }, [filterConfig, ignored, syncRows, syncLoading, syncStatus]);
+  }, [filterConfig, ignored, syncRows, syncStatus]);
 
   // Only relevant when the list is empty: syncRows.length > 0 with rows empty
   // means real synced letters exist but the sender sanity check/Ignore hid them all.
   const emptyState = useMemo(
-    () => describeInboxEmptyState(syncStatus, syncLoading, rows.length === 0 ? syncRows.length : 0),
+    () =>
+      describeInboxEmptyState(
+        syncStatus,
+        syncLoading && !syncStatus,
+        rows.length === 0 ? syncRows.length : 0,
+      ),
     [rows.length, syncLoading, syncRows.length, syncStatus],
   );
 
+  useEffect(() => {
+    if (!syncLoading || refreshStartedAt.current == null) return;
+    const tick = window.setInterval(() => {
+      const started = refreshStartedAt.current;
+      if (started != null) setElapsedMs(Date.now() - started);
+    }, 250);
+    return () => window.clearInterval(tick);
+  }, [syncLoading]);
+
   async function refreshSyncStatus() {
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    refreshStartedAt.current = Date.now();
+    setElapsedMs(0);
     setSyncLoading(true);
+    setRefreshPhase('connecting');
+    setMessage(null);
     try {
-      const local = await fetchLocalEmailSyncStatus();
-      if (local) {
-        setSyncStatus(local);
+      const result = await refreshEmailSyncStatus({
+        signal: ctrl.signal,
+        onPhase: (phase, status) => {
+          setRefreshPhase(phase);
+          if (status) setSyncStatus(status);
+        },
+      });
+      if (result.cancelled) {
+        setMessage(syncRefreshStatusText('cancelled'));
+        return;
+      }
+      if (result.status) {
+        setSyncStatus(result.status);
         setMessage(null);
       } else if (useStore.getState().accInboxSyncStatus) {
-        // launch.ps1 isn't serving a report right now, but we already have one
-        // loaded — keep it rather than dropping to the "no sync yet" state.
-        setMessage('No served sync report found — showing the last loaded status. Click "Load sync report" to update it.');
+        setMessage(
+          'No served sync report found — showing the last loaded status. Click "Load sync report" to update it.',
+        );
       } else {
         setSyncStatus(undefined);
+        if (result.phase === 'error') {
+          setMessage(syncRefreshStatusText('error'));
+        }
       }
     } finally {
+      if (abortRef.current === ctrl) abortRef.current = null;
+      refreshStartedAt.current = null;
       setSyncLoading(false);
+      setRefreshPhase(null);
     }
+  }
+
+  function cancelRefresh() {
+    abortRef.current?.abort();
   }
 
   // On mount, refresh from the locally served report. If nothing is served
@@ -100,13 +149,16 @@ export function AccInbox() {
       await refreshSyncStatus();
       return;
     }
-    const local = await fetchLocalEmailSyncStatus();
-    if (local) setSyncStatus(local);
+    // Background refresh — keep cached rows visible; still show the panel.
+    await refreshSyncStatus();
   }
 
   useEffect(() => {
     void initialLoadSyncStatus();
     void refreshStaging();
+    return () => {
+      abortRef.current?.abort();
+    };
   }, []);
 
   async function refreshStaging() {
@@ -189,6 +241,8 @@ export function AccInbox() {
     }
   }
 
+  const showProgressPanel = syncLoading && refreshPhase != null;
+
   return (
     <div>
       <SectionTitle
@@ -202,6 +256,35 @@ export function AccInbox() {
         </div>
       )}
 
+      {showProgressPanel && (
+        <div
+          className="card mb-4 p-4"
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          style={{ borderColor: 'var(--accent)', background: 'var(--accent-soft)' }}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-start gap-3 min-w-0">
+              <span className="spinner shrink-0 mt-1" aria-hidden style={{ width: '1.25rem', height: '1.25rem' }} />
+              <div className="min-w-0">
+                <h3 className="font-semibold text-sm">Refreshing ACC Inbox sync</h3>
+                <p className="text-sm mt-1">{syncRefreshStatusText(refreshPhase, syncStatus)}</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+                  Elapsed {formatElapsedMs(elapsedMs)}
+                  {syncStatus?.outcome === 'running'
+                    ? ' · Outlook sync cannot be stopped from here — Cancel only stops waiting in this screen.'
+                    : ' · Cancel stops waiting for the helper; it does not undo a finished sync.'}
+                </p>
+              </div>
+            </div>
+            <button type="button" className="btn btn-sm shrink-0" onClick={cancelRefresh}>
+              Cancel wait
+            </button>
+          </div>
+        </div>
+      )}
+
       <Card className="mb-4 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <h3 className="font-semibold text-sm">Email sync status</h3>
@@ -210,11 +293,7 @@ export function AccInbox() {
             {stagingCount > 0 ? ` (${stagingCount})` : ''}
           </button>
         </div>
-        {syncLoading ? (
-          <p className="text-sm mb-2" style={{ color: 'var(--muted)' }}>
-            Loading sync report from <span className="font-mono">launch.ps1</span>…
-          </p>
-        ) : syncStatus ? (
+        {syncStatus ? (
           <>
             <p className="text-sm mb-2">{formatSyncOutcome(syncStatus)}</p>
             {syncStatus.scanStats && syncStatus.savedCount === 0 && (
@@ -226,6 +305,10 @@ export function AccInbox() {
               </p>
             )}
           </>
+        ) : syncLoading ? (
+          <p className="text-sm mb-2" style={{ color: 'var(--muted)' }}>
+            Please wait — loading the first sync report from <span className="font-mono">launch.ps1</span>…
+          </p>
         ) : (
           <p className="text-sm mb-2" style={{ color: 'var(--muted)' }}>
             No sync report loaded. On work laptop: Email Sync runs once when you start via the quiet .vbs /
@@ -255,14 +338,16 @@ export function AccInbox() {
           }}
         />
         <div className="flex flex-wrap gap-2">
-          <button
-            className="btn btn-sm"
-            type="button"
-            disabled={syncLoading}
-            onClick={() => void refreshSyncStatus()}
-          >
-            {syncLoading ? 'Refreshing…' : 'Refresh sync status'}
-          </button>
+          <HelperTip tipId="tip-acc-inbox-refresh">
+            <button
+              className="btn btn-sm"
+              type="button"
+              disabled={syncLoading}
+              onClick={() => void refreshSyncStatus()}
+            >
+              {syncLoading ? 'Refreshing…' : 'Refresh sync status'}
+            </button>
+          </HelperTip>
           <button className="btn btn-sm" type="button" onClick={() => syncInputRef.current?.click()}>
             Load sync report
           </button>
@@ -278,7 +363,7 @@ export function AccInbox() {
         </div>
       )}
 
-      {!syncLoading && syncStatus && (
+      {syncStatus && (
         <div className="card mb-4 p-3 text-xs" style={{ color: 'var(--muted)' }}>
           Audit list of letters saved by the last email sync. Staging and filing happen in the{' '}
           <button type="button" className="underline" onClick={goToReviewQueue}>
@@ -288,7 +373,7 @@ export function AccInbox() {
         </div>
       )}
 
-      {syncLoading ? (
+      {!syncStatus && syncLoading ? (
         <EmptyState
           icon={<IconFolder width={32} height={32} />}
           title={emptyState.title}
@@ -301,7 +386,7 @@ export function AccInbox() {
           message={emptyState.message}
         />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2" style={syncLoading ? { opacity: 0.72 } : undefined}>
           {rows.map((row) => (
             <Card key={row.id} className="p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">

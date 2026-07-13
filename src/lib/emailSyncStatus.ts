@@ -130,9 +130,14 @@ export function describeEmailSyncStatusRejectReason(
 
 export const LOCAL_EMAIL_SYNC_STATUS_URL = '/_acc/email-sync-status.json';
 
-export async function fetchLocalEmailSyncStatus(): Promise<EmailSyncStatus | null> {
+export async function fetchLocalEmailSyncStatus(opts?: {
+  signal?: AbortSignal;
+}): Promise<EmailSyncStatus | null> {
   try {
-    const res = await fetch(LOCAL_EMAIL_SYNC_STATUS_URL, { cache: 'no-store' });
+    const res = await fetch(LOCAL_EMAIL_SYNC_STATUS_URL, {
+      cache: 'no-store',
+      signal: opts?.signal,
+    });
     if (!res.ok) return null;
     const text = await res.text();
     const parsed = parseEmailSyncStatusFromText(text);
@@ -142,7 +147,8 @@ export async function fetchLocalEmailSyncStatus(): Promise<EmailSyncStatus | nul
     } catch {
       return null;
     }
-  } catch {
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') throw err;
     return null;
   }
 }

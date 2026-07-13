@@ -510,14 +510,45 @@ body {
     opacity: 0.7;
   }
 }
-@keyframes easter-companion-step {
-  0%,
+/* Floating snore "z z z" while the companion sleeps. Motion is soft (drift up
+   and fade); reduced-motion keeps the z's but stops them floating. */
+@keyframes easter-zzz-float {
+  0% {
+    transform: translateY(0) scale(0.7);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.9;
+  }
   100% {
-    transform: translateY(0);
+    transform: translateY(-14px) scale(1.05);
+    opacity: 0;
   }
-  50% {
-    transform: translateY(-3px);
-  }
+}
+
+.easter-companion-zzz {
+  position: absolute;
+  top: -12px;
+  left: 20px;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.easter-companion-zzz > span {
+  position: absolute;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  color: #7c8cff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+  animation: easter-zzz-float 2.2s ease-in-out infinite;
+}
+.easter-companion-zzz > span:nth-child(2) {
+  left: 5px;
+  font-size: 11px;
+}
+.easter-companion-zzz > span:nth-child(3) {
+  left: 11px;
+  font-size: 13px;
 }
 
 .easter-disco-cat {
@@ -537,10 +568,6 @@ body {
 .easter-disco-floor > span {
   animation: easter-floor 2.4s ease-in-out infinite;
 }
-.easter-companion-sprite {
-  animation: easter-companion-step 0.5s ease-in-out infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .easter-disco-cat,
   .easter-disco-cat:nth-child(2n),
@@ -554,8 +581,11 @@ body {
     animation: none;
     opacity: 0.5;
   }
-  .easter-companion-sprite {
+  /* Sleep frames still animate (the companion breathes + shows z's) but the
+     snore letters stop drifting so nothing floats/pulses jarringly. */
+  .easter-companion-zzz > span {
     animation: none;
+    opacity: 0.85;
   }
 }
 

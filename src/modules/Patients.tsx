@@ -177,8 +177,11 @@ export function Patients() {
           }
         />
       ) : (
-        <div className="grid lg:grid-cols-[20rem_1fr] gap-4 max-lg:grid-cols-1 patients-layout-grid">
-          <div className="card p-3 h-fit">
+        <div
+          className="grid gap-4 patients-layout-grid"
+          style={{ gridTemplateColumns: '20rem minmax(0, 1fr)', alignItems: 'start' }}
+        >
+          <div className="card p-3 h-fit min-w-0">
             <div className="relative mb-3">
               <span className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted)' }}>
                 <IconSearch width={15} height={15} />
@@ -249,20 +252,22 @@ export function Patients() {
             )}
           </div>
 
-          {selected ? (
-            <PatientDetail
-              key={selected.id}
-              patient={selected}
-              onEdit={() => openEditPatient(selected)}
-              onDelete={() => void deletePatient(selected)}
-            />
-          ) : (
-            <Card>
-              <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                Select a patient to view their details.
-              </p>
-            </Card>
-          )}
+          <div className="min-w-0">
+            {selected ? (
+              <PatientDetail
+                key={selected.id}
+                patient={selected}
+                onEdit={() => openEditPatient(selected)}
+                onDelete={() => void deletePatient(selected)}
+              />
+            ) : (
+              <Card>
+                <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                  Select a patient to view their details.
+                </p>
+              </Card>
+            )}
+          </div>
         </div>
       )}
 
@@ -1411,7 +1416,7 @@ function ClaimDocuments({ claimId }: { claimId: string }) {
         <h4 className="text-sm font-semibold" style={{ color: 'var(--muted)' }}>
           Documents
         </h4>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           <Select
             value={kind}
             onChange={(e) => setKind(e.target.value as DocumentKind)}
@@ -1489,7 +1494,7 @@ function ClaimDocuments({ claimId }: { claimId: string }) {
                   {doc.lastIDriveFiling ? (
                     <>
                       {' · '}
-                      I-drive: <span className="font-mono">{doc.lastIDriveFiling.relativePath}</span>
+                      I-drive: <span className="font-mono break-all">{doc.lastIDriveFiling.relativePath}</span>
                     </>
                   ) : null}
                 </div>

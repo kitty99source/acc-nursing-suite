@@ -1,7 +1,7 @@
 {
   "name": "acc-nursing-suite",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "ACC District Nursing Admin Suite - offline single-file billing & claims admin tool",
   "type": "module",
   "scripts": {

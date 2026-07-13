@@ -286,54 +286,113 @@ export function Billing() {
     if (ok) removeInvoiceLine(line.id);
   }
 
+  // Fixed % widths so the log fits a typical laptop (~1280–1440) without H-scroll.
   const columns: Column<InvoiceLine>[] = [
     {
       key: 'patientName',
       header: 'Patient',
+      width: '13%',
       sortable: true,
       sortValue: (r) => r.patientName,
       render: (r) => (
-        <div>
-          <div className="font-medium">{r.patientName || '—'}</div>
-          <div className="text-xs" style={{ color: 'var(--muted)' }}>
+        <div className="min-w-0 max-w-full">
+          <div className="font-medium text-xs truncate" title={r.patientName || undefined}>
+            {r.patientName || '—'}
+          </div>
+          <div className="text-[0.65rem] truncate" style={{ color: 'var(--muted)' }} title={r.nhi}>
             {r.nhi}
           </div>
         </div>
       ),
     },
-    { key: 'claimNumber', header: 'Claim', sortable: true, sortValue: (r) => r.claimNumber, render: (r) => r.claimNumber || '—' },
-    { key: 'code', header: 'Code', sortable: true, sortValue: (r) => r.serviceCode, render: (r) => <Badge tone="neutral">{r.serviceCode}</Badge> },
-    { key: 'sheet', header: 'Invoice Sheet', sortable: true, sortValue: (r) => r.invoiceSheet, render: (r) => r.invoiceSheet || '—' },
-    { key: 'invDate', header: 'Invoice Date', sortable: true, sortValue: (r) => r.invoiceDate, render: (r) => formatDate(r.invoiceDate) || '—' },
+    {
+      key: 'claimNumber',
+      header: 'Claim',
+      width: '9%',
+      sortable: true,
+      sortValue: (r) => r.claimNumber,
+      render: (r) => (
+        <span className="text-xs truncate block font-mono" title={r.claimNumber || undefined}>
+          {r.claimNumber || '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'code',
+      header: 'Code',
+      width: '6%',
+      sortable: true,
+      sortValue: (r) => r.serviceCode,
+      render: (r) => <Badge tone="neutral">{r.serviceCode}</Badge>,
+    },
+    {
+      key: 'sheet',
+      header: 'Sheet',
+      width: '10%',
+      sortable: true,
+      sortValue: (r) => r.invoiceSheet,
+      render: (r) => (
+        <span className="text-xs truncate block" title={r.invoiceSheet || undefined}>
+          {r.invoiceSheet || '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'invDate',
+      header: 'Inv. date',
+      width: '8%',
+      sortable: true,
+      sortValue: (r) => r.invoiceDate,
+      render: (r) => (
+        <span className="text-xs whitespace-nowrap">{formatDate(r.invoiceDate) || '—'}</span>
+      ),
+    },
     {
       key: 'invoiced',
       header: 'Invoiced',
+      width: '8%',
       align: 'right',
       sortable: true,
       sortValue: (r) => r.amountInvoiced || 0,
-      render: (r) => formatCurrency(r.amountInvoiced),
+      render: (r) => <span className="text-xs whitespace-nowrap">{formatCurrency(r.amountInvoiced)}</span>,
     },
-    { key: 'paidDate', header: 'Date Paid', sortable: true, sortValue: (r) => r.datePaid ?? '', render: (r) => formatDate(r.datePaid) || '—' },
+    {
+      key: 'paidDate',
+      header: 'Paid date',
+      width: '8%',
+      sortable: true,
+      sortValue: (r) => r.datePaid ?? '',
+      render: (r) => (
+        <span className="text-xs whitespace-nowrap">{formatDate(r.datePaid) || '—'}</span>
+      ),
+    },
     {
       key: 'paid',
       header: 'Paid',
+      width: '7%',
       align: 'right',
       sortable: true,
       sortValue: (r) => r.amountPaid ?? 0,
-      render: (r) => (r.amountPaid != null ? formatCurrency(r.amountPaid) : '—'),
+      render: (r) => (
+        <span className="text-xs whitespace-nowrap">
+          {r.amountPaid != null ? formatCurrency(r.amountPaid) : '—'}
+        </span>
+      ),
     },
     {
       key: 'status',
       header: 'Status',
+      width: '11%',
       sortable: true,
       sortValue: (r) => r.status,
       render: (r) => (
         <select
-          className="select py-1 text-xs"
+          className="select py-0.5 px-1 text-[0.65rem] leading-tight"
           value={r.status}
           onChange={(e) => updateInvoiceLine(r.id, { status: e.target.value as InvoiceStatus })}
           onClick={(e) => e.stopPropagation()}
-          style={{ minWidth: 130 }}
+          title={r.status}
+          style={{ width: '100%', maxWidth: '7.25rem' }}
         >
           {STATUSES.map((s) => (
             <option key={s} value={s}>
@@ -346,13 +405,21 @@ export function Billing() {
     {
       key: 'review',
       header: 'Review',
+      width: '12%',
       render: (r) => {
         if (!r.needsReview) return null;
         const info = lookupReasonCode(r.heldReasonCode);
+        const label = info?.label ?? r.heldReasonCode ?? 'Needs review';
         return (
-          <span title={info ? `${info.description} ${info.action}` : r.heldReason || 'Held or short-paid by ACC'}>
+          <span
+            className="block min-w-0 max-w-full"
+            title={info ? `${info.description} ${info.action}` : r.heldReason || 'Held or short-paid by ACC'}
+          >
             <Badge tone="salmon">
-              <IconWarning width={12} height={12} /> {info?.label ?? r.heldReasonCode ?? 'Needs review'}
+              <span className="inline-flex items-center gap-0.5 min-w-0 max-w-full">
+                <IconWarning width={11} height={11} />
+                <span className="truncate text-[0.65rem]">{label}</span>
+              </span>
             </Badge>
           </span>
         );
@@ -361,13 +428,14 @@ export function Billing() {
     {
       key: 'actions',
       header: '',
+      width: '8%',
       render: (r) => (
-        <div className="flex items-center gap-1 justify-end">
+        <div className="flex items-center gap-0.5 justify-end">
           <button className="btn btn-icon" onClick={() => openEdit(r)} aria-label="Edit">
-            <IconEdit width={15} height={15} />
+            <IconEdit width={14} height={14} />
           </button>
           <button className="btn btn-icon btn-icon-danger" onClick={() => void del(r)} aria-label="Delete">
-            <IconTrash width={15} height={15} />
+            <IconTrash width={14} height={14} />
           </button>
         </div>
       ),
@@ -656,6 +724,7 @@ export function Billing() {
         rows={pageSlice.pageItems}
         rowKey={(r) => r.id}
         rowClassName={(r) => rowClass(r)}
+        tableLayout="fixed"
         initialSort={{ key: 'invDate', dir: 'desc' }}
         emptyState={
           <EmptyState

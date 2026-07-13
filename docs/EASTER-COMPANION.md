@@ -65,12 +65,18 @@ interaction) cuts are kept at the bottom for history.
   attributes we add to stable chrome (top bar, sidebar header, main content
   cards get them opportunistically) **plus** a generic fallback: the top bar
   `<header>` and the sidebar `<aside>`.
-- For each element we take `getBoundingClientRect()` and produce a segment along
-  its top edge, trimmed by a small inset so the sprite sits nicely on the edge.
+- For the **top bar** (`<header>` / `data-companion-ledge="bottom"`) we walk the
+  **bottom** edge so the sprite sits on the chrome and stays on-screen. Walking
+  the top edge at `y≈0` would place the sprite above the viewport and clip it.
+- For the sidebar / opted-in cards we take the top edge, then **clamp** `y` so a
+  30px sprite stays fully inside the viewport.
+- If measurement finds no usable segment, a synthetic full-width top-bar ledge
+  is always provided (never invisible / opacity 0).
 - Segments shorter than a minimum width are discarded (`pruneSegments`).
 - All geometry math lives in **pure, unit-tested helpers** in
-  `src/lib/easter/pathing.ts` (`rectToTopEdge`, `pruneSegments`,
-  `nearestSegment`, `stepAlong`, `pickNextSegment`).
+  `src/lib/easter/pathing.ts` (`rectToTopEdge`, `rectToBottomEdge`,
+  `clampWalkY`, `defaultTopBarSegment`, `pruneSegments`, `nearestSegment`,
+  `stepAlong`, `pickNextSegment`).
 
 ## E. Pathing / movement
 

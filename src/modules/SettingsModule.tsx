@@ -339,13 +339,18 @@ export function SettingsModule({ onOpenHelp }: { onOpenHelp?: () => void } = {})
           <span>
             <span className="font-medium">Walking companion</span>
             <span className="block text-xs" style={{ color: 'var(--muted)' }}>
-              A little friend that strolls along the top bar and sidebar as you work.
+              A little friend that strolls along the bottom of the top bar (and sidebar)
+              within a second of turning this on. Separate from disco cats.
             </span>
           </span>
           <input
             type="checkbox"
             checked={settings.companionEnabled}
-            onChange={(e) => updateSettings({ companionEnabled: e.target.checked })}
+            onChange={(e) => {
+              const on = e.target.checked;
+              updateSettings({ companionEnabled: on });
+              if (on) useStore.getState().showTopBarFlash('Companion is on');
+            }}
             className="w-5 h-5"
             aria-label="Walking companion"
           />

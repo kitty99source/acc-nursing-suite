@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   rectToTopEdge,
+  rectToBottomEdge,
+  clampWalkY,
+  defaultTopBarSegment,
   pruneSegments,
   segmentWidth,
   sameSegment,
@@ -18,6 +21,23 @@ describe('rectToTopEdge', () => {
   });
   it('returns null when the rect is too thin for the inset', () => {
     expect(rectToTopEdge({ left: 0, right: 10, top: 0 }, 6)).toBeNull();
+  });
+});
+
+describe('rectToBottomEdge', () => {
+  it('produces an inset bottom edge', () => {
+    const seg = rectToBottomEdge({ left: 0, right: 200, top: 0, bottom: 48 }, 8);
+    expect(seg).toEqual({ x1: 8, x2: 192, y: 48 });
+  });
+});
+
+describe('clampWalkY / defaultTopBarSegment', () => {
+  it('keeps the sprite fully on-screen', () => {
+    expect(clampWalkY(0, 30, 800)).toBe(30);
+    expect(clampWalkY(900, 30, 800)).toBe(796);
+  });
+  it('builds a full-width fallback ledge', () => {
+    expect(defaultTopBarSegment(1280, 800, 8, 48)).toEqual({ x1: 8, x2: 1272, y: 48 });
   });
 });
 

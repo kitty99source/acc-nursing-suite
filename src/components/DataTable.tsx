@@ -153,7 +153,10 @@ export function DataTable<T>({
       className="card overflow-auto overscroll-contain"
       style={{ maxHeight }}
     >
-      <table className="data-table" style={tableLayout === 'fixed' ? { tableLayout: 'fixed', width: '100%' } : undefined}>
+      <table
+        className={`data-table${tableLayout === 'fixed' ? ' data-table-fixed' : ''}`}
+        style={tableLayout === 'fixed' ? { tableLayout: 'fixed', width: '100%' } : undefined}
+      >
         <thead>
           <tr>
             {columns.map((col) => (

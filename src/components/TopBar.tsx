@@ -193,6 +193,7 @@ export function TopBar({
 
   return (
     <header
+      data-companion-ledge="bottom"
       className="h-12 shrink-0 flex items-center justify-between gap-3 px-4 border-b"
       style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
     >

@@ -17,11 +17,45 @@ export function Modal({
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  // Keep the latest onClose in a ref so the focus-trap effect can call it
+  // without re-running (and stealing focus) on every parent re-render.
+  // Bug: previously the effect had `onClose` in its dep list, so every parent
+  // keystroke recreated the inline `onClose` callback, re-ran the effect, and
+  // pulled focus back to the header Close button after each character typed.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
+  // Initial focus: run ONLY when `open` flips true. Prefer inputs over the
+  // header Close button so typing into a text field never triggers the
+  // "focus jumps to Close" regression.
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setTimeout(() => {
+      const root = dialogRef.current;
+      if (!root) return;
+      const preferred = root.querySelector<HTMLElement>(
+        'input:not([type="hidden"]), select, textarea',
+      );
+      if (preferred) {
+        preferred.focus();
+        return;
+      }
+      const anyButton = root.querySelector<HTMLElement>(
+        'button:not([data-modal-chrome])',
+      );
+      anyButton?.focus();
+    }, 50);
+    return () => window.clearTimeout(t);
+  }, [open]);
+
+  // Keyboard: Escape closes, Tab wraps focus. Depends only on `open`; uses
+  // the ref to always see the latest `onClose` without re-binding listeners.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onCloseRef.current();
       if (e.key === 'Tab' && dialogRef.current) {
         const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
@@ -39,15 +73,10 @@ export function Modal({
       }
     };
     window.addEventListener('keydown', onKey);
-    const t = window.setTimeout(() => {
-      const first = dialogRef.current?.querySelector<HTMLElement>('button, input, select, textarea');
-      first?.focus();
-    }, 50);
     return () => {
       window.removeEventListener('keydown', onKey);
-      window.clearTimeout(t);
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -73,7 +102,12 @@ export function Modal({
           style={{ borderColor: 'var(--border)' }}
         >
           <h2 className="text-base font-bold">{title}</h2>
-          <button className="btn btn-icon" onClick={onClose} aria-label="Close">
+          <button
+            className="btn btn-icon"
+            onClick={onClose}
+            aria-label="Close"
+            data-modal-chrome="close"
+          >
             <IconClose />
           </button>
         </div>

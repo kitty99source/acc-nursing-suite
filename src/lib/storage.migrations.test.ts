@@ -23,7 +23,7 @@ function v1Envelope(): string {
 describe('storage migrations', () => {
   it('migrates v1 accdata envelope on deserialize', async () => {
     const loaded = await deserialize(v1Envelope());
-    expect(loaded.schemaVersion).toBe(3);
+    expect(loaded.schemaVersion).toBe(4);
     expect(loaded.importHistory).toEqual([]);
     expect(loaded.memos).toEqual([]);
   });
@@ -32,6 +32,6 @@ describe('storage migrations', () => {
     const data = await deserialize(v1Envelope());
     const text = await serialize(data);
     const env = JSON.parse(text) as { version: number };
-    expect(env.version).toBe(3);
+    expect(env.version).toBe(4);
   });
 });

@@ -598,6 +598,26 @@ export function SettingsModule({ onOpenHelp }: { onOpenHelp?: () => void } = {})
               />
             </Field>
             <Field
+              label="Nurse follow-up days (calendar)"
+              hint="Case: memo → nurse docs due back after this many calendar days (default 7)."
+            >
+              <NumberInput
+                min={0}
+                value={settings.nurseFollowUpDays ?? 7}
+                onChange={(e) => updateSettings({ nurseFollowUpDays: Math.max(0, Number(e.target.value)) })}
+              />
+            </Field>
+            <Field
+              label="ACC follow-up days (working)"
+              hint="Case: submitted to ACC → decision expected within N working days (Mon-Fri; NZ public holidays not counted in v1)."
+            >
+              <NumberInput
+                min={0}
+                value={settings.accFollowUpWorkingDays ?? 10}
+                onChange={(e) => updateSettings({ accFollowUpWorkingDays: Math.max(0, Number(e.target.value)) })}
+              />
+            </Field>
+            <Field
               label="I-drive root path"
               hint="Parent folder for optional Accept writeback (District Nursing Letters tree)."
             >

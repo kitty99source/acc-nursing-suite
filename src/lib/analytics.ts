@@ -6,6 +6,10 @@ import { getComplianceFindings } from './complianceCache';
 import { complianceSummary } from './compliance';
 import { isBillingApproval, isApprovalCurrent } from './approvals';
 import { buildDataIndexes, type DataIndexes } from './indexes';
+import {
+  claimsNeedingAccFollowUp,
+  claimsNeedingNurseFollowUp,
+} from './caseWorkflow';
 
 // ============================================================================
 // Derived analytics. Pure functions over AppData (+ today's date) so the
@@ -269,7 +273,15 @@ export function yearSummary(data: AppData, year?: number): YearSummaryRow[] {
 
 export interface ActionItem {
   id: string;
-  kind: 'approval' | 'billing' | 'decline' | 'complex' | 'coverage' | 'compliance';
+  kind:
+    | 'approval'
+    | 'billing'
+    | 'decline'
+    | 'complex'
+    | 'coverage'
+    | 'compliance'
+    | 'nurse-followup'
+    | 'acc-followup';
   severity: 'danger' | 'warn';
   title: string;
   detail: string;
@@ -336,6 +348,21 @@ export function buildActionQueue(
       const claim =
         indexes.claimsByNumber.get((inv.claimNumber || '').trim().toUpperCase()) ||
         indexes.claimsByAcc45.get((inv.acc45Number || '').trim().toUpperCase());
+      // Needs review lines are variances that must be chased (held / short-paid
+      // / declined by ACC). Surface them first so they don't get lost behind
+      // routine Awaiting Billing / Remittance rows.
+      if (inv.needsReview) {
+        items.push({
+          id: `bill-review-${inv.id}`,
+          kind: 'billing',
+          severity: 'danger',
+          title: `Needs review — ${inv.patientName}`,
+          detail: `${inv.serviceCode}: ${inv.heldReasonCode || 'variance to chase with ACC'}.`,
+          patientId: claim?.patientId,
+          claimId: claim?.id,
+        });
+        continue;
+      }
       if (inv.status === 'Awaiting Billing') {
         items.push({
           id: `bill-${inv.id}`,
@@ -401,6 +428,45 @@ export function buildActionQueue(
       severity: 'danger',
       title: `Coverage gap — ${patient?.name ?? claim.claimNumber}`,
       detail: `Active NS04/NS05 service with no current approval/PO (claim ${claim.claimNumber}).`,
+      patientId: claim.patientId,
+      claimId: claim.id,
+    });
+  }
+
+  // Case-workflow follow-ups (case-centric workflow, schema v4).
+  const today = todayISO();
+  for (const claim of claimsNeedingNurseFollowUp(data, today)) {
+    if (!claim.nurseFollowUpDue) continue;
+    const patient = indexes.patientsById.get(claim.patientId);
+    const overdueDays = -daysBetween(today, claim.nurseFollowUpDue);
+    const severity: ActionItem['severity'] = overdueDays > 3 ? 'danger' : 'warn';
+    items.push({
+      id: `nfu-${claim.id}`,
+      kind: 'nurse-followup',
+      severity,
+      title: `Nurse docs due — ${patient?.name ?? claim.claimNumber}`,
+      detail:
+        overdueDays > 0
+          ? `Nurse follow-up overdue by ${overdueDays} day(s) (claim ${claim.claimNumber}).`
+          : `Nurse follow-up due today (claim ${claim.claimNumber}).`,
+      patientId: claim.patientId,
+      claimId: claim.id,
+    });
+  }
+  for (const claim of claimsNeedingAccFollowUp(data, today)) {
+    if (!claim.accFollowUpDue) continue;
+    const patient = indexes.patientsById.get(claim.patientId);
+    const overdueDays = -daysBetween(today, claim.accFollowUpDue);
+    const severity: ActionItem['severity'] = overdueDays > 3 ? 'danger' : 'warn';
+    items.push({
+      id: `afu-${claim.id}`,
+      kind: 'acc-followup',
+      severity,
+      title: `Chase ACC — ${patient?.name ?? claim.claimNumber}`,
+      detail:
+        overdueDays > 0
+          ? `ACC follow-up overdue by ${overdueDays} working day(s) (claim ${claim.claimNumber}).`
+          : `ACC follow-up due today (claim ${claim.claimNumber}).`,
       patientId: claim.patientId,
       claimId: claim.id,
     });

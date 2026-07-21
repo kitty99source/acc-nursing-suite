@@ -95,6 +95,13 @@ export function normalizeData(data: AppData): AppData {
     ...a,
     recordStatus: a.recordStatus ?? 'current',
   }));
+  // v4: ensure every claim has a case stage + events array so downstream
+  // code can safely read `claim.caseStage` and push into `caseEvents`.
+  const claims = (data.claims ?? []).map((c) => ({
+    ...c,
+    caseStage: c.caseStage ?? 'not_started',
+    caseEvents: Array.isArray(c.caseEvents) ? c.caseEvents : [],
+  }));
   const schemaVersion = data.schemaVersion ?? SCHEMA_VERSION;
   return {
     ...data,
@@ -105,6 +112,7 @@ export function normalizeData(data: AppData): AppData {
     remittanceImports,
     remittancePayments,
     approvals,
+    claims,
   };
 }
 

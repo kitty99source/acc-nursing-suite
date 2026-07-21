@@ -40,6 +40,66 @@ export interface Patient {
 export type ClaimType = 'original' | 'subsequent';
 export type ClaimStatus = 'active' | 'discharged';
 
+/**
+ * Operational case stage for a claim. Tracks the day-to-day nursing-services
+ * process (memo → nurse docs → ACC submission → approved/declined), grounded
+ * in the Nursing Services Processes doc. Independent from `status` (which is
+ * the higher-level claim lifecycle: active vs discharged).
+ */
+export type CaseStage =
+  | 'not_started'
+  | 'awaiting_nurse_docs'
+  | 'docs_received'
+  | 'docs_returned'
+  | 'awaiting_acc'
+  | 'approved'
+  | 'declined'
+  | 'closed';
+
+/**
+ * Why this memo/case was opened. Drives the same-claim-vs-new-claim default
+ * offered when sending a memo. NS03 was historically a long-term ask; NS04
+ * (extended) and NS05 (ongoing) usually renew the same claim; NS06 (subsequent)
+ * often triggers a new/linked claim.
+ */
+export type MemoPurpose =
+  | 'renewal_same_claim'
+  | 'new_claim_approval'
+  | 'long_term_ns03'
+  | 'extended_ns04'
+  | 'ongoing_ns05'
+  | 'subsequent_ns06'
+  | 'other';
+
+export type CaseEventKind =
+  | 'memo_sent'
+  | 'nurse_chased'
+  | 'docs_received'
+  | 'docs_returned'
+  | 'corrected_docs_received'
+  | 'submitted_to_acc'
+  | 'acc_chased'
+  | 'acc_approved'
+  | 'acc_declined'
+  | 'closed'
+  | 'note'
+  | 'attachment_added';
+
+export interface CaseEvent {
+  id: string;
+  /** ISO datetime string when the event was recorded. */
+  at: string;
+  kind: CaseEventKind;
+  /** Free-text note; required when returning docs for correction. */
+  note?: string;
+  /** Link to the memo whose action produced the event (memo_sent). */
+  memoId?: string;
+  /** Link to a claim document when this event attached one. */
+  documentId?: string;
+  /** Free-text actor (locale-only, not validated). */
+  by?: string;
+}
+
 export interface Claim {
   id: string;
   patientId: string;
@@ -51,6 +111,32 @@ export interface Claim {
   parentClaimId?: string;
   status: ClaimStatus;
   day1Date: string; // ISO date
+
+  // ---- Case workflow (schema v4) --------------------------------------
+  /** Operational case stage; defaults to `not_started` for new claims. */
+  caseStage?: CaseStage;
+  /** ISO datetime when the memo was sent to the district nurse. */
+  memoSentAt?: string;
+  /** ISO date when nurse docs are due back (memoSentAt + N days). */
+  nurseFollowUpDue?: string;
+  /** ISO datetime docs were first received (may include returned/corrected). */
+  docsReceivedAt?: string;
+  /** ISO datetime docs were sent back to nurse for correction. */
+  docsReturnedAt?: string;
+  /** ISO datetime corrected docs were received. */
+  correctedDocsReceivedAt?: string;
+  /** ISO datetime the request was submitted to ACC. */
+  submittedToAccAt?: string;
+  /** ISO date ACC decision is due back (submittedToAccAt + N working days). */
+  accFollowUpDue?: string;
+  /** ISO datetime an ACC decision arrived (approved or declined). */
+  accRespondedAt?: string;
+  /** Free-text notes attached to the case (per-claim scratchpad). */
+  caseNotes?: string;
+  /** Append-only history of case actions; never mutated in place. */
+  caseEvents?: CaseEvent[];
+  /** Latest MemoPurpose sent on this claim (drives filters + display label). */
+  lastMemoPurpose?: MemoPurpose;
 }
 
 export interface Interruption {
@@ -190,7 +276,15 @@ export interface CustomSheet {
 }
 
 // What a stored document represents.
-export type DocumentKind = 'acc-approval-letter' | 'acc-decline-letter' | 'approval-request' | 'other';
+export type DocumentKind =
+  | 'acc-approval-letter'
+  | 'acc-decline-letter'
+  | 'approval-request'
+  | 'nurse-memo'
+  | 'nursing-docs'
+  | 'nursing-docs-corrected'
+  | 'acc-submission'
+  | 'other';
 
 // Metadata for a file attached to a claim. The actual file bytes are NOT stored
 // here — they live in a separate IndexedDB object store keyed by `id`, so the
@@ -249,6 +343,14 @@ export interface Settings {
   backupReminderDays: number;
   /** Days in Remittance before surfacing in action queue (P6-004). */
   remittanceStaleDays: number;
+  /** Calendar days after sending a memo before it becomes overdue (case workflow). */
+  nurseFollowUpDays: number;
+  /** Working days after submitting to ACC before ACC follow-up becomes overdue. */
+  accFollowUpWorkingDays: number;
+  /** Dismiss case-workflow explainer banner (SLAs / working-day math scope). */
+  caseWorkflowBannerDismissed: boolean;
+  /** Dismiss duplicate-patients persistent banner. */
+  duplicatePatientsBannerDismissed: boolean;
   /** ACC contract-compliance rule set version tag (P6-001). */
   complianceRulesVersion: string;
   /** Local display name for audit trail (P4-002). */
@@ -325,6 +427,12 @@ export interface Memo {
   createdAt: number; // ms epoch
   resolved?: boolean;
   resolvedAt?: number; // ms epoch
+  /** Category label — drives same-claim vs new-claim default in the UI. */
+  purpose?: MemoPurpose;
+  /** Optional attached memo file (never required to send). */
+  documentId?: string;
+  /** ISO date the corresponding nurse follow-up is due (memo + N days). */
+  followUpDue?: string;
 }
 
 export interface AppData {
@@ -350,7 +458,7 @@ export interface AppData {
   remittancePayments?: RemittancePayment[];
 }
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'clinical-light',
@@ -364,6 +472,10 @@ export const DEFAULT_SETTINGS: Settings = {
   letterImportAutoCommit: false,
   backupReminderDays: 7,
   remittanceStaleDays: 60,
+  nurseFollowUpDays: 7,
+  accFollowUpWorkingDays: 10,
+  caseWorkflowBannerDismissed: false,
+  duplicatePatientsBannerDismissed: false,
   complianceRulesVersion: '2025-03',
   userDisplayName: '',
   automationPaused: false,

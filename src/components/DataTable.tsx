@@ -12,6 +12,12 @@ export interface Column<T> {
   width?: number | string;
   /** Pin the column to the right edge (e.g. action buttons that must stay visible). */
   sticky?: 'right';
+  /**
+   * Responsive priority: `high` columns always render; `low` columns are
+   * hidden below the `lg` (~1024px) breakpoint. Approvals uses this to keep
+   * Patient / Code / Status / Actions visible on narrow screens.
+   */
+  priority?: 'high' | 'low';
 }
 
 /** Rows above this count use windowed rendering (~30 DOM nodes regardless of total). */
@@ -62,7 +68,12 @@ function TableRow<T>({
       {columns.map((col) => (
         <td
           key={col.key}
-          className={col.sticky === 'right' ? 'data-table-sticky-right' : undefined}
+          className={[
+            col.sticky === 'right' ? 'data-table-sticky-right' : '',
+            col.priority === 'low' ? 'data-table-low-priority' : '',
+          ]
+            .filter(Boolean)
+            .join(' ') || undefined}
           style={{ textAlign: col.align ?? 'left' }}
         >
           {col.render(row)}
@@ -168,7 +179,11 @@ export function DataTable<T>({
             {columns.map((col) => (
               <th
                 key={col.key}
-                className={[col.sortable ? 'sortable' : '', col.sticky === 'right' ? 'data-table-sticky-right' : '']
+                className={[
+                  col.sortable ? 'sortable' : '',
+                  col.sticky === 'right' ? 'data-table-sticky-right' : '',
+                  col.priority === 'low' ? 'data-table-low-priority' : '',
+                ]
                   .filter(Boolean)
                   .join(' ')}
                 style={{

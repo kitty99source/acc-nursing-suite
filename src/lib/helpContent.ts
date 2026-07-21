@@ -146,6 +146,30 @@ export const GUIDE_SECTIONS: GuideSection[] = [
 
 export const FAQ_ENTRIES: FaqEntry[] = [
   {
+    id: 'faq-case-workflow',
+    question: 'How does the case workflow work end-to-end?',
+    answer:
+      'Every memo you send opens (or continues) a case on a claim — you must EXPLICITLY choose to renew this claim or start a new claim approval; the app never picks silently. ' +
+      'After you send the memo, the case moves to Awaiting nurse docs with a follow-up due date (Settings → Nurse follow-up days, default 7 calendar days). ' +
+      'When nursing paperwork arrives, mark Docs received (attaching the file is optional; you can attach it later without changing stage). ' +
+      'If docs need correcting, Return for correction — a reason note is required so the nurse knows what to fix. ' +
+      'When you submit the request to ACC, mark Submitted to ACC (attach the bundle optionally). ' +
+      'The ACC follow-up is due in Settings → ACC follow-up working days (default 10, Mon–Fri only; NZ public holidays are NOT counted in v1 — that assumption is banner-flagged). ' +
+      'When ACC replies, mark Approved or Declined — that mirrors into the Approvals module or the Decline Tracker (which remains its own module). ' +
+      'Nurse and ACC follow-ups also surface in the Dashboard action queue and as a Patients sidebar badge (N due).',
+    tags: ['case', 'workflow', 'memo', 'nurse', 'acc', 'follow-up', 'patients', 'dashboard'],
+  },
+  {
+    id: 'faq-billing-monthly-close',
+    question: 'What is the monthly close for billing?',
+    answer:
+      'Monthly close is a three-step loop: (1) Import invoice schedule (ACC Excel) to seed Awaiting Billing rows; ' +
+      '(2) Import remittance to match paid/short-paid/held lines and populate Needs review flags with reason codes; ' +
+      '(3) Work the Needs review / Remittance follow-ups tab — every row there is a variance you need to chase with ACC. ' +
+      'Remove import lets you re-reconcile a batch after a corrected remittance arrives.',
+    tags: ['billing', 'remittance', 'invoice', 'monthly', 'needs review'],
+  },
+  {
     id: 'faq-helper-mode',
     question: 'What is Helper Mode (the ? button in the top bar)?',
     answer:

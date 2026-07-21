@@ -38,6 +38,7 @@ import { startLauncherSessionLifecycle } from './lib/launcherLifecycle';
 import { AccInboxConfigBanner } from './components/AccInboxConfigBanner';
 import { RemittanceStaleBanner } from './components/RemittanceStaleBanner';
 import { IDriveFilingBanner } from './components/IDriveFilingBanner';
+import { CaseWorkflowBanner } from './components/CaseWorkflowBanner';
 import { computeSidebarBadges } from './lib/sidebarBadges';
 import { DiscoCats } from './components/easter/DiscoCats';
 import { Companion } from './components/easter/Companion';
@@ -323,6 +324,7 @@ export default function App() {
       complianceAttention: compliance.violations + compliance.warnings,
       actionQueueCount: actions.length,
       reviewPendingCount: reviewBadge,
+      data,
     });
   }, [data, settings.expiryThresholdDays, reviewBadge]);
 
@@ -372,6 +374,9 @@ export default function App() {
           {(module === 'dashboard' || module === 'billing') && <RemittanceStaleBanner />}
           {(module === 'dashboard' || module === 'review' || module === 'settings') && (
             <IDriveFilingBanner />
+          )}
+          {(module === 'dashboard' || module === 'patients' || module === 'settings') && (
+            <CaseWorkflowBanner />
           )}
         </div>
         <main className="flex-1 overflow-y-auto p-5">

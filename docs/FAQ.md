@@ -3,7 +3,11 @@
 Durable inventory of coworker-facing FAQs. In-app source of truth:
 `src/lib/helpContent.ts` (Help Center) and `src/lib/helperTips.ts` (Helper Mode short blurbs).
 
-**Count:** 38 FAQ entries in `src/lib/helpContent.ts` (keep this file in sync when adding entries).
+**Count:** 40 FAQ entries in `src/lib/helpContent.ts` (keep this file in sync when adding entries).
+
+### Case workflow (new, v4)
+- How case workflow works end-to-end (memo → nurse docs → ACC → approved/declined)
+- Monthly close for billing (invoice schedule → remittance → needs-review)
 
 ## How to use Help & Helper Mode
 

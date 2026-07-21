@@ -282,7 +282,9 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
                             ? 'billing'
                             : a.kind === 'decline'
                               ? 'declines'
-                              : 'complex';
+                              : a.kind === 'nurse-followup' || a.kind === 'acc-followup'
+                                ? 'patients'
+                                : 'complex';
                     if (a.kind === 'compliance') {
                       setFocus({
                         module: 'patients',
@@ -297,11 +299,16 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
                           : a.kind === 'billing'
                             ? 'billing'
                             : 'patients';
+                      let intent: string | undefined;
+                      if (a.kind === 'billing') {
+                        if (a.title.startsWith('Needs review')) intent = 'needs-review';
+                        else if (a.title.startsWith('Stale remittance')) intent = 'stale-remittance';
+                      }
                       setFocus({
                         module: focusModule,
                         patientId: a.patientId,
                         claimId: a.claimId,
-                        intent: a.kind === 'billing' && a.title.startsWith('Stale remittance') ? 'stale-remittance' : undefined,
+                        intent,
                       });
                     }
                     onNavigate(module);

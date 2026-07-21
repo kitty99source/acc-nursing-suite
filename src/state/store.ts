@@ -2,17 +2,21 @@ import { create } from 'zustand';
 import type {
   AppData,
   Approval,
+  CaseEventKind,
   Claim,
   ClaimDocument,
   ComplexCase,
   Decline,
+  DocumentKind,
   ImportHistoryEntry,
   InvoiceLine,
   Memo,
+  MemoPurpose,
   Patient,
   ServiceLine,
   Settings,
 } from '../types';
+import { applyCaseTransition, computeNurseFollowUpDue } from '../lib/caseWorkflow';
 import { emptyData, sampleData, isSampleData } from '../lib/sampleData';
 import { findMatchingPatient, mergePatientsIntoData } from '../lib/patients';
 import {
@@ -418,6 +422,45 @@ interface StoreState {
   updateMemo: (id: string, patch: Partial<Memo>) => void;
   resolveMemo: (id: string, resolved: boolean) => void;
   removeMemo: (id: string) => void;
+
+  // ---- Case workflow orchestration (schema v4) ----
+  /**
+   * Send a memo AND open (or continue) a case. `target` is REQUIRED and
+   * explicit — either renewing on an existing claim (`same_claim` + claimId)
+   * or starting a new claim approval (`new_claim`). Memo text is required;
+   * the attached file is optional and can be added later via
+   * `attachCaseDocument`.
+   */
+  sendMemoStartingCase: (input: {
+    patientId: string;
+    target: 'same_claim' | 'new_claim';
+    claimId?: string;
+    parentClaimId?: string;
+    purpose?: MemoPurpose;
+    text: string;
+    to?: string;
+    memoFile?: { blob: Blob; fileName: string; mimeType?: string };
+  }) => Promise<{ memoId: string; claimId: string }>;
+  /**
+   * Advance a case stage. `note` is required for `docs_returned`; every other
+   * event kind treats it as optional context. `documentBlob` is optional at
+   * every stage — attachments are never required to progress.
+   */
+  advanceCaseStage: (input: {
+    claimId: string;
+    kind: CaseEventKind;
+    note?: string;
+    by?: string;
+    documentBlob?: { blob: Blob; fileName: string; mimeType?: string; kind?: DocumentKind };
+  }) => Promise<void>;
+  /** Attach a claim document without changing stage; emits `attachment_added`. */
+  attachCaseDocument: (
+    claimId: string,
+    meta: { kind: DocumentKind; fileName: string; mimeType?: string; notes?: string },
+    blob: Blob,
+  ) => Promise<string>;
+  /** Record a "chase" event without changing stage; refreshes the follow-up due date. */
+  recordCaseChase: (claimId: string, target: 'nurse' | 'acc', note?: string) => void;
 
   // document attachments (metadata in `data.documents`, bytes in IndexedDB)
   addDocument: (meta: Omit<ClaimDocument, 'id' | 'addedDate'>, blob: Blob) => Promise<string>;
@@ -977,6 +1020,30 @@ export const useStore = create<StoreState>((set, get) => ({
         claimId,
         sizeBytes: file.size,
       });
+      // Case workflow: stamp claim stage `approved` + acc_approved event so
+      // the case pipeline mirrors the ACC decision even when we skipped the
+      // in-app memo/awaiting_acc steps (e.g. historic accepts, RQ accept).
+      {
+        const priorClaim = get().data.claims.find((c) => c.id === claimId);
+        if (priorClaim) {
+          const nowISO = new Date().toISOString();
+          const events = priorClaim.caseEvents ?? [];
+          const nextEvents = [
+            ...events,
+            {
+              id: uid('evt'),
+              at: nowISO,
+              kind: 'acc_approved' as const,
+              documentId: docId,
+            },
+          ];
+          get().updateClaim(claimId, {
+            caseStage: 'approved',
+            accRespondedAt: priorClaim.accRespondedAt ?? nowISO,
+            caseEvents: nextEvents,
+          });
+        }
+      }
       const billingHint = billingHintForClaim(get().data, claimId);
       return {
         patientId,
@@ -1095,6 +1162,29 @@ export const useStore = create<StoreState>((set, get) => ({
         claimId,
         sizeBytes: file.size,
       });
+      // Case workflow: mirror the ACC decline decision onto the claim's case
+      // stage. Decline Tracker row was already created above — that module
+      // remains the authoritative surface for decline follow-up work.
+      if (claimId) {
+        const priorClaim = get().data.claims.find((c) => c.id === claimId);
+        if (priorClaim) {
+          const nowISO = new Date().toISOString();
+          const nextEvents = [
+            ...(priorClaim.caseEvents ?? []),
+            {
+              id: uid('evt'),
+              at: nowISO,
+              kind: 'acc_declined' as const,
+              documentId: docId,
+            },
+          ];
+          get().updateClaim(claimId, {
+            caseStage: 'declined',
+            accRespondedAt: priorClaim.accRespondedAt ?? nowISO,
+            caseEvents: nextEvents,
+          });
+        }
+      }
       if (!patientId || !claimId) {
         return {
           patientId: patientId ?? '',
@@ -1900,6 +1990,199 @@ export const useStore = create<StoreState>((set, get) => ({
   removeMemo: (id) => {
     mutate(get, (data) => ({ ...data, memos: (data.memos ?? []).filter((x) => x.id !== id) }));
     audit('delete', 'memo', id, 'Removed memo');
+  },
+
+  sendMemoStartingCase: async (input) => {
+    const state = get();
+    if (!input.text?.trim()) {
+      throw new Error('Memo text is required to send a memo.');
+    }
+    if (!input.target) {
+      throw new Error('Memo target is required — choose renewal on this claim or a new claim.');
+    }
+
+    let claimId = input.claimId;
+    if (input.target === 'same_claim') {
+      if (!claimId) throw new Error('Pick a claim when renewing on this claim.');
+    } else {
+      // new_claim: create a fresh claim for this memo (subsequent if a parent
+      // is provided; otherwise original).
+      const parent = input.parentClaimId
+        ? state.data.claims.find((c) => c.id === input.parentClaimId)
+        : undefined;
+      claimId = state.addClaim({
+        patientId: input.patientId,
+        acc45Number: '',
+        claimNumber: `PENDING-${Date.now().toString(36).slice(-6).toUpperCase()}`,
+        poNumber: '',
+        injuryDescription: '',
+        type: input.parentClaimId ? 'subsequent' : 'original',
+        parentClaimId: input.parentClaimId,
+        status: 'active',
+        day1Date: todayISO(),
+        caseStage: 'not_started',
+        caseEvents: [],
+        ...(parent ? {} : {}),
+      });
+    }
+
+    // Attach the memo file (optional) BEFORE writing the memo row so we can
+    // record the document id on both the memo and the case event.
+    let documentId: string | undefined;
+    if (input.memoFile) {
+      documentId = await state.addDocument(
+        {
+          claimId: claimId!,
+          kind: 'nurse-memo',
+          fileName: input.memoFile.fileName,
+          mimeType: input.memoFile.mimeType || 'application/octet-stream',
+          sizeBytes: input.memoFile.blob.size,
+          notes: 'Memo sent to nurse',
+        },
+        input.memoFile.blob,
+      );
+    }
+
+    const nurseFollowUpDays = state.data.settings.nurseFollowUpDays ?? 7;
+    const now = new Date().toISOString();
+    const followUpDue = computeNurseFollowUpDue(now, nurseFollowUpDays);
+    const memoId = state.addMemo({
+      patientId: input.patientId,
+      claimId: claimId!,
+      text: input.text.trim(),
+      to: input.to?.trim() || undefined,
+      purpose: input.purpose,
+      documentId,
+      followUpDue,
+    });
+
+    // Transition the case stage + append the event. `applyCaseTransition` is
+    // pure — we mutate the claim in the store after computing the patched
+    // claim to keep the transition logic centralised.
+    const claim = get().data.claims.find((c) => c.id === claimId);
+    if (!claim) throw new Error('Claim disappeared while sending memo.');
+    const { claim: nextClaim } = applyCaseTransition(claim, {
+      kind: 'memo_sent',
+      note: input.text.trim(),
+      memoId,
+      documentId,
+      nowISO: now,
+      nurseFollowUpDays,
+    });
+    const claimUpdatePatch: Partial<Claim> = {
+      caseStage: nextClaim.caseStage,
+      memoSentAt: nextClaim.memoSentAt,
+      nurseFollowUpDue: nextClaim.nurseFollowUpDue,
+      caseEvents: nextClaim.caseEvents,
+      lastMemoPurpose: input.purpose,
+    };
+    get().updateClaim(claimId!, claimUpdatePatch);
+
+    audit(
+      'create',
+      'memo',
+      memoId,
+      `Sent memo (${input.target === 'new_claim' ? 'new claim' : 'renewal'})`,
+    );
+
+    return { memoId, claimId: claimId! };
+  },
+
+  advanceCaseStage: async (input) => {
+    const state = get();
+    const claim = state.data.claims.find((c) => c.id === input.claimId);
+    if (!claim) throw new Error('Claim not found.');
+
+    // Attach optional document first so the event can reference it.
+    let documentId: string | undefined;
+    if (input.documentBlob) {
+      const inferredKind: DocumentKind =
+        input.documentBlob.kind ??
+        (input.kind === 'docs_received' || input.kind === 'corrected_docs_received'
+          ? input.kind === 'corrected_docs_received'
+            ? 'nursing-docs-corrected'
+            : 'nursing-docs'
+          : input.kind === 'submitted_to_acc'
+            ? 'acc-submission'
+            : 'other');
+      documentId = await state.addDocument(
+        {
+          claimId: input.claimId,
+          kind: inferredKind,
+          fileName: input.documentBlob.fileName,
+          mimeType: input.documentBlob.mimeType || 'application/octet-stream',
+          sizeBytes: input.documentBlob.blob.size,
+        },
+        input.documentBlob.blob,
+      );
+    }
+
+    const settings = state.data.settings;
+    const { claim: next } = applyCaseTransition(claim, {
+      kind: input.kind,
+      note: input.note,
+      documentId,
+      by: input.by,
+      nurseFollowUpDays: settings.nurseFollowUpDays ?? 7,
+      accFollowUpWorkingDays: settings.accFollowUpWorkingDays ?? 10,
+    });
+    const patch: Partial<Claim> = {
+      caseStage: next.caseStage,
+      memoSentAt: next.memoSentAt,
+      nurseFollowUpDue: next.nurseFollowUpDue,
+      docsReceivedAt: next.docsReceivedAt,
+      docsReturnedAt: next.docsReturnedAt,
+      correctedDocsReceivedAt: next.correctedDocsReceivedAt,
+      submittedToAccAt: next.submittedToAccAt,
+      accFollowUpDue: next.accFollowUpDue,
+      accRespondedAt: next.accRespondedAt,
+      caseEvents: next.caseEvents,
+    };
+    get().updateClaim(input.claimId, patch);
+    audit('update', 'claim', input.claimId, `Case stage → ${next.caseStage} (${input.kind})`);
+  },
+
+  attachCaseDocument: async (claimId, meta, blob) => {
+    const docId = await get().addDocument(
+      {
+        claimId,
+        kind: meta.kind,
+        fileName: meta.fileName,
+        mimeType: meta.mimeType || 'application/octet-stream',
+        sizeBytes: blob.size,
+        notes: meta.notes,
+      },
+      blob,
+    );
+    const claim = get().data.claims.find((c) => c.id === claimId);
+    if (claim) {
+      const { claim: next } = applyCaseTransition(claim, {
+        kind: 'attachment_added',
+        documentId: docId,
+      });
+      get().updateClaim(claimId, { caseEvents: next.caseEvents });
+    }
+    return docId;
+  },
+
+  recordCaseChase: (claimId, target, note) => {
+    const state = get();
+    const claim = state.data.claims.find((c) => c.id === claimId);
+    if (!claim) return;
+    const settings = state.data.settings;
+    const { claim: next } = applyCaseTransition(claim, {
+      kind: target === 'nurse' ? 'nurse_chased' : 'acc_chased',
+      note,
+      nurseFollowUpDays: settings.nurseFollowUpDays ?? 7,
+      accFollowUpWorkingDays: settings.accFollowUpWorkingDays ?? 10,
+    });
+    get().updateClaim(claimId, {
+      caseStage: next.caseStage,
+      nurseFollowUpDue: next.nurseFollowUpDue,
+      accFollowUpDue: next.accFollowUpDue,
+      caseEvents: next.caseEvents,
+    });
+    audit('update', 'claim', claimId, `Chased ${target}`);
   },
 
   addDocument: async (meta, blob) => {

@@ -44,16 +44,39 @@ import {
 } from '../components/LetterImportButton';
 import type {
   ApprovalServiceCode,
+  CaseStage,
   Claim,
   ClaimType,
   ClaimDocument,
   DocumentKind,
+  MemoPurpose,
   Patient,
   ServiceLine,
   ServiceCode,
 } from '../types';
+import {
+  CASE_STAGE_LABEL,
+  MEMO_PURPOSE_LABEL,
+  defaultMemoTarget,
+  isOpenCase,
+} from '../lib/caseWorkflow';
+import { CaseStepTracker } from '../components/CaseStepTracker';
 
-const MEMO_EMPTY = { text: '', to: '' };
+const MEMO_EMPTY: { text: string; to: string; purpose: MemoPurpose } = {
+  text: '',
+  to: '',
+  purpose: 'extended_ns04',
+};
+
+type CaseFilter = 'all' | 'awaiting-nurse' | 'awaiting-acc' | 'open' | 'decided';
+
+const CASE_FILTER_LABEL: Record<CaseFilter, string> = {
+  all: 'All',
+  'awaiting-nurse': 'Awaiting nurse',
+  'awaiting-acc': 'Waiting for ACC',
+  open: 'Open cases',
+  decided: 'Closed / decided',
+};
 
 const PATIENTS_PAGE_SIZE = 25;
 
@@ -66,22 +89,50 @@ export function Patients() {
   const [confirm, confirmDialog] = useConfirm();
 
   const [search, setSearch] = useState('');
+  const [caseFilter, setCaseFilter] = useState<CaseFilter>('all');
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(data.patients[0]?.id ?? null);
 
   const focus = useStore((s) => s.focus);
   const clearFocus = useStore((s) => s.clearFocus);
 
+  // Fast lookup: patient -> list of claim case stages, so filter chips can
+  // walk the patient list once without re-iterating claims per patient.
+  const patientCaseIndex = useMemo(() => {
+    const byPatient = new Map<string, CaseStage[]>();
+    for (const c of data.claims) {
+      const list = byPatient.get(c.patientId) ?? [];
+      list.push(c.caseStage ?? 'not_started');
+      byPatient.set(c.patientId, list);
+    }
+    return byPatient;
+  }, [data.claims]);
+
   // A "patients" fix intent selects the relevant patient. If it also carries a
   // deep intent (a specific service line), the matching ClaimCard consumes and
   // clears it; otherwise we clear it here once the patient is shown.
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return data.patients;
-    return data.patients.filter((p) =>
-      `${p.name} ${p.nhi}`.toLowerCase().includes(q),
-    );
-  }, [data.patients, search]);
+    let base = data.patients;
+    if (q) {
+      base = base.filter((p) => `${p.name} ${p.nhi}`.toLowerCase().includes(q));
+    }
+    if (caseFilter === 'all') return base;
+    return base.filter((p) => {
+      const stages = patientCaseIndex.get(p.id) ?? [];
+      if (caseFilter === 'awaiting-nurse')
+        return stages.some((s) => s === 'awaiting_nurse_docs' || s === 'docs_returned');
+      if (caseFilter === 'awaiting-acc') return stages.some((s) => s === 'awaiting_acc');
+      if (caseFilter === 'open')
+        return stages.some(
+          (s) =>
+            s !== 'not_started' && s !== 'approved' && s !== 'declined' && s !== 'closed',
+        );
+      if (caseFilter === 'decided')
+        return stages.some((s) => s === 'approved' || s === 'declined' || s === 'closed');
+      return true;
+    });
+  }, [data.patients, search, caseFilter, patientCaseIndex]);
 
   const totalFiltered = filtered.length;
   const totalPages = Math.max(1, Math.ceil(totalFiltered / PATIENTS_PAGE_SIZE));
@@ -95,7 +146,7 @@ export function Patients() {
 
   useEffect(() => {
     setPage(1);
-  }, [search]);
+  }, [search, caseFilter]);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
@@ -255,6 +306,14 @@ export function Patients() {
     }
   }
 
+  const duplicateGroups = useMemo(
+    () => findDuplicatePatientGroups(data.patients, data),
+    [data],
+  );
+  const duplicateTotal = duplicateGroups.reduce((sum, g) => sum + g.redundant.length, 0);
+  const dupBannerDismissed = data.settings.duplicatePatientsBannerDismissed;
+  const updateSettings = useStore((s) => s.updateSettings);
+
   return (
     <div>
       <SectionTitle
@@ -264,9 +323,13 @@ export function Patients() {
           <div className="flex items-center gap-2 flex-wrap">
             <LetterImportButton opts={{ entryPoint: 'patients' }} title={LETTER_IMPORT_FULL_TOOLTIP} />
             <button
-              className="btn btn-sm"
+              className={`btn btn-sm${duplicateTotal > 0 ? ' btn-salmon' : ''}`}
               onClick={() => void checkDuplicatePatients()}
-              title="Find patients sharing an NHI (or the same name and date of birth), and merge duplicates into one survivor after review."
+              title={
+                duplicateTotal > 0
+                  ? `${duplicateTotal} possible duplicate${duplicateTotal === 1 ? '' : 's'} detected — open the merge tool.`
+                  : 'Find patients sharing an NHI (or the same name and date of birth), and merge duplicates into one survivor after review.'
+              }
             >
               Check for duplicate patients
             </button>
@@ -276,6 +339,37 @@ export function Patients() {
           </div>
         }
       />
+      {duplicateTotal > 0 && !dupBannerDismissed && (
+        <div
+          className="assumption-banner mb-3"
+          role="status"
+          aria-label="Possible duplicate patients"
+        >
+          <span className="assumption-banner-icon" aria-hidden>
+            !
+          </span>
+          <p className="assumption-banner-body">
+            <strong>{duplicateGroups.length}</strong> possible duplicate patient group
+            {duplicateGroups.length === 1 ? '' : 's'} detected ({duplicateTotal} redundant record
+            {duplicateTotal === 1 ? '' : 's'}).{' '}
+            <button
+              type="button"
+              className="underline"
+              style={{ color: 'var(--accent)' }}
+              onClick={() => void checkDuplicatePatients()}
+            >
+              Review and merge
+            </button>
+          </p>
+          <button
+            type="button"
+            className="assumption-banner-dismiss"
+            onClick={() => updateSettings({ duplicatePatientsBannerDismissed: true })}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {data.patients.length === 0 ? (
         <EmptyState
@@ -294,7 +388,7 @@ export function Patients() {
           style={{ gridTemplateColumns: '20rem minmax(0, 1fr)', alignItems: 'start' }}
         >
           <div className="card p-3 h-fit min-w-0">
-            <div className="relative mb-3">
+            <div className="relative mb-2">
               <span className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted)' }}>
                 <IconSearch width={15} height={15} />
               </span>
@@ -305,6 +399,26 @@ export function Patients() {
                 className="pl-8"
               />
             </div>
+            <div className="flex items-center gap-1 flex-wrap mb-3" role="tablist" aria-label="Case filter">
+              {(Object.keys(CASE_FILTER_LABEL) as CaseFilter[]).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  role="tab"
+                  aria-selected={caseFilter === f}
+                  className="btn btn-sm"
+                  data-active={caseFilter === f}
+                  style={{
+                    background:
+                      caseFilter === f ? 'var(--accent-soft)' : undefined,
+                    color: caseFilter === f ? 'var(--accent)' : undefined,
+                  }}
+                  onClick={() => setCaseFilter(f)}
+                >
+                  {CASE_FILTER_LABEL[f]}
+                </button>
+              ))}
+            </div>
             {totalFiltered > 0 && (
               <p className="text-xs mb-2" style={{ color: 'var(--muted)' }}>
                 Showing {pageStart}–{pageEnd} of {totalFiltered.toLocaleString()}
@@ -313,7 +427,12 @@ export function Patients() {
             )}
             <div className="space-y-1 max-h-[60vh] overflow-y-auto">
               {pagePatients.map((p) => {
-                const claimCount = data.claims.filter((c) => c.patientId === p.id).length;
+                const patientClaims = data.claims.filter((c) => c.patientId === p.id);
+                const claimCount = patientClaims.length;
+                // Pick the most-progressed active case stage for a compact badge.
+                const openClaim = patientClaims.find((c) => isOpenCase(c));
+                const stage = openClaim?.caseStage;
+                const lastPurpose = openClaim?.lastMemoPurpose;
                 return (
                   <button
                     key={p.id}
@@ -325,6 +444,8 @@ export function Patients() {
                       <span className="block font-medium truncate">{p.name}</span>
                       <span className="block text-xs truncate" style={{ color: 'var(--muted)' }}>
                         {p.nhi || 'no NHI'} · {claimCount} claim{claimCount === 1 ? '' : 's'}
+                        {stage ? ` · ${CASE_STAGE_LABEL[stage]}` : ''}
+                        {lastPurpose ? ` · ${MEMO_PURPOSE_LABEL[lastPurpose]}` : ''}
                       </span>
                     </span>
                     <IconChevron width={14} height={14} />
@@ -637,14 +758,54 @@ function PatientDetail({
 // Memos are a first-class, countable, timestamped record of follow-up
 // questions sent to nurses — distinct from Patient.notes (free-text, not
 // individually countable). Lives on the patient card, near the notes UI.
+//
+// A memo always opens (or continues) a case on a claim. The user must
+// EXPLICITLY choose whether to renew on an existing claim (same_claim) or
+// start a new claim approval (new_claim). We suggest a default based on the
+// selected MemoPurpose (see `defaultMemoTarget`) but never decide silently.
 function MemoPanel({ patient }: { patient: Patient }) {
-  const memos = useStore((s) => s.data.memos ?? []);
-  const addMemo = useStore((s) => s.addMemo);
+  const data = useStore((s) => s.data);
+  const memos = data.memos ?? [];
+  const sendMemoStartingCase = useStore((s) => s.sendMemoStartingCase);
   const resolveMemo = useStore((s) => s.resolveMemo);
   const removeMemo = useStore((s) => s.removeMemo);
   const [confirm, confirmDialog] = useConfirm();
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState(MEMO_EMPTY);
+  const [form, setForm] = useState<{
+    text: string;
+    to: string;
+    purpose: MemoPurpose;
+    target: 'same_claim' | 'new_claim';
+    claimId: string;
+    parentClaimId: string;
+    memoFile?: File;
+  }>({ ...MEMO_EMPTY, target: 'same_claim', claimId: '', parentClaimId: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const memoFileInput = useRef<HTMLInputElement>(null);
+
+  const patientClaims = useMemo(
+    () => data.claims.filter((c) => c.patientId === patient.id),
+    [data.claims, patient.id],
+  );
+
+  useEffect(() => {
+    // Default the target based on the chosen purpose, and pre-select the
+    // first claim if the user has one and hasn't picked yet. If the patient
+    // has no claims at all, force `new_claim` so the "Send memo" button is
+    // never trapped in the disabled-because-no-claim-picked state.
+    setForm((prev) => {
+      const suggested = defaultMemoTarget(prev.purpose);
+      let target = prev.target;
+      if (!prev.claimId) target = suggested;
+      if (patientClaims.length === 0) target = 'new_claim';
+      let claimId = prev.claimId;
+      if (target === 'same_claim' && !claimId && patientClaims[0]) {
+        claimId = patientClaims[0].id;
+      }
+      return { ...prev, target, claimId };
+    });
+  }, [form.purpose, patientClaims]);
 
   const patientMemos = useMemo(
     () => memos.filter((m) => m.patientId === patient.id).sort((a, b) => b.createdAt - a.createdAt),
@@ -652,12 +813,46 @@ function MemoPanel({ patient }: { patient: Patient }) {
   );
   const unresolvedCount = patientMemos.filter((m) => !m.resolved).length;
 
-  function submit() {
+  async function submit() {
     const text = form.text.trim();
     if (!text) return;
-    addMemo({ patientId: patient.id, text, to: form.to.trim() || undefined });
-    setForm(MEMO_EMPTY);
-    setAdding(false);
+    setSubmitError(null);
+    setSubmitting(true);
+    try {
+      // If patient has no claims, the store guards us anyway; we route through
+      // the case-workflow entry point so a claim is created for `new_claim`.
+      if (patientClaims.length === 0 || form.target === 'new_claim') {
+        await sendMemoStartingCase({
+          patientId: patient.id,
+          target: 'new_claim',
+          parentClaimId: form.parentClaimId || undefined,
+          purpose: form.purpose,
+          text,
+          to: form.to.trim() || undefined,
+          memoFile: form.memoFile
+            ? { blob: form.memoFile, fileName: form.memoFile.name, mimeType: form.memoFile.type }
+            : undefined,
+        });
+      } else {
+        await sendMemoStartingCase({
+          patientId: patient.id,
+          target: 'same_claim',
+          claimId: form.claimId,
+          purpose: form.purpose,
+          text,
+          to: form.to.trim() || undefined,
+          memoFile: form.memoFile
+            ? { blob: form.memoFile, fileName: form.memoFile.name, mimeType: form.memoFile.type }
+            : undefined,
+        });
+      }
+      setForm({ ...MEMO_EMPTY, target: 'same_claim', claimId: '', parentClaimId: '' });
+      setAdding(false);
+    } catch (err) {
+      setSubmitError((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function del(id: string) {
@@ -684,7 +879,75 @@ function MemoPanel({ patient }: { patient: Patient }) {
       </div>
       {adding && (
         <div className="rounded-lg p-3 mb-2 space-y-2" style={{ background: 'var(--surface-2)' }}>
-          <Field label="Memo" required>
+          <Field label="Purpose" hint="Suggests same-claim vs new-claim default; you can override.">
+            <Select
+              value={form.purpose}
+              onChange={(e) => setForm({ ...form, purpose: e.target.value as MemoPurpose })}
+            >
+              {(Object.keys(MEMO_PURPOSE_LABEL) as MemoPurpose[]).map((p) => (
+                <option key={p} value={p}>
+                  {MEMO_PURPOSE_LABEL[p]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Target" required hint="Locked decision — memos are never silent auto-only.">
+            <div className="flex items-center gap-2 flex-wrap">
+              <label className="flex items-center gap-1 text-sm">
+                <input
+                  type="radio"
+                  name={`memo-target-${patient.id}`}
+                  checked={form.target === 'same_claim'}
+                  disabled={patientClaims.length === 0}
+                  onChange={() => setForm({ ...form, target: 'same_claim' })}
+                />
+                Renewal on this claim
+              </label>
+              <label className="flex items-center gap-1 text-sm">
+                <input
+                  type="radio"
+                  name={`memo-target-${patient.id}`}
+                  checked={form.target === 'new_claim'}
+                  onChange={() => setForm({ ...form, target: 'new_claim' })}
+                />
+                New claim approval
+              </label>
+            </div>
+          </Field>
+          {form.target === 'same_claim' && patientClaims.length > 0 && (
+            <Field label="Claim" required>
+              <Select
+                value={form.claimId}
+                onChange={(e) => setForm({ ...form, claimId: e.target.value })}
+              >
+                <option value="">Select claim…</option>
+                {patientClaims.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.claimNumber || c.id}
+                    {c.caseStage && c.caseStage !== 'not_started'
+                      ? ` — ${CASE_STAGE_LABEL[c.caseStage]}`
+                      : ''}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          )}
+          {form.target === 'new_claim' && patientClaims.length > 0 && (
+            <Field label="Parent claim (optional)" hint="Link a subsequent-injury claim to its parent.">
+              <Select
+                value={form.parentClaimId}
+                onChange={(e) => setForm({ ...form, parentClaimId: e.target.value })}
+              >
+                <option value="">No parent (original)</option>
+                {patientClaims.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.claimNumber || c.id}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          )}
+          <Field label="Memo text" required>
             <TextArea
               rows={2}
               value={form.text}
@@ -695,18 +958,39 @@ function MemoPanel({ patient }: { patient: Patient }) {
           <Field label="To (optional)" hint="Free-text — nurse or team name.">
             <TextInput value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} placeholder="e.g. district nurse team" />
           </Field>
+          <Field label="Attach memo file (optional)" hint="You can attach later without changing stage.">
+            <input
+              ref={memoFileInput}
+              type="file"
+              onChange={(e) => setForm({ ...form, memoFile: e.target.files?.[0] })}
+            />
+          </Field>
+          {submitError && (
+            <p className="text-xs" style={{ color: 'var(--danger-fg)' }}>
+              {submitError}
+            </p>
+          )}
           <div className="flex items-center gap-2 justify-end">
             <button
               className="btn btn-sm"
               onClick={() => {
                 setAdding(false);
-                setForm(MEMO_EMPTY);
+                setForm({ ...MEMO_EMPTY, target: 'same_claim', claimId: '', parentClaimId: '' });
+                setSubmitError(null);
               }}
             >
               Cancel
             </button>
-            <button className="btn btn-primary btn-sm" onClick={submit} disabled={!form.text.trim()}>
-              Save memo
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => void submit()}
+              disabled={
+                !form.text.trim() ||
+                submitting ||
+                (form.target === 'same_claim' && !form.claimId)
+              }
+            >
+              {submitting ? 'Sending…' : 'Send memo'}
             </button>
           </div>
         </div>
@@ -971,6 +1255,9 @@ function ClaimCard({
           </button>
         </div>
       </div>
+
+      {/* Case workflow panel — step tracker + actions + timeline */}
+      <CasePanel claim={claim} />
 
       {/* Service lines */}
       <div className="mt-3">
@@ -1331,6 +1618,370 @@ function ClaimCard({
   );
 }
 
+/**
+ * Case workflow panel: shows the step tracker for the claim, an event
+ * timeline, and quick action buttons for the legal next transitions.
+ * Actions call `advanceCaseStage` / `recordCaseChase` / `attachCaseDocument`
+ * on the store; the pure workflow lib decides which transitions are legal.
+ */
+function CasePanel({ claim }: { claim: Claim }) {
+  const advanceCaseStage = useStore((s) => s.advanceCaseStage);
+  const recordCaseChase = useStore((s) => s.recordCaseChase);
+  const attachCaseDocument = useStore((s) => s.attachCaseDocument);
+  const [confirm, confirmDialog] = useConfirm();
+  const [returnModal, setReturnModal] = useState(false);
+  const [returnReason, setReturnReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const attachInput = useRef<HTMLInputElement>(null);
+  const [pendingKind, setPendingKind] = useState<'docs_received' | 'corrected_docs_received' | 'submitted_to_acc' | null>(null);
+  const [attachKind, setAttachKind] = useState<DocumentKind>('other');
+  const attachInputAny = useRef<HTMLInputElement>(null);
+
+  const stage = claim.caseStage ?? 'not_started';
+  const events = claim.caseEvents ?? [];
+
+  async function runTransition(kind: Parameters<typeof advanceCaseStage>[0]['kind']) {
+    setError(null);
+    setBusy(true);
+    try {
+      await advanceCaseStage({ claimId: claim.id, kind });
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runTransitionWithFile(
+    kind: 'docs_received' | 'corrected_docs_received' | 'submitted_to_acc',
+    file: File,
+  ) {
+    setError(null);
+    setBusy(true);
+    try {
+      await advanceCaseStage({
+        claimId: claim.id,
+        kind,
+        documentBlob: { blob: file, fileName: file.name, mimeType: file.type },
+      });
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmClose() {
+    const ok = await confirm({
+      title: 'Close this case?',
+      message:
+        'Mark this case as closed without an ACC decision. Use this only when the case has been abandoned or superseded.',
+      confirmLabel: 'Close case',
+      destructive: true,
+    });
+    if (ok) await runTransition('closed');
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
+      <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+        <h4 className="text-sm font-semibold" style={{ color: 'var(--muted)' }}>
+          Case workflow
+        </h4>
+        <span className="text-xs" style={{ color: 'var(--muted)' }}>
+          Nurse due: {claim.nurseFollowUpDue ? formatDate(claim.nurseFollowUpDue) : '—'} · ACC due:{' '}
+          {claim.accFollowUpDue ? formatDate(claim.accFollowUpDue) : '—'}
+        </span>
+      </div>
+      <CaseStepTracker stage={stage} />
+
+      {error && (
+        <p className="text-xs mt-2" style={{ color: 'var(--danger-fg)' }}>
+          {error}
+        </p>
+      )}
+
+      <div className="mt-3 flex items-center gap-2 flex-wrap">
+        {stage === 'awaiting_nurse_docs' || stage === 'docs_returned' ? (
+          <>
+            <button
+              className="btn btn-sm"
+              disabled={busy}
+              onClick={() => setPendingKind(stage === 'docs_returned' ? 'corrected_docs_received' : 'docs_received')}
+            >
+              <IconPlus width={14} height={14} />{' '}
+              {stage === 'docs_returned' ? 'Corrected docs received' : 'Docs received'}
+            </button>
+            <button
+              className="btn btn-sm"
+              disabled={busy}
+              onClick={() => recordCaseChase(claim.id, 'nurse')}
+            >
+              Chase nurse
+            </button>
+          </>
+        ) : null}
+        {stage === 'docs_received' && (
+          <>
+            <button
+              className="btn btn-sm"
+              disabled={busy}
+              onClick={() => setPendingKind('submitted_to_acc')}
+            >
+              Submitted to ACC
+            </button>
+            <button
+              className="btn btn-sm"
+              disabled={busy}
+              onClick={() => setReturnModal(true)}
+            >
+              Return for correction
+            </button>
+          </>
+        )}
+        {stage === 'awaiting_acc' && (
+          <>
+            <button
+              className="btn btn-sm"
+              disabled={busy}
+              onClick={() => void runTransition('acc_approved')}
+            >
+              Mark approved
+            </button>
+            <button
+              className="btn btn-sm"
+              disabled={busy}
+              onClick={() => void runTransition('acc_declined')}
+            >
+              Mark declined
+            </button>
+            <button
+              className="btn btn-sm"
+              disabled={busy}
+              onClick={() => recordCaseChase(claim.id, 'acc')}
+            >
+              Chase ACC
+            </button>
+          </>
+        )}
+        {(stage === 'awaiting_nurse_docs' ||
+          stage === 'docs_received' ||
+          stage === 'docs_returned' ||
+          stage === 'awaiting_acc') && (
+          <button
+            className="btn btn-sm"
+            disabled={busy}
+            onClick={() => void confirmClose()}
+          >
+            Close case
+          </button>
+        )}
+        <button
+          type="button"
+          className="btn btn-sm"
+          disabled={busy}
+          onClick={() => attachInputAny.current?.click()}
+          title="Attach a document to this case without changing stage"
+        >
+          Attach file
+        </button>
+        <Select
+          className="text-xs py-1"
+          value={attachKind}
+          onChange={(e) => setAttachKind(e.target.value as DocumentKind)}
+          aria-label="Attachment type"
+        >
+          <option value="nurse-memo">Memo to nurse</option>
+          <option value="nursing-docs">Nursing docs</option>
+          <option value="nursing-docs-corrected">Nursing docs (corrected)</option>
+          <option value="acc-submission">ACC submission bundle</option>
+          <option value="other">Other</option>
+        </Select>
+        <input
+          ref={attachInputAny}
+          type="file"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) {
+              setBusy(true);
+              setError(null);
+              attachCaseDocument(
+                claim.id,
+                { kind: attachKind, fileName: f.name, mimeType: f.type },
+                f,
+              )
+                .catch((err) => setError((err as Error).message))
+                .finally(() => {
+                  setBusy(false);
+                  if (attachInputAny.current) attachInputAny.current.value = '';
+                });
+            }
+          }}
+        />
+      </div>
+
+      {/* Hidden file input for pendingKind (docs received / corrected / submitted). */}
+      <input
+        ref={attachInput}
+        type="file"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          const kind = pendingKind;
+          setPendingKind(null);
+          if (attachInput.current) attachInput.current.value = '';
+          if (f && kind) void runTransitionWithFile(kind, f);
+        }}
+      />
+
+      {pendingKind && (
+        <Modal
+          open={!!pendingKind}
+          title={
+            pendingKind === 'submitted_to_acc'
+              ? 'Submitted to ACC'
+              : pendingKind === 'corrected_docs_received'
+                ? 'Corrected docs received'
+                : 'Docs received'
+          }
+          onClose={() => setPendingKind(null)}
+          size="sm"
+          footer={
+            <>
+              <button className="btn" onClick={() => setPendingKind(null)}>
+                Cancel
+              </button>
+              <button
+                className="btn"
+                onClick={() => {
+                  const kind = pendingKind;
+                  setPendingKind(null);
+                  if (kind) void runTransition(kind);
+                }}
+                disabled={busy}
+              >
+                Advance without attaching
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => attachInput.current?.click()}
+                disabled={busy}
+              >
+                Attach a file
+              </button>
+            </>
+          }
+        >
+          <p className="text-sm" style={{ color: 'var(--text)' }}>
+            {pendingKind === 'submitted_to_acc'
+              ? 'Attach your ACC submission bundle (optional). You can also add it later.'
+              : 'Attach the nursing documents you received (optional). You can also add them later.'}
+          </p>
+          <p className="text-xs mt-2" style={{ color: 'var(--muted)' }}>
+            Nursing Services QA reminders: ACC179 must reflect the initial consult, not Day 1; NS04 covers
+            visits 26+; NS05 starts the day after the prior period expires; claim must be accepted in
+            eBusiness before submitting.
+          </p>
+        </Modal>
+      )}
+
+      <Modal
+        open={returnModal}
+        title="Return docs for correction"
+        onClose={() => setReturnModal(false)}
+        size="sm"
+        footer={
+          <>
+            <button className="btn" onClick={() => setReturnModal(false)}>
+              Cancel
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={async () => {
+                if (!returnReason.trim()) return;
+                setError(null);
+                setBusy(true);
+                try {
+                  await advanceCaseStage({
+                    claimId: claim.id,
+                    kind: 'docs_returned',
+                    note: returnReason.trim(),
+                  });
+                  setReturnReason('');
+                  setReturnModal(false);
+                } catch (err) {
+                  setError((err as Error).message);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+              disabled={!returnReason.trim() || busy}
+            >
+              Return for correction
+            </button>
+          </>
+        }
+      >
+        <Field label="Reason" required hint="Required — nurse needs to know what to fix.">
+          <TextArea
+            rows={3}
+            value={returnReason}
+            onChange={(e) => setReturnReason(e.target.value)}
+            placeholder="e.g. ACC179 initial-consult date missing"
+          />
+        </Field>
+      </Modal>
+
+      {events.length > 0 && (
+        <div className="mt-3">
+          <h5 className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>
+            Timeline
+          </h5>
+          <ul className="mt-1 space-y-1">
+            {events
+              .slice()
+              .reverse()
+              .map((evt) => (
+                <li
+                  key={evt.id}
+                  className="text-xs flex items-start gap-2 rounded-lg p-2"
+                  style={{ background: 'var(--surface-2)' }}
+                >
+                  <span className="font-mono shrink-0" style={{ color: 'var(--muted)' }}>
+                    {new Date(evt.at).toLocaleString('en-NZ', { dateStyle: 'short', timeStyle: 'short' })}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="font-medium">{CASE_EVENT_LABEL[evt.kind] ?? evt.kind}</span>
+                    {evt.note ? <span style={{ color: 'var(--muted)' }}> · {evt.note}</span> : null}
+                  </span>
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
+
+      {confirmDialog}
+    </div>
+  );
+}
+
+const CASE_EVENT_LABEL: Record<string, string> = {
+  memo_sent: 'Memo sent',
+  nurse_chased: 'Chased nurse',
+  docs_received: 'Docs received',
+  docs_returned: 'Docs returned for correction',
+  corrected_docs_received: 'Corrected docs received',
+  submitted_to_acc: 'Submitted to ACC',
+  acc_chased: 'Chased ACC',
+  acc_approved: 'ACC approved',
+  acc_declined: 'ACC declined',
+  closed: 'Case closed',
+  note: 'Note',
+  attachment_added: 'Attachment added',
+};
+
 function blankClaim(patientId: string): Omit<Claim, 'id'> {
   return {
     patientId,
@@ -1349,6 +2000,10 @@ const DOCUMENT_KIND_LABELS: Record<DocumentKind, string> = {
   'acc-approval-letter': 'ACC approval letter',
   'acc-decline-letter': 'ACC decline letter',
   'approval-request': 'Approval request (sent)',
+  'nurse-memo': 'Memo to nurse',
+  'nursing-docs': 'Nursing docs',
+  'nursing-docs-corrected': 'Nursing docs (corrected)',
+  'acc-submission': 'ACC submission bundle',
   other: 'Other',
 };
 

@@ -3,8 +3,13 @@
 // ============================================================================
 
 import { daysUntil } from './format';
-import type { Approval, ComplexCase, Decline, InvoiceLine } from '../types';
+import type { AppData, Approval, ComplexCase, Decline, InvoiceLine } from '../types';
 import { computeApproval, isBillingApproval } from './analytics';
+import {
+  claimsNeedingAccFollowUp,
+  claimsNeedingNurseFollowUp,
+} from './caseWorkflow';
+import { findDuplicatePatientGroups } from './patients';
 import type { ModuleId } from '../components/Sidebar';
 
 export interface SidebarBadgeSpec {
@@ -41,6 +46,8 @@ export function computeSidebarBadges(input: {
   complianceAttention: number;
   actionQueueCount: number;
   reviewPendingCount: number;
+  /** Case-workflow data source — enables patients "N due" badge. */
+  data?: AppData;
 }): Partial<Record<ModuleId, SidebarBadgeSpec>> {
   const result: Partial<Record<ModuleId, SidebarBadgeSpec>> = {};
 
@@ -123,6 +130,25 @@ export function computeSidebarBadges(input: {
       title: `${n} letter${n === 1 ? '' : 's'} pending in Review Queue`,
       ariaLabel: `${n} letters in Review Queue`,
     };
+  }
+
+  if (input.data) {
+    const nurse = claimsNeedingNurseFollowUp(input.data).length;
+    const acc = claimsNeedingAccFollowUp(input.data).length;
+    const dupGroups = findDuplicatePatientGroups(input.data.patients, input.data);
+    const dupTotal = dupGroups.reduce((sum, g) => sum + g.redundant.length, 0);
+    const caseDue = nurse + acc;
+    if (caseDue || dupTotal) {
+      const parts: string[] = [];
+      if (caseDue) parts.push(`${caseDue} case${caseDue === 1 ? '' : 's'} due`);
+      if (dupTotal) parts.push(`${dupTotal} possible duplicate${dupTotal === 1 ? '' : 's'}`);
+      result.patients = {
+        count: caseDue + dupTotal,
+        label: caseDue ? `${caseDue} due` : `${dupTotal} dup`,
+        title: parts.join(' · '),
+        ariaLabel: parts.join(' and '),
+      };
+    }
   }
 
   return result;

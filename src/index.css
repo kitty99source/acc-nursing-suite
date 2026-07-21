@@ -345,6 +345,15 @@ body {
   .data-table tbody tr:hover {
     background: var(--surface-2);
   }
+  /* Responsive column priority: hide low-priority columns below ~lg (1024px)
+     so narrow-screen tables keep the essential columns + sticky actions
+     column visible without horizontal clipping. */
+  @media (max-width: 1023.98px) {
+    .data-table th.data-table-low-priority,
+    .data-table td.data-table-low-priority {
+      display: none;
+    }
+  }
 
   .row-salmon {
     background: var(--salmon) !important;

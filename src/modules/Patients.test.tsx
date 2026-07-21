@@ -63,7 +63,7 @@ function typeInto(el: HTMLTextAreaElement | HTMLInputElement, value: string) {
 }
 
 describe('<Patients /> memo panel', () => {
-  it('adds a memo via the quick-entry form and shows it as unresolved', async () => {
+  it('adds a memo (new_claim) via the quick-entry form and opens a case', async () => {
     act(() => {
       root.render(<Patients />);
     });
@@ -75,11 +75,17 @@ describe('<Patients /> memo panel', () => {
     act(() => {
       typeInto(textarea!, 'Please confirm dressing change schedule.');
     });
-    clickButtonByText('Save memo');
+    clickButtonByText('Send memo');
+    await flush();
     await flush();
 
+    // With no existing claims, sendMemoStartingCase falls through to new_claim
+    // and opens a case on the fresh claim.
     expect(useStore.getState().data.memos).toHaveLength(1);
     expect(useStore.getState().data.memos[0].text).toBe('Please confirm dressing change schedule.');
+    expect(useStore.getState().data.claims).toHaveLength(1);
+    const claim = useStore.getState().data.claims[0];
+    expect(claim.caseStage).toBe('awaiting_nurse_docs');
     expect(container.textContent).toContain('Please confirm dressing change schedule.');
     expect(container.textContent).toContain('Unresolved');
   });

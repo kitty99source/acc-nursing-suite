@@ -117,6 +117,12 @@ export function Billing() {
     if (focus.intent === 'stale-remittance' || focus.intent === 'review-duplicate') {
       setStatusFilter('Remittance');
     }
+    if (focus.intent === 'needs-review') {
+      setTab('review');
+      setStatusFilter('all');
+      setCodeFilter('all');
+      setSheetFilter('');
+    }
     const q = (focus.prefill?.claimNumber as string) || claim?.claimNumber || '';
     if (q) {
       setStatusFilter('all');
@@ -483,8 +489,9 @@ export function Billing() {
             aria-selected={tab === 'review'}
             className="subview-tab"
             onClick={() => setTab('review')}
+            title="Held / short-paid remittance lines to chase with ACC (variances to follow up)."
           >
-            Needs review ({needsReviewCount})
+            Needs review — variances to chase ({needsReviewCount})
             {needsReviewCount > 0 && (
               <span className="subview-tab-count" data-tone="danger">
                 {needsReviewCount}

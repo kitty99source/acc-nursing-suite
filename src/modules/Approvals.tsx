@@ -246,6 +246,7 @@ export function Approvals() {
       header: 'PO',
       width: '10%',
       sortable: true,
+      priority: 'low',
       sortValue: (r) => r.approval.poNumber,
       render: (r) => (
         <span className="truncate block" title={r.approval.poNumber}>
@@ -258,6 +259,7 @@ export function Approvals() {
       header: 'Start',
       width: '9%',
       sortable: true,
+      priority: 'low',
       sortValue: (r) => r.approval.approvalStartDate,
       render: (r) => formatDate(r.approval.approvalStartDate),
     },
@@ -266,6 +268,7 @@ export function Approvals() {
       header: 'End',
       width: '9%',
       sortable: true,
+      priority: 'low',
       sortValue: (r) => r.approval.approvalEndDate,
       render: (r) => formatDate(r.approval.approvalEndDate),
     },
@@ -275,6 +278,7 @@ export function Approvals() {
       width: '10%',
       align: 'right',
       sortable: true,
+      priority: 'low',
       sortValue: (r) => r.approval.approvedHoursOrConsults,
       render: (r) => (
         <span className="truncate block" title={`${r.approval.approvedHoursOrConsults}${r.approval.serviceCode === 'NS05' ? ' hrs' : ' consults'}`}>
@@ -295,6 +299,7 @@ export function Approvals() {
       width: '7%',
       align: 'right',
       sortable: true,
+      priority: 'low',
       sortValue: (r) => r.computed.daysUntilExpiry,
       render: (r) => r.computed.daysUntilExpiry,
     },
@@ -303,6 +308,7 @@ export function Approvals() {
       header: 'Status',
       width: '10%',
       sortable: true,
+      priority: 'high',
       sortValue: (r) => r.computed.status,
       render: (r) => {
         if (r.approval.recordStatus === 'historical') return <Badge tone="neutral">Historical</Badge>;
@@ -316,6 +322,7 @@ export function Approvals() {
       key: 'renewal',
       header: 'Renewed',
       width: '9%',
+      priority: 'low',
       render: (r) => (
         <span className="truncate block" title={formatDate(r.approval.accEmailedRenewalDate) || undefined}>
           {formatDate(r.approval.accEmailedRenewalDate) || '—'}

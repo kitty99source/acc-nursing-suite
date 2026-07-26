@@ -48,6 +48,29 @@ function Test-AccPidFileAlive {
     }
 }
 
+function Get-AccPidFileProcessAgeSeconds {
+    # Age of the PowerShell process named in a .pid file, or -1 if missing/dead.
+    # Used so a second launch click during startup waits instead of reclaim-killing
+    # a healthy supervisor that has not bound the port yet.
+    param([string]$Name)
+    $path = Join-Path (Get-AccSuiteDir) $Name
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return -1 }
+    $raw = ''
+    try { $raw = (Get-Content -LiteralPath $path -Raw -Encoding UTF8).Trim() } catch { return -1 }
+    $procId = 0
+    if (-not [int]::TryParse($raw, [ref]$procId) -or $procId -le 0) { return -1 }
+    try {
+        $proc = Get-Process -Id $procId -ErrorAction Stop
+        $name = [string]$proc.ProcessName
+        if (-not ($name -eq 'powershell' -or $name -eq 'pwsh' -or $name -eq 'powershell_ise')) { return -1 }
+        $age = ((Get-Date) - $proc.StartTime).TotalSeconds
+        if ($age -lt 0) { return 0 }
+        return $age
+    } catch {
+        return -1
+    }
+}
+
 function Write-AccSessionEnded {
     # Intentional last-tab / idle shutdown (not a crash). Supervisor must exit,
     # not restart helpers.

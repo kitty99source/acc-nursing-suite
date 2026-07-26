@@ -1,4 +1,4 @@
-param(
+﻿param(
     [switch]$Quiet,
     [switch]$SkipEmailSync
 )
@@ -39,6 +39,11 @@ $watchPs1  = Join-Path $launcherDir 'folder-watch.ps1'
 $syncPs1   = Join-Path $launcherDir 'outlook-sync.ps1'
 $appPort   = 8765
 $pollSeconds = 3
+# Cap silent relaunch so a broken launch.ps1 cannot spin forever.
+$maxRecoveryRestarts = 8
+$script:RecoveryRestartCount = 0
+# Do not reclaim a peer supervisor still inside its startup window.
+$startupGraceSeconds = 45
 
 function Write-SupervisorHost {
     param([string]$Message = '')
@@ -103,6 +108,26 @@ function Start-AccEmailSyncProcess {
     return $true
 }
 
+function Stop-AccPidFileProcess {
+    param([string]$Name)
+    $path = Join-Path (Get-AccSuiteDir) $Name
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return }
+    $raw = ''
+    try { $raw = (Get-Content -LiteralPath $path -Raw -Encoding UTF8).Trim() } catch { return }
+    $procId = 0
+    if (-not [int]::TryParse($raw, [ref]$procId) -or $procId -le 0) { return }
+    if ($procId -eq $PID) { return }
+    try {
+        $proc = Get-Process -Id $procId -ErrorAction Stop
+        $name = [string]$proc.ProcessName
+        if ($name -eq 'powershell' -or $name -eq 'pwsh' -or $name -eq 'powershell_ise') {
+            Write-BootstrapLog "Stopping stuck $Name process PID $procId"
+            Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+        }
+    } catch {}
+    Clear-AccPidFile -Name $Name
+}
+
 function Ensure-AccAppServer {
     param([switch]$Recovery)
     if (Test-AccSuitePortOpen -Port $appPort) {
@@ -116,7 +141,13 @@ function Ensure-AccAppServer {
         return
     }
     if ($Recovery) {
-        Write-BootstrapLog 'launch.ps1 / port down mid-session - restarting silently'
+        $script:RecoveryRestartCount++
+        Write-BootstrapLog "launch.ps1 / port down mid-session - restarting silently ($($script:RecoveryRestartCount)/$maxRecoveryRestarts)"
+        if ($script:RecoveryRestartCount -gt $maxRecoveryRestarts) {
+            Write-BootstrapLog "ERROR: gave up after $maxRecoveryRestarts recovery restarts on port $appPort"
+            Write-AccSessionEnded
+            exit 1
+        }
         Start-AccLaunchProcess -NoBrowser
     } else {
         Start-AccLaunchProcess
@@ -137,12 +168,53 @@ function Ensure-AccFolderWatch {
     Start-AccFolderWatchProcess
 }
 
-# Single supervisor only - a second quiet/recommended click must not fight.
+# Single supervisor only - reclaim when stuck (pid alive, port down) after grace.
+# Immediate reclaim without grace kills healthy startups on repeated clicks.
 if (Test-AccPidFileAlive -Name 'supervisor.pid') {
-    Write-BootstrapLog 'Another supervisor.pid is alive - opening browser and exiting (single instance)'
-    Write-SupervisorHost 'ACC Suite supervisor is already running - opening the app.'
-    try { Start-Process "http://127.0.0.1:$appPort/" | Out-Null } catch {}
-    exit 0
+    if (Test-AccSuitePortOpen -Port $appPort) {
+        Write-BootstrapLog 'Another supervisor.pid is alive - opening browser and exiting (single instance)'
+        Write-SupervisorHost 'ACC Suite supervisor is already running - opening the app.'
+        try { Start-Process "http://127.0.0.1:$appPort/" | Out-Null } catch {}
+        exit 0
+    }
+
+    $peerAge = Get-AccPidFileProcessAgeSeconds -Name 'supervisor.pid'
+    $shouldReclaim = $true
+    if ($peerAge -ge 0 -and $peerAge -lt $startupGraceSeconds) {
+        $waitSeconds = [Math]::Ceiling($startupGraceSeconds - $peerAge)
+        Write-BootstrapLog "Another supervisor.pid is starting (age=$([int]$peerAge)s, port down) - waiting up to ${waitSeconds}s for :$appPort (no reclaim yet)"
+        Write-SupervisorHost "App is still starting - waiting up to $waitSeconds seconds..."
+        $deadline = [DateTime]::UtcNow.AddSeconds($waitSeconds)
+        while ([DateTime]::UtcNow -lt $deadline) {
+            if (Test-AccSuitePortOpen -Port $appPort) {
+                Write-BootstrapLog 'Peer supervisor became ready during grace - opening browser and exiting'
+                try { Start-Process "http://127.0.0.1:$appPort/" | Out-Null } catch {}
+                exit 0
+            }
+            if (-not (Test-AccPidFileAlive -Name 'supervisor.pid')) {
+                Write-BootstrapLog 'Peer supervisor exited during grace - taking over without reclaim kill'
+                $shouldReclaim = $false
+                break
+            }
+            Start-Sleep -Milliseconds 500
+        }
+        if ($shouldReclaim -and (Test-AccSuitePortOpen -Port $appPort)) {
+            try { Start-Process "http://127.0.0.1:$appPort/" | Out-Null } catch {}
+            exit 0
+        }
+        if ($shouldReclaim -and -not (Test-AccPidFileAlive -Name 'supervisor.pid')) {
+            $shouldReclaim = $false
+        }
+    }
+
+    if ($shouldReclaim -and (Test-AccPidFileAlive -Name 'supervisor.pid')) {
+        Write-BootstrapLog 'Stuck supervisor.pid (process alive, port down after grace) - reclaiming'
+        Write-SupervisorHost 'Previous supervisor looks stuck (port down) - taking over...'
+        Stop-AccPidFileProcess -Name 'supervisor.pid'
+        Stop-AccPidFileProcess -Name 'launch.pid'
+        Stop-AccPidFileProcess -Name 'folder-watch.pid'
+        Start-Sleep -Seconds 1
+    }
 }
 
 Write-SupervisorHost ''

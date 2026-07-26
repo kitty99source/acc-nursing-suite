@@ -32,6 +32,8 @@ import { loadStagingItems } from '../lib/staging';
 import { fetchLocalEmailSyncStatus, formatSyncOutcome, type EmailSyncStatus } from '../lib/emailSyncStatus';
 import { LetterImportButton, LETTER_IMPORT_FULL_TOOLTIP } from '../components/LetterImportButton';
 import { HelperTip } from '../components/HelperTip';
+import { GettingStartedCard } from '../components/GettingStartedCard';
+import { shouldShowGettingStarted } from '../lib/onboarding';
 
 function useThemeColors() {
   const settings = useStore((s) => s.data.settings);
@@ -106,11 +108,13 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
     data.approvals.length === 0 &&
     data.complexCases.length === 0 &&
     data.declines.length === 0;
+  const showGettingStarted = shouldShowGettingStarted(settings);
 
   if (isEmpty) {
     return (
       <div>
         <SectionTitle title="Dashboard" subtitle="Your action queue and billing analytics." />
+        <GettingStartedCard onNavigate={onNavigate} />
         <EmptyState
           icon={<IconDashboard width={32} height={32} />}
           title="Nothing to show yet"
@@ -163,7 +167,9 @@ export function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }
     <div>
       <SectionTitle title="Dashboard" subtitle="Your action queue and billing analytics." />
 
-      {!settings.dismissLetterDiscoverCard && (
+      <GettingStartedCard onNavigate={onNavigate} />
+
+      {!showGettingStarted && !settings.dismissLetterDiscoverCard && (
         <Card className="mb-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <p className="text-sm flex-1 min-w-0">

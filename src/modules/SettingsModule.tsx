@@ -376,12 +376,21 @@ export function SettingsModule({ onOpenHelp }: { onOpenHelp?: () => void } = {})
         <Card className="mb-4">
           <h3 className="card-title mb-2">Help &amp; instructions</h3>
           <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>
-            Open the in-app guide and FAQ (quiet launcher, tab-close shutdown, Accept undo, and more).
-            Also available from <strong>Help</strong> in the top bar. Turn on <strong>Helper Mode</strong> (?) for hover tips.
+            Open the in-app guide and FAQ when you need them (not forced on login). Also available from{' '}
+            <strong>Help</strong> in the top bar. Turn on <strong>Helper Mode</strong> (?) for hover tips.
           </p>
-          <button type="button" className="btn btn-primary" onClick={onOpenHelp}>
-            Open instruction guide
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn btn-primary" onClick={onOpenHelp}>
+              Open instruction guide
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => updateSettings({ gettingStartedDismissed: false })}
+            >
+              Replay getting started
+            </button>
+          </div>
         </Card>
       )}
 

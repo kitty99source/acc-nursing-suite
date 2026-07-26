@@ -363,8 +363,16 @@ export interface Settings {
   accInboxSubjectPatterns: string[];
   /** Dismiss dashboard letter-import discoverability card (P5-014). */
   dismissLetterDiscoverCard: boolean;
-  /** First-run Help Center auto-open; set true after the user closes it once. */
+  /**
+   * First-run welcome dismissed (slim OnboardingWelcomeModal — not the Help Center FAQ wall).
+   * Welcome auto-open is one-shot; Help from top bar / Settings never clears this.
+   */
   hasSeenWelcomeGuide: boolean;
+  /**
+   * Dismissible Dashboard “Getting started” checklist. Replay from Settings resets to false.
+   * Returning users who already finished the old Help-Center first-run get this set true in normalizeData.
+   */
+  gettingStartedDismissed: boolean;
   /** Dismiss ACC Inbox filter assumption banner (sender allowlist / subjects). */
   accInboxConfigBannerDismissed: boolean;
   /** Dismiss remittance-stale-days assumption banner. */
@@ -499,6 +507,7 @@ export const DEFAULT_SETTINGS: Settings = {
   ],
   dismissLetterDiscoverCard: false,
   hasSeenWelcomeGuide: false,
+  gettingStartedDismissed: false,
   accInboxConfigBannerDismissed: false,
   remittanceStaleBannerDismissed: false,
   mailReferenceBannerDismissed: false,

@@ -79,10 +79,19 @@ export function isEncryptedFile(text: string): boolean {
  * Safe to run on every load; existing values are preserved.
  */
 export function normalizeData(data: AppData): AppData {
-  const settings = { ...DEFAULT_SETTINGS, ...data.settings };
+  const rawSettings = data.settings ?? {};
+  const settings = { ...DEFAULT_SETTINGS, ...rawSettings };
+  // Returning users who already finished the old Help-Center first-run should not
+  // suddenly see the new Getting started checklist after this upgrade.
+  if (
+    rawSettings.hasSeenWelcomeGuide &&
+    !Object.prototype.hasOwnProperty.call(rawSettings, 'gettingStartedDismissed')
+  ) {
+    settings.gettingStartedDismissed = true;
+  }
   // Merge per-code so codes added in later versions always have a rate.
-  settings.serviceRates = { ...DEFAULT_RATES, ...(data.settings?.serviceRates ?? {}) };
-  const enabled = data.settings?.enabledServiceCodes;
+  settings.serviceRates = { ...DEFAULT_RATES, ...(rawSettings.serviceRates ?? {}) };
+  const enabled = rawSettings.enabledServiceCodes;
   settings.enabledServiceCodes =
     Array.isArray(enabled) && enabled.length > 0 ? enabled : [...DEFAULT_SETTINGS.enabledServiceCodes];
   // Older files predate document attachments — ensure the array always exists.

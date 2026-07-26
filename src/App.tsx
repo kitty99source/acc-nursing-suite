@@ -30,6 +30,7 @@ import { LetterImportModal } from './components/LetterImportModal';
 import { RecoveryModal } from './components/RecoveryModal';
 import { BackupReminderModal } from './components/BackupReminderModal';
 import { HelpCenterModal, type HelpTab } from './components/HelpCenterModal';
+import { OnboardingWelcomeModal } from './components/OnboardingWelcomeModal';
 import { HelperUiProvider } from './components/HelperUiContext';
 import { ConfirmDialog } from './components/Modal';
 import { loadBackupSnoozeUntil } from './lib/idb';
@@ -40,6 +41,7 @@ import { RemittanceStaleBanner } from './components/RemittanceStaleBanner';
 import { IDriveFilingBanner } from './components/IDriveFilingBanner';
 import { CaseWorkflowBanner } from './components/CaseWorkflowBanner';
 import { computeSidebarBadges } from './lib/sidebarBadges';
+import { shouldShowGettingStarted } from './lib/onboarding';
 import { DiscoCats } from './components/easter/DiscoCats';
 import { Companion } from './components/easter/Companion';
 import { applyCursorStyle } from './lib/easter/cursors';
@@ -71,7 +73,12 @@ export default function App() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpTab, setHelpTab] = useState<HelpTab>('guide');
   const [helpFaqId, setHelpFaqId] = useState<string | undefined>();
-  const helpAutoOpenedRef = useRef(false);
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const welcomeAutoOpenedRef = useRef(false);
+  const clearSampleData = useStore((s) => s.clearSampleData);
+  const showGettingStarted = shouldShowGettingStarted(settings);
+  const dashBannersOk =
+    settings.hasSeenWelcomeGuide && !welcomeOpen && !(module === 'dashboard' && showGettingStarted);
 
   // A cross-module focus request (e.g. from the Flagged page) switches the
   // active module; the target module then consumes the request on mount.
@@ -220,9 +227,10 @@ export default function App() {
     };
   }, [locked, openLetterImport]);
 
-  // Weekly backup reminder when last export is older than configured days (P0-004).
+  // Weekly backup reminder — deferred until first-run welcome is done (avoid modal stacking).
   useEffect(() => {
     if (!ready || locked || recovery) return;
+    if (!settings.hasSeenWelcomeGuide || welcomeOpen) return;
     const days = settings.backupReminderDays ?? 7;
     const last = status.lastExportAt;
     if (!last) {
@@ -236,7 +244,15 @@ export default function App() {
     void loadBackupSnoozeUntil().then((snooze) => {
       if (!snooze || Date.now() > snooze) setBackupReminderOpen(true);
     });
-  }, [ready, locked, recovery, settings.backupReminderDays, status.lastExportAt]);
+  }, [
+    ready,
+    locked,
+    recovery,
+    settings.backupReminderDays,
+    settings.hasSeenWelcomeGuide,
+    welcomeOpen,
+    status.lastExportAt,
+  ]);
 
   // HRQ pending count for sidebar badge (P8-002) + background sidecar auto-import.
   // Auto-import must not depend on Review Queue being open — otherwise AccInbox feels required
@@ -280,14 +296,13 @@ export default function App() {
     };
   }, [ready, locked, recovery, module]);
 
-  // First-run instruction guide — one-shot; Settings/top-bar reopen never clears the flag.
+  // Slim welcome once — never auto-open Help Center / FAQ (docs/onboarding-plan.md).
   useEffect(() => {
     if (!ready || locked || recovery) return;
     if (settings.hasSeenWelcomeGuide) return;
-    if (helpAutoOpenedRef.current) return;
-    helpAutoOpenedRef.current = true;
-    setHelpTab('guide');
-    setHelpOpen(true);
+    if (welcomeAutoOpenedRef.current) return;
+    welcomeAutoOpenedRef.current = true;
+    setWelcomeOpen(true);
   }, [ready, locked, recovery, settings.hasSeenWelcomeGuide]);
 
   function openHelp(tab: HelpTab = 'guide') {
@@ -305,9 +320,33 @@ export default function App() {
   function closeHelp() {
     setHelpOpen(false);
     setHelpFaqId(undefined);
+  }
+
+  function markWelcomeSeen() {
     if (!settings.hasSeenWelcomeGuide) {
       updateSettings({ hasSeenWelcomeGuide: true });
     }
+    setWelcomeOpen(false);
+  }
+
+  function closeWelcome() {
+    markWelcomeSeen();
+  }
+
+  function welcomeExplore() {
+    markWelcomeSeen();
+    setModule('dashboard');
+  }
+
+  function welcomeClearAndImport() {
+    clearSampleData();
+    markWelcomeSeen();
+    setModule('review');
+  }
+
+  function welcomeOpenHelp() {
+    markWelcomeSeen();
+    openHelp('guide');
   }
 
   // Sidebar attention badges — labelled action counts, not bare page totals.
@@ -370,13 +409,19 @@ export default function App() {
         <TopBar onMenuToggle={() => setSidebarOpen((v) => !v)} onOpenHelp={() => openHelp('guide')} />
         <AutosaveErrorBanner />
         <div className="px-5 pt-2 space-y-1">
-          {(module === 'dashboard' || module === 'accinbox' || module === 'review') && <AccInboxConfigBanner />}
-          {(module === 'dashboard' || module === 'billing') && <RemittanceStaleBanner />}
-          {(module === 'dashboard' || module === 'review' || module === 'settings') && (
-            <IDriveFilingBanner />
-          )}
-          {(module === 'dashboard' || module === 'patients' || module === 'settings') && (
-            <CaseWorkflowBanner />
+          {settings.hasSeenWelcomeGuide && !welcomeOpen && (
+            <>
+              {((module === 'dashboard' && dashBannersOk) || module === 'accinbox' || module === 'review') && (
+                <AccInboxConfigBanner />
+              )}
+              {((module === 'dashboard' && dashBannersOk) || module === 'billing') && <RemittanceStaleBanner />}
+              {((module === 'dashboard' && dashBannersOk) || module === 'review' || module === 'settings') && (
+                <IDriveFilingBanner />
+              )}
+              {((module === 'dashboard' && dashBannersOk) || module === 'patients' || module === 'settings') && (
+                <CaseWorkflowBanner />
+              )}
+            </>
           )}
         </div>
         <main className="flex-1 overflow-y-auto p-5">
@@ -399,6 +444,14 @@ export default function App() {
       <LetterImportModal />
       <DiscoCats />
       <Companion />
+      <OnboardingWelcomeModal
+        open={welcomeOpen}
+        data={data}
+        onExplore={welcomeExplore}
+        onClearAndImport={welcomeClearAndImport}
+        onOpenHelp={welcomeOpenHelp}
+        onClose={closeWelcome}
+      />
       <HelpCenterModal
         open={helpOpen}
         initialTab={helpTab}

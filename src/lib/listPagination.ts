@@ -2,7 +2,7 @@
 export const PAGE_SIZE_OPTIONS = [25, 50] as const;
 export type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
 
-export interface PageSlice<T> {
+interface PageSlice<T> {
   /** Rows for the current (clamped) page. */
   pageItems: T[];
   /** 1-based page index after clamping into `[1, pageCount]`. */

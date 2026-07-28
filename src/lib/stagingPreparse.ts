@@ -21,7 +21,7 @@ import {
 } from './letterCache';
 import { updateStagingItem, type StagingItem } from './staging';
 
-export const MAX_PREPARSE_BYTES = 4 * 1024 * 1024;
+const MAX_PREPARSE_BYTES = 4 * 1024 * 1024;
 
 const MAX_CONCURRENT = 4;
 

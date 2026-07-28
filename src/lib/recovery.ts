@@ -2,7 +2,7 @@ import type { AppData } from '../types';
 import { deserialize, isEncryptedFile } from './storage';
 import { validateReferentialIntegrity } from './integrity';
 
-export type WorkingCopyLoadResult =
+type WorkingCopyLoadResult =
   | { type: 'empty' }
   | { type: 'encrypted'; text: string }
   | { type: 'ok'; data: AppData; warnings: string[] }

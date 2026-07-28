@@ -40,7 +40,7 @@ export function normalizeClaimNumber(raw?: string): string {
   return raw.replace(/\s+/g, '').trim();
 }
 
-export interface NhiValidation {
+interface NhiValidation {
   ok: boolean;
   normalized: string;
   warning?: string;

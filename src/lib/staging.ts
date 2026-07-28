@@ -123,7 +123,7 @@ export function stagingIngressDedupKey(
   return `${item.sourceHash}::${item.sourceFileName ?? ''}`;
 }
 
-export function isStagingIngressDuplicate(
+function isStagingIngressDuplicate(
   existing: StagingItem,
   incoming: Pick<StagingItem, 'sourceHash' | 'sourceFileName'>,
 ): boolean {
@@ -147,7 +147,7 @@ export function isStagingIngressDuplicate(
 /** Cap tombstone growth; keep the most-recently-added keys. Correctness first. */
 const DISMISSED_STAGING_CAP = 5000;
 
-export async function loadDismissedStagingKeys(): Promise<Set<string>> {
+async function loadDismissedStagingKeys(): Promise<Set<string>> {
   return new Set(await idbLoadDismissed());
 }
 
@@ -238,9 +238,9 @@ export async function importStagingJsonText(text: string): Promise<number> {
 }
 
 /** Hours before an HRQ item breaches SLA and escalates to danger (P8-013). */
-export const HRQ_SLA_WARN_HOURS = 18;
+const HRQ_SLA_WARN_HOURS = 18;
 
-export type StagingSlaLevel = 'ok' | 'warn' | 'danger';
+type StagingSlaLevel = 'ok' | 'warn' | 'danger';
 
 /**
  * Escalation level for a staging item. Thin wrapper over the canonical pure
@@ -285,7 +285,7 @@ export function assertStagingIsolation(liveMutated: boolean, fromStaging: boolea
 // something, so it is safe to run on every mount.
 // ============================================================================
 
-export type StagingEnricher = (
+type StagingEnricher = (
   item: StagingItem,
 ) => Promise<{ patientName?: string; claimNumber?: string } | undefined>;
 
@@ -299,7 +299,7 @@ const defaultEnricher: StagingEnricher = async (item) => {
   };
 };
 
-export interface StagingReconcileResult {
+interface StagingReconcileResult {
   removed: number;
   renamed: number;
   total: number;
@@ -407,7 +407,7 @@ export function findStagingByHash(
 // never be parsed because they carry no content hash).
 // ============================================================================
 
-export interface StagingQueueAnalysis {
+interface StagingQueueAnalysis {
   /** Total pending rows in the queue. */
   total: number;
   /** Rows that already have a patient name to show. */
@@ -537,9 +537,9 @@ export function dedupeStagingByHash(items: StagingItem[]): StagingItem[] {
   return out;
 }
 
-export type StagingIngestOutcome = 'added' | 'duplicate';
+type StagingIngestOutcome = 'added' | 'duplicate';
 
-export interface StagingIngestResult {
+interface StagingIngestResult {
   outcome: StagingIngestOutcome;
   /** The item now in the queue — the freshly-added one, or the pre-existing duplicate. */
   item: StagingItem;
@@ -547,7 +547,7 @@ export interface StagingIngestResult {
   duplicateOfId?: string;
 }
 
-export type AttachmentHasher = (blob: Blob) => Promise<string>;
+type AttachmentHasher = (blob: Blob) => Promise<string>;
 
 /**
  * Idempotently ingest an attachment into the staging queue (P8-014). Hashes the

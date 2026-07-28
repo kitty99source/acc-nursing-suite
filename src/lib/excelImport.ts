@@ -35,7 +35,7 @@ import { uid } from './format';
 
 export type ImportMode = 'merge' | 'replace';
 
-export interface ImportSheetInfo {
+interface ImportSheetInfo {
   /** The worksheet name as it appeared in the file. */
   sheet: string;
   /** The canonical section it was recognised as, or null if unrecognised. */
@@ -939,7 +939,7 @@ function mergeCustomSheets(existing: CustomSheet[], incoming: CustomSheet[]): Cu
 // Merge preview diff (P3-005) — how many records add vs skip as duplicates.
 // ---------------------------------------------------------------------------
 
-export interface ImportMergeDiffCounts {
+interface ImportMergeDiffCounts {
   patients: number;
   claims: number;
   invoiceLines: number;
@@ -949,7 +949,7 @@ export interface ImportMergeDiffCounts {
   customSheets: number;
 }
 
-export interface ImportMergeDiff {
+interface ImportMergeDiff {
   mode: ImportMode;
   wouldAdd: ImportMergeDiffCounts;
   wouldSkip: ImportMergeDiffCounts;

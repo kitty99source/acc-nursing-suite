@@ -78,11 +78,6 @@ export const SPRITE_SVGS: Record<SpriteName, string> = {
   </svg>`,
 };
 
-/** Compact single-line SVG (strips the pretty-print whitespace) for data URLs. */
-export function spriteMarkup(name: SpriteName): string {
-  return SPRITE_SVGS[name].replace(/\s+/g, ' ').trim();
-}
-
 /** Encode an SVG string as a `data:image/svg+xml` URL usable in CSS/img src. */
 export function svgToDataUrl(svg: string): string {
   return `data:image/svg+xml,${encodeURIComponent(svg.replace(/\s+/g, ' ').trim())}`;

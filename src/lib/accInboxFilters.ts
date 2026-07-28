@@ -1,6 +1,6 @@
 /** ACC Inbox filter rules — narrow ACC letter emails only (P8-018). */
 
-export interface AccInboxFilterConfig {
+interface AccInboxFilterConfig {
   senderAllowlist: string[];
   subjectPatterns: RegExp[];
 }
@@ -111,12 +111,12 @@ export function parseSubjectMetadata(subject: string): { claimNumber?: string; a
   };
 }
 
-export function matchesAccInboxSender(sender: string, allowlist: string[]): boolean {
+function matchesAccInboxSender(sender: string, allowlist: string[]): boolean {
   const lower = sender.toLowerCase();
   return allowlist.some((entry) => lower.includes(entry.toLowerCase()));
 }
 
-export function matchesAccInboxSubject(subject: string, patterns: RegExp[]): boolean {
+function matchesAccInboxSubject(subject: string, patterns: RegExp[]): boolean {
   return patterns.some((re) => re.test(subject));
 }
 

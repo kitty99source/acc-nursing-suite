@@ -6,7 +6,7 @@
 
 import { FAQ_ENTRIES, getFaqById, type FaqEntry } from './helpContent';
 
-export interface HelperTipDef {
+interface HelperTipDef {
   id: string;
   faqId: string;
   title: string;
@@ -220,10 +220,6 @@ export function getHelperTip(id: string): HelperTipDef | undefined {
 
 export { getFaqById };
 export type { FaqEntry };
-
-export function helperTipFaqIds(): string[] {
-  return HELPER_TIPS.map((t) => t.faqId);
-}
 
 export function helperTipsHaveValidFaqs(): boolean {
   const ids = new Set(FAQ_ENTRIES.map((e) => e.id));

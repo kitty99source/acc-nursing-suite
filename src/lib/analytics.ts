@@ -22,7 +22,7 @@ export const ACTION_QUEUE_DISPLAY_CAP = 50;
 /** Max patient/claim groups on Compliance page before "Load more" (P1-007 / U-16). */
 export const COMPLIANCE_GROUP_DISPLAY_CAP = 50;
 
-export interface ApprovalComputed {
+interface ApprovalComputed {
   daysUntilExpiry: number;
   status: ApprovalStatus;
 }
@@ -36,7 +36,7 @@ export function computeApproval(approval: Approval, thresholdDays: number): Appr
   return { daysUntilExpiry: days, status };
 }
 
-export { isBillingApproval, isApprovalCurrent } from './approvals';
+export { isBillingApproval } from './approvals';
 
 /**
  * Active claims that require an NS04/NS05 approval but have no current one.
@@ -60,7 +60,7 @@ export function coverageGapClaims(data: AppData, idx?: DataIndexes): Claim[] {
   return result;
 }
 
-export interface BillingFunnel {
+interface BillingFunnel {
   awaitingBilling: { count: number; amount: number };
   billed: { count: number; amount: number };
   remittance: { count: number; amount: number };
@@ -99,7 +99,7 @@ export function staleRemittanceLines(data: AppData): InvoiceLine[] {
   });
 }
 
-export interface ManagementSummaryMetrics {
+interface ManagementSummaryMetrics {
   generatedAt: string;
   violations: number;
   warnings: number;
@@ -141,18 +141,13 @@ export function managementSummaryMetrics(data: AppData): ManagementSummaryMetric
 }
 
 /** Outstanding = invoiced but not (fully) paid. */
-export function outstandingAmount(inv: InvoiceLine): number {
+function outstandingAmount(inv: InvoiceLine): number {
   const invoiced = inv.amountInvoiced || 0;
   const paid = inv.amountPaid || 0;
   return Math.max(0, invoiced - paid);
 }
 
-export function isOutstanding(inv: InvoiceLine): boolean {
-  if (inv.status === 'Billed' && (inv.amountPaid ?? 0) >= (inv.amountInvoiced || 0)) return false;
-  return outstandingAmount(inv) > 0 || inv.status !== 'Billed';
-}
-
-export interface AgingBuckets {
+interface AgingBuckets {
   b0_30: number;
   b31_60: number;
   b61_90: number;
@@ -160,7 +155,7 @@ export interface AgingBuckets {
   total: number;
 }
 
-export function outstandingAging(data: AppData): AgingBuckets {
+function outstandingAging(data: AppData): AgingBuckets {
   const buckets: AgingBuckets = { b0_30: 0, b31_60: 0, b61_90: 0, b90plus: 0, total: 0 };
   const today = todayISO();
   for (const inv of data.invoiceLines) {
@@ -178,14 +173,14 @@ export function outstandingAging(data: AppData): AgingBuckets {
   return buckets;
 }
 
-export interface MonthlyPoint {
+interface MonthlyPoint {
   month: string;
   invoiced: number;
   paid: number;
 }
 
 /** Invoiced vs paid by month, for the most relevant year (defaults to current year). */
-export function invoicedVsPaidByMonth(data: AppData, year?: number): MonthlyPoint[] {
+function invoicedVsPaidByMonth(data: AppData, year?: number): MonthlyPoint[] {
   const targetYear = year ?? new Date().getFullYear();
   const points: MonthlyPoint[] = MONTH_NAMES.map((m) => ({ month: m, invoiced: 0, paid: 0 }));
   for (const inv of data.invoiceLines) {
@@ -201,13 +196,13 @@ export function invoicedVsPaidByMonth(data: AppData, year?: number): MonthlyPoin
   return points;
 }
 
-export interface RevenuePoint {
+interface RevenuePoint {
   group: RevenueGroup;
   invoiced: number;
   paid: number;
 }
 
-export function revenueByGroup(data: AppData): RevenuePoint[] {
+function revenueByGroup(data: AppData): RevenuePoint[] {
   const map = new Map<RevenueGroup, RevenuePoint>();
   const order: RevenueGroup[] = ['Packages (NS01-03)', 'NS04', 'NS05', 'NS06', 'Other'];
   for (const g of order) map.set(g, { group: g, invoiced: 0, paid: 0 });
@@ -220,7 +215,7 @@ export function revenueByGroup(data: AppData): RevenuePoint[] {
   return order.map((g) => map.get(g)!).filter((p) => p.invoiced > 0 || p.paid > 0 || p.group !== 'Other');
 }
 
-export interface YearSummaryRow {
+interface YearSummaryRow {
   month: string;
   packagesInvoiced: number;
   packagesPaid: number;
@@ -271,7 +266,7 @@ export function yearSummary(data: AppData, year?: number): YearSummaryRow[] {
   return rows;
 }
 
-export interface ActionItem {
+interface ActionItem {
   id: string;
   kind:
     | 'approval'
@@ -289,7 +284,7 @@ export interface ActionItem {
   claimId?: string;
 }
 
-export interface BuildActionQueueOptions {
+interface BuildActionQueueOptions {
   /** Pre-computed compliance findings (P1-002). */
   findings?: ComplianceFinding[];
   /** Defer billing-line scan for faster dashboard mount (P1-014). */
@@ -497,7 +492,7 @@ export function capActionQueueForDisplay(items: ActionItem[], cap = ACTION_QUEUE
   return items.slice(0, cap);
 }
 
-export interface DashboardMetrics {
+interface DashboardMetrics {
   expiringApprovals: { approval: Approval; computed: ApprovalComputed }[];
   coverageGaps: number;
   funnel: BillingFunnel;
@@ -513,7 +508,7 @@ export interface DashboardMetrics {
   outstandingTotal: number;
 }
 
-export interface MemoStats {
+interface MemoStats {
   total: number;
   unresolved: number;
   /** Memos created in the last 7 days (rolling window from `now`). */

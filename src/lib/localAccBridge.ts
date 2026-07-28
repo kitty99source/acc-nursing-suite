@@ -12,12 +12,12 @@ const INBOX_FILE_URL = '/_acc/inbox-file';
 const EMAIL_META_URL = '/_acc/email-meta';
 
 /** Cap hung `/_acc/staging` probes so UI can flip Connecting → Reconnecting quickly. */
-export const BRIDGE_PROBE_TIMEOUT_MS = 2500;
+const BRIDGE_PROBE_TIMEOUT_MS = 2500;
 
 /** Result of probing launch.ps1 `/_acc/staging` (folder-watch sidecar list). */
 export type StagingBridgeStatus = 'ok' | 'empty' | 'unavailable';
 
-export interface StagingBridgeProbe {
+interface StagingBridgeProbe {
   status: StagingBridgeStatus;
   sidecars: StagingSidecar[];
 }
@@ -93,7 +93,7 @@ export async function fetchInboxFileByHash(hash: string): Promise<File | undefin
   }
 }
 
-export interface EmailMetaResult {
+interface EmailMetaResult {
   emailDate: string;
   emailDateApprox: boolean;
 }
@@ -155,7 +155,7 @@ export async function fetchInboxFileForStaging(opts: {
 
 const FILE_TO_IDRIVE_URL = '/_acc/file-to-idrive';
 
-export interface FileToIDriveResult {
+interface FileToIDriveResult {
   ok: boolean;
   path?: string;
   error?: string;
@@ -196,4 +196,3 @@ export async function postFileToIDrive(input: {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
-

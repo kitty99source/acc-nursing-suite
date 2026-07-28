@@ -54,7 +54,7 @@ export function validateReferentialIntegrity(data: AppData): string[] {
   return warnings;
 }
 
-export interface BlobIntegrityReport {
+interface BlobIntegrityReport {
   metadataCount: number;
   blobCount: number;
   orphanBlobIds: string[];

@@ -146,7 +146,7 @@ export function parseInvoiceScheduleGrid(rows: Grid, invoiceSheet: string): Pars
 }
 
 /** Read an .xlsx buffer's first (or only-data) worksheet into a raw grid, preserving Date/number cells. */
-export async function xlsxToGrid(buffer: ArrayBuffer | Uint8Array): Promise<Grid> {
+async function xlsxToGrid(buffer: ArrayBuffer | Uint8Array): Promise<Grid> {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer as ArrayBuffer);
   const ws = wb.worksheets.find((s) => s.rowCount > 1) ?? wb.worksheets[0];

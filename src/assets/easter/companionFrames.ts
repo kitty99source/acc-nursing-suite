@@ -224,7 +224,7 @@ const ANNOYED_POSES: Pose[] = [
   { bob: -1, headY: 11, bodyRy: 6.6, eyes: 'angry', legs: NEUTRAL_LEGS, mark: false },
 ];
 
-export interface CompanionFrameSet {
+interface CompanionFrameSet {
   /** Bouncy walk cycle (used normally). */
   walk: string[];
   /** Calmer walk cycle (legs move, no vertical bounce) for reduced motion. */

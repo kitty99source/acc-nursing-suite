@@ -40,7 +40,7 @@ export function getComplianceSnapshot(): { findings: ComplianceFinding[]; hash: 
   return { findings: snapshotFindings, hash: snapshotHash };
 }
 
-export function clearComplianceSnapshot(): void {
+function clearComplianceSnapshot(): void {
   snapshotFindings = null;
   snapshotHash = '';
 }

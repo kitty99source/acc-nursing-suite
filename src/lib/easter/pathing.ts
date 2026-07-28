@@ -43,7 +43,7 @@ export interface Viewport {
 }
 
 /** Minimal rect shape (compatible with DOMRect). */
-export interface RectLike {
+interface RectLike {
   left: number;
   right: number;
   top: number;
@@ -249,7 +249,7 @@ export function nearestParamOn(seg: Segment, p: Point): number {
   return clamp01(((p.x - seg.x1) * dx + (p.y - seg.y1) * dy) / len2);
 }
 
-export interface StepResult {
+interface StepResult {
   /** New parameter along the segment, in [0,1]. */
   t: number;
   atEnd: boolean;

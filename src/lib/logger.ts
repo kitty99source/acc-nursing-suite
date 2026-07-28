@@ -1,8 +1,8 @@
 /** Local-only ring buffer for diagnostics export (P7-003). No network. */
 
-export type LogLevel = 'info' | 'warn' | 'error';
+type LogLevel = 'info' | 'warn' | 'error';
 
-export interface LogEntry {
+interface LogEntry {
   ts: number;
   level: LogLevel;
   message: string;

@@ -51,7 +51,7 @@ export const FIX_INTENT_ROUTES: Record<FixIntent['action'], FocusTarget> = {
 export type FindingSeverity = 'violation' | 'warning' | 'predictive';
 
 /** Codes that represent provider travel; only billable alongside NS05/NS07/NS20. */
-export const TRAVEL_CODES: ServiceCode[] = ['NSTD10', 'NSTT1', 'NSTT1D', 'NSAC'];
+const TRAVEL_CODES: ServiceCode[] = ['NSTD10', 'NSTT1', 'NSTT1D', 'NSAC'];
 
 /** A one-click, pre-filled remedy attached to a finding. */
 export interface FixIntent {
@@ -89,7 +89,7 @@ export interface ComplianceFinding {
   fix?: FixIntent;
 }
 
-export interface ComplianceRule {
+interface ComplianceRule {
   id: string;
   title: string;
   clauseRef: string;
@@ -244,7 +244,7 @@ function buildClaimIndex(claims: Claim[]): ClaimIndex {
 }
 
 /** Resolve the Claim an invoice line belongs to, if we can. */
-export function claimForInvoice(inv: InvoiceLine, index: ClaimIndex): Claim | undefined {
+function claimForInvoice(inv: InvoiceLine, index: ClaimIndex): Claim | undefined {
   return (
     index.byClaimNumber.get(norm(inv.claimNumber)) ||
     index.byAcc45.get(norm(inv.acc45Number)) ||
@@ -265,7 +265,7 @@ function invoiceGroupKey(inv: InvoiceLine, claim?: Claim): string {
 
 export type BillingState = 'waiting' | 'ready' | 'blocked-on-approval' | 'billed';
 
-export interface ClaimBillingInfo {
+interface ClaimBillingInfo {
   state: BillingState;
   reason: string;
 }
@@ -313,7 +313,7 @@ export function claimBillingState(
 // The engine.
 // ----------------------------------------------------------------------------
 
-export interface ComplianceSummary {
+interface ComplianceSummary {
   violations: number;
   warnings: number;
   predictive: number;

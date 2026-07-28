@@ -17,9 +17,9 @@
 
 import type { ApprovalServiceCode } from '../../../types';
 
-export type CorpusFormat = 'pdf' | 'docx';
+type CorpusFormat = 'pdf' | 'docx';
 
-export interface LetterCorpusExpectation {
+interface LetterCorpusExpectation {
   kind: 'approval' | 'decline';
   claimNumber: string;
   nhi?: string;
@@ -41,7 +41,7 @@ export interface LetterCorpusExpectation {
   expectNameMismatch?: boolean;
 }
 
-export interface LetterCorpusEntry {
+interface LetterCorpusEntry {
   id: string;
   /** File name inside src/lib/fixtures/letters/. */
   file: string;

@@ -14,15 +14,6 @@ export interface DataIndexes {
   invoicesByClaimKey: Map<string, InvoiceLine[]>;
 }
 
-function claimLookupKeys(claim: Claim): string[] {
-  const keys: string[] = [`claim:${claim.id}`];
-  const num = (claim.claimNumber || '').trim().toUpperCase();
-  const acc = (claim.acc45Number || '').trim().toUpperCase();
-  if (num) keys.push(`num:${num}`);
-  if (acc) keys.push(`acc:${acc}`);
-  return keys;
-}
-
 function invoiceClaimKey(inv: InvoiceLine, claim?: Claim): string {
   if (claim) return `claim:${claim.id}`;
   const num = (inv.claimNumber || '').trim().toUpperCase();
@@ -84,27 +75,4 @@ export function buildDataIndexes(data: AppData): DataIndexes {
     approvalsByClaimId,
     invoicesByClaimKey,
   };
-}
-
-/** Resolve a claim from an invoice line using pre-built indexes. */
-export function claimForInvoiceIndexed(inv: InvoiceLine, idx: DataIndexes): Claim | undefined {
-  const num = (inv.claimNumber || '').trim().toUpperCase();
-  const acc = (inv.acc45Number || '').trim().toUpperCase();
-  return (num && idx.claimsByNumber.get(num)) || (acc && idx.claimsByAcc45.get(acc)) || undefined;
-}
-
-export function invoicesForClaim(claim: Claim, idx: DataIndexes): InvoiceLine[] {
-  const out: InvoiceLine[] = [];
-  const seen = new Set<string>();
-  for (const key of claimLookupKeys(claim)) {
-    const lines = idx.invoicesByClaimKey.get(key);
-    if (!lines) continue;
-    for (const inv of lines) {
-      if (!seen.has(inv.id)) {
-        seen.add(inv.id);
-        out.push(inv);
-      }
-    }
-  }
-  return out;
 }

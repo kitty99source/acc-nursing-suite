@@ -25,7 +25,7 @@ import type { InvoiceLine } from '../types';
 // ---------------------------------------------------------------------------
 
 /** Split a single CSV line into fields, honouring double-quoted fields + "" escapes. */
-export function parseCsvLine(line: string): string[] {
+function parseCsvLine(line: string): string[] {
   const out: string[] = [];
   let field = '';
   let inQuotes = false;
@@ -100,7 +100,7 @@ export function parseAmount(raw: string | number | undefined): number {
  * app still replicates), so day 1 = 1900-01-01 in the UI but the correct anchor to compute from is
  * 1899-12-30 in UTC millis.
  */
-export function excelSerialToISO(serial: number): string | undefined {
+function excelSerialToISO(serial: number): string | undefined {
   if (!Number.isFinite(serial) || serial <= 0) return undefined;
   const ms = Math.round((serial - 25569) * 86400 * 1000); // 25569 = days between 1899-12-30 and 1970-01-01
   const d = new Date(ms);
@@ -201,7 +201,7 @@ export interface RemittanceImportSummary {
   unmatched: { claimNumber: string; clientName?: string; amountPaid: number }[];
 }
 
-export interface BillingReconcileSummary {
+interface BillingReconcileSummary {
   invoicedTotal: number;
   paidTotal: number;
   outstandingTotal: number;

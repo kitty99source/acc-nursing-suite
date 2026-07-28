@@ -5,9 +5,9 @@ import type { ServiceCode, Settings } from '../types';
 // All dollar values are EXCLUSIVE of GST.
 // ============================================================================
 
-export type RateBasis = 'package' | 'consult' | 'hour' | 'km' | 'night' | 'actual';
+type RateBasis = 'package' | 'consult' | 'hour' | 'km' | 'night' | 'actual';
 
-export interface ServiceCodeInfo {
+interface ServiceCodeInfo {
   code: ServiceCode;
   name: string;
   rate: number; // dollars excl GST; 0 means "actual cost"

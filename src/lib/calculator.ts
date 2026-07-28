@@ -8,14 +8,14 @@ import {
 } from './serviceCodes';
 
 /** Optional map of code -> rate (dollars excl GST). Defaults to the built-in schedule. */
-export type RateMap = Record<ServiceCode, number>;
+type RateMap = Record<ServiceCode, number>;
 
 // ============================================================================
 // Pure package-calculator engine for ACC District Nursing packages of care.
 // No I/O, no dates from "now()" — fully deterministic for unit testing.
 // ============================================================================
 
-export type PrimaryPackage = 'NS01' | 'NS02' | 'NS03';
+type PrimaryPackage = 'NS01' | 'NS02' | 'NS03';
 
 export interface PackageInput {
   day1: string; // ISO date
@@ -24,7 +24,7 @@ export interface PackageInput {
   interruptions?: Interruption[];
 }
 
-export interface PackageDetermination {
+interface PackageDetermination {
   /** Recommended billing code(s), e.g. ['NS02'] or ['NS03', 'NS04']. */
   recommendedCodes: ServiceCode[];
   primaryPackage: PrimaryPackage;
@@ -78,7 +78,7 @@ function packageName(pkg: PrimaryPackage): string {
   return SERVICE_CODES[pkg].name;
 }
 
-export const PACKAGE_COMPLETION_REMINDER =
+const PACKAGE_COMPLETION_REMINDER =
   'Reminder: packages of care are invoiced only AFTER the package is completed.';
 
 /**
@@ -195,7 +195,7 @@ export function effectivePackageValue(
   return rate;
 }
 
-export interface SubsequentReclassification extends PackageDetermination {
+interface SubsequentReclassification extends PackageDetermination {
   newDay1: string;
   note: string;
 }
@@ -231,7 +231,7 @@ export function reclassifySubsequentInjury(
   };
 }
 
-export interface NS06Watch {
+interface NS06Watch {
   count: number;
   approaching: boolean;
   exceeded: boolean;

@@ -12,14 +12,14 @@ import { normalizeNhi } from './validation';
 // findDuplicateApprovalsByPO pattern).
 // ============================================================================
 
-export type PatientMatchKind = 'nhi' | 'name-dob';
+type PatientMatchKind = 'nhi' | 'name-dob';
 
-export interface PatientMatch {
+interface PatientMatch {
   patient: Patient;
   kind: PatientMatchKind;
 }
 
-export interface DuplicatePatientGroup {
+interface DuplicatePatientGroup {
   /** Grouping key: `nhi:…` or `name-dob:…`. */
   key: string;
   kind: PatientMatchKind;
@@ -31,7 +31,7 @@ export interface DuplicatePatientGroup {
   redundant: Patient[];
 }
 
-export interface PatientCandidate {
+interface PatientCandidate {
   name?: string;
   nhi?: string;
   dob?: string;

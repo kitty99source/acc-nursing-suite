@@ -25,7 +25,7 @@ export function isApprovalCurrent(approval: Approval): boolean {
 // a distinct, legitimate renewal that must never be touched.
 // ============================================================================
 
-export interface DuplicateApprovalGroup {
+interface DuplicateApprovalGroup {
   /** Grouping key: normalized patient identity + service code + PO number. */
   key: string;
   patientId: string;

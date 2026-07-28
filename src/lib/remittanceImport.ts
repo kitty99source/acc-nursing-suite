@@ -215,7 +215,7 @@ function parseFlatRemittanceGrid(rows: Grid): ParsedRemittanceLine[] | null {
 }
 
 /** Read an .xlsx buffer's first worksheet into a grid (reuses the same cell-shape ExcelJS already gives us). */
-export async function xlsxToRemittanceGrid(buffer: ArrayBuffer | Uint8Array): Promise<Grid> {
+async function xlsxToRemittanceGrid(buffer: ArrayBuffer | Uint8Array): Promise<Grid> {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer as ArrayBuffer);
   const ws = wb.worksheets[0];

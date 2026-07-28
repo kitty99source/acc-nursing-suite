@@ -464,7 +464,7 @@ async function ocrPdfPages(
 }
 
 /** True for .docx (Office Open XML). Legacy .doc is not supported — save as .docx first. */
-export function isWordDocument(file: Blob & { name?: string }): boolean {
+function isWordDocument(file: Blob & { name?: string }): boolean {
   const name = (file instanceof File ? file.name : file.name ?? '').toLowerCase();
   return (
     name.endsWith('.docx') ||
@@ -472,7 +472,7 @@ export function isWordDocument(file: Blob & { name?: string }): boolean {
   );
 }
 
-export function isPdfDocument(file: Blob & { name?: string }): boolean {
+function isPdfDocument(file: Blob & { name?: string }): boolean {
   const name = (file instanceof File ? file.name : file.name ?? '').toLowerCase();
   return file.type === 'application/pdf' || name.endsWith('.pdf');
 }
@@ -485,7 +485,7 @@ export function isPdfDocument(file: Blob & { name?: string }): boolean {
  * path synchronous-equivalent while still correctly classifying a
  * correctly-byte'd-but-mis-named/mis-typed file.
  */
-export async function detectDocumentKind(
+async function detectDocumentKind(
   file: Blob & { name?: string },
 ): Promise<'pdf' | 'word' | 'unknown'> {
   if (isPdfDocument(file)) return 'pdf';
@@ -496,7 +496,7 @@ export async function detectDocumentKind(
   return 'unknown';
 }
 
-export async function extractLetterText(
+async function extractLetterText(
   input: Blob | ArrayBuffer | Uint8Array,
   onProgress?: LetterImportProgressHandler,
 ): Promise<{ text: string; usedOcr: boolean }> {
@@ -563,7 +563,7 @@ const MONTHS: Record<string, string> = {
 };
 
 /** Parse DD/MM/YYYY or "18 June 2026" → ISO date. */
-export function parseAccDate(raw?: string): string | undefined {
+function parseAccDate(raw?: string): string | undefined {
   if (!raw) return undefined;
   const s = raw.trim();
   const slash = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -670,7 +670,7 @@ export function sniffDocumentKindFromFileName(fileName: string): DocumentKind | 
   return null;
 }
 
-export function normalizeFileNameForCompare(fileName: string): string {
+function normalizeFileNameForCompare(fileName: string): string {
   return fileName.trim().toLowerCase();
 }
 
@@ -1011,7 +1011,7 @@ export function assignRecordStatus(rows: ParsedServiceRow[]): ParsedServiceRow[]
 }
 
 /** Label prefix used everywhere NS03/package rows are filed as history. */
-export const HISTORIC_PACKAGE_LABEL = 'NS03 — historic, no billing';
+const HISTORIC_PACKAGE_LABEL = 'NS03 — historic, no billing';
 
 /**
  * One-line, human-readable summary of NS01–NS03 package rows for the document

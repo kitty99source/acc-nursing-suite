@@ -3,12 +3,12 @@ import { useStore } from '../state/store';
 import type { prefillFromParsed } from '../lib/letterImport';
 import type { LetterImportContext } from '../lib/letterImport';
 
-export const LETTER_IMPORT_LABEL = 'Import ACC letter (PDF or Word)';
+const LETTER_IMPORT_LABEL = 'Import ACC letter (PDF or Word)';
 export const LETTER_IMPORT_ACCEPT =
   '.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 export const PREFILL_FROM_LETTER_LABEL = 'Prefill from letter';
 /** Bordered accent style — use for every ACC letter import entry point. */
-export const LETTER_IMPORT_BTN_CLASS = 'btn btn-outline btn-sm';
+const LETTER_IMPORT_BTN_CLASS = 'btn btn-outline btn-sm';
 
 export type LetterImportEntryPoint =
   | 'approvals'

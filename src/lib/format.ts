@@ -69,12 +69,6 @@ export function yearOf(iso?: string): number {
   return new Date(ms).getUTCFullYear();
 }
 
-export function isValidISODate(iso?: string): boolean {
-  if (!iso) return false;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false;
-  return !Number.isNaN(Date.parse(iso + 'T00:00:00Z'));
-}
-
 export const MONTH_NAMES = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',

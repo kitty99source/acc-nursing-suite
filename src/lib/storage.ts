@@ -11,7 +11,7 @@ import { assertNotDowngrade, migrateAppData, LATEST_FILE_VERSION } from './migra
 
 export const FILE_FORMAT = 'accdata';
 export const FILE_VERSION = LATEST_FILE_VERSION;
-export const FILE_EXTENSION = '.accdata';
+const FILE_EXTENSION = '.accdata';
 
 interface PlainEnvelope {
   format: typeof FILE_FORMAT;
@@ -130,8 +130,6 @@ function applyFileMigrations(data: AppData, fileVersion: number): AppData {
     fileVersion < FILE_VERSION ? migrateAppData(data, fileVersion, FILE_VERSION) : normalizeData(data);
   return normalizeData({ ...migrated, schemaVersion: SCHEMA_VERSION });
 }
-
-export { validateReferentialIntegrity } from './integrity';
 
 /** Parse file text into AppData. Throws PassphraseRequiredError / WrongPassphraseError. */
 export async function deserialize(text: string, passphrase?: string): Promise<AppData> {

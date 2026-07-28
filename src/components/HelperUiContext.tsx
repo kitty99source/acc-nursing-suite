@@ -1,6 +1,6 @@
 import { createContext, useContext, type ReactNode } from 'react';
 
-export interface HelperUiApi {
+interface HelperUiApi {
   /** Open Help Center on the FAQ tab, focused on this entry when possible. */
   openFaq: (faqId: string) => void;
   /** Open Help Center (guide or faq). */

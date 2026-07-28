@@ -608,12 +608,12 @@ function buildCustomSheets(wb: ExcelJS.Workbook, data: AppData) {
   }
 }
 
-export interface WorkbookBuildProgress {
+interface WorkbookBuildProgress {
   stage: string;
   pct: number;
 }
 
-export interface BuildWorkbookOptions {
+interface BuildWorkbookOptions {
   onProgress?: (p: WorkbookBuildProgress) => void;
 }
 

@@ -8,9 +8,9 @@
 // warn → danger so the operator sees the oldest work breaching first.
 // ============================================================================
 
-export type SlaLevel = 'ok' | 'warn' | 'danger';
+type SlaLevel = 'ok' | 'warn' | 'danger';
 
-export interface SlaConfig {
+interface SlaConfig {
   /** Hours until an unreviewed item breaches SLA and escalates to danger. */
   dangerHours: number;
   /** Hours until an item escalates from ok → warn (must be < dangerHours). */
@@ -29,7 +29,7 @@ function resolveConfig(config: Partial<SlaConfig> = {}): SlaConfig {
   return { dangerHours, warnHours: Math.min(warnHours, dangerHours) };
 }
 
-export interface SlaStatus {
+interface SlaStatus {
   level: SlaLevel;
   /** Whole-and-fractional hours the item has been waiting (never negative). */
   ageHours: number;
@@ -74,7 +74,7 @@ export function hrqSlaLabel(status: SlaStatus): string {
   return `Due in ${left}h`;
 }
 
-export interface QueueSlaSummary {
+interface QueueSlaSummary {
   ok: number;
   warn: number;
   danger: number;

@@ -19,13 +19,13 @@ export type SyncRefreshPhase =
   | 'error'
   | 'stopped';
 
-export const SYNC_REFRESH_POLL_MS = 2_000;
+const SYNC_REFRESH_POLL_MS = 2_000;
 /** After POST, how long to wait for a new lastRunAt (sync actually started). */
-export const SYNC_REFRESH_START_TIMEOUT_MS = 45_000;
+const SYNC_REFRESH_START_TIMEOUT_MS = 45_000;
 /** Once a run is underway, max wait for outcome to leave "running". */
-export const SYNC_REFRESH_RUNNING_TIMEOUT_MS = 8 * 60_000;
+const SYNC_REFRESH_RUNNING_TIMEOUT_MS = 8 * 60_000;
 /** On load (no trigger), do not hang forever on a stale outcome=running report. */
-export const SYNC_REFRESH_STALE_RUNNING_MS = 90_000;
+const SYNC_REFRESH_STALE_RUNNING_MS = 90_000;
 export const LOCAL_EMAIL_SYNC_TRIGGER_URL = '/_acc/email-sync';
 
 export function formatElapsedMs(ms: number): string {
@@ -68,7 +68,7 @@ export function syncRefreshStatusText(
   }
 }
 
-export interface TriggerEmailSyncResult {
+interface TriggerEmailSyncResult {
   ok: boolean;
   queued?: boolean;
   started?: boolean;
@@ -102,7 +102,7 @@ export async function triggerEmailSync(opts?: {
   }
 }
 
-export interface RefreshEmailSyncResult {
+interface RefreshEmailSyncResult {
   status: EmailSyncStatus | null;
   phase: SyncRefreshPhase;
   cancelled: boolean;

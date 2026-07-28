@@ -10,7 +10,7 @@ import { SPRITE_SVGS, svgToDataUrl, type SpriteName } from '../../assets/easter/
  * Chromium rejects cursor images wider than 128px and prefers <=32px.
  */
 
-export interface CursorOption {
+interface CursorOption {
   value: CursorStyle;
   label: string;
   /** Sprite used for the swatch/preview (undefined for the OS default). */
@@ -38,7 +38,7 @@ const HOTSPOTS: Record<SpriteName, [number, number]> = {
 const STYLE_ELEMENT_ID = 'easter-cursor-style';
 
 /** Build the CSS `cursor` value (exported for testing / reuse). */
-export function cursorCssValue(style: CursorStyle): string | null {
+function cursorCssValue(style: CursorStyle): string | null {
   if (style === 'default') return null;
   const sprite = style as SpriteName;
   const url = svgToDataUrl(SPRITE_SVGS[sprite]);

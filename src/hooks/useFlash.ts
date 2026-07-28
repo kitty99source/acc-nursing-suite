@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
 
-export type FlashTone = 'good' | 'danger' | 'warn';
+type FlashTone = 'good' | 'danger' | 'warn';
 
-export interface FlashMessage {
+interface FlashMessage {
   text: string;
   tone: FlashTone;
 }

@@ -127,7 +127,7 @@ export function assertTransition(from: CaseStage, to: CaseStage): void {
 // Case transitions (pure mutator + event append)
 // ---------------------------------------------------------------------------
 
-export interface CaseTransitionInput {
+interface CaseTransitionInput {
   kind: CaseEventKind;
   note?: string;
   documentId?: string;
@@ -140,7 +140,7 @@ export interface CaseTransitionInput {
   accFollowUpWorkingDays?: number;
 }
 
-export interface CaseTransitionResult {
+interface CaseTransitionResult {
   claim: Claim;
   event: CaseEvent;
 }

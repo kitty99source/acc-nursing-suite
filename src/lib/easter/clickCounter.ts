@@ -9,7 +9,7 @@ export interface ClickBurstState {
   timestamps: number[];
 }
 
-export interface ClickBurstConfig {
+interface ClickBurstConfig {
   /** Number of clicks required to fire (e.g. 3 for triple-click). */
   threshold: number;
   /** Rolling window in ms within which the clicks must occur. */
@@ -20,7 +20,7 @@ export function emptyClickBurst(): ClickBurstState {
   return { timestamps: [] };
 }
 
-export interface ClickBurstResult {
+interface ClickBurstResult {
   /** Next state to carry forward. */
   state: ClickBurstState;
   /** True on the click that completes the burst. Resets the window when true. */

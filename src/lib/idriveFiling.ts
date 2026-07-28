@@ -15,7 +15,7 @@ import { adminIDriveTopFolderForKind } from './reviewQueueCategories';
 import { todayISO } from './format';
 
 export const DEFAULT_IDRIVE_ROOT = 'I:\\ACC\\District Nursing';
-export const DEFAULT_IDRIVE_STAGING_SUBFOLDER = '_Staging';
+const DEFAULT_IDRIVE_STAGING_SUBFOLDER = '_Staging';
 
 const MONTH_NAMES = [
   'January',
@@ -32,7 +32,7 @@ const MONTH_NAMES = [
   'December',
 ] as const;
 
-export interface AdminIDriveFilingInput {
+interface AdminIDriveFilingInput {
   patientName: string;
   claimNumber?: string;
   /** ISO date (YYYY-MM-DD) for year/month folders; defaults to today. */
@@ -45,7 +45,7 @@ export interface AdminIDriveFilingInput {
   documentKind?: DocumentKind;
 }
 
-export interface AdminIDriveFilingPath {
+interface AdminIDriveFilingPath {
   /** Path relative to Settings.iDriveRootPath, using backslashes (Windows). */
   relativePath: string;
   patientFolder: string;
@@ -53,7 +53,7 @@ export interface AdminIDriveFilingPath {
 }
 
 /** Strip characters illegal in Windows paths. */
-export function sanitisePathSegment(raw: string, fallback = '_'): string {
+function sanitisePathSegment(raw: string, fallback = '_'): string {
   const cleaned = raw
     .replace(/[<>:"/\\|?*\u0000-\u001f]/g, ' ')
     .replace(/\s+/g, ' ')
@@ -83,7 +83,7 @@ function fileExtension(sourceFileName?: string): string {
   return '.pdf';
 }
 
-export function yearMonthFromIso(iso: string | undefined): { year: string; monthName: string } {
+function yearMonthFromIso(iso: string | undefined): { year: string; monthName: string } {
   const raw = (iso ?? '').trim().slice(0, 10);
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
   if (match) {

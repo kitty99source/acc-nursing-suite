@@ -4,8 +4,8 @@ import { parseSubjectMetadata } from './accInboxFilters';
 
 export const EMAIL_SYNC_STATUS_VERSION = 1;
 
-export const EMAIL_SYNC_STATUS_FILENAME = 'email-sync-status.json';
-export const EMAIL_SYNC_STATE_FILENAME = 'email-sync-state.json';
+const EMAIL_SYNC_STATUS_FILENAME = 'email-sync-status.json';
+const EMAIL_SYNC_STATE_FILENAME = 'email-sync-state.json';
 
 /** Typical path on work laptop (ACC Inbox UI hint). */
 export const EMAIL_SYNC_STATUS_HINT_PATH = '%USERPROFILE%\\ACC-Suite\\email-sync-status.json';
@@ -153,7 +153,7 @@ export async function fetchLocalEmailSyncStatus(opts?: {
   }
 }
 
-export interface InboxEmptyStateCopy {
+interface InboxEmptyStateCopy {
   title: string;
   message: string;
 }

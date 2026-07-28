@@ -37,7 +37,7 @@ export interface LetterCommitFormFields {
   selectedClaimId: string;
 }
 
-export interface LetterCommitDeps {
+interface LetterCommitDeps {
   commitParsedApproval: (
     parsed: ParsedApprovalLetter,
     file: File,

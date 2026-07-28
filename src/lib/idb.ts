@@ -355,7 +355,7 @@ export async function saveImportHistory(entries: import('../types').ImportHistor
   return idbSet(IMPORT_HISTORY_KEY, entries);
 }
 
-export interface ComplianceSnapshotRecord {
+interface ComplianceSnapshotRecord {
   hash: string;
   findings: import('./compliance').ComplianceFinding[];
   savedAt: number;
@@ -382,7 +382,7 @@ export async function saveStagingQueue(items: import('./staging').StagingItem[])
 // Excel import rollback snapshot (P3-005) — one pre-import copy for undo.
 // ----------------------------------------------------------------------------
 
-export interface ExcelImportSnapshot {
+interface ExcelImportSnapshot {
   savedAt: number;
   dataJson: string;
 }

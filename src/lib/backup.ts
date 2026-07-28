@@ -12,12 +12,12 @@ import { hashBlob, sha256Text } from './crypto';
 
 const MANIFEST_FORMAT = { format: 'accdata-backup', version: 1 } as const;
 
-export interface BackupBlobChecksum {
+interface BackupBlobChecksum {
   sizeBytes: number;
   sha256: string;
 }
 
-export interface BackupManifest {
+interface BackupManifest {
   format: 'accdata-backup';
   version: number;
   documentMetadataCount: number;
@@ -64,7 +64,7 @@ export async function buildBackupZip(
   return zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
 }
 
-export interface BackupContents {
+interface BackupContents {
   data: AppData;
   blobs: Map<string, Blob>;
 }

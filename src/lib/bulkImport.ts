@@ -25,7 +25,7 @@ import type { StagingItem } from './staging';
 /** Minimum parser confidence for an item to auto-commit in a bulk run. */
 export const BULK_MIN_CONFIDENCE = HRQ_BATCH_MIN_CONFIDENCE;
 
-export type BulkSkipReason =
+type BulkSkipReason =
   | 'file-not-found'
   | 'unreadable'
   | 'unrecognised'
@@ -33,7 +33,7 @@ export type BulkSkipReason =
   | 'needs-fix'
   | 'no-match';
 
-export interface BulkQualifyResult {
+interface BulkQualifyResult {
   eligible: boolean;
   reason?: BulkSkipReason;
   detail: string;
@@ -89,7 +89,7 @@ export function qualifyForBulk(result: LetterParseResult | null): BulkQualifyRes
   return { eligible: true, detail: 'High confidence and matched to an existing patient/claim.' };
 }
 
-export interface BulkCommitDeps {
+interface BulkCommitDeps {
   /** Return the letter File for a staged item, or undefined if bytes unavailable. */
   resolveFile: (item: StagingItem) => Promise<File | undefined>;
   /** Parse a letter file (store.parseLetterFile — runs match + scoring). */
@@ -119,7 +119,7 @@ export interface BulkCommitDeps {
   ) => Promise<{ patientId: string; claimId: string }>;
 }
 
-export interface BulkImportOutcome {
+interface BulkImportOutcome {
   stagingId: string;
   title: string;
   committed: boolean;

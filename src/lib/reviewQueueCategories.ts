@@ -44,7 +44,7 @@ export const REVIEW_SERVICE_LABEL: Record<ReviewServiceCategory, string> = {
 export const DEFAULT_REVIEW_MAIL_KIND_FILTER: ReviewMailKind | 'all' = 'acc-approval-letter';
 export const DEFAULT_REVIEW_SERVICE_FILTER: ReviewServiceCategory | 'all' = 'all';
 
-export interface ReviewCategoryHints {
+interface ReviewCategoryHints {
   /** Loose parse preview when available (cached or on-item). */
   serviceRows?: ParsedServiceRow[];
   /** Parsed letter kind from letterImport / staging preview. */

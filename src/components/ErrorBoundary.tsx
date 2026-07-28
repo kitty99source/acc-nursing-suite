@@ -1,7 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { downloadText } from '../lib/storage';
 
-export interface ErrorReport {
+interface ErrorReport {
   message: string;
   stack?: string;
   componentStack?: string;

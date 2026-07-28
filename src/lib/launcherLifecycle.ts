@@ -17,7 +17,7 @@ export const LAUNCHER_GOODBYE_URL = '/_acc/goodbye';
 export const LAUNCHER_CLIENT_ID_KEY = 'acc-adminsuite-launcher-client-id';
 
 /** Default heartbeat interval (server stale timeout is ~60s). */
-export const LAUNCHER_HEARTBEAT_INTERVAL_MS = 15_000;
+const LAUNCHER_HEARTBEAT_INTERVAL_MS = 15_000;
 
 export function buildLauncherClientUrl(base: string, clientId: string): string {
   const id = clientId.trim();
@@ -92,7 +92,7 @@ export function signalLauncherGoodbye(clientId: string): void {
   }
 }
 
-export interface LauncherLifecycleHandle {
+interface LauncherLifecycleHandle {
   clientId: string;
   stop: () => void;
 }

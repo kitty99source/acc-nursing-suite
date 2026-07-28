@@ -18,7 +18,7 @@
 // for unknown / free-text reasons.
 // ============================================================================
 
-export interface ReasonCodeInfo {
+interface ReasonCodeInfo {
   code: string;
   /** Short label for the badge / table cell. */
   label: string;
@@ -29,7 +29,7 @@ export interface ReasonCodeInfo {
 }
 
 /** The documented ACC payment-problem reason codes. Keyed by upper-case code. */
-export const REASON_CODES: Record<string, ReasonCodeInfo> = {
+const REASON_CODES: Record<string, ReasonCodeInfo> = {
   '12M': {
     code: '12M',
     label: 'Older than 12 months',

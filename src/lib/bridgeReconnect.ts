@@ -18,7 +18,7 @@ export function nextBridgePollIntervalMs(status: StagingBridgeStatus | null | un
   return status === 'unavailable' || status == null ? BRIDGE_POLL_RECONNECT_MS : BRIDGE_POLL_HEALTHY_MS;
 }
 
-export type BridgeBannerPhase = 'connecting' | 'reconnecting';
+type BridgeBannerPhase = 'connecting' | 'reconnecting';
 
 /** Live banner while status is unknown (null) or known-down. Hide when ok/empty. */
 export function bridgeBannerPhase(
@@ -29,7 +29,7 @@ export function bridgeBannerPhase(
   return null;
 }
 
-export interface BridgeUnavailableCopy {
+interface BridgeUnavailableCopy {
   title: string;
   body: string;
 }

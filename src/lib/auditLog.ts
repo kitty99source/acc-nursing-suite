@@ -44,7 +44,7 @@ export async function clearAuditLog(): Promise<void> {
 // stamped by appendAudit; the rest is captured here.
 // ============================================================================
 
-export type HrqResolutionAction =
+type HrqResolutionAction =
   | 'hrq-sign-off'
   | 'hrq-batch-sign-off'
   | 'hrq-reject'
@@ -52,7 +52,7 @@ export type HrqResolutionAction =
   | 'hrq-restore'
   | 'hrq-auto-accept';
 
-export interface HrqResolutionInput {
+interface HrqResolutionInput {
   action: HrqResolutionAction;
   /** Staging item id being resolved. */
   stagingItemId: string;

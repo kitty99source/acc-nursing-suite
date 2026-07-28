@@ -1,7 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { useStore } from '../state/store';
 import { IconSave, IconFolder, IconLock, IconHelp } from './icons';
-import { formatDate } from '../lib/format';
 import { readFileAsText, PassphraseRequiredError, WrongPassphraseError } from '../lib/storage';
 import { Modal } from './Modal';
 import { HelperTip } from './HelperTip';
@@ -466,8 +465,4 @@ export function TopBar({
       </Modal>
     </header>
   );
-}
-
-export function lastSavedLabel(ts?: number): string {
-  return ts ? formatDate(new Date(ts).toISOString().slice(0, 10)) : '';
 }

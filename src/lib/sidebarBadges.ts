@@ -12,7 +12,7 @@ import {
 import { findDuplicatePatientGroups } from './patients';
 import type { ModuleId } from '../components/Sidebar';
 
-export interface SidebarBadgeSpec {
+interface SidebarBadgeSpec {
   count: number;
   /** Short visible label (e.g. "3 review") — not a bare number alone. */
   label: string;

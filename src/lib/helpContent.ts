@@ -4,7 +4,7 @@
 // Office-safe only — no patient/PHI examples.
 // ============================================================================
 
-export interface GuideSection {
+interface GuideSection {
   id: string;
   title: string;
   body: string;

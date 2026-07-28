@@ -47,7 +47,7 @@ export interface StagingParsedPreview {
   ambiguous?: boolean;
 }
 
-export interface BatchCommitDeps {
+interface BatchCommitDeps {
   commitParsedApproval: (
     parsed: import('./letterImport').ParsedApprovalLetter,
     file: File,
@@ -96,7 +96,7 @@ export function isBatchApprovable(item: StagingItem): boolean {
   return isStagingParsedPreview(item.parsedPreview);
 }
 
-export function stagingPatientName(item: StagingItem): string {
+function stagingPatientName(item: StagingItem): string {
   const preview = item.parsedPreview;
   if (isStagingParsedPreview(preview)) return preview.patientName.trim();
   return item.title;
@@ -187,7 +187,7 @@ export async function commitBatchStagingItems(
 // ============================================================================
 
 /** Confidence required for silent auto-accept — anything less always needs a human. */
-export const AUTO_ACCEPT_MIN_CONFIDENCE = 100;
+const AUTO_ACCEPT_MIN_CONFIDENCE = 100;
 
 /**
  * Pure eligibility check against a parsed preview alone (no StagingItem
@@ -220,7 +220,7 @@ export function isAutoAcceptEligible(item: StagingItem): boolean {
   return item.autoAcceptEligible === true;
 }
 
-export interface AutoAcceptDeps extends BatchCommitDeps {
+interface AutoAcceptDeps extends BatchCommitDeps {
   /**
    * Resolve the full parsed preview for an eligible item at commit time.
    * `StagingItem` only carries the lightweight `autoAcceptEligible` flag
@@ -270,14 +270,14 @@ export async function commitAutoAcceptItem(
   });
 }
 
-export interface AutoAcceptProgress {
+interface AutoAcceptProgress {
   /** 1-based index of the item currently being committed. */
   index: number;
   total: number;
   item: StagingItem;
 }
 
-export interface AutoAcceptOutcome {
+interface AutoAcceptOutcome {
   stagingId: string;
   title: string;
   ok: boolean;

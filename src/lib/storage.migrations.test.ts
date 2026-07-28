@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { deserialize, serialize, FILE_FORMAT } from './storage';
-import { DEFAULT_SETTINGS } from '../types';
+import { DEFAULT_SETTINGS } from './defaultSettings';
 import type { AppData } from '../types';
 
 function v1Envelope(): string {

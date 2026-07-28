@@ -7,19 +7,9 @@
 // Surfaced via MailReferenceBanner as an assumption (the sheet may have aged).
 // ============================================================================
 
-export interface MailReferenceEntry {
-  id: string;
-  /** Form code or short key, e.g. "ACC45", "ARTP". */
-  formCode: string;
-  /** Human label (often same as formCode, or a longer name for non-code items). */
-  label: string;
-  /** What to do with this form (save/lodge/hand off). */
-  instructions: string;
-  /** Primary email destination, when the sheet specifies one. */
-  email?: string;
-  /** CC address, when the sheet specifies one. */
-  ccEmail?: string;
-}
+import type { MailReferenceEntry } from '../types';
+
+export type { MailReferenceEntry };
 
 /**
  * Default rows from Mail Reference Sheet 2024.pdf. Entries with no email are

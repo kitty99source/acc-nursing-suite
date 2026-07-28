@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { AppData, InvoiceLine } from '../types';
-import { DEFAULT_SETTINGS, SCHEMA_VERSION } from '../types';
+import { SCHEMA_VERSION } from '../types';
+import { DEFAULT_SETTINGS } from './defaultSettings';
 import { runCompliance, claimBillingState, orphanFixIntents, COMPLIANCE_RULES_VERSION, FIX_INTENT_ROUTES } from './compliance';
 import { sampleData } from './sampleData';
 import { effectivePackageValue, determinePackage } from './calculator';

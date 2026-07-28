@@ -5,7 +5,7 @@
 
 import type { ParsedLetter, ParsedServiceRow } from './letterImport';
 import { assignRecordStatus } from './letterImport';
-import type { StagingItem } from './staging';
+import type { StagingItem } from './stagingTypes';
 
 /** Minimum parser confidence for batch approve (still requires name-list confirm). */
 export const HRQ_BATCH_MIN_CONFIDENCE = 90;

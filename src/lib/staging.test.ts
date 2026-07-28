@@ -23,17 +23,8 @@ vi.mock('./idb', () => ({
   saveStagingQueue: vi.fn(async () => {}),
   loadDismissedStaging: vi.fn(async () => []),
   saveDismissedStaging: vi.fn(async () => {}),
-}));
-
-vi.mock('./letterCache', () => ({
-  putCachedLetterBlob: vi.fn(async () => {}),
-  getCachedLetterParse: vi.fn(async () => undefined),
-  base64ToBlob: vi.fn((base64: string, mime: string) => {
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return new Blob([bytes], { type: mime });
-  }),
+  saveLetterBlob: vi.fn(async () => {}),
+  loadLetterParse: vi.fn(async () => undefined),
 }));
 
 import {
@@ -41,8 +32,8 @@ import {
   saveStagingQueue,
   loadDismissedStaging,
   saveDismissedStaging,
+  saveLetterBlob,
 } from './idb';
-import { putCachedLetterBlob } from './letterCache';
 
 describe('staging', () => {
   beforeEach(() => {
@@ -216,7 +207,7 @@ describe('staging', () => {
       },
     ]);
     expect(added).toBe(1);
-    expect(putCachedLetterBlob).toHaveBeenCalledWith(
+    expect(saveLetterBlob).toHaveBeenCalledWith(
       hash,
       expect.objectContaining({ type: 'application/pdf' }),
     );

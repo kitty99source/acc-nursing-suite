@@ -1,5 +1,6 @@
 import type { AppData } from '../types';
-import { DEFAULT_SETTINGS, SCHEMA_VERSION } from '../types';
+import { SCHEMA_VERSION } from '../types';
+import { DEFAULT_SETTINGS } from './defaultSettings';
 import { DEFAULT_RATES } from './serviceCodes';
 import { encryptString, decryptString, type EncryptedPayload } from './crypto';
 import { assertNotDowngrade, migrateAppData, LATEST_FILE_VERSION } from './migrations';

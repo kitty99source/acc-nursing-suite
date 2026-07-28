@@ -1,0 +1,62 @@
+// Runtime defaults for Settings. Kept out of types/index.ts so that file stays
+// types-only (P2-04 — no runtime imports, no types ↔ serviceCodes / mailReference cycle).
+
+import type { Settings } from '../types';
+import { ALL_SERVICE_CODES, DEFAULT_RATES } from './serviceCodes';
+import { DEFAULT_MAIL_REFERENCE_ENTRIES } from './mailReference';
+
+export const DEFAULT_SETTINGS: Settings = {
+  theme: 'clinical-light',
+  accentColor: '#2f8f83',
+  densityMode: 'comfortable',
+  fontScale: 1,
+  expiryThresholdDays: 30,
+  idleLockMinutes: 15,
+  encryptionEnabled: false,
+  productionMode: true,
+  letterImportAutoCommit: false,
+  backupReminderDays: 7,
+  remittanceStaleDays: 60,
+  nurseFollowUpDays: 7,
+  accFollowUpWorkingDays: 10,
+  caseWorkflowBannerDismissed: false,
+  duplicatePatientsBannerDismissed: false,
+  complianceRulesVersion: '2025-03',
+  userDisplayName: '',
+  automationPaused: false,
+  accInboxSenderAllowlist: [
+    'Sample.Staffer@example.test',
+    'Sample.Manager@example.test',
+    'Sample.Approver@example.test',
+    'nursing@acc.co.nz',
+    'acc.co.nz',
+    'acc.govt.nz',
+  ],
+  accInboxSubjectPatterns: [
+    'Claim:',
+    'ACCID:',
+    'approv',
+    'declin',
+    'nur0[245]',
+    'purchase order',
+    'PO\\s*number',
+    'ACC\\s+letter',
+  ],
+  dismissLetterDiscoverCard: false,
+  hasSeenWelcomeGuide: false,
+  gettingStartedDismissed: false,
+  accInboxConfigBannerDismissed: false,
+  remittanceStaleBannerDismissed: false,
+  mailReferenceBannerDismissed: false,
+  mailReferenceEntries: DEFAULT_MAIL_REFERENCE_ENTRIES.map((e) => ({ ...e })),
+  iDriveFilingBannerDismissed: false,
+  iDriveRootPath: 'I:\\ACC\\District Nursing',
+  iDriveStagingSubfolder: '_Staging',
+  helperModeEnabled: false,
+  discoCatsEnabled: false,
+  cursorStyle: 'default',
+  companionEnabled: false,
+  companionCharacter: 'cat',
+  enabledServiceCodes: [...ALL_SERVICE_CODES],
+  serviceRates: { ...DEFAULT_RATES },
+};

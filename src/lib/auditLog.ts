@@ -1,20 +1,7 @@
 import { loadAuditLog, saveAuditLog } from './idb';
+import type { AuditEntry } from '../types';
 
-export interface AuditEntry {
-  ts: number;
-  action: string;
-  entityType: string;
-  entityId?: string;
-  summary: string;
-  /** Who performed the action (settings.userDisplayName), when known. */
-  user?: string;
-  /** Automation run that produced the item being resolved (P8-008). */
-  runId?: string;
-  /** JSON-serialisable state snapshot before the change (P8-008 before/after). */
-  before?: unknown;
-  /** JSON-serialisable state snapshot after the change. */
-  after?: unknown;
-}
+export type { AuditEntry };
 
 const MAX_ENTRIES = 10_000;
 

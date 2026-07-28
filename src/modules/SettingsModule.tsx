@@ -7,7 +7,8 @@ import { ALL_SERVICE_CODES, SERVICE_CODES } from '../lib/serviceCodes';
 import { readRecentAudit, type AuditEntry } from '../lib/auditLog';
 import { exportDiagnosticsJson, logInfo } from '../lib/logger';
 import { downloadText, readFileAsText } from '../lib/storage';
-import { DEFAULT_SETTINGS, type Settings } from '../types';
+import type { Settings } from '../types';
+import { DEFAULT_SETTINGS } from '../lib/defaultSettings';
 import {
   missingRequiredSubjectTokens,
   parseFilterLines,

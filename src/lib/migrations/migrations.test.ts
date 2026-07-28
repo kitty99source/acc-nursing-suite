@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { migrateAppData, assertNotDowngrade, DowngradeBlockedError, LATEST_FILE_VERSION } from './index';
 import type { AppData } from '../../types';
-import { DEFAULT_SETTINGS } from '../../types';
+import { DEFAULT_SETTINGS } from '../defaultSettings';
 
 function v1Fixture(): AppData {
   return {

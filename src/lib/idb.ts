@@ -4,7 +4,7 @@
 //   - the File System Access handle (so we can re-open the same file later)
 // ============================================================================
 
-import type { AuditEntry } from './auditLog';
+import type { AuditEntry } from '../types';
 
 const DB_NAME = 'acc-nursing-suite';
 const STORE = 'kv';
@@ -369,12 +369,12 @@ export async function saveComplianceSnapshot(record: ComplianceSnapshotRecord): 
   return idbSet(COMPLIANCE_SNAPSHOT_KEY, record);
 }
 
-export async function loadStagingQueue(): Promise<import('./staging').StagingItem[]> {
-  const raw = await idbGet<import('./staging').StagingItem[]>(STAGING_QUEUE_KEY);
+export async function loadStagingQueue(): Promise<import('./stagingTypes').StagingItem[]> {
+  const raw = await idbGet<import('./stagingTypes').StagingItem[]>(STAGING_QUEUE_KEY);
   return Array.isArray(raw) ? raw : [];
 }
 
-export async function saveStagingQueue(items: import('./staging').StagingItem[]): Promise<void> {
+export async function saveStagingQueue(items: import('./stagingTypes').StagingItem[]): Promise<void> {
   return idbSet(STAGING_QUEUE_KEY, items);
 }
 

@@ -16,7 +16,7 @@ import {
   nextStages,
 } from './caseWorkflow';
 import type { AppData, Claim } from '../types';
-import { DEFAULT_SETTINGS } from '../types';
+import { DEFAULT_SETTINGS } from './defaultSettings';
 
 function baseClaim(patch: Partial<Claim> = {}): Claim {
   return {

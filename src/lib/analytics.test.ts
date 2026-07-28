@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { AppData, InvoiceLine } from '../types';
-import { DEFAULT_SETTINGS, SCHEMA_VERSION } from '../types';
+import { SCHEMA_VERSION } from '../types';
+import { DEFAULT_SETTINGS } from './defaultSettings';
 import { billingFunnel, staleRemittanceLines, managementSummaryMetrics, memoStats } from './analytics';
 import { sampleData } from './sampleData';
 import { todayISO } from './format';

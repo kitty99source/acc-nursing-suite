@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { gettingStartedSteps, shouldShowGettingStarted } from './onboarding';
 import { emptyData, sampleData } from './sampleData';
 import { normalizeData } from './storage';
-import { DEFAULT_SETTINGS, SCHEMA_VERSION } from '../types';
+import { SCHEMA_VERSION } from '../types';
+import { DEFAULT_SETTINGS } from './defaultSettings';
 
 describe('onboarding', () => {
   it('shows getting started until dismissed', () => {

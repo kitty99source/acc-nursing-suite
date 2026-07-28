@@ -1,17 +1,66 @@
 // ============================================================================
 // Core domain types for the ACC District Nursing Admin Suite.
 // All dates are stored as ISO date strings ("YYYY-MM-DD") unless noted.
+//
+// This module must stay types-only (plus SCHEMA_VERSION). Runtime defaults live
+// in lib/defaultSettings.ts — importing serviceCodes / remittancePayments /
+// mailReference here recreated the madge cycles that P2-04 breaks.
 // ============================================================================
 
-// Value import used only to seed DEFAULT_SETTINGS below. serviceCodes.ts imports
-// this module with `import type` only, so this is a one-way runtime dependency
-// (no import cycle at runtime).
-import { ALL_SERVICE_CODES, DEFAULT_RATES } from '../lib/serviceCodes';
-import type { RemittanceImportBatch, RemittancePayment } from '../lib/remittancePayments';
-import type { MailReferenceEntry } from '../lib/mailReference';
-import { DEFAULT_MAIL_REFERENCE_ENTRIES } from '../lib/mailReference';
+/** Lives here so idb can persist the audit log without importing auditLog. */
+export interface AuditEntry {
+  ts: number;
+  action: string;
+  entityType: string;
+  entityId?: string;
+  summary: string;
+  /** Who performed the action (settings.userDisplayName), when known. */
+  user?: string;
+  /** Automation run that produced the item being resolved (P8-008). */
+  runId?: string;
+  /** JSON-serialisable state snapshot before the change (P8-008 before/after). */
+  before?: unknown;
+  /** JSON-serialisable state snapshot after the change. */
+  after?: unknown;
+}
 
-export type { RemittanceImportBatch, RemittancePayment, MailReferenceEntry };
+/** Remittance CSV/XLSX import batch (Admin Billing remove-import + re-reconcile). */
+export interface RemittanceImportBatch {
+  id: string;
+  importedAt: number;
+  sourceFileName: string;
+  lineCount: number;
+  matchedCount: number;
+  unmatchedClaimNumbers: string[];
+}
+
+/** One matched remittance payment applied to an invoice line. */
+export interface RemittancePayment {
+  id: string;
+  batchId: string;
+  invoiceLineId: string;
+  claimNumber: string;
+  amountPaid: number;
+  paymentDate?: string;
+  reasonCode?: string;
+  reasonText?: string;
+  lineNeedsReview: boolean;
+}
+
+/** Editable ACC form-routing cheat-sheet row (Mail Reference Sheet). */
+export interface MailReferenceEntry {
+  id: string;
+  /** Form code or short key, e.g. "ACC45", "ARTP". */
+  formCode: string;
+  /** Human label (often same as formCode, or a longer name for non-code items). */
+  label: string;
+  /** What to do with this form (save/lodge/hand off). */
+  instructions: string;
+  /** Primary email destination, when the sheet specifies one. */
+  email?: string;
+  /** CC address, when the sheet specifies one. */
+  ccEmail?: string;
+}
 
 export type ServiceCode =
   | 'NS01'
@@ -467,59 +516,3 @@ export interface AppData {
 }
 
 export const SCHEMA_VERSION = 4;
-
-export const DEFAULT_SETTINGS: Settings = {
-  theme: 'clinical-light',
-  accentColor: '#2f8f83',
-  densityMode: 'comfortable',
-  fontScale: 1,
-  expiryThresholdDays: 30,
-  idleLockMinutes: 15,
-  encryptionEnabled: false,
-  productionMode: true,
-  letterImportAutoCommit: false,
-  backupReminderDays: 7,
-  remittanceStaleDays: 60,
-  nurseFollowUpDays: 7,
-  accFollowUpWorkingDays: 10,
-  caseWorkflowBannerDismissed: false,
-  duplicatePatientsBannerDismissed: false,
-  complianceRulesVersion: '2025-03',
-  userDisplayName: '',
-  automationPaused: false,
-  accInboxSenderAllowlist: [
-    'Sample.Staffer@example.test',
-    'Sample.Manager@example.test',
-    'Sample.Approver@example.test',
-    'nursing@acc.co.nz',
-    'acc.co.nz',
-    'acc.govt.nz',
-  ],
-  accInboxSubjectPatterns: [
-    'Claim:',
-    'ACCID:',
-    'approv',
-    'declin',
-    'nur0[245]',
-    'purchase order',
-    'PO\\s*number',
-    'ACC\\s+letter',
-  ],
-  dismissLetterDiscoverCard: false,
-  hasSeenWelcomeGuide: false,
-  gettingStartedDismissed: false,
-  accInboxConfigBannerDismissed: false,
-  remittanceStaleBannerDismissed: false,
-  mailReferenceBannerDismissed: false,
-  mailReferenceEntries: DEFAULT_MAIL_REFERENCE_ENTRIES.map((e) => ({ ...e })),
-  iDriveFilingBannerDismissed: false,
-  iDriveRootPath: 'I:\\ACC\\District Nursing',
-  iDriveStagingSubfolder: '_Staging',
-  helperModeEnabled: false,
-  discoCatsEnabled: false,
-  cursorStyle: 'default',
-  companionEnabled: false,
-  companionCharacter: 'cat',
-  enabledServiceCodes: [...ALL_SERVICE_CODES],
-  serviceRates: { ...DEFAULT_RATES },
-};

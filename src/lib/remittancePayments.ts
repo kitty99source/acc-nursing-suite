@@ -4,29 +4,14 @@
 // Removing a batch drops those payments and recomputes invoice paid/status from what remains.
 // ============================================================================
 
-import type { InvoiceLine, InvoiceStatus } from '../types';
+import type {
+  InvoiceLine,
+  InvoiceStatus,
+  RemittanceImportBatch,
+  RemittancePayment,
+} from '../types';
 
-export interface RemittanceImportBatch {
-  id: string;
-  importedAt: number;
-  sourceFileName: string;
-  lineCount: number;
-  matchedCount: number;
-  unmatchedClaimNumbers: string[];
-}
-
-/** One matched remittance payment applied to an invoice line. */
-export interface RemittancePayment {
-  id: string;
-  batchId: string;
-  invoiceLineId: string;
-  claimNumber: string;
-  amountPaid: number;
-  paymentDate?: string;
-  reasonCode?: string;
-  reasonText?: string;
-  lineNeedsReview: boolean;
-}
+export type { RemittanceImportBatch, RemittancePayment };
 
 export interface RemittanceRemoveResult {
   ok: boolean;

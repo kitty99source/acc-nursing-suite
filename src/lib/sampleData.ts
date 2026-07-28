@@ -1,5 +1,6 @@
 import type { AppData } from '../types';
-import { DEFAULT_SETTINGS, SCHEMA_VERSION } from '../types';
+import { SCHEMA_VERSION } from '../types';
+import { DEFAULT_SETTINGS } from './defaultSettings';
 import { todayISO } from './format';
 
 // ============================================================================

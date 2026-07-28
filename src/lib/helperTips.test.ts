@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS } from '../types';
+import { DEFAULT_SETTINGS } from './defaultSettings';
 import { FAQ_ENTRIES } from './helpContent';
 import { HELPER_TIPS, helperTipsHaveValidFaqs, getHelperTip } from './helperTips';
 

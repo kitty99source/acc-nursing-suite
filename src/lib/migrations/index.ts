@@ -1,5 +1,5 @@
 import type { AppData, CaseStage, Claim } from '../../types';
-import { DEFAULT_SETTINGS } from '../../types';
+import { DEFAULT_SETTINGS } from '../defaultSettings';
 import { DEFAULT_RATES } from '../serviceCodes';
 
 // ============================================================================

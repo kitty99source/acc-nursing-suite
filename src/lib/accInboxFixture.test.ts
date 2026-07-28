@@ -11,7 +11,7 @@ import {
   filterAccInboxRows,
   filterSavedAccInboxRows,
 } from './accInboxFilters';
-import { DEFAULT_SETTINGS } from '../types';
+import { DEFAULT_SETTINGS } from './defaultSettings';
 
 /**
  * Fixture-driven proof that the shipped ACC Inbox pipeline works WITHOUT a live

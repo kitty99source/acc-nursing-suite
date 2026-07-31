@@ -12,13 +12,13 @@
     {
       "fileName": "Ms-Fakey-McTestface-approval.pdf",
       "subject": "Ms Fakey McTestface - Claim:90000000001 ACCID:VEND-FAKE001",
-      "sender": "Sample.Manager@example.test",
+      "sender": "Sample.Manager@acc.co.nz",
       "savedAt": "2026-07-08T02:14:58.000Z"
     },
     {
       "fileName": "Mr-Sample-Q-Public-decline.docx",
       "subject": "Mr Sample Q Public - Claim:90000000002 ACCID:VEND-FAKE002",
-      "sender": "Sample.Staffer@example.test",
+      "sender": "Sample.Staffer@acc.co.nz",
       "savedAt": "2026-07-08T02:14:59.000Z"
     },
     {

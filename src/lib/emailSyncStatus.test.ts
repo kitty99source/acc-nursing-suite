@@ -160,7 +160,7 @@ describe('emailSyncStatus', () => {
         {
           fileName: 'Mr-Gilbert-Gandor-approval.pdf',
           subject: 'Mr Gilbert Gandor - Claim:10000003194 ACCID:VEND-K96655',
-          sender: 'Sample.Manager@example.test',
+          sender: 'Sample.Manager@acc.co.nz',
           savedAt: '2026-07-08T10:00:00.000Z',
         },
       ],
@@ -188,7 +188,7 @@ describe('emailSyncStatus', () => {
         {
           fileName: 'Steyn.pdf',
           subject: 'Steyn',
-          sender: 'Sample.Manager@example.test',
+          sender: 'Sample.Manager@acc.co.nz',
           savedAt: '2026-07-08T10:00:00.000Z',
         },
       ],

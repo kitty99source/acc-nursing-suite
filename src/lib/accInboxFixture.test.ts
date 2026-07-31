@@ -101,7 +101,7 @@ describe('AccInbox pipeline (synthetic email-sync fixture)', () => {
     // Simulate a real "Steyn" letter appended to the saved rows: acc sender + PDF, name-only subject.
     const nameOnly = {
       id: 'sync-99-Steyn.pdf',
-      sender: 'Sample.Manager@example.test',
+      sender: 'Sample.Manager@acc.co.nz',
       subject: 'Steyn',
       receivedAt: Date.now(),
       attachmentName: 'Steyn.pdf',

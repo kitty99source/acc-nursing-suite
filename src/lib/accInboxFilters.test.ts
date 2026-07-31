@@ -16,7 +16,7 @@ import {
 function row(overrides: Partial<import('./accInboxFilters').AccInboxRow> = {}) {
   return {
     id: overrides.id ?? 'r1',
-    sender: overrides.sender ?? 'Sample.Manager@example.test',
+    sender: overrides.sender ?? 'Sample.Manager@acc.co.nz',
     subject: overrides.subject ?? 'Steyn',
     receivedAt: overrides.receivedAt ?? Date.now(),
     attachmentName: overrides.attachmentName ?? 'steyn.pdf',
@@ -78,7 +78,7 @@ describe('accInboxFilters', () => {
   it('accepts real ACC email subject with Claim:/ACCID: via default filters', () => {
     expect(
       isAccInboxCandidate({
-        sender: 'Sample.Manager@example.test',
+        sender: 'Sample.Manager@acc.co.nz',
         subject: 'Mr Gilbert Gandor - Claim:10000003194 ACCID:VEND-K96655',
         attachmentExt: '.pdf',
       }),

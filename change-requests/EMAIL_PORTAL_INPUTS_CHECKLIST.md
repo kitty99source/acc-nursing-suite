@@ -40,7 +40,7 @@
 | 1 | `scripts/stress/fixtures/email/acc-email-screenshot-1.png` | Hospital portal tile grid; **Health & BI Reports** tile circled | D-07 partial (post-login landing — not login form) |
 | 2 | `scripts/stress/fixtures/email/acc-email-screenshot-2.png` | **MidCentral-wide functions** menu; **ACC** entry circled | D-08 partial (nav path, not search form) |
 | 3 | `scripts/stress/fixtures/email/acc-email-screenshot-3.png` | SSRS **Browse → DHB-wide → ACC**; 43 paginated reports; **ACC District Nursing Visit** circled | D-08/D-09 partial (report list — not opened report rows) |
-| 4 | `change-requests/portal-samples/acc-district-nursing-visits-report-redacted.png` | **Opened** ACC District Nursing Visits report — 10-column result grid (NHI, Patient Name, … Notes); page 1 of 2 | D-09 **mostly complete** — see [`REPORT_COLUMNS_2026-07-08.md`](portal-samples/REPORT_COLUMNS_2026-07-08.md) |
+| 4 | `change-requests/portal-samples/acc-district-nursing-visits-report-redacted.png` | **[REMOVED 2026-07-31 — real clinical/claim data was left legible in the Notes column; see owner note]** Opened ACC District Nursing Visits report — 10-column result grid (NHI, Patient Name, … Notes); page 1 of 2 | D-09 **mostly complete** — see [`REPORT_COLUMNS_2026-07-08.md`](portal-samples/REPORT_COLUMNS_2026-07-08.md) |
 
 `change-requests/images/` is empty (only `.gitkeep`) — screenshots live in stress fixtures above.
 

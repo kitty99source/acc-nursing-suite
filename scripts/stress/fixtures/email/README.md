@@ -6,7 +6,7 @@ Synthetic and redacted samples for P8 email ingress development. **No real PHI**
 |------|---------|
 | `acc-approval-sample.eml` | Synthetic ACC approval email: From `Sample.Staffer@example.test`, subject with Claim/ACCID tokens, PDF attachment |
 | `email-corpus-notes.eml` | Redacted notes email (sender addresses + subject pattern only) |
-| `nursing-services-processes.pdf` | Internal ACC district nursing process doc (reference PDF, not a patient letter) |
+| `nursing-services-processes.pdf` | **[REMOVED 2026-07-31 — see owner note; contained real contract pricing, internal file-share paths, and a real billing email]** |
 | `acc-email-screenshot-*.png` | Portal navigation screenshots (Health & BI Reports → ACC reports) |
 | `approval-template.docx` | ACC approval letter Word template (same sample data as PDF fixture — P8-020) |
 

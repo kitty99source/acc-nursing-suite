@@ -1,6 +1,6 @@
 # ACC District Nursing Visits — Report Columns (2026-07-08)
 
-**Source screenshot:** [`acc-district-nursing-visits-report-redacted.png`](./acc-district-nursing-visits-report-redacted.png)  
+**Source screenshot:** `acc-district-nursing-visits-report-redacted.png` — **[REMOVED 2026-07-31 — see owner note; real clinical/claim data was left legible in the Notes column despite hand-redaction of NHI/Patient Name/ACCNumber]**  
 **Report:** SSRS paginated report — **ACC District Nursing Visits**  
 **Breadcrumb:** Home → DHB-wide → ACC → ACC District Nursing Visits  
 **Pagination:** Page 1 of 2 (report toolbar visible)
@@ -95,7 +95,7 @@ This screenshot shows the user had navigated further: an **opened paginated repo
 |------|---------|
 | [`PORTAL_SELECTORS_2026-07-08.md`](./PORTAL_SELECTORS_2026-07-08.md) | Folder chrome selectors from first discover run |
 | [`portal-map-2026-07-08-full.json`](./portal-map-2026-07-08-full.json) | 45-link folder capture (no grid) |
-| [`../EMAIL_PORTAL_INPUTS_CHECKLIST.md`](../EMAIL_PORTAL_INPUTS_CHECKLIST.md) | D-09 updated with this screenshot |
+| [`../EMAIL_PORTAL_INPUTS_CHECKLIST.md`](../EMAIL_PORTAL_INPUTS_CHECKLIST.md) | D-09 updated with this screenshot (now removed — see owner note) |
 
 ---
 

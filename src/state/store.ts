@@ -6,6 +6,7 @@ import type {
   Claim,
   ClaimDocument,
   ComplexCase,
+  Contract,
   Decline,
   DocumentKind,
   ImportHistoryEntry,
@@ -411,6 +412,11 @@ interface StoreState {
   addComplexCase: (c: Omit<ComplexCase, 'id'>) => string;
   updateComplexCase: (id: string, patch: Partial<ComplexCase>) => void;
   removeComplexCase: (id: string) => void;
+
+  // contract CRUD
+  addContract: (c: Omit<Contract, 'id'>) => string;
+  updateContract: (id: string, patch: Partial<Contract>) => void;
+  removeContract: (id: string) => void;
 
   // decline CRUD
   addDecline: (d: Omit<Decline, 'id'>) => string;
@@ -1951,6 +1957,23 @@ export const useStore = create<StoreState>((set, get) => ({
     })),
   removeComplexCase: (id) =>
     mutate(get, (data) => ({ ...data, complexCases: data.complexCases.filter((x) => x.id !== id) })),
+
+  addContract: (c) => {
+    const id = uid('ct');
+    mutate(get, (data) => ({ ...data, contracts: [...(data.contracts ?? []), { ...c, id }] }));
+    audit('create', 'contract', id, `Added contract ${c.providerName}`);
+    return id;
+  },
+  updateContract: (id, patch) =>
+    mutate(get, (data) => ({
+      ...data,
+      contracts: (data.contracts ?? []).map((x) => (x.id === id ? { ...x, ...patch } : x)),
+    })),
+  removeContract: (id) => {
+    const name = get().data.contracts?.find((c) => c.id === id)?.providerName ?? id;
+    mutate(get, (data) => ({ ...data, contracts: (data.contracts ?? []).filter((x) => x.id !== id) }));
+    audit('delete', 'contract', id, `Removed contract ${name}`);
+  },
 
   addDecline: (d) => {
     const id = uid('dc');

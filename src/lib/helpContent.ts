@@ -94,6 +94,13 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       'Export Center includes a Complex Cases Excel tab; import can merge those rows back.',
   },
   {
+    id: 'contracts',
+    title: 'Contracts',
+    body:
+      'Provider/employer/payer contracts and price agreements: rate table, effective dates, and which service codes ' +
+      'are covered. Click the chat icon on a contract to attach it as AI-assistant context.',
+  },
+  {
     id: 'compliance',
     title: 'Flagged (Compliance)',
     body:

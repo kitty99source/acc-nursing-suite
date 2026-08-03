@@ -19,6 +19,7 @@ import { CalculatorModule } from './modules/CalculatorModule';
 import { Approvals } from './modules/Approvals';
 import { Billing } from './modules/Billing';
 import { ComplexCases } from './modules/ComplexCases';
+import { Contracts } from './modules/Contracts';
 import { Declines } from './modules/Declines';
 import { ExportCenter } from './modules/ExportCenter';
 import { ImportedTables } from './modules/ImportedTables';
@@ -433,6 +434,7 @@ export default function App() {
           {module === 'approvals' && <Approvals />}
           {module === 'billing' && <Billing />}
           {module === 'complex' && <ComplexCases />}
+          {module === 'contracts' && <Contracts />}
           {module === 'declines' && <Declines />}
           {module === 'review' && <ReviewQueue />}
           {module === 'accinbox' && <AccInbox />}

@@ -6,6 +6,7 @@ import {
   IconApprovals,
   IconBilling,
   IconComplex,
+  IconContract,
   IconDecline,
   IconExport,
   IconSettings,
@@ -28,6 +29,7 @@ export type ModuleId =
   | 'approvals'
   | 'billing'
   | 'complex'
+  | 'contracts'
   | 'declines'
   | 'review'
   | 'accinbox'
@@ -95,6 +97,7 @@ export function Sidebar({
         { id: 'declines', label: 'Decline Tracker', icon: <IconDecline /> },
         { id: 'billing', label: 'Billing Log', icon: <IconBilling /> },
         { id: 'complex', label: 'Complex Cases', icon: <IconComplex /> },
+        { id: 'contracts', label: 'Contracts', icon: <IconContract /> },
       ],
     },
     {

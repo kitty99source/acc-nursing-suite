@@ -308,12 +308,45 @@ export function AiChatPanel() {
         ))}
         {sending && (() => {
           // Parse the raw accumulated stream so the model's `<think>...</think>` chain-of-thought
-          // never flashes on screen as the live "answer" (the exact owner-reported bug) — while
-          // still-thinking, show the same "Thinking…" indicator as before (optionally naming that
-          // reasoning is genuinely in progress) rather than a wall of raw reasoning text.
+          // is handled the same way Cursor's own chat shows its reasoning: VISIBLE and streaming
+          // live while it's in progress (not hidden behind an opaque placeholder), then collapsed
+          // down to the same "Show reasoning" toggle a finished message ends at once the real
+          // answer starts arriving — see thinkParser.ts for the underlying open/closed-tag state
+          // this is purely a UI decision on top of (2026-08-04 owner ask: "stream the reasoning
+          // live... instead of hiding it until after").
           const parsed = parseThinkResponse(streamingText);
+          const reasoningDone = !parsed.thinking && !!parsed.reasoning;
           return (
             <div className="text-sm" style={{ marginRight: '2rem' }}>
+              {parsed.thinking && (
+                <div
+                  className="rounded-lg px-2.5 py-1.5 mb-1 text-xs whitespace-pre-wrap max-h-40 overflow-y-auto"
+                  style={{ background: 'var(--surface-2)', color: 'var(--muted)', fontStyle: 'italic' }}
+                  aria-label="Reasoning in progress"
+                >
+                  <div className="flex items-center gap-1.5 mb-1 not-italic font-semibold" style={{ color: 'var(--muted)' }}>
+                    <span className="spinner" aria-hidden="true" style={{ width: 10, height: 10 }} />
+                    Reasoning…
+                  </div>
+                  {parsed.reasoning || 'Starting to reason through your question…'}
+                  <span className="inline-block ml-1 animate-pulse" aria-hidden="true">
+                    ▍
+                  </span>
+                </div>
+              )}
+              {reasoningDone && (
+                <details className="mb-1" open={false}>
+                  <summary className="text-[11px] cursor-pointer" style={{ color: 'var(--accent)' }}>
+                    Show reasoning
+                  </summary>
+                  <pre
+                    className="text-[10px] mt-1 p-2 rounded whitespace-pre-wrap"
+                    style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}
+                  >
+                    {parsed.reasoning}
+                  </pre>
+                </details>
+              )}
               {parsed.answer ? (
                 <div
                   className="rounded-lg px-2.5 py-1.5 whitespace-pre-wrap"
@@ -325,15 +358,17 @@ export function AiChatPanel() {
                   </span>
                 </div>
               ) : (
-                <div className="rounded-lg px-2.5 py-1.5 inline-flex items-center gap-2" style={{ background: 'var(--surface-2)' }}>
-                  <span className="spinner" aria-hidden="true" />
-                  <span className="text-xs" style={{ color: 'var(--muted)' }}>
-                    {parsed.thinking
-                      ? 'Reasoning through your question… the short answer will appear here once it\u2019s done.'
-                      : 'Thinking… small on-device models can take 30–90 seconds on this hardware, longer ' +
-                        '(up to a few minutes) right after Ollama has just started.'}
-                  </span>
-                </div>
+                !parsed.thinking && (
+                  <div className="rounded-lg px-2.5 py-1.5 inline-flex items-center gap-2" style={{ background: 'var(--surface-2)' }}>
+                    <span className="spinner" aria-hidden="true" />
+                    <span className="text-xs" style={{ color: 'var(--muted)' }}>
+                      {reasoningDone
+                        ? 'Reasoning finished — writing the answer now…'
+                        : 'Thinking… small on-device models can take 30–90 seconds on this hardware, longer ' +
+                          '(up to a few minutes) right after Ollama has just started.'}
+                    </span>
+                  </div>
+                )
               )}
             </div>
           );

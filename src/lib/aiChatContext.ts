@@ -11,14 +11,15 @@
 // serialization must never include more than what a user could see by
 // opening that record in the app themselves.
 //
-// Scope (per the 2026-08 AI-assistant build): only Patient records are a
-// chippable context type today. AdminSuite has no Contract/provider-contract
-// data model at all (confirmed by searching the codebase) — that is future
-// work alongside full contract-PDF-text RAG, see
-// docs/research/ai-chat-assistant-2026-08.md.
+// Scope: Patient and (as of 2026-08-04) Contract records are chippable
+// context types — Contract was added once AdminSuite gained a real Contract
+// data model (see types/index.ts `Contract`), extending the `ContextChipType`
+// union that was deliberately left open for exactly this in the prior pass.
+// Full contract-PDF-text RAG is still NOT built (no real document corpus
+// exists yet) — see docs/research/ai-chat-assistant-2026-08.md.
 // ============================================================================
 
-import type { AppData, Claim, Patient } from '../types';
+import type { AppData, Claim, Contract, Patient } from '../types';
 import { CASE_STAGE_LABEL } from './caseWorkflow';
 import { formatDateNZ } from './format';
 import { buildCaseStageSummary, buildComplianceRuleSummary, buildKnowledgeBaseSections } from './ai/knowledgeBase';
@@ -65,7 +66,7 @@ export interface AiChatMessage {
   stopped?: boolean;
 }
 
-export type ContextChipType = 'patient';
+export type ContextChipType = 'patient' | 'contract';
 
 export interface ContextChip {
   /** Stable id so the same record can't be attached twice — `type:recordId`. */
@@ -78,6 +79,15 @@ export interface ContextChip {
 
 export function makePatientChip(patient: Patient): ContextChip {
   return { id: `patient:${patient.id}`, type: 'patient', recordId: patient.id, label: patient.name || 'Unnamed patient' };
+}
+
+export function makeContractChip(contract: Contract): ContextChip {
+  return {
+    id: `contract:${contract.id}`,
+    type: 'contract',
+    recordId: contract.id,
+    label: contract.providerName || 'Unnamed contract',
+  };
 }
 
 function serializeClaimForContext(claim: Claim): string {
@@ -117,12 +127,44 @@ export function serializePatientContext(patient: Patient, data: AppData): string
   return lines.join('\n');
 }
 
+/**
+ * Plain-text serialization of one Contract record's real data fields — same faithful,
+ * un-embellished rendering rule as `serializePatientContext` (this is exactly what's shown back
+ * in "Context used"), never invents rate/date/coverage details the record doesn't actually have.
+ */
+export function serializeContractContext(contract: Contract): string {
+  const lines = [
+    `Contract: ${contract.providerName || 'Unnamed'}`,
+    `Customer number: ${contract.customerNumber || 'not on file'}`,
+    `Claims email: ${contract.claimsEmail || 'not on file'}`,
+    `Effective: ${formatDateNZ(contract.effectiveFrom) || 'not on file'} to ${
+      contract.effectiveTo ? formatDateNZ(contract.effectiveTo) : 'ongoing'
+    }`,
+    `Service codes covered: ${contract.serviceCodesCovered.length ? contract.serviceCodesCovered.join(', ') : 'none on file'}`,
+  ];
+  if (contract.rateTable.length === 0) {
+    lines.push('Rate table: none on file');
+  } else {
+    lines.push(`Rate table (${contract.rateTable.length}):`);
+    for (const r of contract.rateTable) {
+      lines.push(`  - ${r.serviceCode}${r.description ? ` (${r.description})` : ''}: $${r.rate.toFixed(2)}`);
+    }
+  }
+  lines.push(`Notes: ${contract.notes?.trim() || 'none'}`);
+  return lines.join('\n');
+}
+
 /** Dispatches by chip type. Returns a one-line note for a chip whose record can no longer be found. */
 export function serializeChipContext(chip: ContextChip, data: AppData): string {
   if (chip.type === 'patient') {
     const patient = data.patients.find((p) => p.id === chip.recordId);
     if (!patient) return `Patient: (record no longer found — id ${chip.recordId})`;
     return serializePatientContext(patient, data);
+  }
+  if (chip.type === 'contract') {
+    const contract = (data.contracts ?? []).find((c) => c.id === chip.recordId);
+    if (!contract) return `Contract: (record no longer found — id ${chip.recordId})`;
+    return serializeContractContext(contract);
   }
   return `(unsupported context type: ${chip.type})`;
 }

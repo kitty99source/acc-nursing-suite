@@ -79,6 +79,79 @@ const DEFAULT_CHAT_TOTAL_TIMEOUT_MS = 300_000;
 // instruction in aiChatContext.ts) will finish well under it.
 const DEFAULT_CHAT_NUM_PREDICT = 2048;
 
+// ----------------------------------------------------------------------------
+// CPU-only speed tuning (2026-08-04, owner ask: "make it faster" on a
+// <16GB-RAM CPU-only Windows laptop running Phi-4-mini-reasoning via Ollama).
+// Two concrete, low-risk wins applied here — both are plain Ollama request
+// options, not model changes, so quality is unaffected:
+//
+// 1. `keep_alive` — Ollama's own default is to unload a model from RAM after
+//    5 minutes of inactivity (see https://github.com/ollama/ollama/blob/main/docs/faq.md
+//    "How do I keep a model loaded in memory or make it unload immediately?").
+//    Reloading Phi-4-mini-reasoning's ~2.5GB Q4_K_M weights from disk back
+//    into RAM is a genuinely slow cold-start (the existing chat-timeout
+//    comments above already document "10-60s+ to cold-load... on the first
+//    request after a (re)start"). Since this whole feature's value
+//    proposition is repeated local use within one working session, keeping
+//    the model warm between messages (not just within one HTTP request) is a
+//    real, meaningful win with no downside other than the model continuing to
+//    occupy ~3.2GB RAM while idle — well within the 12+GB of headroom the
+//    research doc (`docs/research/on-device-reasoning-and-call-capture-2026-08.md`
+//    Section 4) already calculated for this hardware class. `"30m"` was
+//    chosen over `-1` (indefinite) as a middle ground: long enough that a
+//    normal back-and-forth chat session (or returning to the tab after a
+//    coffee break) never re-pays the cold-load cost, but not so long that the
+//    model stays pinned in RAM for an entire unattended workday if the owner
+//    forgets the tab is open. Applied to every `/api/generate` call in this
+//    file (`options.keep_alive`... — no: `keep_alive` is a top-level Ollama
+//    API field per `docs.ollama.com/api` §Generate, sibling to `model`/
+//    `prompt`/`options`, not nested inside `options`), not just chat, so the
+//    duplicate-check feature (`patientDuplicateAi.ts`) also benefits from a
+//    warm model on repeated use.
+// 2. `num_ctx` (context window) — the owner's own `ollama list` output showed
+//    this model's max context as 131072 tokens; Ollama silently defaults to
+//    that model-card maximum when a request doesn't specify `num_ctx`, which
+//    allocates a KV-cache sized for a 128K-token conversation even for a
+//    two-line "hello" — a real, avoidable CPU/memory cost on every single
+//    request. This app's own prompt assembly (`buildChatPrompt` in
+//    `aiChatContext.ts`, `MAX_HISTORY_TURNS = 8`) never sends anywhere close
+//    to that much text — a capped few-thousand-word system prompt + context
+//    chip + short history window comfortably fits well under 8K tokens in
+//    every realistic case. `4096` is used as a safe, generous default (not
+//    the smallest possible value) — large enough that a legitimately long
+//    patient-context chip + full compliance rulebook + 8 history turns still
+//    fits without silent truncation, small enough to meaningfully shrink the
+//    KV-cache allocation vs. the 131072 default. Overridable per-call
+//    (`numCtx` option) if a future caller genuinely needs more.
+// NOT applied, and why (per the owner's own "don't apply blindly" instruction):
+//   - `num_thread`: Ollama's own runtime already defaults this to the
+//     detected physical CPU core count (`runtime.NumCPU()` server-side) and
+//     current (2026) Ollama guidance/community consensus is that manually
+//     pinning `num_thread` on a single-user desktop workload rarely beats
+//     that auto-detection and can make things WORSE if set too high (thread
+//     oversubscription/context-switching overhead) or too low (leaving cores
+//     idle) — there is no way to know the real core count of "the owner's
+//     laptop" from this codebase, and guessing a fixed number here would be
+//     exactly the kind of "apply something without confirming it's real and
+//     safe" the ask explicitly warned against. Left unset (Ollama's own
+//     default) deliberately; documented here as a real, known, tunable
+//     option if the owner ever wants to hand-tune it for their specific CPU
+//     (Settings could expose it later as an advanced/optional field).
+//   - Quantization: already Q4_K_M (see docs/research doc's own table) — a
+//     good speed/quality balance already. A Q4_0 or Q3 variant would trade
+//     a further real but modest speed/memory win for a real, non-trivial
+//     quality drop on reasoning-heavy tasks specifically (the whole point of
+//     picking a "-reasoning" model) — documented here as an existing,
+//     available option (`ollama pull phi4-mini-reasoning:<tag>` once such a
+//     tag exists) but NOT recommended or applied, per the research doc's own
+//     "probably not worth it" framing.
+//   - `num_predict`: already tuned to 2048 in the prior fix (see
+//     DEFAULT_CHAT_NUM_PREDICT above) — left as-is; already overridable via
+//     `numPredict`.
+// ----------------------------------------------------------------------------
+export const DEFAULT_KEEP_ALIVE = '30m';
+export const DEFAULT_NUM_CTX = 4096;
+
 function stripTrailingSlash(url: string): string {
   return url.replace(/\/+$/, '');
 }
@@ -195,6 +268,10 @@ export interface AiGenerateOptions {
   fetchImpl?: FetchLike;
   timeoutMs?: number;
   model?: string;
+  /** Ollama top-level `keep_alive` field — how long to keep the model warm in RAM after this request. Default DEFAULT_KEEP_ALIVE ("30m"). */
+  keepAlive?: string | number;
+  /** Ollama `options.num_ctx` — context window size in tokens. Default DEFAULT_NUM_CTX (4096); see comment above. */
+  numCtx?: number;
 }
 
 export const DEFAULT_AI_MODEL = 'phi4-mini-reasoning';
@@ -217,7 +294,13 @@ export async function generateLocalAiResponse(
     const res = await fetchImpl(`${stripTrailingSlash(baseUrl)}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, prompt, stream: false }),
+      body: JSON.stringify({
+        model,
+        prompt,
+        stream: false,
+        keep_alive: opts?.keepAlive ?? DEFAULT_KEEP_ALIVE,
+        options: { num_ctx: opts?.numCtx ?? DEFAULT_NUM_CTX },
+      }),
       signal,
     });
     if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
@@ -265,6 +348,10 @@ export interface AiGenerateStreamOptions {
   onChunk?: (accumulatedText: string) => void;
   /** Hard ceiling on generated tokens (Ollama's `options.num_predict`). Default 2048 — see DEFAULT_CHAT_NUM_PREDICT. */
   numPredict?: number;
+  /** Ollama top-level `keep_alive` field — how long to keep the model warm in RAM after this request. Default DEFAULT_KEEP_ALIVE ("30m"). */
+  keepAlive?: string | number;
+  /** Ollama `options.num_ctx` — context window size in tokens. Default DEFAULT_NUM_CTX (4096); see comment above `DEFAULT_KEEP_ALIVE`. */
+  numCtx?: number;
   /**
    * Caller-supplied cancellation signal — e.g. AiChatPanel wires this to the chat store's
    * `beginGeneration()` controller so clicking "Clear chat history"/"New chat" mid-stream actually
@@ -354,7 +441,11 @@ export async function generateLocalAiResponseStream(
         model,
         prompt,
         stream: true,
-        options: { num_predict: opts?.numPredict ?? DEFAULT_CHAT_NUM_PREDICT },
+        keep_alive: opts?.keepAlive ?? DEFAULT_KEEP_ALIVE,
+        options: {
+          num_predict: opts?.numPredict ?? DEFAULT_CHAT_NUM_PREDICT,
+          num_ctx: opts?.numCtx ?? DEFAULT_NUM_CTX,
+        },
       }),
       signal: controller.signal,
     });

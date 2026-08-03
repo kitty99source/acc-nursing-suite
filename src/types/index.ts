@@ -273,6 +273,44 @@ export interface InvoiceLine {
 
 export type ComplexCaseStatus = 'Open' | 'Monitoring' | 'Resolved';
 
+/** One line of a Contract's rate table — a service code and the agreed rate for it. */
+export interface ContractRateEntry {
+  serviceCode: string;
+  description?: string;
+  /** NZD, exclusive of GST unless the contract states otherwise (see Contract.notes). */
+  rate: number;
+}
+
+/**
+ * A provider/employer/payer contract or price agreement — e.g. an accredited-employer or ACC
+ * service agreement setting out which service codes are covered and at what rate. Modeled after
+ * the sibling ACC-RemittanceTracker suite's `AccreditedEmployer` shape (name + customer number)
+ * plus the fields this app's own domain needs (effective dates, service codes covered, a rate
+ * table) — see docs/research/ai-chat-assistant-2026-08.md for the "why this shape" writeup.
+ * First-class record type with its own CRUD (see modules/Contracts.tsx), following the same
+ * pattern as Patient/ComplexCase: a flat, explicitly-typed record, no invented/guessed fields
+ * beyond what the owner can see and edit.
+ */
+export interface Contract {
+  id: string;
+  /** Provider/employer/payer name, e.g. "Wellnz Limited" or "ACC". */
+  providerName: string;
+  /** AR/customer number if known — same concept as RemittanceTracker's AccreditedEmployer.customerNumber. */
+  customerNumber?: string;
+  /** Contact email for claims/queries under this contract, if known. */
+  claimsEmail?: string;
+  effectiveFrom: string; // ISO date
+  /** Blank/undefined = ongoing, no known end date. */
+  effectiveTo?: string; // ISO date
+  /** Service codes this contract covers (e.g. NS04, NS05) — free text tags, not validated against a fixed list. */
+  serviceCodesCovered: string[];
+  rateTable: ContractRateEntry[];
+  notes: string;
+  // Generic bag for any imported columns this schema doesn't have a named field for yet —
+  // same "never guess, never lose data" pattern as other imported record types.
+  customFields?: Record<string, string>;
+}
+
 export interface ComplexCase {
   id: string;
   patientName: string;
@@ -523,6 +561,12 @@ export interface AppData {
   remittanceImports?: RemittanceImportBatch[];
   /** Matched remittance payment applications tied to a batch + invoice line. */
   remittancePayments?: RemittancePayment[];
+  /**
+   * Provider/employer/payer contracts (rate tables, effective dates, service codes covered).
+   * Optional/additive (same pattern as customSheets/importHistory above) since this is a new
+   * 2026-08 record type — always read via `data.contracts ?? []`, never assume it's present.
+   */
+  contracts?: Contract[];
 }
 
 export const SCHEMA_VERSION = 4;

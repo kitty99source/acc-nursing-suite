@@ -150,6 +150,30 @@ describe('generateLocalAiResponse', () => {
     expect(result).toEqual({ ok: false, error: 'model "phi4-mini-reasoning" not found' });
   });
 
+  it('sets a keep_alive and right-sized num_ctx by default (speed tuning)', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ response: 'ok' }));
+    await generateLocalAiResponse('http://127.0.0.1:11434', 'a prompt', {
+      fetchImpl: fetchImpl as unknown as FetchLike,
+    });
+    const [, init] = fetchImpl.mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.keep_alive).toBe('30m');
+    expect(body.options?.num_ctx).toBe(4096);
+  });
+
+  it('lets a caller override keep_alive and num_ctx', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ response: 'ok' }));
+    await generateLocalAiResponse('http://127.0.0.1:11434', 'a prompt', {
+      fetchImpl: fetchImpl as unknown as FetchLike,
+      keepAlive: '1h',
+      numCtx: 2048,
+    });
+    const [, init] = fetchImpl.mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.keep_alive).toBe('1h');
+    expect(body.options.num_ctx).toBe(2048);
+  });
+
   it('uses a custom model name when provided', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse({ response: 'ok' }));
     await generateLocalAiResponse('http://127.0.0.1:11434', 'a prompt', {
@@ -210,6 +234,46 @@ describe('generateLocalAiResponseStream', () => {
     });
     const [, init] = fetchImpl.mock.calls[0];
     expect(JSON.parse(init.body).options.num_predict).toBe(256);
+  });
+
+  it('sets a keep_alive so the model stays warm between chat turns instead of unloading after Ollama\'s 5-minute default', async () => {
+    const fetchImpl = vi.fn(async () => streamResponse([JSON.stringify({ response: 'ok', done: true })]));
+    await generateLocalAiResponseStream('http://127.0.0.1:11434', 'a prompt', {
+      fetchImpl: fetchImpl as unknown as FetchLike,
+    });
+    const [, init] = fetchImpl.mock.calls[0];
+    expect(JSON.parse(init.body).keep_alive).toBe('30m');
+  });
+
+  it('lets a caller override the default keep_alive', async () => {
+    const fetchImpl = vi.fn(async () => streamResponse([JSON.stringify({ response: 'ok', done: true })]));
+    await generateLocalAiResponseStream('http://127.0.0.1:11434', 'a prompt', {
+      fetchImpl: fetchImpl as unknown as FetchLike,
+      keepAlive: -1,
+    });
+    const [, init] = fetchImpl.mock.calls[0];
+    expect(JSON.parse(init.body).keep_alive).toBe(-1);
+  });
+
+  it('right-sizes num_ctx down from the model\'s 128K default for short chat prompts', async () => {
+    const fetchImpl = vi.fn(async () => streamResponse([JSON.stringify({ response: 'ok', done: true })]));
+    await generateLocalAiResponseStream('http://127.0.0.1:11434', 'a prompt', {
+      fetchImpl: fetchImpl as unknown as FetchLike,
+    });
+    const [, init] = fetchImpl.mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.options?.num_ctx).toBe(4096);
+    expect(body.options?.num_ctx).toBeLessThan(131072);
+  });
+
+  it('lets a caller override the default num_ctx', async () => {
+    const fetchImpl = vi.fn(async () => streamResponse([JSON.stringify({ response: 'ok', done: true })]));
+    await generateLocalAiResponseStream('http://127.0.0.1:11434', 'a prompt', {
+      fetchImpl: fetchImpl as unknown as FetchLike,
+      numCtx: 8192,
+    });
+    const [, init] = fetchImpl.mock.calls[0];
+    expect(JSON.parse(init.body).options.num_ctx).toBe(8192);
   });
 
   it('correctly reassembles a JSON line split across two stream reads', async () => {

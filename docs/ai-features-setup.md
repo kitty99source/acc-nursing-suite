@@ -20,15 +20,18 @@ features"** toggle:
    in Patients, same "human reviews, then explicitly accepts" pattern the rest of this codebase
    already uses for staging/Review-Queue items.
 2. **Global AI chat assistant** — a persistent chat panel docked bottom-right (collapsed to a small
-   bubble by default), usable from any screen. Drag a patient row in (or click its chat icon) to
-   attach it as a "context chip" and ask about that specific case; every reply has a "Context used"
-   expandable section showing exactly what data was sent. The conversation is saved on this laptop
-   only (its own local IndexedDB entry, never part of `.accdata`/Excel/full-backup exports) so it
-   survives closing and reopening the app — use the trash icon in the chat panel's header at any
-   time to permanently wipe it. See `docs/research/ai-chat-assistant-2026-08.md` for the full design
-   writeup, what's in scope this pass (Patients only — no Contracts model exists in this repo), the
-   telemetry/data-leak verification behind the persistence decision, and documented future work
-   (contract-PDF-text RAG was explicitly NOT attempted).
+   bubble by default), usable from any screen. Drag a patient or contract row in (or click its chat
+   icon) to attach it as a "context chip" and ask about that specific record; every reply has a
+   "Context used" expandable section showing exactly what data was sent. While the model is still
+   reasoning, its chain-of-thought streams live in a small collapsible section (Cursor-IDE style),
+   collapsing to a "Show reasoning" toggle once the real answer starts. The conversation is saved on
+   this laptop only (its own local IndexedDB entry, never part of `.accdata`/Excel/full-backup
+   exports) so it survives closing and reopening the app — use the trash icon in the chat panel's
+   header at any time to permanently wipe it. See `docs/research/ai-chat-assistant-2026-08.md` for
+   the full design writeup, what's in scope (Patients and, as of 2026-08-04, Contracts — see
+   `src/modules/Contracts.tsx`), the telemetry/data-leak verification behind the persistence
+   decision, and documented future work (full contract-PDF-text RAG still NOT attempted — no real
+   contract document corpus exists yet to build/test it against).
 
 ## Why Ollama, and why no PowerShell proxy was needed
 

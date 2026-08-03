@@ -442,7 +442,7 @@ describe('<AiChatPanel />', () => {
     expect(assistantMessage?.reasoning).toContain('This is a simple greeting');
   });
 
-  it('shows a "still reasoning" indicator (not raw <think> text) while a chain-of-thought block is streaming in, then reveals the short answer once it arrives', async () => {
+  it('streams the reasoning trace LIVE (Cursor-style) while a chain-of-thought block is open, then collapses it once the final answer starts (2026-08-04 owner ask)', async () => {
     let onChunkCb!: (accumulated: string) => void;
     aiServiceMocks.generateLocalAiResponseStream.mockImplementation(
       (_baseUrl: string, _prompt: string, opts: { onChunk?: (t: string) => void }) =>
@@ -471,16 +471,30 @@ describe('<AiChatPanel />', () => {
     await act(async () => {
       onChunkCb('<think>The user said hello, I should be brief');
     });
-    // Still inside the reasoning block — must never render the raw chain-of-thought as if it were the answer.
-    expect(container.textContent).not.toContain('The user said hello, I should be brief');
-    expect(container.textContent).toContain('Reasoning through your question');
+    // While still inside the reasoning block, the actual streaming reasoning tokens ARE shown live
+    // (Cursor-IDE style), not hidden behind a generic opaque placeholder.
+    expect(container.textContent).toContain('The user said hello, I should be brief');
+    expect(container.textContent).toContain('Reasoning…');
+    // Not yet collapsed into the post-hoc toggle — that only appears once reasoning has finished.
+    expect(
+      Array.from(container.querySelectorAll('details')).some(
+        (d) => d.querySelector('summary')?.textContent === 'Show reasoning',
+      ),
+    ).toBe(false);
 
     await act(async () => {
       onChunkCb('<think>The user said hello, I should be brief</think>Hi there!');
     });
-    // Once the closing tag streams in, the short answer becomes the visible text.
+    // Once the closing tag streams in, the final answer becomes the visible primary text...
     expect(container.textContent).toContain('Hi there!');
-    expect(container.textContent).not.toContain('The user said hello, I should be brief');
+    // ...and the reasoning trace collapses down to the same "Show reasoning" toggle a finished
+    // message ends at, so the UI isn't left cluttered with the now-stale live reasoning box.
+    const details = Array.from(container.querySelectorAll('details')).find(
+      (d) => d.querySelector('summary')?.textContent === 'Show reasoning',
+    ) as HTMLDetailsElement;
+    expect(details).toBeTruthy();
+    expect(details.open).toBe(false);
+    expect(details.textContent).toContain('The user said hello, I should be brief');
   });
 
   it('shows a "Stop generating" control only while a response is streaming, which cancels via the shared abort mechanism, keeps the partial text visible marked "[stopped]", and re-enables sending immediately', async () => {

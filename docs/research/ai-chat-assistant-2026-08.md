@@ -55,17 +55,22 @@ about that specific case.
   "Runs 100% locally — no patient data leaves this laptop" note stays visible in the panel header at
   all times.
 
-## Chip types — Patients yes, Contracts confirmed NOT present
+## Chip types — Patients yes, and (as of 2026-08-04) Contracts too
 
 Per the owner's ask, this pass checked whether AdminSuite has a Contracts/provider-contract data
-model to extend the same chip pattern to. **It does not** — a repo-wide search for
-"contract"/"Contract" across `src/` turns up only compliance-rule text, service-code pricing labels,
-and help copy; there is no `Contract` type in `src/types/index.ts`, no `ContractRecord` in
-`AppData`, and no Contracts module in `src/modules/`. (`ACC-RemittanceTracker`, a sibling suite, does
-have a real Contracts feature — but that is a different codebase and out of scope here.) So this
-pass ships exactly one chip type (`patient`), and `ContextChipType` is written as a union so a
-future `'contract'` (or `'claim'`, `'approval'`, etc.) variant can be added later without changing
-the drag/drop or serialization plumbing.
+model to extend the same chip pattern to. **At the time of the original build, it did not** — a
+repo-wide search for "contract"/"Contract" across `src/` turned up only compliance-rule text,
+service-code pricing labels, and help copy; there was no `Contract` type in `src/types/index.ts`,
+no `ContractRecord` in `AppData`, and no Contracts module in `src/modules/`. So the original pass
+shipped exactly one chip type (`patient`), with `ContextChipType` written as a union so a future
+`'contract'` variant could be added later without changing the drag/drop or serialization plumbing.
+
+**2026-08-04 follow-up: this gap has now been filled.** See "Full knowledge: ACC contracts +
+general 'know everything' capability" below for the full writeup — short version: a real,
+first-class `Contract` type now exists (`src/types/index.ts`), with CRUD in
+`src/modules/Contracts.tsx` (sidebar → **Contracts**) and a `'contract'` chip type
+(`makeContractChip`/`serializeContractContext` in `lib/aiChatContext.ts`), wired into the chat
+panel exactly like Patients (a click-to-attach chat icon on each row).
 
 ## Explicitly NOT attempted this pass (future work)
 
@@ -367,3 +372,129 @@ extension point (`fewShotExamples()` / the `FewShotExample` type) for the next r
 instead of that logic being scattered inline inside the prompt-assembly file. `lib/aiChatContext.ts`
 re-exports the same function names it always had for backwards compatibility with existing callers/
 tests, so this is additive/structural, not a breaking change.
+
+## 2026-08-04 follow-up pass: speed, live reasoning streaming, and Contracts
+
+Three separate owner asks landed together in one pass — recorded here as one coherent update.
+
+### 1. Speed tuning (CPU-only, <16GB RAM, Ollama + Phi-4-mini-reasoning)
+
+Two concrete, low-risk request-option changes applied directly to `src/lib/aiService.ts`
+(`generateLocalAiResponse` and `generateLocalAiResponseStream` — i.e. both the duplicate-check
+and chat-panel code paths):
+
+- **`keep_alive: "30m"`** (new `DEFAULT_KEEP_ALIVE` constant, overridable per call). Ollama's own
+  default unloads a model from RAM 5 minutes after the last request
+  ([`docs/faq.md`](https://github.com/ollama/ollama/blob/main/docs/faq.md)), forcing a slow
+  disk→RAM reload on the next message — exactly the "10-60s+ cold-load" cost this file's own
+  existing chat-timeout comments already document. Since local-first only pays off with repeated
+  local use, keeping the model warm for 30 minutes of idle time (not indefinitely — `-1` was
+  considered and rejected as the default, to avoid pinning ~3.2GB of RAM for an entire unattended
+  workday) is a real, meaningful win with no quality tradeoff.
+- **`num_ctx: 4096`** (new `DEFAULT_NUM_CTX` constant, overridable per call). The owner's own
+  `ollama list` output showed this model's max context as 131072 tokens, and Ollama silently
+  allocates a KV-cache sized for whatever `num_ctx` a request specifies (or the model's own max, if
+  unspecified) — a real, avoidable memory/CPU cost for what is typically a short chat message. This
+  app's own prompt assembly (`buildChatPrompt`, `MAX_HISTORY_TURNS = 8`) never comes close to
+  needing 128K tokens; 4096 is a generous-but-right-sized ceiling.
+- **`num_thread`: deliberately NOT set.** Ollama's server already defaults this to the detected
+  physical CPU core count, and current guidance is that manually pinning it on a single-user
+  desktop workload rarely helps and can hurt (thread oversubscription if set too high). There is no
+  way to know the real core count of "the owner's laptop" from this codebase, so nothing was
+  guessed — documented here as a real, available, laptop-specific tuning knob if the owner ever
+  wants to hand-set it.
+- **Quantization (Q4_K_M): confirmed no further easy win.** Already a good balance per the
+  original research table. A Q4_0/Q3 variant would trade real speed for a real, non-trivial
+  quality drop specifically on the reasoning-heavy tasks this model was chosen for — documented as
+  an available option, not recommended.
+- **`num_predict` (2048, from the prior "rambling on hello" fix): left as-is**, per the explicit
+  instruction not to reduce it blindly (risk of truncating a genuinely long answer). Already
+  overridable via the existing `numPredict` option.
+
+**Plain-language expected impact:** the single biggest real-world win is `keep_alive` — a session
+where the owner sends several messages in a row (the normal chat use case) should feel
+meaningfully snappier after the first message, since the model no longer has to be reloaded from
+disk into RAM on every single turn once it would otherwise have gone idle. `num_ctx` mainly
+reduces the fixed per-request memory/setup overhead rather than tokens/sec once generating — a
+smaller, second-order but real speedup, more noticeable on a memory-constrained machine than a
+well-resourced one. Neither change touches model quality (same weights, same quantization).
+
+New tests: `src/lib/aiService.test.ts` covers the `keep_alive`/`num_ctx` defaults and their
+overrides on both the streaming and non-streaming request paths.
+
+### 2. Live-streaming reasoning trace (Cursor-IDE style)
+
+`src/components/AiChatPanel.tsx`'s in-progress ("sending") render logic changed: while a `<think>`
+block is still open (`parseThinkResponse(...).thinking === true`), the panel now renders the
+**actual streaming reasoning tokens live**, in a small muted/italic auto-scrolling box (with a
+"Reasoning…" header and blinking cursor), instead of the previous static "Reasoning through your
+question…" placeholder that hid the real content. Once the `</think>` tag closes and the model
+starts streaming its final answer, that live reasoning box **collapses down into the same
+"Show reasoning" `<details>` toggle** a finished message already ends at (closed by default) — so
+the UI is never left cluttered with a now-stale reasoning trace once the real answer is visible.
+This is a pure UI change on top of the same already-built, already-tested `thinkParser.ts`
+open/closed-tag state — no parser changes were needed. Updated/added coverage in
+`src/components/AiChatPanel.test.tsx`.
+
+### 3. Contract data model + chip type, and the general-knowledge/privacy tradeoff
+
+**Investigated first, per instruction — no content invented:**
+
+- Confirmed AdminSuite still has **no Contract data model and no real contract documents anywhere
+  in this repo** (this doc's own earlier section already recorded that finding; re-confirmed).
+- Checked the sibling `ACC-RemittanceTracker` repo's
+  `src/lib/accreditedProvider/employerCatalog.ts`: it has a structured `AccreditedEmployer[]`
+  catalog (name + AR customer number, some with a claims email/attn line) — **structured reference
+  data, not full contract document text**. Its own file header comment says "Not PHI," but the
+  team's own backlog notes (`.cursor/rules/remittance-current-backlog.mdc`) separately flag the
+  real customer numbers in that file as an **open, unresolved "does this need scrubbing" question**
+  from an earlier PHI audit. Given that question was never actually resolved, this pass made the
+  conservative call: **that data was NOT imported/mirrored into AdminSuite.** The new Contract type
+  was informed by `AccreditedEmployer`'s shape (name + customer number) but ships with **zero seed
+  data** — Contracts starts empty in AdminSuite; the owner adds real ones. If the owner confirms
+  those customer numbers are safe to duplicate (not real, sensitive business data), that seeding
+  can be added later as a quick follow-up.
+
+**Built, given no real contract corpus exists to RAG over:**
+
+- A genuine, first-class **`Contract` type** (`src/types/index.ts`): provider/employer name,
+  customer number, claims email, effective-from/to dates, service codes covered, and a rate table
+  (service code + description + rate). Added as an optional/additive `AppData.contracts?: Contract[]`
+  field (same pattern as `customSheets`/`importHistory`), so no existing fixture/migration needed
+  updating.
+- Full CRUD UI at **sidebar → Contracts** (`src/modules/Contracts.tsx`), following this codebase's
+  existing record-module pattern (`ComplexCases.tsx` was the closest template) — list, add, edit,
+  delete, plus an inline rate-table editor.
+- A new **`'contract'` context-chip type** (`ContextChipType` extended from `'patient'` to
+  `'patient' | 'contract'`, exactly the extension point left ready in the original build):
+  `makeContractChip` / `serializeContractContext` in `lib/aiChatContext.ts`, and a
+  "Add to AI chat context" chat-icon button on each Contracts row, identical UX to the existing
+  Patients row button.
+- New tests: `src/state/contracts.test.ts` (CRUD) and additions to `src/lib/aiChatContext.test.ts`
+  (contract chip creation, serialization, graceful-degradation on a deleted/absent record).
+
+**The general-knowledge / "search up anything" ask — explicitly flagged, not silently decided:**
+
+A genuinely offline, on-device model **cannot** search the live internet or know about anything
+outside its training data plus whatever text this app explicitly feeds it in the prompt — there is
+no third option that preserves both "knows everything" and "100% local, nothing leaves this
+laptop," and this app's own UI/docs already make the second promise explicitly and repeatedly
+(the chat panel's fixed header note, this doc, `docs/ai-features-setup.md`). Two real paths exist,
+and **neither was silently picked**:
+
+1. **Add a real web-search/cloud-lookup tool call.** Technically straightforward, but a
+   consequential product decision — it would mean this feature sometimes DOES send data (at least
+   the search query, likely more) off this laptop, directly contradicting the privacy claims
+   already shipped in the UI. **Not implemented. Needs the owner's explicit, informed sign-off**
+   before any code along these lines is written.
+2. **Curate more real static knowledge into the existing injection system** (`lib/ai/knowledgeBase.ts`)
+   as real documents/data become available — this is the "RAG once you have real data" path the
+   research doc already recommended, and the Contract model above is a concrete step along it
+   (structured facts now; full document text search later, once there's something real to search).
+
+**Concrete next step to actually get contract knowledge in, if the owner wants it:** tell us where
+real ACC contract PDFs/documents live (a folder path, an email they arrived in, a shared drive —
+whatever the actual source is), or hand over 2-3 real examples, and the next build phase is the
+actual text-extraction + chunking + embedding + local-vector-search pipeline described in "Future
+RAG build plan" above — genuinely blocked on having real source material to build and test against,
+not a coding limitation.

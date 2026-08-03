@@ -1,16 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import { emptyData } from './sampleData';
-import type { AppData, Claim, Patient } from '../types';
+import type { AppData, Claim, Contract, Patient } from '../types';
 import {
   AI_ASSISTANT_SYSTEM_PROMPT,
   buildCaseStageSummary,
   buildChatPrompt,
   buildComplianceRuleSummary,
   buildContextBlock,
+  makeContractChip,
   makePatientChip,
   serializeChipContext,
+  serializeContractContext,
   serializePatientContext,
 } from './aiChatContext';
+
+function contract(overrides: Partial<Contract> = {}): Contract {
+  return {
+    id: 'ct1',
+    providerName: 'SAMPLE — Wellnz Limited',
+    customerNumber: '1216',
+    claimsEmail: 'claims@example.test',
+    effectiveFrom: '2026-01-01',
+    effectiveTo: '',
+    serviceCodesCovered: ['NS04', 'NS05'],
+    rateTable: [{ serviceCode: 'NS04', description: 'District nursing visit', rate: 85.5 }],
+    notes: 'Synthetic test fixture.',
+    ...overrides,
+  };
+}
 
 function patient(overrides: Partial<Patient> = {}): Patient {
   return { id: 'p1', name: 'Jane Doe', nhi: 'ABC1234', dob: '1980-05-01', notes: 'Prefers morning visits', ...overrides };
@@ -70,6 +87,47 @@ describe('serializeChipContext', () => {
     const data = dataWith([]);
     const chip = makePatientChip(patient());
     expect(serializeChipContext(chip, data)).toContain('record no longer found');
+  });
+
+  it('resolves a contract chip to its live record', () => {
+    const c = contract();
+    const data: AppData = { ...emptyData(), contracts: [c] };
+    const chip = makeContractChip(c);
+    expect(chip.type).toBe('contract');
+    expect(serializeChipContext(chip, data)).toBe(serializeContractContext(c));
+  });
+
+  it('degrades gracefully when the chipped contract has since been deleted', () => {
+    const data: AppData = { ...emptyData(), contracts: [] };
+    const chip = makeContractChip(contract());
+    expect(serializeChipContext(chip, data)).toContain('record no longer found');
+  });
+
+  it('works when data.contracts is entirely absent (optional/additive field)', () => {
+    const data: AppData = { ...emptyData() };
+    delete data.contracts;
+    const chip = makeContractChip(contract());
+    expect(serializeChipContext(chip, data)).toContain('record no longer found');
+  });
+});
+
+describe('serializeContractContext', () => {
+  it('includes the real contract fields — rate table, codes covered, dates', () => {
+    const text = serializeContractContext(contract());
+    expect(text).toContain('SAMPLE — Wellnz Limited');
+    expect(text).toContain('1216');
+    expect(text).toContain('NS04, NS05');
+    expect(text).toContain('$85.50');
+    expect(text).toContain('District nursing visit');
+    expect(text).toContain('ongoing');
+  });
+
+  it('says "none on file" / "not on file" rather than inventing data for a mostly-empty contract', () => {
+    const c = contract({ customerNumber: '', claimsEmail: '', serviceCodesCovered: [], rateTable: [], notes: '' });
+    const text = serializeContractContext(c);
+    expect(text).toContain('not on file');
+    expect(text).toContain('none on file');
+    expect(text).toContain('Notes: none');
   });
 });
 

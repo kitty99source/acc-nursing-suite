@@ -37,6 +37,30 @@ const DEFAULT_STATUS_TIMEOUT_MS = 2500;
 // than false-negative "unavailable" on a laptop that is just slow.
 const DEFAULT_GENERATE_TIMEOUT_MS = 60_000;
 
+// ----------------------------------------------------------------------------
+// Chat-specific timeouts (2026-08-04 real-laptop bug fix). A live chat turn is
+// NOT the same situation as the quick status probe or even the structured
+// duplicate-check prompt above: Phi-4-mini-reasoning emits a hidden
+// chain-of-thought before its visible answer, Ollama may need 10-60s+ to cold
+// -load the model into RAM on the first request after a (re)start, and at
+// ~10-20 tok/s CPU-only a full reasoning trace can genuinely run 1-3+
+// minutes. A fixed 60s deadline for the WHOLE reply — as this file used for
+// every generate call until this fix — reports "can't reach the model" on a
+// model that is actually fine and simply still thinking, which is exactly
+// what the owner hit on the first real chat message.
+//
+// The fix is two independent numbers, not one bigger number:
+//   - DEFAULT_CHAT_INACTIVITY_TIMEOUT_MS: reset on every streamed chunk. This
+//     is what actually catches a genuinely stuck/crashed request (Ollama
+//     process died mid-response, connection silently dropped) without ever
+//     punishing a request that is slow but demonstrably still producing
+//     tokens.
+//   - DEFAULT_CHAT_TOTAL_TIMEOUT_MS: a hard ceiling regardless of progress,
+//     purely as a backstop against a pathological "one token every 100s
+//     forever" case that would otherwise never trip the inactivity timer.
+const DEFAULT_CHAT_INACTIVITY_TIMEOUT_MS = 120_000;
+const DEFAULT_CHAT_TOTAL_TIMEOUT_MS = 300_000;
+
 function stripTrailingSlash(url: string): string {
   return url.replace(/\/+$/, '');
 }
@@ -190,6 +214,149 @@ export async function generateLocalAiResponse(
     return { ok: false, error: errorMessage(err) };
   } finally {
     clear();
+  }
+}
+
+/**
+ * AbortError message for a chat-turn timeout is deliberately distinct from
+ * both the quick-status-check message and the generic `errorMessage()` used
+ * by the structured (non-chat) `generateLocalAiResponse` above — by the time
+ * a chat request's much longer inactivity deadline actually trips, the far
+ * more likely explanation is a genuinely stuck/crashed Ollama process, not
+ * "still starting up", so the message should say that instead.
+ */
+function chatErrorMessage(err: unknown): string {
+  if (err instanceof Error && err.name === 'AbortError') {
+    return (
+      'The local AI model stopped responding and this request timed out. This usually means Ollama ' +
+      'crashed or got stuck mid-response — try sending the message again, and restart Ollama from the ' +
+      'system tray if it keeps happening.'
+    );
+  }
+  return errorMessage(err);
+}
+
+export interface AiGenerateStreamOptions {
+  fetchImpl?: FetchLike;
+  model?: string;
+  /** Hard ceiling for the whole request regardless of progress. Default 5 minutes — see DEFAULT_CHAT_TOTAL_TIMEOUT_MS. */
+  timeoutMs?: number;
+  /** Reset on every chunk received. Default 2 minutes — see DEFAULT_CHAT_INACTIVITY_TIMEOUT_MS. */
+  inactivityTimeoutMs?: number;
+  /** Called with the ACCUMULATED text so far every time a new streamed chunk arrives (not just the delta). */
+  onChunk?: (accumulatedText: string) => void;
+}
+
+/**
+ * Send one prompt to the local model server's generate endpoint with
+ * streaming enabled (Ollama's `/api/generate` with `"stream": true`) and
+ * return the final accumulated text once the stream ends. Reads the response
+ * body as newline-delimited JSON objects (Ollama's actual streaming wire
+ * format: one `{"response": "<token(s)>", "done": false}` object per line,
+ * ending with a final `{"done": true, ...}`), calling `onChunk` with the
+ * running total after each parsed line so a caller can render partial text
+ * live instead of staring at a blank "thinking" spinner for the whole reply.
+ *
+ * This is the chat panel's entry point (see AiChatPanel.tsx) — kept as a
+ * separate function from `generateLocalAiResponse` above rather than adding
+ * a `stream` flag to it, since the two have genuinely different timeout
+ * shapes (one fixed deadline for a short structured answer vs. an
+ * inactivity-reset deadline for a long free-form chat reply) and different
+ * callers (duplicate-check vs. the chat panel).
+ *
+ * Deliberately still targets `/api/generate` (not `/api/chat`) — the chat
+ * panel already flattens the whole conversation into one prompt string via
+ * `buildChatPrompt` (for the "Context used" transparency disclosure), and
+ * Ollama's streaming wire format is identical either way, so switching
+ * endpoints would only add prompt-assembly risk for no UX benefit.
+ */
+export async function generateLocalAiResponseStream(
+  baseUrl: string,
+  prompt: string,
+  opts?: AiGenerateStreamOptions,
+): Promise<AiGenerateResult> {
+  const fetchImpl = opts?.fetchImpl ?? fetch;
+  const model = opts?.model ?? DEFAULT_AI_MODEL;
+  const inactivityMs = opts?.inactivityTimeoutMs ?? DEFAULT_CHAT_INACTIVITY_TIMEOUT_MS;
+  const totalMs = opts?.timeoutMs ?? DEFAULT_CHAT_TOTAL_TIMEOUT_MS;
+
+  const controller = new AbortController();
+  const totalTimer = setTimeout(() => controller.abort(), totalMs);
+  let inactivityTimer: ReturnType<typeof setTimeout> | undefined;
+  function resetInactivity() {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => controller.abort(), inactivityMs);
+  }
+  resetInactivity();
+  function clearAllTimers() {
+    clearTimeout(totalTimer);
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+  }
+
+  function applyLine(line: string, state: { accumulated: string; error: string | null }): void {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    let parsed: { response?: unknown; error?: unknown };
+    try {
+      parsed = JSON.parse(trimmed) as { response?: unknown; error?: unknown };
+    } catch {
+      // A chunk boundary can split one JSON line across two reads — an unparseable
+      // fragment here is expected, never a reason to fail the whole stream.
+      return;
+    }
+    if (typeof parsed.error === 'string' && parsed.error.trim()) {
+      state.error = parsed.error;
+      return;
+    }
+    if (typeof parsed.response === 'string' && parsed.response) {
+      state.accumulated += parsed.response;
+      opts?.onChunk?.(state.accumulated);
+    }
+  }
+
+  try {
+    const res = await fetchImpl(`${stripTrailingSlash(baseUrl)}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, prompt, stream: true }),
+      signal: controller.signal,
+    });
+    if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
+
+    const state = { accumulated: '', error: null as string | null };
+    const body = res.body as ReadableStream<Uint8Array> | null | undefined;
+
+    if (body && typeof body.getReader === 'function') {
+      const reader = body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        resetInactivity();
+        buffer += decoder.decode(value, { stream: true });
+        let newlineIdx = buffer.indexOf('\n');
+        while (newlineIdx >= 0) {
+          applyLine(buffer.slice(0, newlineIdx), state);
+          buffer = buffer.slice(newlineIdx + 1);
+          newlineIdx = buffer.indexOf('\n');
+        }
+      }
+      if (buffer.trim()) applyLine(buffer, state);
+    } else {
+      // No readable stream body available (some fetch polyfills/mocks) — fall back to a
+      // single parsed JSON object, same shape as `generateLocalAiResponse`'s non-streaming path.
+      const json = (await res.json()) as { response?: unknown; error?: unknown };
+      applyLine(JSON.stringify(json), state);
+    }
+
+    if (state.error) return { ok: false, error: state.error };
+    if (!state.accumulated.trim()) return { ok: false, error: 'Empty response from local AI model' };
+    return { ok: true, text: state.accumulated };
+  } catch (err) {
+    return { ok: false, error: chatErrorMessage(err) };
+  } finally {
+    clearAllTimers();
   }
 }
 

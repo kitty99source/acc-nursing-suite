@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { useAiChatStore, makeMessageId, CHIP_DND_MIME, type AiChatMessage } from '../state/aiChatStore';
 import { buildChatPrompt, type ChatTurn, type ContextChip } from '../lib/aiChatContext';
-import { generateLocalAiResponse } from '../lib/aiService';
+import { generateLocalAiResponseStream } from '../lib/aiService';
 import { IconChat, IconClose, IconMinimize, IconSend, IconTrash } from './icons';
 
 // ============================================================================
@@ -26,11 +26,13 @@ export function AiChatPanel() {
   const chips = useAiChatStore((s) => s.chips);
   const messages = useAiChatStore((s) => s.messages);
   const sending = useAiChatStore((s) => s.sending);
+  const streamingText = useAiChatStore((s) => s.streamingText);
   const setOpen = useAiChatStore((s) => s.setOpen);
   const addChip = useAiChatStore((s) => s.addChip);
   const removeChip = useAiChatStore((s) => s.removeChip);
   const addMessage = useAiChatStore((s) => s.addMessage);
   const setSending = useAiChatStore((s) => s.setSending);
+  const setStreamingText = useAiChatStore((s) => s.setStreamingText);
   const newChat = useAiChatStore((s) => s.newChat);
   const clearHistory = useAiChatStore((s) => s.clearHistory);
   const hydrate = useAiChatStore((s) => s.hydrate);
@@ -51,7 +53,7 @@ export function AiChatPanel() {
     if (el && typeof el.scrollTo === 'function') {
       el.scrollTo({ top: el.scrollHeight });
     }
-  }, [messages, sending]);
+  }, [messages, sending, streamingText]);
 
   if (!settings.aiFeaturesEnabled) return null;
 
@@ -92,9 +94,16 @@ export function AiChatPanel() {
     };
     addMessage(userMessage);
     setSending(true);
+    setStreamingText('');
 
     const { prompt, contextBlock } = buildChatPrompt({ history, chips: attachedChips, data, userMessage: text });
-    const result = await generateLocalAiResponse(settings.aiServiceBaseUrl, prompt);
+    // Streamed (Ollama `/api/generate` with `stream: true`) so the panel can render tokens as
+    // they arrive instead of a blank spinner for the whole reply — see aiService.ts for the
+    // inactivity-reset timeout that makes this both faster-feeling AND safer against premature
+    // timeouts than the old single fixed deadline.
+    const result = await generateLocalAiResponseStream(settings.aiServiceBaseUrl, prompt, {
+      onChunk: (accumulated) => setStreamingText(accumulated),
+    });
 
     if (result.ok) {
       addMessage({
@@ -114,6 +123,7 @@ export function AiChatPanel() {
         contextUsed: contextBlock || undefined,
       });
     }
+    setStreamingText('');
     setSending(false);
   }
 
@@ -230,12 +240,25 @@ export function AiChatPanel() {
         ))}
         {sending && (
           <div className="text-sm" style={{ marginRight: '2rem' }}>
-            <div className="rounded-lg px-2.5 py-1.5 inline-flex items-center gap-2" style={{ background: 'var(--surface-2)' }}>
-              <span className="spinner" aria-hidden="true" />
-              <span className="text-xs" style={{ color: 'var(--muted)' }}>
-                Thinking… (a local reasoning model can take up to a minute)
-              </span>
-            </div>
+            {streamingText ? (
+              <div
+                className="rounded-lg px-2.5 py-1.5 whitespace-pre-wrap"
+                style={{ background: 'var(--surface-2)', color: 'var(--text)' }}
+              >
+                {streamingText}
+                <span className="inline-block ml-1 animate-pulse" aria-hidden="true">
+                  ▍
+                </span>
+              </div>
+            ) : (
+              <div className="rounded-lg px-2.5 py-1.5 inline-flex items-center gap-2" style={{ background: 'var(--surface-2)' }}>
+                <span className="spinner" aria-hidden="true" />
+                <span className="text-xs" style={{ color: 'var(--muted)' }}>
+                  Thinking… small on-device models can take 30–90 seconds on this hardware, longer
+                  (up to a few minutes) right after Ollama has just started.
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>

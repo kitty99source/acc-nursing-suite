@@ -41,6 +41,13 @@ interface AiChatState {
   chips: ContextChip[];
   messages: AiChatMessage[];
   sending: boolean;
+  /**
+   * Live-accumulated text of the in-flight streamed reply, so the panel can render tokens as
+   * they arrive instead of a blank spinner for the whole reply duration (see aiService.ts
+   * `generateLocalAiResponseStream`). '' while nothing has streamed back yet (still cold-starting
+   * / thinking); reset to '' once the final message is appended via `addMessage`.
+   */
+  streamingText: string;
   /** True once the one-time load from IndexedDB has completed (or found nothing). */
   hydrated: boolean;
   setOpen: (open: boolean) => void;
@@ -50,6 +57,7 @@ interface AiChatState {
   clearChips: () => void;
   addMessage: (message: AiChatMessage) => void;
   setSending: (sending: boolean) => void;
+  setStreamingText: (text: string) => void;
   newChat: () => void;
   /** One-time load of any persisted conversation from IndexedDB. Safe to call more than once — a no-op after the first. */
   hydrate: () => Promise<void>;
@@ -73,6 +81,7 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
   chips: [],
   messages: [],
   sending: false,
+  streamingText: '',
   hydrated: false,
   setOpen: (open) => set({ open }),
   toggleOpen: () => set((s) => ({ open: !s.open })),
@@ -101,6 +110,7 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
       return { messages };
     }),
   setSending: (sending) => set({ sending }),
+  setStreamingText: (text) => set({ streamingText: text }),
   // "New chat" and "Clear chat history" are the same operation under the hood
   // now that the conversation is persisted (there is only ever one thread) —
   // kept as two separate store actions/UI buttons so the panel can offer both
@@ -118,7 +128,7 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
     }
   },
   clearHistory: () => {
-    set({ messages: [], chips: [], sending: false });
+    set({ messages: [], chips: [], sending: false, streamingText: '' });
     void clearAiChatHistory().catch(() => {});
   },
 }));

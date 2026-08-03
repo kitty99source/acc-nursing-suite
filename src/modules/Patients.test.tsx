@@ -161,3 +161,80 @@ describe('<Patients /> duplicate-patient check', () => {
     expect(useStore.getState().data.claims[0].patientId).toBe('p-rich');
   });
 });
+
+describe('<Patients /> AI-assisted duplicate check', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('hides the AI duplicate check button when AI features are off (the default)', () => {
+    act(() => {
+      root.render(<Patients />);
+    });
+    const btn = Array.from(container.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('AI duplicate check'),
+    );
+    expect(btn).toBeUndefined();
+  });
+
+  it('shows a graceful "unavailable" note (not a crash) when AI features are on but the local service is unreachable', async () => {
+    useStore.setState((s) => ({ data: { ...s.data, settings: { ...s.data.settings, aiFeaturesEnabled: true } } }));
+    const aroha: Patient = { id: 'p1', name: 'Aroha Brown', nhi: '', dob: '1958-04-12', notes: '' };
+    const arohaTypo: Patient = { id: 'p2', name: 'Arohaa Brown', nhi: '', dob: '1958-04-12', notes: '' };
+    useStore.setState((s) => ({ data: { ...s.data, patients: [aroha, arohaTypo] } }));
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }),
+    );
+
+    act(() => {
+      root.render(<Patients />);
+    });
+
+    clickButtonByText('AI duplicate check (beta)');
+    await flush();
+    await flush();
+
+    expect(container.textContent).toContain('AI duplicate check unavailable');
+  });
+
+  it('surfaces a dismissible AI suggestion banner (not an auto-merge) when the local model flags a pair', async () => {
+    useStore.setState((s) => ({ data: { ...s.data, settings: { ...s.data.settings, aiFeaturesEnabled: true } } }));
+    const aroha: Patient = { id: 'p1', name: 'Aroha Brown', nhi: '', dob: '1958-04-12', notes: '' };
+    const arohaTypo: Patient = { id: 'p2', name: 'Arohaa Brown', nhi: '', dob: '1958-04-12', notes: '' };
+    useStore.setState((s) => ({ data: { ...s.data, patients: [aroha, arohaTypo] } }));
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            response: '[{"pair": "P0", "reason": "Same DOB, name differs by one letter.", "confidence": "high"}]',
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    act(() => {
+      root.render(<Patients />);
+    });
+
+    clickButtonByText('AI duplicate check (beta)');
+    await flush();
+    await flush();
+
+    expect(container.textContent).toContain('might be the same person');
+    expect(container.textContent).toContain('Same DOB, name differs by one letter.');
+    // No merge happened yet — this is only a suggestion until reviewed.
+    expect(useStore.getState().data.patients).toHaveLength(2);
+
+    clickButtonByText('Dismiss');
+    expect(container.textContent).not.toContain('might be the same person');
+    // Dismissing the suggestion still does not merge anything.
+    expect(useStore.getState().data.patients).toHaveLength(2);
+  });
+});

@@ -455,6 +455,16 @@ export interface Settings {
   // Seeded from the current ACC schedule but fully editable — ACC updates
   // its prices, so there is no fixed "default" to reset to.
   serviceRates: Record<ServiceCode, number>;
+  /**
+   * Master switch for on-device AI features (patient duplicate-check first).
+   * Off by default — never runs, never phones out, until explicitly enabled.
+   * Talks only to a local model server (e.g. Ollama) on this machine; see
+   * docs/ai-features-setup.md. Human always reviews suggestions before any
+   * merge/change is applied — never an auto-merge.
+   */
+  aiFeaturesEnabled: boolean;
+  /** Base URL of the local AI model server (Ollama's default, editable for advanced setups). */
+  aiServiceBaseUrl: string;
 }
 
 /** Local-only log of recent ACC letter imports (not exported separately). */

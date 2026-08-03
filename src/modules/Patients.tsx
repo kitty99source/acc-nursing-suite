@@ -26,7 +26,8 @@ import { getComplianceFindings, filterFindingsForPatient } from '../lib/complian
 import { formatCurrency, serviceCodeLabel, visibleServiceCodes } from '../lib/serviceCodes';
 import { formatDate, todayISO } from '../lib/format';
 import { validateNhi } from '../lib/validation';
-import { findMatchingPatient, findDuplicatePatientGroups } from '../lib/patients';
+import { findMatchingPatient, findDuplicatePatientGroups, suggestKeepPatient } from '../lib/patients';
+import { runAiDuplicatePatientCheck, type AiDuplicateSuggestion } from '../lib/patientDuplicateAi';
 import { appendAudit } from '../lib/auditLog';
 import { downloadBlob } from '../lib/storage';
 import {
@@ -314,6 +315,100 @@ export function Patients() {
   const dupBannerDismissed = data.settings.duplicatePatientsBannerDismissed;
   const updateSettings = useStore((s) => s.updateSettings);
 
+  // AI-assisted duplicate check (second, fuzzy pass on top of the exact-match
+  // rule above) — see docs/ai-features-setup.md. Purely additive: never runs
+  // unless Settings → AI features is on, never auto-merges, fails silently
+  // when the local AI helper isn't installed/running.
+  const [aiCheckState, setAiCheckState] = useState<
+    | { status: 'idle' }
+    | { status: 'checking' }
+    | { status: 'done'; suggestions: AiDuplicateSuggestion[]; note?: string }
+  >({ status: 'idle' });
+  const [dismissedAiKeys, setDismissedAiKeys] = useState<Set<string>>(new Set());
+
+  function aiSuggestionKey(s: AiDuplicateSuggestion): string {
+    return [s.patientAId, s.patientBId].sort().join('|');
+  }
+
+  async function runAiDuplicateCheck() {
+    setAiCheckState({ status: 'checking' });
+    const result = await runAiDuplicatePatientCheck(data.patients, {
+      enabled: true,
+      baseUrl: data.settings.aiServiceBaseUrl,
+    });
+    if (result.status === 'ok') {
+      setAiCheckState({
+        status: 'done',
+        suggestions: result.suggestions,
+        note:
+          result.suggestions.length === 0
+            ? `AI checked ${result.candidatesChecked} near-duplicate candidate pair${result.candidatesChecked === 1 ? '' : 's'} and did not find any likely duplicates.`
+            : undefined,
+      });
+    } else if (result.status === 'no-candidates') {
+      setAiCheckState({
+        status: 'done',
+        suggestions: [],
+        note: 'No fuzzy near-duplicate candidates to check — every patient name/DOB combination already looks distinct.',
+      });
+    } else {
+      setAiCheckState({
+        status: 'done',
+        suggestions: [],
+        note:
+          result.status === 'unavailable'
+            ? `AI duplicate check unavailable (local AI helper not detected${result.error ? `: ${result.error}` : ''}). See Settings → AI features to set it up.`
+            : 'The local AI model returned an answer that could not be understood — try again, or check Settings → AI features.',
+      });
+    }
+  }
+
+  async function reviewAiSuggestion(s: AiDuplicateSuggestion) {
+    const a = data.patients.find((p) => p.id === s.patientAId);
+    const b = data.patients.find((p) => p.id === s.patientBId);
+    if (!a || !b) return;
+    const keepFirst = suggestKeepPatient(data, [a, b]);
+    const other = keepFirst.id === a.id ? b : a;
+    const ok = await confirm({
+      title: 'AI-suggested possible duplicate',
+      message: (
+        <div className="space-y-2 text-sm">
+          <p>
+            <strong>{a.name}</strong>
+            {a.nhi ? ` (${a.nhi})` : ''} and <strong>{b.name}</strong>
+            {b.nhi ? ` (${b.nhi})` : ''} — {s.reason} (confidence: {s.confidence}).
+          </p>
+          <p style={{ color: 'var(--muted)' }}>
+            This is only a suggestion from a local AI model — nothing has been changed. Confirming
+            will keep {keepFirst.name} and merge {other.name}&apos;s claims/approvals/documents into
+            it, same as the exact-match merge tool.
+          </p>
+        </div>
+      ),
+      confirmLabel: 'Merge as suggested',
+      destructive: true,
+    });
+    if (ok) {
+      mergePatients(keepFirst.id, [other.id]);
+      await appendAudit({
+        action: 'patient-dedupe',
+        entityType: 'patient',
+        summary: `AI-suggested merge accepted: kept ${keepFirst.name}, merged ${other.name} (${s.reason})`,
+      });
+      if (aiCheckState.status === 'done') {
+        setAiCheckState({
+          ...aiCheckState,
+          suggestions: aiCheckState.suggestions.filter((x) => aiSuggestionKey(x) !== aiSuggestionKey(s)),
+        });
+      }
+    }
+  }
+
+  const visibleAiSuggestions =
+    aiCheckState.status === 'done'
+      ? aiCheckState.suggestions.filter((s) => !dismissedAiKeys.has(aiSuggestionKey(s)))
+      : [];
+
   return (
     <div>
       <SectionTitle
@@ -333,6 +428,16 @@ export function Patients() {
             >
               Check for duplicate patients
             </button>
+            {data.settings.aiFeaturesEnabled && (
+              <button
+                className="btn btn-sm"
+                onClick={() => void runAiDuplicateCheck()}
+                disabled={aiCheckState.status === 'checking'}
+                title="AI-assisted second pass — catches typos/nicknames/OCR digit errors the exact-match check above misses. Runs entirely on this laptop; never auto-merges."
+              >
+                {aiCheckState.status === 'checking' ? 'AI checking…' : 'AI duplicate check (beta)'}
+              </button>
+            )}
             <button className="btn btn-primary" onClick={openCreatePatient}>
               <IconPlus /> New patient
             </button>
@@ -370,6 +475,51 @@ export function Patients() {
           </button>
         </div>
       )}
+
+      {aiCheckState.status === 'done' && aiCheckState.note && visibleAiSuggestions.length === 0 && (
+        <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>
+          {aiCheckState.note}
+        </p>
+      )}
+
+      {visibleAiSuggestions.map((s) => {
+        const a = data.patients.find((p) => p.id === s.patientAId);
+        const b = data.patients.find((p) => p.id === s.patientBId);
+        if (!a || !b) return null;
+        const key = aiSuggestionKey(s);
+        return (
+          <div
+            key={key}
+            className="assumption-banner mb-3"
+            role="status"
+            aria-label="AI-suggested possible duplicate patient"
+          >
+            <span className="assumption-banner-icon" aria-hidden>
+              ✨
+            </span>
+            <p className="assumption-banner-body">
+              <strong>{a.name}</strong> and <strong>{b.name}</strong> might be the same person —{' '}
+              {s.reason} (confidence: {s.confidence}). Suggested by the local AI helper, not a rule —
+              nothing has been changed.{' '}
+              <button
+                type="button"
+                className="underline"
+                style={{ color: 'var(--accent)' }}
+                onClick={() => void reviewAiSuggestion(s)}
+              >
+                Review and merge
+              </button>
+            </p>
+            <button
+              type="button"
+              className="assumption-banner-dismiss"
+              onClick={() => setDismissedAiKeys((prev) => new Set(prev).add(key))}
+            >
+              Dismiss
+            </button>
+          </div>
+        );
+      })}
 
       {data.patients.length === 0 ? (
         <EmptyState

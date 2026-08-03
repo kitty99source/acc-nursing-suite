@@ -20,6 +20,7 @@ import type { CompanionCharacter, CursorStyle, DensityMode, ServiceCode, ThemeNa
 import { CURSOR_OPTIONS } from '../lib/easter/cursors';
 import { SPRITE_SVGS, svgToDataUrl } from '../assets/easter/sprites';
 import { HelperTip } from '../components/HelperTip';
+import { checkAiServiceStatus, DEFAULT_AI_MODEL, type AiServiceStatus } from '../lib/aiService';
 
 const COMPANION_CHARACTERS: { value: CompanionCharacter; label: string }[] = [
   { value: 'cat', label: 'Cat' },
@@ -51,6 +52,117 @@ function rateBasisLabel(code: ServiceCode): string {
     default:
       return '';
   }
+}
+
+function AiFeaturesCard({
+  settings,
+  updateSettings,
+}: {
+  settings: Settings;
+  updateSettings: (patch: Partial<Settings>) => void;
+}) {
+  const [checking, setChecking] = useState(false);
+  const [checkResult, setCheckResult] = useState<AiServiceStatus | null>(null);
+
+  async function runStatusCheck() {
+    setChecking(true);
+    try {
+      const result = await checkAiServiceStatus(settings.aiServiceBaseUrl);
+      setCheckResult(result);
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  return (
+    <Card className="mb-4">
+      <h3 className="card-title mb-2">AI features (local, on-device)</h3>
+      <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>
+        Optional AI-assisted checks that run entirely on this laptop using a small local model
+        server (Ollama) — <strong>no patient data is ever sent over the internet or to any cloud
+        service.</strong> Off by default. The first feature is a second, AI-assisted duplicate-patient
+        check that can catch typos, nicknames and OCR digit errors the exact-match check misses —
+        it only ever suggests, a human always reviews and confirms before anything is merged.
+      </p>
+
+      <label className="flex items-center justify-between gap-3 text-sm mb-3">
+        <span>
+          <span className="font-medium">Enable AI features</span>
+          <span className="block text-xs" style={{ color: 'var(--muted)' }}>
+            Turns on the AI-assisted duplicate-patient check in Patients. Requires the one-time
+            local AI helper setup below — safe to turn on before that's done, it will just say
+            &quot;unavailable&quot; until the helper is installed.
+          </span>
+        </span>
+        <input
+          type="checkbox"
+          checked={settings.aiFeaturesEnabled}
+          onChange={(e) => updateSettings({ aiFeaturesEnabled: e.target.checked })}
+          className="w-5 h-5"
+          aria-label="Enable AI features"
+        />
+      </label>
+
+      <details className="mb-3">
+        <summary className="text-sm font-medium cursor-pointer" style={{ color: 'var(--accent)' }}>
+          One-time setup: install the local AI helper (no admin rights needed)
+        </summary>
+        <div className="text-sm mt-2 space-y-2" style={{ color: 'var(--text)' }}>
+          <p style={{ color: 'var(--muted)' }}>
+            This is a genuine one-time install — do this once, then AdminSuite finds it
+            automatically every time you open the app, forever. Nothing here needs IT/admin help.
+          </p>
+          <ol className="list-decimal ml-5 space-y-1">
+            <li>
+              Download <strong>Ollama</strong> for Windows from{' '}
+              <a href="https://ollama.com/download/windows" target="_blank" rel="noreferrer" className="underline">
+                ollama.com/download/windows
+              </a>{' '}
+              (a free, well-known local-AI runtime — about 700&nbsp;MB). It installs into your own
+              user folder, never <code>C:\Program Files</code>, so it does not need administrator
+              rights.
+            </li>
+            <li>Double-click the downloaded <code>OllamaSetup.exe</code> and click through the install (about a minute). It starts itself quietly in the background from then on, including after every restart.</li>
+            <li>
+              Open a Command Prompt (Start → type <code>cmd</code>) and paste this one command, then
+              press Enter — it downloads the AI model itself (about 2.5&nbsp;GB, once):
+              <pre
+                className="text-xs mt-1 p-2 rounded"
+                style={{ background: 'var(--surface-2)', overflowX: 'auto' }}
+              >
+                ollama pull {DEFAULT_AI_MODEL}
+              </pre>
+            </li>
+            <li>Come back here and click &quot;Check status&quot; below to confirm AdminSuite can see it.</li>
+          </ol>
+          <p style={{ color: 'var(--muted)' }}>
+            That's it — nothing to repeat later unless you want to update the model. Roughly 3–4&nbsp;GB
+            total disk space; runs fine on an ordinary laptop with under 16&nbsp;GB RAM, no GPU needed.
+          </p>
+        </div>
+      </details>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <button type="button" className="btn btn-sm" onClick={() => void runStatusCheck()} disabled={checking}>
+          {checking ? 'Checking…' : 'Check status'}
+        </button>
+        {checkResult && (
+          <span className="text-sm" style={{ color: checkResult.available ? 'var(--good-fg)' : 'var(--muted)' }}>
+            {checkResult.available
+              ? `✓ Local AI helper detected${checkResult.models.length ? ` (${checkResult.models.join(', ')})` : ''}.`
+              : `Not detected yet${checkResult.error ? ` (${checkResult.error})` : ''} — complete the setup steps above, or it may still be starting up.`}
+          </span>
+        )}
+      </div>
+
+      <Field label="Local AI service address (advanced — leave as default unless you know why you're changing it)">
+        <TextInput
+          value={settings.aiServiceBaseUrl}
+          onChange={(e) => updateSettings({ aiServiceBaseUrl: e.target.value })}
+        />
+      </Field>
+    </Card>
+  );
 }
 
 export function SettingsModule({ onOpenHelp }: { onOpenHelp?: () => void } = {}) {
@@ -267,6 +379,8 @@ export function SettingsModule({ onOpenHelp }: { onOpenHelp?: () => void } = {})
           {typeof __BUILD_DATE__ !== 'undefined' ? ` (build ${__BUILD_DATE__})` : ''}
         </p>
       </Card>
+
+      <AiFeaturesCard settings={settings} updateSettings={updateSettings} />
 
       {/* Near the top on purpose — easy to find; not gated by role or flags. */}
       <Card className="mb-4">

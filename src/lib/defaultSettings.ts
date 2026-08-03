@@ -59,4 +59,6 @@ export const DEFAULT_SETTINGS: Settings = {
   companionCharacter: 'cat',
   enabledServiceCodes: [...ALL_SERVICE_CODES],
   serviceRates: { ...DEFAULT_RATES },
+  aiFeaturesEnabled: false,
+  aiServiceBaseUrl: 'http://127.0.0.1:11434',
 };

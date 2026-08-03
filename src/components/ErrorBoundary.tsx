@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { downloadText } from '../lib/storage';
+import { suppressNextGoodbye } from '../lib/launcherLifecycle';
 
 interface ErrorReport {
   message: string;
@@ -53,6 +54,7 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   private reload = (): void => {
+    suppressNextGoodbye();
     window.location.reload();
   };
 

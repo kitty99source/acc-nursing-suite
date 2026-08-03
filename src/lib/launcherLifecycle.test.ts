@@ -7,6 +7,8 @@ import {
   getOrCreateLauncherClientId,
   postLauncherHeartbeat,
   signalLauncherGoodbye,
+  startLauncherSessionLifecycle,
+  suppressNextGoodbye,
 } from './launcherLifecycle';
 
 describe('launcherLifecycle helpers', () => {
@@ -78,5 +80,54 @@ describe('launcherLifecycle network', () => {
       '/_acc/goodbye?clientId=tab-2',
       expect.objectContaining({ method: 'POST', keepalive: true }),
     );
+  });
+});
+
+describe('suppressNextGoodbye', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: true }) as Response),
+    );
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('skips exactly one pagehide goodbye after being called, then resumes normal behavior', () => {
+    const sendBeacon = vi.fn(() => true);
+    vi.stubGlobal('navigator', { sendBeacon });
+    const storage = {
+      getItem: () => null,
+      setItem: () => {},
+    };
+    const handle = startLauncherSessionLifecycle({ storage });
+
+    suppressNextGoodbye();
+    window.dispatchEvent(new Event('pagehide'));
+    expect(sendBeacon).not.toHaveBeenCalled();
+
+    // A later, genuine pagehide (e.g. real tab close) is not suppressed.
+    window.dispatchEvent(new Event('pagehide'));
+    expect(sendBeacon).toHaveBeenCalledTimes(1);
+
+    handle.stop();
+  });
+
+  it('does not suppress a pagehide when the page is bfcache-persisted', () => {
+    const sendBeacon = vi.fn(() => true);
+    vi.stubGlobal('navigator', { sendBeacon });
+    const storage = {
+      getItem: () => null,
+      setItem: () => {},
+    };
+    const handle = startLauncherSessionLifecycle({ storage });
+
+    const persistedEvent = new Event('pagehide') as unknown as { persisted: boolean };
+    persistedEvent.persisted = true;
+    window.dispatchEvent(persistedEvent as unknown as Event);
+    expect(sendBeacon).not.toHaveBeenCalled();
+
+    handle.stop();
   });
 });

@@ -16,6 +16,7 @@ import {
 import { compareDocumentBlobs } from '../lib/integrity';
 import { listDocumentIds } from '../lib/idb';
 import { STORAGE_QUOTA_GUIDANCE } from '../lib/storageQuota';
+import { suppressNextGoodbye } from '../lib/launcherLifecycle';
 import type { CompanionCharacter, CursorStyle, DensityMode, ServiceCode, ThemeName } from '../types';
 import { CURSOR_OPTIONS } from '../lib/easter/cursors';
 import { SPRITE_SVGS, svgToDataUrl } from '../assets/easter/sprites';
@@ -377,6 +378,7 @@ export function SettingsModule({ onOpenHelp }: { onOpenHelp?: () => void } = {})
     });
     if (ok) {
       await wipeAllLocalStorage();
+      suppressNextGoodbye();
       location.reload();
     }
   }

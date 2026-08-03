@@ -817,6 +817,21 @@ try {
     $script:ShutdownRequested = $false
     $script:SessionEndedCleanly = $false
     $script:ClientStaleSeconds = 60
+    # A manual browser hard-refresh (Ctrl+Shift+R) - needed after any change to the
+    # CSP <meta> tag, which is only read at initial page load - disconnects the old
+    # tab and reconnects a fresh one a moment later. That disconnect fires `pagehide`
+    # and POSTs /_acc/goodbye exactly like a real tab close (client-side JS cannot
+    # tell the two apart for a refresh it did not itself trigger - see
+    # suppressNextGoodbye in launcherLifecycle.ts, which only covers THIS app's own
+    # location.reload() calls). Previously, going to zero live clients shut the
+    # server down immediately with no grace period at all, so the refreshed page's
+    # very first request always hit a dead port ("can't connect to this page"),
+    # forcing a manual relaunch every time. Now we wait this many seconds with zero
+    # live clients (covering the reconnect gap) before actually shutting down; any
+    # heartbeat arriving in that window (e.g. the refreshed page's first heartbeat,
+    # same clientId via sessionStorage) cancels the pending shutdown.
+    $script:ClientReconnectGraceSeconds = 8
+    $script:PendingShutdownSince = $null
 
     function Register-AccClientHeartbeat {
         param([string]$ClientId)
@@ -824,6 +839,10 @@ try {
         if ($ClientId.Length -gt 128) { return $false }
         $script:ClientHeartbeats[$ClientId] = [DateTime]::UtcNow
         $script:HadClients = $true
+        if ($script:PendingShutdownSince) {
+            Write-BootstrapLog "Client reconnected during reconnect grace period (clientId=$ClientId) - shutdown cancelled"
+            $script:PendingShutdownSince = $null
+        }
         return $true
     }
 
@@ -842,10 +861,34 @@ try {
         foreach ($id in $stale) { $script:ClientHeartbeats.Remove($id) }
     }
 
-    function Test-AccShouldShutdownForNoClients {
+    function Test-AccNoLiveClients {
+        # True when at least one client has ever connected and none are live now
+        # (stale heartbeat or goodbye). Does NOT by itself mean "shut down now" -
+        # callers must run this through the reconnect grace period below.
         if (-not $script:HadClients) { return $false }
         Clear-AccStaleClients
         return ($script:ClientHeartbeats.Count -eq 0)
+    }
+
+    function Test-AccShouldShutdownNow {
+        # Centralizes the actual shutdown decision so both the goodbye handler and
+        # the heartbeat-staleness check in the main loop go through the same
+        # reconnect grace period - a hard refresh always looks identical to a real
+        # tab close at this layer, so neither path may shut down immediately.
+        if (-not (Test-AccNoLiveClients)) {
+            if ($script:PendingShutdownSince) {
+                Write-BootstrapLog 'Client reconnected during reconnect grace period - shutdown cancelled'
+                $script:PendingShutdownSince = $null
+            }
+            return $false
+        }
+        if (-not $script:PendingShutdownSince) {
+            $script:PendingShutdownSince = [DateTime]::UtcNow
+            Write-BootstrapLog "No live browser tabs (goodbye or heartbeat stale) - starting $($script:ClientReconnectGraceSeconds)s reconnect grace period before shutdown (covers a hard refresh disconnect+reconnect)"
+            return $false
+        }
+        $elapsed = ([DateTime]::UtcNow - $script:PendingShutdownSince).TotalSeconds
+        return ($elapsed -ge $script:ClientReconnectGraceSeconds)
     }
 
     function Send-AccJsonOk {
@@ -862,8 +905,8 @@ try {
         Write-BootstrapLog "Wrote launch.pid ($PID)"
 
         while (-not $script:ShutdownRequested) {
-            if (Test-AccShouldShutdownForNoClients) {
-                Write-BootstrapLog 'No live browser tabs (goodbye or heartbeat stale) - shutting down'
+            if (Test-AccShouldShutdownNow) {
+                Write-BootstrapLog "No live browser tabs after $($script:ClientReconnectGraceSeconds)s reconnect grace period - shutting down"
                 $script:SessionEndedCleanly = $true
                 $script:ShutdownRequested = $true
                 break
@@ -894,25 +937,22 @@ try {
                             clients = $script:ClientHeartbeats.Count
                         })
                     } elseif ($reqPath -eq '/_acc/goodbye') {
+                        # Does NOT shut down immediately - see Test-AccShouldShutdownNow.
+                        # A goodbye here is indistinguishable from a hard-refresh
+                        # disconnect that reconnects a moment later; the actual shutdown
+                        # decision (with reconnect grace period) happens once per loop
+                        # iteration in the main serve loop below, so both this path and
+                        # heartbeat staleness share one consistent grace timer.
                         $cid = Get-AccClientIdFromRequest -RequestLine $requestLine -BodyBytes $req.Body
                         Unregister-AccClient -ClientId $cid
-                        $shouldStop = $false
-                        if ($script:HadClients) {
-                            $shouldStop = Test-AccShouldShutdownForNoClients
-                        } elseif (-not [string]::IsNullOrWhiteSpace($cid)) {
-                            $shouldStop = $true
-                        }
-                        if ($shouldStop) {
-                            $script:SessionEndedCleanly = $true
-                            $script:ShutdownRequested = $true
-                        }
+                        $noLiveClients = Test-AccNoLiveClients
                         Send-AccJsonOk -Client $client -Obj ([ordered]@{
                             ok = $true
-                            shutdown = [bool]$shouldStop
+                            shutdownPending = [bool]$noLiveClients
                             clients = $script:ClientHeartbeats.Count
                         })
-                        if ($shouldStop) {
-                            Write-BootstrapLog "Goodbye from last tab (clientId=$cid) - shutting down"
+                        if ($noLiveClients) {
+                            Write-BootstrapLog "Goodbye from clientId=$cid - no live tabs left; reconnect grace period begins"
                         }
                     } elseif ($reqPath -eq '/_acc/file-to-idrive') {
                         $result = Save-IDriveFile -BodyBytes $req.Body

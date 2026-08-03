@@ -16,6 +16,31 @@ export const LAUNCHER_HEARTBEAT_URL = '/_acc/heartbeat';
 export const LAUNCHER_GOODBYE_URL = '/_acc/goodbye';
 export const LAUNCHER_CLIENT_ID_KEY = 'acc-adminsuite-launcher-client-id';
 
+/**
+ * A same-tab `window.location.reload()` (e.g. Settings "Wipe & reload", or the
+ * ErrorBoundary's "Reload" button) fires `pagehide` exactly like a real tab close,
+ * because a full navigation is never bfcache-eligible (`event.persisted` is always
+ * false). Without this flag, every intentional reload would itself call
+ * `signalLauncherGoodbye`, which - on the common single-tab session - tells
+ * launch.ps1 "the last tab closed" and starts tearing the local server down mid-reload.
+ * Ported from RemittanceTracker's launcherLifecycle.ts (commit 9c7373c), which found
+ * this exact class of bug behind repeated "Failed to fetch dynamically imported
+ * module" crashes there.
+ *
+ * Note this only covers reloads THIS app's own code triggers. A manual browser
+ * hard-refresh (Ctrl+Shift+R) is indistinguishable from a real tab close at the
+ * `pagehide` level - there is no client-side signal to suppress in that case. That
+ * scenario is instead handled server-side by launch.ps1's reconnect grace period
+ * (see scripts/launcher/launch.ps1), which tolerates a brief gap between the old
+ * tab's goodbye and the refreshed page's first heartbeat.
+ */
+let goodbyeSuppressedForReload = false;
+
+/** Call immediately before an intentional same-tab `location.reload()`. */
+export function suppressNextGoodbye(): void {
+  goodbyeSuppressedForReload = true;
+}
+
 /** Default heartbeat interval (server stale timeout is ~60s). */
 const LAUNCHER_HEARTBEAT_INTERVAL_MS = 15_000;
 
@@ -116,6 +141,13 @@ export function startLauncherSessionLifecycle(options?: {
   const onPageHide = (e: PageTransitionEvent) => {
     // bfcache: page may come back - don't kill the server.
     if (e.persisted) return;
+    // Our own intentional reload, not the user closing the tab - see
+    // suppressNextGoodbye. Consume the flag immediately: it must cover exactly one
+    // pagehide, never stick around for a genuinely later tab close.
+    if (goodbyeSuppressedForReload) {
+      goodbyeSuppressedForReload = false;
+      return;
+    }
     signalLauncherGoodbye(clientId);
   };
   // Do NOT goodbye on beforeunload: a canceled "unsaved changes" dialog would

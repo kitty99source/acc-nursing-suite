@@ -9,6 +9,16 @@
         launcher's /_acc/* bridge for ACC-Inbox staging + letter bytes). No internet,
         no CDNs, no external hosts. When opened via file:// there is no origin to reach,
         so it stays fully offline.
+      - connect-src also allows http://127.0.0.1:* and http://localhost:* (any port) for the
+        on-device AI features (src/lib/aiService.ts) talking to a local Ollama instance.
+        Ollama's own CORS config (OLLAMA_ORIGINS) is irrelevant here — CSP connect-src is
+        enforced client-side before the request is ever sent, regardless of the server's
+        CORS headers. The "Local AI service address" Settings field (defaultSettings.ts)
+        defaults to http://127.0.0.1:11434 but is user-editable to any loopback port, so the
+        allowance is loopback-wide rather than a single hardcoded port. This setting is
+        intentionally loopback-only (not a general-purpose remote endpoint) — entering a
+        non-loopback host will still be blocked by this CSP by design, since this feature is
+        meant to stay fully local/offline like everything else in this app.
       - default-src 'self' keeps everything local; no CDNs, no external fonts.
       - 'unsafe-inline' is required ONLY because vite-plugin-singlefile inlines the bundled
         JS and CSS directly into this file. No eval is used (production React build).
@@ -22,7 +32,7 @@
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; frame-src 'self' blob:; base-uri 'self'; form-action 'none'; worker-src 'self' blob:;"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' http://127.0.0.1:* http://localhost:*; object-src 'none'; frame-src 'self' blob:; base-uri 'self'; form-action 'none'; worker-src 'self' blob:;"
     />
     <title>ACC District Nursing Admin Suite</title>
   </head>

@@ -165,7 +165,10 @@ function AiFeaturesCard({
         )}
       </div>
 
-      <Field label="Local AI service address (advanced — leave as default unless you know why you're changing it)">
+      <Field
+        label="Local AI service address (advanced — leave as default unless you know why you're changing it)"
+        hint="Must stay a loopback address (127.0.0.1 or localhost). This app's Content-Security-Policy only allows outbound requests to loopback, by design — a remote/non-loopback address will be silently blocked by the browser regardless of what you enter here."
+      >
         <TextInput
           value={settings.aiServiceBaseUrl}
           onChange={(e) => updateSettings({ aiServiceBaseUrl: e.target.value })}

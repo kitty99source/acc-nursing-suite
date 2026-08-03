@@ -65,7 +65,16 @@ const head = html.slice(0, html.indexOf('</head>'));
 console.log('--- Single-file build checks ---');
 console.log('CSP connect-src self :', head.includes("connect-src 'self'"));
 console.log('CSP default-src self :', head.includes("default-src 'self'"));
-console.log('CSP no external hosts:', !/connect-src[^;]*https?:\/\//.test(head));
+// connect-src is allowed to reference http(s) hosts ONLY if every such host is loopback
+// (127.0.0.1:* / localhost:*, for the local Ollama AI service) — never a real external host.
+const connectSrcMatch = /connect-src([^;]*)/.exec(head);
+const connectSrcHosts = connectSrcMatch ? connectSrcMatch[1].match(/https?:\/\/[^\s]+/g) ?? [] : [];
+const nonLoopbackHosts = connectSrcHosts.filter((h) => !/^https?:\/\/(127\.0\.0\.1|localhost):\*$/.test(h));
+console.log('CSP no external hosts:', nonLoopbackHosts.length === 0);
+if (nonLoopbackHosts.length > 0) {
+  console.error(`FAIL: CSP connect-src allows non-loopback host(s): ${nonLoopbackHosts.join(', ')}`);
+  process.exitCode = 1;
+}
 if (head.includes("connect-src 'none'")) {
   console.error("FAIL: CSP still connect-src 'none' — app cannot reach the local /_acc bridge");
   process.exitCode = 1;

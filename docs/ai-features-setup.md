@@ -22,9 +22,12 @@ features"** toggle:
 2. **Global AI chat assistant** — a persistent chat panel docked bottom-right (collapsed to a small
    bubble by default), usable from any screen. Drag a patient row in (or click its chat icon) to
    attach it as a "context chip" and ask about that specific case; every reply has a "Context used"
-   expandable section showing exactly what data was sent. See
-   `docs/research/ai-chat-assistant-2026-08.md` for the full design writeup, what's in scope this
-   pass (Patients only — no Contracts model exists in this repo), and documented future work
+   expandable section showing exactly what data was sent. The conversation is saved on this laptop
+   only (its own local IndexedDB entry, never part of `.accdata`/Excel/full-backup exports) so it
+   survives closing and reopening the app — use the trash icon in the chat panel's header at any
+   time to permanently wipe it. See `docs/research/ai-chat-assistant-2026-08.md` for the full design
+   writeup, what's in scope this pass (Patients only — no Contracts model exists in this repo), the
+   telemetry/data-leak verification behind the persistence decision, and documented future work
    (contract-PDF-text RAG was explicitly NOT attempted).
 
 ## Why Ollama, and why no PowerShell proxy was needed

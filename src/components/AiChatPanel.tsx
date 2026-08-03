@@ -3,7 +3,7 @@ import { useStore } from '../state/store';
 import { useAiChatStore, makeMessageId, CHIP_DND_MIME, type AiChatMessage } from '../state/aiChatStore';
 import { buildChatPrompt, type ChatTurn, type ContextChip } from '../lib/aiChatContext';
 import { generateLocalAiResponse } from '../lib/aiService';
-import { IconChat, IconClose, IconMinimize, IconSend } from './icons';
+import { IconChat, IconClose, IconMinimize, IconSend, IconTrash } from './icons';
 
 // ============================================================================
 // Global, always-available AI chat panel — docked bottom-right, collapsed to
@@ -32,10 +32,19 @@ export function AiChatPanel() {
   const addMessage = useAiChatStore((s) => s.addMessage);
   const setSending = useAiChatStore((s) => s.setSending);
   const newChat = useAiChatStore((s) => s.newChat);
+  const clearHistory = useAiChatStore((s) => s.clearHistory);
+  const hydrate = useAiChatStore((s) => s.hydrate);
 
   const [input, setInput] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // One-time load of any persisted conversation from IndexedDB. Runs even
+  // while collapsed (the bubble's chip-count badge should be correct without
+  // the user having to open the panel first).
+  useEffect(() => {
+    void hydrate();
+  }, [hydrate]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -45,6 +54,14 @@ export function AiChatPanel() {
   }, [messages, sending]);
 
   if (!settings.aiFeaturesEnabled) return null;
+
+  function handleClearHistory() {
+    if (messages.length === 0 && chips.length === 0) return;
+    const confirmed = window.confirm(
+      'Clear this AI chat conversation? This deletes it from this laptop and cannot be undone.',
+    );
+    if (confirmed) clearHistory();
+  }
 
   function onDrop(e: React.DragEvent) {
     e.preventDefault();
@@ -140,6 +157,16 @@ export function AiChatPanel() {
           <button type="button" className="btn btn-icon btn-ghost" onClick={newChat} aria-label="New chat" title="New chat">
             <span className="text-xs font-semibold px-1">New</span>
           </button>
+          <button
+            type="button"
+            className="btn btn-icon btn-ghost"
+            onClick={handleClearHistory}
+            aria-label="Clear chat history"
+            title="Clear chat history — permanently deletes this conversation from this laptop"
+            disabled={messages.length === 0 && chips.length === 0}
+          >
+            <IconTrash width={14} height={14} />
+          </button>
           <button type="button" className="btn btn-icon" onClick={() => setOpen(false)} aria-label="Minimize" title="Minimize">
             <IconMinimize width={14} height={14} />
           </button>
@@ -150,7 +177,8 @@ export function AiChatPanel() {
         className="px-3 py-1.5 text-[11px] shrink-0 border-b"
         style={{ color: 'var(--muted)', borderColor: 'var(--border)', background: 'var(--surface-2)' }}
       >
-        Runs 100% locally — no patient data leaves this laptop.
+        Runs 100% locally — no patient data leaves this laptop. Conversation is saved on this device only; use the
+        trash icon above to clear it.
       </p>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-3 min-h-0">

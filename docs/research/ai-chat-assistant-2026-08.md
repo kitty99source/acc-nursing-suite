@@ -5,6 +5,13 @@
 Unit-tested with mocked HTTP (no real model needed to pass CI); **not yet verified against a real
 running Ollama model**, for the same sandbox reason documented in `docs/ai-features-setup.md`.
 
+**2026-08-04 follow-up pass (this document's newer sections below):** owner asked (1) whether
+chat history should persist across reloads (conditional on a telemetry/data-leak check) and (2)
+for research on whether a small local model like this "learns" over time and, if not, what the
+actual current best practice is. Both answered below — telemetry/leak check came back clean, so
+persistence was implemented; the model-learning research recommendation is "extend the existing
+structured-rules injection, not RAG yet, not fine-tuning."
+
 ## What this is
 
 A second AI feature on top of the same local Ollama + `phi4-mini-reasoning` integration the
@@ -82,14 +89,281 @@ after that would be:
 
 ## Design choices explicitly left as open questions (not guessed)
 
-- **Conversation persistence**: kept fully client-side/ephemeral (see `aiChatStore.ts` above) rather
-  than added to the autosaved `.accdata` blob. This was a judgement call, not something the owner
-  specified either way — flagging it here in case the owner would prefer conversations to survive a
-  page reload (would need either an IndexedDB-backed store for just this data, or folding it into
-  the main `AppData`/backup shape, which has PHI-export implications worth a deliberate decision
-  rather than a default).
+- **Conversation persistence — RESOLVED 2026-08-04, now implemented.** Previously kept fully
+  client-side/ephemeral; the owner has since asked for persistence conditional on a telemetry/leak
+  check. See "Telemetry / data-leak verification" and "Persistence implementation" below for the
+  full writeup — short version: verified clean, so messages/chips now persist to their own
+  IndexedDB key (`lib/idb.ts` `loadAiChatHistory`/`saveAiChatHistory`/`clearAiChatHistory`),
+  deliberately kept OUT of the `AppData`/`.accdata`/backup-ZIP/Excel-export shape (same treatment
+  as the existing audit log / staging queue / import history keys), with an explicit one-click
+  "Clear chat history" wipe in the panel.
 - **Which other record types get a chip button first** (Claims? Approvals? Declines?) beyond
   Patients — the owner's own examples included "provider contract, compliance item" but AdminSuite
   has no Contract model (see above) and Compliance findings are derived/computed, not a stored
   record type with a natural single "record" to chip. Left as-is (Patients only) rather than
   guessing which of Claims/Approvals/Declines the owner would want next.
+
+## Telemetry / data-leak verification (2026-08-04, before implementing persistence)
+
+Per the owner's explicit condition ("as long as there's no telemetry or risk of data leakage") this
+was verified BEFORE any persistence code was written, not assumed.
+
+**1. Does Ollama itself send telemetry?** Checked Ollama's own docs/FAQ, GitHub issues, and three
+independent 2026 third-party audits (not just Ollama's own claims) via live web search — not from
+training-data memory, since this is exactly the kind of policy that changes over time:
+
+- Ollama's own FAQ (`docs.ollama.com` / `ollama/ollama` GitHub `docs/faq.md`) states plainly it does
+  not send prompts/responses/model-interaction content anywhere. Maintainers confirm the same
+  directly on `ollama/ollama` issues [#11442](https://github.com/ollama/ollama/issues/11442) and
+  [#2567](https://github.com/ollama/ollama/issues/2567): *"No telemetry, Ollama is fully local."*
+- Independent source-code audits (D-Central's "Local-AI Telemetry & Air-Gap Audit", checked against
+  `app/lifecycle/updater.go` directly, and a separate "Local AI Privacy Audit" piece, both dated
+  2026) agree on the same one caveat: the **desktop tray GUI app** (Windows/macOS) makes an hourly
+  update-check call to `ollama.com` (OS + Ollama version only, no prompt content) to notify about
+  new releases. This is absent entirely when running the **headless server** (`ollama serve`, which
+  is what a background Windows service/launcher would run) — confirmed in the D-Central audit as
+  "server use: genuinely silent... no analytics SDK in repo."
+- One unrelated detail worth flagging to the owner even though it doesn't affect this app: Ollama's
+  OWN interactive CLI (`ollama run <model>`) keeps a **local, unencrypted, on-disk** REPL history
+  file (`~/.ollama/history` / `%LOCALAPPDATA%\Ollama\history`) — nothing is transmitted, but it is
+  plaintext on the machine. **This does not apply to AdminSuite's integration** — `aiService.ts`
+  talks to Ollama's `/api/generate` HTTP endpoint directly (never `ollama run`), so that file is
+  never touched by anything this app does. Mentioned here only so the owner has the full picture if
+  they also use `ollama run` manually for anything else.
+- **Verdict: clean.** No telemetry from the headless server this app talks to; the only outbound
+  call anywhere in Ollama is the optional desktop-app update-checker, which does not carry prompt
+  content and does not run in headless/server mode. Nothing to disable for this app's use case
+  (there is no separate opt-out toggle needed because the code path that would phone home — the
+  tray GUI — isn't the one AdminSuite depends on).
+
+**2. Does AdminSuite's own integration code make any non-loopback network call?** This was a
+code-level grep, not a docs-only check, across every `fetch(` call in `src/`:
+
+- `src/lib/aiService.ts` (used by both the duplicate-detection feature and the chat panel): every
+  call targets `${baseUrl}/api/...` where `baseUrl` is the Settings-configurable
+  `aiServiceBaseUrl`, defaulting to `http://127.0.0.1:11434` (`lib/defaultSettings.ts`) — loopback
+  only, by construction.
+- Every other `fetch(` call anywhere in `src/` (`localAccBridge.ts`, `emailSyncStatus.ts`,
+  `emailSyncRefresh.ts`, `launcherLifecycle.ts`) targets a **relative** URL path (e.g.
+  `/_acc/staging`, `/_acc/heartbeat`, `/_acc/email-sync`) — these resolve against
+  `window.location.origin`, i.e. whatever host/port the local launcher (`launch.ps1`) is already
+  serving the app from (also loopback, per that launcher's own TcpListener binding). None of these
+  are AI-related; they're the existing local-launcher-bridge endpoints for staging/inbox/email-sync,
+  unrelated to this feature, checked here only for completeness of "does anything in this repo call
+  out."
+- No analytics SDK, error-reporting service, or third-party tracking script exists anywhere in
+  `package.json`'s dependencies or `src/` (grepped for `analytics|telemetry|sentry|posthog|
+  mixpanel|amplitude`, case-insensitive — the only `analytics` hits are this app's own
+  `lib/analytics.ts`, a pure local billing-metrics module with a name collision, not a tracking
+  library).
+- **Verdict: clean.** Zero network calls anywhere in the AdminSuite codebase target anything other
+  than `127.0.0.1`/loopback or a same-origin relative path.
+
+**Conclusion: no telemetry, no data-leak risk found in either Ollama itself (headless/server mode,
+confirmed 2026) or this app's integration code (confirmed by direct grep, not just design intent).
+This clears the owner's explicit precondition for implementing persistence — proceeded to Part C.**
+
+## Persistence implementation (2026-08-04)
+
+- **What's persisted:** the chat panel's message history and any attached context chips —
+  `src/state/aiChatStore.ts`'s `messages`/`chips` state.
+- **Where:** a dedicated new IndexedDB key (`aiChatHistory`, `src/lib/idb.ts`
+  `loadAiChatHistory`/`saveAiChatHistory`/`clearAiChatHistory`) inside the SAME `acc-nursing-suite`
+  IndexedDB database the rest of the app already uses for its offline-first local data — but as its
+  own separate key, not folded into the `AppData`/working-copy blob.
+- **Why a separate key, and what that means for exports:** this repo already has a clear, existing
+  precedent for "local-only state that is NOT part of the exportable/backed-up data shape" — the
+  audit log (`AUDIT_LOG_KEY`), the Excel-import rollback snapshot, the staging queue, and the
+  import history are all their own IndexedDB keys, and `lib/backup.ts`'s full-backup ZIP only ever
+  serializes `AppData` (patients/claims/settings/etc.) plus document blobs — none of those other
+  local-only keys are in that ZIP either, even though some (e.g. the staging queue) can also
+  reference patient-identifying data. Chat history follows that SAME existing pattern rather than
+  inventing a new rule: it lives in IndexedDB (survives a reload, "not silently lost" per the
+  owner's ask) but is automatically, structurally excluded from `.accdata` saves, the Excel export,
+  and the full-backup ZIP — exactly like those other local-only keys, so there was no separate
+  "explicitly exclude it from Export Center" change needed; it was never in that code path to begin
+  with. This was double-checked directly against `src/modules/ExportCenter.tsx` and `lib/backup.ts`
+  — neither references `aiChatHistory` or the chat store at all.
+- **"Clear chat history":** a dedicated trash-icon button in the chat panel header (next to the
+  existing "New chat" button), always visible, disabled only when there is nothing to clear.
+  Requires a `window.confirm` before wiping (since this can contain PHI and there is no undo) and
+  deletes both the in-memory state and the IndexedDB record. "New chat" now does the identical
+  underlying wipe (there is only ever one persisted conversation thread, so "start a new chat" and
+  "clear history" are the same operation once history is persisted) — kept as two separate,
+  distinctly labelled buttons so the panel still offers a low-friction "start over" alongside an
+  explicit, unambiguously-named PHI-wipe action.
+- **Settings gate interaction (judgement call, documented):** turning OFF Settings → "Enable AI
+  features" hides the chat panel's entry point (unchanged behaviour) but does **not** auto-clear
+  persisted history. Reasoning: disabling the toggle is not itself a request to delete data — a
+  user might toggle it off/on while troubleshooting Ollama, and auto-wiping a real conversation as
+  a side effect of an unrelated Settings checkbox would be a surprising, hard-to-reverse action.
+  Wiping is always the owner's explicit, separately-confirmed "Clear chat history" click, never an
+  implicit consequence of a different setting.
+- **PHI handling:** unchanged from the original design — the exact same "Context used" disclosure
+  the un-persisted version already had is still shown on every assistant reply, so a persisted
+  conversation is exactly as transparent about what data it contains as the ephemeral one was.
+
+## Research: does a small local model "learn" over time, and what's the actual best practice? (2026-08)
+
+**Direct answer to "is this going to build its own mental model, or is the model not intelligent
+enough, or do we need reusable JSON rules?": no, it will not build its own mental model on its own,
+and that has nothing to do with this particular model being under-powered — it's how ALL of these
+models work, including much larger ones.** A model like `phi4-mini-reasoning` running via Ollama's
+`/api/generate` is **stateless per request**. There is no background process updating its weights
+from your conversations; every call in `aiService.ts` sends a fresh prompt string, gets back a
+fresh response, and the model retains literally nothing afterward except what the calling code
+(here, `buildChatPrompt`) explicitly re-sends as text in the next prompt. This is true of every
+model served this way — GPT-5-class cloud models work identically underneath the chat-UI illusion
+of "it remembers our conversation," which is really just the client re-sending the transcript each
+time (exactly what `buildChatPrompt`'s `MAX_HISTORY_TURNS` window already does here). "Learning"
+in the machine-learning sense (updating weights) only happens during an offline training run, never
+during inference — there is no code path in Ollama, llama.cpp, or any mainstream local-inference
+runtime that mutates a running model's weights from chat traffic. So: **honest answer is "no
+automatic learning," and it is not a symptom of the model being too small or not smart enough —
+it would be equally true of a 70B model.**
+
+**So what's the actual 2026 practitioner consensus for approximating "gets better over time" without
+training?** (Sources: search results this pass, not prior-knowledge recall, given how fast this
+space moves — see citations inline.)
+
+1. **RAG (retrieval-augmented generation).** What it actually is: at request time, the calling code
+   searches a knowledge store (usually a vector database of embedded text chunks, sometimes
+   combined with keyword search — "hybrid search" is now the 2026 norm per
+   [whatgenerativeai.com's agent-memory playbook](https://www.whatgenerativeai.com/docs/genai-playbook/agents-memory-rag/))
+   for passages relevant to the current question, and pastes the top few results into the prompt
+   before sending it to the model — conceptually a fancier, automatic version of what
+   `buildContextBlock` already does manually for a dragged-in patient chip. **When it's worth it:**
+   once there is a large, growing, and/or frequently-changing unstructured corpus to search (e.g.
+   hundreds of contract PDFs, or years of accumulated "how we handled case X" free text) — per
+   [Hamza Shabbir's 2026 RAG/fine-tune/prompt decision tree](https://hamzashabbir.dev/article/rag-vs-fine-tune-vs-prompt-2026-decision-tree),
+   the rule of thumb is: if your knowledge base is stable and fits comfortably in-context (their cited
+   threshold is roughly 200K tokens, i.e. plausibly the size of this app's ENTIRE compliance
+   rulebook + case-stage list many times over), full-context prompting — which is exactly what this
+   app's system prompt already does — beats building a RAG pipeline; RAG earns its cost once facts
+   "change often or live past the model's cutoff" or the corpus is too large to paste in every time.
+   **Overkill for this app today:** AdminSuite currently has no large unstructured corpus at all
+   (confirmed earlier in this doc — no Contracts model, no accumulated case-history text store); a
+   vector database, embedding model, and chunking/retrieval pipeline would be solving a problem that
+   doesn't exist yet.
+2. **A structured, owner-editable "rules/knowledge base" file, selectively injected into the system
+   prompt.** This IS a legitimate, actively-recommended lightweight alternative for exactly this
+   shape of problem — [Winder.ai's 2026 RAG-vs-fine-tuning framework](https://winder.ai/rag-vs-fine-tuning-2026-decision-framework/)
+   and the Hamza Shabbir piece above both describe "full-context prompting with a stable, curated
+   knowledge document" as the correct FIRST choice (not a lesser fallback) for a small, mostly-static
+   knowledge base — reaching for a vector database before you have one is the commonly-cited 2026
+   mistake ("cheaper long context made the old always-RAG reflex wrong about a third of the time").
+   **Is this basically what's already happening here?** Yes, largely — `AI_ASSISTANT_SYSTEM_PROMPT`
+   is already built programmatically from `COMPLIANCE_RULES` and `CASE_STAGE_LABEL`, which is
+   structurally identical to "a reusable rules file selectively injected into the system prompt," it
+   just wasn't factored into its own dedicated module before this pass (see "Groundwork" below —
+   that refactor is exactly this recommendation, made real).
+3. **Few-shot examples** ("here's how a similar case was handled well before") added to the system/
+   context. Cheap, no training, and a well-established technique for biasing a small model's output
+   toward house style/reasoning without retraining anything — this is the natural next increment on
+   top of #2 once there is a real bank of "good examples" worth curating (there isn't one yet in this
+   app; a first handful would likely come from the owner reviewing actual past chat transcripts or
+   case outcomes and hand-picking a few to codify).
+4. **Fine-tuning / LoRA — feasibility check, not oversold.** Full fine-tuning of a model this size
+   is not realistic on a CPU-only, <16GB-RAM laptop with no training infrastructure — full weight
+   updates need the whole model plus gradients plus optimizer state resident at once, which is a
+   fundamentally different (and far heavier) workload than inference. **Very small LoRA adapters are
+   technically closer to feasible than that** — 2026 practitioner writeups (e.g.
+   [a documented CPU-only LoRA run on a similarly-sized model](https://dev.to/tanay_kolekar/from-local-cpu-to-aws-fine-tuning-a-3b-llm-for-zero-cost-rd-14c),
+   16GB RAM, ~2.5 hours for a 3B model's adapter; [LoFT](https://github.com/diptanshu1991/LoFT),
+   an 8GB-MacBook LoRA-to-GGUF toolchain for 1–3B models) show it is not science fiction for a
+   model in the Phi-4-mini-reasoning size class. **But this is a genuinely separate, much bigger
+   project than anything else discussed here** — it needs a Python ML environment (`transformers`,
+   `peft`, `trl`), a curated instruction-tuning dataset (which does not exist yet — the chat history
+   this pass just started persisting could eventually seed one, once there's enough of it and the
+   owner has reviewed/approved which examples are worth training on), an export/merge/quantize
+   pipeline back into a GGUF Ollama can load, and — critically — every source consulted agrees LoRA
+   is for **teaching style/format/tone**, never for teaching new fixed facts (that's what #2/#3
+   above are for). **Verdict: not now, not as a near-term recommendation — worth a one-line mental
+   note that it's not impossible on this hardware if a much larger, dedicated ML-training effort is
+   ever justified, but nothing to build today.**
+
+**Decisive recommendation for THIS app, at THIS model size, right now:**
+
+- **(a) Extend the existing structured-rules injection — do this, and it's the small refactor this
+  pass actually made** (see "Groundwork" below). This is the correct current-state answer to
+  "do we need reusable JSON rules or something" — yes, in spirit, and it already existed in
+  embryonic form; it just needed its own home so it's obviously extensible rather than baked
+  directly into the prompt-assembly file.
+- **(b) Do NOT build RAG yet.** There is no real unstructured corpus to search today. Revisit once
+  one exists (see the concrete "when to build it" plan in the next section) — building it now would
+  be solving a problem AdminSuite doesn't have.
+- **(c) Do NOT attempt fine-tuning/LoRA.** Not because the model is too small to ever benefit, but
+  because there is no training infrastructure, no curated dataset, and — per every source consulted
+  — fine-tuning is the wrong tool for "knows our facts/rules" in the first place; that job belongs
+  to (a) and eventually (b).
+- **What to concretely build next, in order, once there's appetite:** (1) start curating a small
+  hand-picked set of `FewShotExample`s in `lib/ai/knowledgeBase.ts` from real (owner-reviewed,
+  PHI-scrubbed) past cases — the extension point for this already exists as of this pass and is
+  currently intentionally empty; (2) once AdminSuite gains a real Contracts data model (per the
+  existing "map onto existing primitives" note earlier in this doc), add structured contract fields
+  as a `KnowledgeFact`-shaped input rather than jumping straight to PDF-text RAG; (3) only once
+  there is a genuinely large, growing, hard-to-paste-in-full unstructured corpus (contract PDF full
+  text, or a real multi-year case-history archive) does full RAG become worth its own setup cost —
+  see the build plan immediately below.
+
+## Future RAG build plan (not implemented — follow-up project outline)
+
+**Trigger condition:** build this only once there is a real, sizeable, unstructured text corpus
+that no longer fits comfortably in a single system-prompt paste — realistically, once AdminSuite has
+either (a) a Contracts feature with attached contract PDFs whose full text the owner wants
+searchable, or (b) enough accumulated real case-history free text that hand-curating few-shot
+examples stops scaling. Per the research above, do not build this pre-emptively.
+
+1. **Chunking.** Split each source document (contract PDF text, case notes, etc.) into overlapping
+   text chunks (a common starting point is a few hundred tokens per chunk with modest overlap) —
+   this needs its own tuning pass once real documents exist; synthetic test documents up front risk
+   optimizing for the wrong chunk boundaries.
+2. **Embeddings.** Pick a small embedding model that can run acceptably on the same CPU-only laptop
+   (a separate, much smaller model than `phi4-mini-reasoning` — embedding models are typically
+   orders of magnitude cheaper to run than generation). Ollama itself can serve dedicated embedding
+   models (e.g. `nomic-embed-text`-class models) via the same local HTTP server this app already
+   talks to, so no second runtime would be needed — worth confirming CPU throughput once real
+   documents exist.
+3. **Local vector index.** Since there is no server process to run a real vector database against
+   (this is a single-file browser app), the realistic options are: (a) a simple in-browser
+   brute-force cosine-similarity search over pre-computed embedding vectors stored as a new
+   IndexedDB blob store (viable while the corpus stays in the low thousands of chunks — no exotic
+   dependency, consistent with this app's existing "everything lives in IndexedDB" architecture), or
+   (b) `sqlite-vec`/similar if/when a WASM-SQLite dependency is judged worth adding. Start with (a);
+   only reach for (b) if search latency or corpus size make brute-force cosine search too slow.
+   Store embeddings alongside the existing document-blob pattern (`DOC_STORE` in `lib/idb.ts`), not
+   inside the main autosave blob, for the same "large binary data stays out of the hot-path JSON"
+   reason that pattern already exists.
+4. **Retrieval + injection.** At chat-send time, embed the user's question with the same embedding
+   model, cosine-search the index for the top few chunks, and inject them into
+   `lib/ai/knowledgeBase.ts`'s `buildKnowledgeBaseSections()` output (the exact extension point this
+   pass built) as a new "Retrieved passages" section — alongside, not replacing, the existing
+   compliance-rules/case-stage/few-shot sections. Always show retrieved passages in the existing
+   "Context used" disclosure, exactly like a manually-attached patient chip, for the same
+   PHI-transparency reason.
+5. **A UI for "what's indexed."** Users need to see which contracts/documents have been embedded
+   and re-index on demand (e.g. after a contract is updated) — this needs its own small settings/
+   status surface, not built yet.
+6. **Re-verify the telemetry/leak posture for whichever embedding model gets chosen** — the same
+   `checkAiServiceStatus`/loopback-only verification done in this pass for `phi4-mini-reasoning`
+   should be repeated for any new model pulled into Ollama, since a different model's own license/
+   behaviour is a separate thing to confirm.
+
+None of the above is built or faked in this pass — this is a design outline for when the trigger
+condition above is actually met, per the same "don't build the full pipeline until the data volume
+justifies it" instruction that already shaped the original chat-panel build (see "Explicitly NOT
+attempted this pass" earlier in this doc).
+
+## Groundwork refactor: `lib/ai/knowledgeBase.ts` (2026-08-04)
+
+Per the research recommendation above ("extend the existing structured-rules injection, don't build
+RAG yet"), the previously-inline `buildComplianceRuleSummary`/`buildCaseStageSummary`/prompt-assembly
+logic (formerly living directly in `lib/aiChatContext.ts`) has been pulled out into a new
+`src/lib/ai/knowledgeBase.ts` module. This is intentionally a SMALL, low-risk refactor — no new
+knowledge sources were added, no behaviour changed (existing tests for the exact system-prompt
+content pass unmodified) — the only change is that there is now one obvious file that owns "what
+static knowledge gets injected into the assistant," with an explicit, documented, currently-empty
+extension point (`fewShotExamples()` / the `FewShotExample` type) for the next real addition,
+instead of that logic being scattered inline inside the prompt-assembly file. `lib/aiChatContext.ts`
+re-exports the same function names it always had for backwards compatibility with existing callers/
+tests, so this is additive/structural, not a breaking change.

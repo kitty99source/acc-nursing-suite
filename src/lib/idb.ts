@@ -29,6 +29,7 @@ const RECOVERY_RESOLVED_KEY = 'recoveryResolved';
 const BACKUP_SNOOZE_KEY = 'backupReminderSnoozedUntil';
 const EXCEL_IMPORT_SNAPSHOT_KEY = 'excelImportSnapshot';
 const DISMISSED_STAGING_KEY = 'dismissedStaging';
+const AI_CHAT_HISTORY_KEY = 'aiChatHistory';
 
 const IDB_MAX_RETRIES = 3;
 const IDB_RETRY_BASE_MS = 25;
@@ -412,4 +413,34 @@ export async function loadDismissedStaging(): Promise<string[]> {
 
 export async function saveDismissedStaging(keys: string[]): Promise<void> {
   return idbSet(DISMISSED_STAGING_KEY, keys);
+}
+
+// ----------------------------------------------------------------------------
+// AI chat assistant conversation history (see state/aiChatStore.ts). Stored as
+// its own IDB key, exactly like auditLog/importHistory/stagingQueue above —
+// NOT part of the AppData blob (state.data), so it is automatically excluded
+// from `.accdata` saves, the Excel export, and the full-backup ZIP (backup.ts
+// only ever serializes `AppData` + document blobs). This may contain PHI
+// (patient chip context, free-text questions) so it deliberately never leaves
+// this local IndexedDB store and is never bundled into any external-sharing
+// export path. See docs/research/ai-chat-assistant-2026-08.md for the full
+// persistence design writeup and the "Clear chat history" control.
+// ----------------------------------------------------------------------------
+
+export interface AiChatHistoryRecord {
+  messages: import('./aiChatContext').AiChatMessage[];
+  chips: import('./aiChatContext').ContextChip[];
+  savedAt: number;
+}
+
+export async function loadAiChatHistory(): Promise<AiChatHistoryRecord | undefined> {
+  return idbGet<AiChatHistoryRecord>(AI_CHAT_HISTORY_KEY);
+}
+
+export async function saveAiChatHistory(record: AiChatHistoryRecord): Promise<void> {
+  return idbSet(AI_CHAT_HISTORY_KEY, record);
+}
+
+export async function clearAiChatHistory(): Promise<void> {
+  return idbDelete(AI_CHAT_HISTORY_KEY);
 }

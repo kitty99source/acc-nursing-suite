@@ -20,8 +20,34 @@
 
 import type { AppData, Claim, Patient } from '../types';
 import { CASE_STAGE_LABEL } from './caseWorkflow';
-import { COMPLIANCE_RULES } from './compliance';
 import { formatDateNZ } from './format';
+import { buildCaseStageSummary, buildComplianceRuleSummary, buildKnowledgeBaseSections } from './ai/knowledgeBase';
+
+// Re-exported for backwards compatibility with existing callers/tests — the
+// actual implementation now lives in lib/ai/knowledgeBase.ts (see that file
+// for why: it's the one place future rules/few-shot/RAG-result injection
+// plugs into, rather than this prompt-assembly module).
+export { buildCaseStageSummary, buildComplianceRuleSummary };
+
+/**
+ * One turn of the chat panel's conversation. Lives here (not in
+ * state/aiChatStore.ts) so lib/idb.ts can reference this shape for its
+ * persisted-history record without importing the zustand store module — that
+ * import direction would otherwise create a real idb.ts <-> aiChatStore.ts
+ * circular dependency (this module never imports idb.ts).
+ */
+export interface AiChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: number;
+  /** Chips attached when a user message was sent (kept for display on that bubble). */
+  chips?: ContextChip[];
+  /** The exact serialized context text sent to the model alongside this exchange, for the "Context used" disclosure. */
+  contextUsed?: string;
+  /** Set when the local model call failed/timed out — rendered as a distinct, non-fatal notice. */
+  error?: string;
+}
 
 export type ContextChipType = 'patient';
 
@@ -98,20 +124,11 @@ export function buildContextBlock(chips: ContextChip[], data: AppData): string {
 
 // ----------------------------------------------------------------------------
 // "Knows the rulebook" grounding — a compact system prompt built from this
-// codebase's OWN real compliance rules (compliance.ts) and case-stage enum
-// (caseWorkflow.ts), not hand-written/invented policy. If those change, this
-// prompt updates itself automatically next run.
+// codebase's OWN real domain knowledge (compliance rules, case-stage enum,
+// and future few-shot examples / RAG results), assembled by
+// lib/ai/knowledgeBase.ts. Not hand-written/invented policy — if the
+// underlying rules change, this prompt updates itself automatically next run.
 // ----------------------------------------------------------------------------
-
-export function buildComplianceRuleSummary(): string {
-  return Object.values(COMPLIANCE_RULES)
-    .map((r) => `- ${r.title} (${r.clauseRef}): ${r.description}`)
-    .join('\n');
-}
-
-export function buildCaseStageSummary(): string {
-  return Object.values(CASE_STAGE_LABEL).join(' -> ');
-}
 
 export const AI_ASSISTANT_SYSTEM_PROMPT = [
   'You are the built-in assistant for ACCAdminsuite, an offline, on-device admin tool for a ' +
@@ -121,8 +138,7 @@ export const AI_ASSISTANT_SYSTEM_PROMPT = [
   'Base your advice ONLY on the real rules and workflow stages below, taken directly from this ' +
     'app\'s own compliance engine and case-workflow model. Do not invent ACC policy, clause numbers, ' +
     'or thresholds that are not listed here — if you are not sure, say so plainly instead of guessing.',
-  'Known compliance rules (rule title, ACC schedule/clause reference, plain description):\n' + buildComplianceRuleSummary(),
-  'Case workflow stages a claim moves through, in order: ' + buildCaseStageSummary() + '.',
+  ...buildKnowledgeBaseSections(),
   'If the user has attached one or more record "chips" (a patient, etc.), a block of that record\'s real ' +
     'data will follow this system message — answer using that data specifically, and do not fabricate ' +
     'details (dates, NHI, notes) that are not present in it. If something the user asks about is not in ' +

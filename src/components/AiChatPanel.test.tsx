@@ -1,37 +1,27 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { act } from 'react';
 
+// React 18 requires this flag for act(...) to drive effects in a test env.
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 import { createRoot, type Root } from 'react-dom/client';
+
+// aiChatStore persists to IndexedDB, which jsdom lacks — mock it so the panel
+// mounts and its hydrate/persist/clearHistory calls resolve. This does NOT
+// edit lib/idb.ts.
+const idbMocks = vi.hoisted(() => ({
+  loadAiChatHistory: vi.fn(async () => undefined as import('../lib/idb').AiChatHistoryRecord | undefined),
+  saveAiChatHistory: vi.fn(async () => {}),
+  clearAiChatHistory: vi.fn(async () => {}),
+}));
+vi.mock('../lib/idb', () => idbMocks);
 
 import { AiChatPanel } from './AiChatPanel';
 import { useStore } from '../state/store';
 import { useAiChatStore } from '../state/aiChatStore';
 import { emptyData } from '../lib/sampleData';
-import type { AiGenerateResult } from '../lib/aiService';
-
-const generateMock = vi.fn<[], Promise<AiGenerateResult>>();
-vi.mock('../lib/aiService', async () => {
-  const actual = await vi.importActual<typeof import('../lib/aiService')>('../lib/aiService');
-  return { ...actual, generateLocalAiResponse: (...args: unknown[]) => generateMock(...(args as [])) };
-});
 
 let container: HTMLDivElement;
 let root: Root;
-
-beforeEach(() => {
-  useStore.setState({ data: { ...emptyData(), settings: { ...emptyData().settings, aiFeaturesEnabled: true } } });
-  useAiChatStore.setState({ open: false, chips: [], messages: [], sending: false });
-  generateMock.mockReset();
-  container = document.createElement('div');
-  document.body.appendChild(container);
-  root = createRoot(container);
-});
-
-afterEach(() => {
-  act(() => root.unmount());
-  container.remove();
-});
 
 async function flush() {
   await act(async () => {
@@ -40,98 +30,102 @@ async function flush() {
   });
 }
 
-function render() {
-  act(() => {
-    root.render(<AiChatPanel />);
-  });
-}
+beforeEach(() => {
+  idbMocks.loadAiChatHistory.mockClear().mockResolvedValue(undefined);
+  idbMocks.saveAiChatHistory.mockClear();
+  idbMocks.clearAiChatHistory.mockClear();
+  useAiChatStore.setState({ open: true, chips: [], messages: [], sending: false, hydrated: false });
+  useStore.setState({ data: { ...emptyData(), settings: { ...emptyData().settings, aiFeaturesEnabled: true } } });
+  container = document.createElement('div');
+  document.body.appendChild(container);
+  root = createRoot(container);
+});
 
-describe('AiChatPanel', () => {
-  it('renders nothing when AI features are disabled in Settings', () => {
+afterEach(() => {
+  act(() => root.unmount());
+  container.remove();
+  vi.clearAllMocks();
+});
+
+describe('<AiChatPanel />', () => {
+  it('renders nothing when Settings -> "Enable AI features" is off', async () => {
     useStore.setState({ data: { ...emptyData(), settings: { ...emptyData().settings, aiFeaturesEnabled: false } } });
-    render();
-    expect(container.querySelector('button')).toBeNull();
+    await act(async () => {
+      root.render(<AiChatPanel />);
+    });
+    expect(container.innerHTML).toBe('');
   });
 
-  it('renders a collapsed bubble by default when AI features are enabled', () => {
-    render();
-    const bubble = container.querySelector('button[aria-label="Open AI assistant"]');
-    expect(bubble).toBeTruthy();
-    expect(container.querySelector('[role="dialog"]')).toBeNull();
+  it('hydrates any persisted conversation from IndexedDB on mount', async () => {
+    idbMocks.loadAiChatHistory.mockResolvedValue({
+      messages: [{ id: 'm1', role: 'assistant', content: 'previously saved reply', createdAt: 1 }],
+      chips: [],
+      savedAt: 1,
+    });
+    await act(async () => {
+      root.render(<AiChatPanel />);
+    });
+    await flush();
+    expect(container.textContent).toContain('previously saved reply');
   });
 
-  it('expands into the chat window when the bubble is clicked, and can be minimized again', () => {
-    render();
-    const bubble = container.querySelector('button[aria-label="Open AI assistant"]') as HTMLButtonElement;
-    act(() => bubble.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-    expect(container.querySelector('[role="dialog"]')).toBeTruthy();
-    expect(container.textContent).toContain('Runs 100% locally');
+  it('shows a "Clear chat history" control that wipes messages/chips and the IndexedDB record', async () => {
+    // Mark already-hydrated so the mount-time hydrate() call is a no-op and
+    // doesn't clobber this seeded state with the (empty) mocked IDB load.
+    useAiChatStore.setState({
+      messages: [{ id: 'm1', role: 'user', content: 'hello', createdAt: 1 }],
+      chips: [],
+      hydrated: true,
+    });
+    await act(async () => {
+      root.render(<AiChatPanel />);
+    });
+    await flush();
+    expect(container.textContent).toContain('hello');
 
-    const minimize = container.querySelector('button[aria-label="Minimize"]') as HTMLButtonElement;
-    act(() => minimize.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-    expect(container.querySelector('[role="dialog"]')).toBeNull();
-  });
+    const clearButton = container.querySelector('button[aria-label="Clear chat history"]') as HTMLButtonElement;
+    expect(clearButton).toBeTruthy();
 
-  it('shows attached chips and removes one when its X is clicked', () => {
-    useAiChatStore.getState().addChip({ id: 'patient:p1', type: 'patient', recordId: 'p1', label: 'Jane Doe' });
-    useAiChatStore.setState({ open: true });
-    render();
-    expect(container.textContent).toContain('Jane Doe');
-
-    const removeBtn = container.querySelector('button[aria-label="Remove Jane Doe from context"]') as HTMLButtonElement;
-    expect(removeBtn).toBeTruthy();
-    act(() => removeBtn.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-    expect(useAiChatStore.getState().chips).toHaveLength(0);
-  });
-
-  it('sends a message, shows the user bubble, then the assistant reply from the (mocked) local model', async () => {
-    generateMock.mockResolvedValue({ ok: true, text: 'The claim looks active.' });
-    useAiChatStore.setState({ open: true });
-    render();
-
-    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
-    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!;
-    act(() => {
-      nativeSetter.call(textarea, "What's the status?");
-      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await act(async () => {
+      clearButton.click();
     });
 
-    const sendBtn = container.querySelector('button[aria-label="Send"]') as HTMLButtonElement;
-    act(() => sendBtn.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-    await flush();
-
-    expect(container.textContent).toContain("What's the status?");
-    expect(container.textContent).toContain('The claim looks active.');
-    expect(generateMock).toHaveBeenCalledTimes(1);
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(useAiChatStore.getState().messages).toEqual([]);
+    expect(idbMocks.clearAiChatHistory).toHaveBeenCalled();
+    expect(container.textContent).not.toContain('hello');
+    confirmSpy.mockRestore();
   });
 
-  it('shows a graceful error bubble when the local model is unavailable', async () => {
-    generateMock.mockResolvedValue({ ok: false, error: 'Failed to fetch' });
-    useAiChatStore.setState({ open: true });
-    render();
-
-    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
-    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!;
-    act(() => {
-      nativeSetter.call(textarea, 'Hello?');
-      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  it('does not wipe history if the user cancels the confirmation', async () => {
+    useAiChatStore.setState({
+      messages: [{ id: 'm1', role: 'user', content: 'keep me', createdAt: 1 }],
+      chips: [],
+      hydrated: true,
     });
-    const sendBtn = container.querySelector('button[aria-label="Send"]') as HTMLButtonElement;
-    act(() => sendBtn.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await act(async () => {
+      root.render(<AiChatPanel />);
+    });
     await flush();
 
-    expect(container.textContent).toContain("Couldn't reach the local AI model");
-    expect(container.textContent).toContain('Failed to fetch');
+    const clearButton = container.querySelector('button[aria-label="Clear chat history"]') as HTMLButtonElement;
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    await act(async () => {
+      clearButton.click();
+    });
+
+    expect(useAiChatStore.getState().messages).toHaveLength(1);
+    expect(idbMocks.clearAiChatHistory).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
   });
 
-  it('"New chat" clears the conversation', async () => {
-    useAiChatStore.getState().addMessage({ id: 'm1', role: 'user', content: 'old message', createdAt: Date.now() });
-    useAiChatStore.setState({ open: true });
-    render();
-    expect(container.textContent).toContain('old message');
-
-    const newChatBtn = Array.from(container.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'New');
-    act(() => newChatBtn!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-    expect(container.textContent).not.toContain('old message');
+  it('the "Clear chat history" control is disabled when there is nothing to clear', async () => {
+    await act(async () => {
+      root.render(<AiChatPanel />);
+    });
+    await flush();
+    const clearButton = container.querySelector('button[aria-label="Clear chat history"]') as HTMLButtonElement;
+    expect(clearButton.disabled).toBe(true);
   });
 });

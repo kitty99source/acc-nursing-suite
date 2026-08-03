@@ -482,4 +482,70 @@ describe('<AiChatPanel />', () => {
     expect(container.textContent).toContain('Hi there!');
     expect(container.textContent).not.toContain('The user said hello, I should be brief');
   });
+
+  it('shows a "Stop generating" control only while a response is streaming, which cancels via the shared abort mechanism, keeps the partial text visible marked "[stopped]", and re-enables sending immediately', async () => {
+    let capturedSignal: AbortSignal | undefined;
+    aiServiceMocks.generateLocalAiResponseStream.mockImplementation(
+      (_baseUrl: string, _prompt: string, opts: { signal?: AbortSignal; onChunk?: (t: string) => void }) => {
+        capturedSignal = opts.signal;
+        return new Promise(() => {
+          // never resolves in this test — the user cancels before it would.
+        });
+      },
+    );
+    useAiChatStore.setState({ hydrated: true });
+    await act(async () => {
+      root.render(<AiChatPanel />);
+    });
+    await flush();
+
+    // No stop control before anything is sent.
+    expect(container.querySelector('button[aria-label="Stop generating"]')).toBeNull();
+
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    const setValue = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!;
+    await act(async () => {
+      setValue.call(textarea, 'hello');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const sendButton = container.querySelector('button[aria-label="Send"]') as HTMLButtonElement;
+    await act(async () => {
+      sendButton.click();
+    });
+    await flush();
+
+    // The send icon morphs into a stop icon while streaming — not both/either shown at once.
+    expect(container.querySelector('button[aria-label="Send"]')).toBeNull();
+    const stopButton = container.querySelector('button[aria-label="Stop generating"]') as HTMLButtonElement;
+    expect(stopButton).toBeTruthy();
+    expect(capturedSignal?.aborted).toBe(false);
+
+    // Some partial text has streamed in before the user decides to stop.
+    // (streamingText is set via the store directly here, mirroring what onChunk would do.)
+    await act(async () => {
+      useAiChatStore.getState().setStreamingText('This is a partial rep');
+    });
+
+    await act(async () => {
+      stopButton.click();
+    });
+
+    // Reuses the exact same cancellation primitives as clear/new-chat — the request's own signal
+    // is genuinely aborted, not a second/parallel mechanism.
+    expect(capturedSignal?.aborted).toBe(true);
+    expect(useAiChatStore.getState().sending).toBe(false);
+
+    // The partial text is KEPT (not discarded) and visibly marked as stopped.
+    expect(container.textContent).toContain('This is a partial rep');
+    expect(container.textContent).toContain('[stopped]');
+    const stored = useAiChatStore.getState().messages;
+    expect(stored.at(-1)).toMatchObject({ role: 'assistant', content: 'This is a partial rep', stopped: true });
+
+    // The send button is back immediately, so the user can send a corrected message right away
+    // without needing to clear the whole conversation first.
+    expect(container.querySelector('button[aria-label="Send"]')).toBeTruthy();
+    expect(container.querySelector('button[aria-label="Stop generating"]')).toBeNull();
+    // Prior conversation (the stopped reply) is still there — stop is not a clear/new-chat.
+    expect(container.textContent).toContain('hello');
+  });
 });

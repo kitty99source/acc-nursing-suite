@@ -55,6 +55,14 @@ export interface AiChatMessage {
   reasoning?: string;
   /** Set when the local model call failed/timed out — rendered as a distinct, non-fatal notice. */
   error?: string;
+  /**
+   * True when this assistant message is a user-cancelled partial reply (the "Stop generating"
+   * button — see aiChatStore.ts `stopGeneration`), not a genuinely complete response. The partial
+   * text streamed so far is kept and shown (never discarded), but visually marked so it's not
+   * confused with a real, finished answer — same rationale as Cursor's own chat UI keeping a
+   * stopped response's partial text visible rather than vanishing it.
+   */
+  stopped?: boolean;
 }
 
 export type ContextChipType = 'patient';

@@ -4,7 +4,8 @@ import { useAiChatStore, makeMessageId, CHIP_DND_MIME, type AiChatMessage } from
 import { buildChatPrompt, type ChatTurn, type ContextChip } from '../lib/aiChatContext';
 import { generateLocalAiResponseStream } from '../lib/aiService';
 import { parseThinkResponse } from '../lib/ai/thinkParser';
-import { IconChat, IconClose, IconMinimize, IconSend, IconTrash } from './icons';
+import { shouldAutoScroll } from '../lib/chatScroll';
+import { IconChat, IconClose, IconMinimize, IconSend, IconStop, IconTrash } from './icons';
 
 // ============================================================================
 // Global, always-available AI chat panel — docked bottom-right, collapsed to
@@ -39,9 +40,13 @@ export function AiChatPanel() {
   const hydrate = useAiChatStore((s) => s.hydrate);
   const beginGeneration = useAiChatStore((s) => s.beginGeneration);
   const isGenerationCurrent = useAiChatStore((s) => s.isGenerationCurrent);
+  const stopGeneration = useAiChatStore((s) => s.stopGeneration);
 
   const [input, setInput] = useState('');
   const [dragOver, setDragOver] = useState(false);
+  // "Sticky scroll": whether the view is (or was, at the last scroll event) at/near the bottom —
+  // see lib/chatScroll.ts. Starts true so a freshly-opened panel still lands on the latest message.
+  const [stickToBottom, setStickToBottom] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // One-time load of any persisted conversation from IndexedDB. Runs even
@@ -51,12 +56,28 @@ export function AiChatPanel() {
     void hydrate();
   }, [hydrate]);
 
+  // Only auto-scroll to the bottom on new content (a new message, or a streamed chunk) when the
+  // user was already at/near the bottom — otherwise a reader who has scrolled up to an earlier
+  // message would get yanked back down on every token (2026-08-04 owner-reported bug). `stickToBottom`
+  // is kept up to date by the message list's own onScroll handler below.
   useEffect(() => {
     const el = scrollRef.current;
-    if (el && typeof el.scrollTo === 'function') {
+    if (el && stickToBottom && typeof el.scrollTo === 'function') {
       el.scrollTo({ top: el.scrollHeight });
     }
-  }, [messages, sending, streamingText]);
+  }, [messages, sending, streamingText, stickToBottom]);
+
+  function handleTranscriptScroll() {
+    const el = scrollRef.current;
+    if (!el) return;
+    setStickToBottom(shouldAutoScroll(el.scrollTop, el.scrollHeight, el.clientHeight));
+  }
+
+  function jumpToBottom() {
+    const el = scrollRef.current;
+    if (el && typeof el.scrollTo === 'function') el.scrollTo({ top: el.scrollHeight });
+    setStickToBottom(true);
+  }
 
   if (!settings.aiFeaturesEnabled) return null;
 
@@ -215,7 +236,8 @@ export function AiChatPanel() {
         trash icon above to clear it.
       </p>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-3 min-h-0">
+      <div className="relative flex-1 min-h-0">
+      <div ref={scrollRef} onScroll={handleTranscriptScroll} className="h-full overflow-y-auto px-3 py-2 space-y-3">
         {messages.length === 0 && (
           <p className="text-xs text-center py-6" style={{ color: 'var(--muted)' }}>
             Ask a question, or drag a patient in as context below first.
@@ -241,6 +263,15 @@ export function AiChatPanel() {
                 </div>
               )}
               {m.content}
+              {m.stopped && (
+                <span
+                  className="ml-1 text-[10px] font-semibold uppercase align-middle"
+                  style={{ color: 'var(--muted)' }}
+                  title="Generation was stopped before it finished — this is the partial reply streamed so far."
+                >
+                  [stopped]
+                </span>
+              )}
               {m.error && (
                 <p className="text-xs mt-1" style={{ color: 'var(--danger-fg)' }}>
                   {m.error}
@@ -308,6 +339,17 @@ export function AiChatPanel() {
           );
         })()}
       </div>
+      {!stickToBottom && (
+        <button
+          type="button"
+          className="btn btn-ghost absolute bottom-2 left-1/2 -translate-x-1/2 text-xs shadow"
+          style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+          onClick={jumpToBottom}
+        >
+          New messages ↓
+        </button>
+      )}
+      </div>
 
       <div
         className="shrink-0 border-t px-3 py-2"
@@ -362,15 +404,27 @@ export function AiChatPanel() {
               }
             }}
           />
-          <button
-            type="button"
-            className="btn btn-primary btn-icon"
-            onClick={() => void send()}
-            disabled={sending || !input.trim()}
-            aria-label="Send"
-          >
-            <IconSend width={16} height={16} />
-          </button>
+          {sending ? (
+            <button
+              type="button"
+              className="btn btn-danger btn-icon"
+              onClick={() => stopGeneration()}
+              aria-label="Stop generating"
+              title="Stop generating — keeps whatever has streamed back so far, marked as stopped"
+            >
+              <IconStop width={16} height={16} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-primary btn-icon"
+              onClick={() => void send()}
+              disabled={!input.trim()}
+              aria-label="Send"
+            >
+              <IconSend width={16} height={16} />
+            </button>
+          )}
         </div>
       </div>
     </div>

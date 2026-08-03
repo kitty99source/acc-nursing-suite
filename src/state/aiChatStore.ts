@@ -30,6 +30,7 @@
 import { create } from 'zustand';
 import type { AiChatMessage, ContextChip } from '../lib/aiChatContext';
 import { clearAiChatHistory, loadAiChatHistory, saveAiChatHistory } from '../lib/idb';
+import { parseThinkResponse } from '../lib/ai/thinkParser';
 
 // Re-exported for backwards compatibility with existing callers — the type
 // itself now lives in lib/aiChatContext.ts (see that file for why: it avoids
@@ -92,6 +93,20 @@ interface AiChatState {
   hydrate: () => Promise<void>;
   /** Wipes the conversation from both memory and IndexedDB. Used by the panel's "Clear chat history" button. */
   clearHistory: () => void;
+  /**
+   * Cancels the in-flight generation WITHOUT wiping the conversation — the "Stop generating"
+   * button's action, deliberately distinct from `clearHistory`/`newChat` (see owner request
+   * 2026-08-04: they want to stop and correct a bad response mid-stream, not lose the whole
+   * conversation to do it). Reuses the exact same cancellation primitives
+   * (`activeAbortController.abort()` + bumping `activeGenerationId` so any late chunk/final result
+   * is recognised as stale by `isGenerationCurrent`) — this is NOT a second, parallel cancellation
+   * path. Whatever text had streamed back so far (`streamingText`) is appended as a real assistant
+   * message marked `stopped: true` so it stays visible in the transcript instead of vanishing (the
+   * `<think>` chain-of-thought, if any was still open, is stripped via the same `parseThinkResponse`
+   * used for a normal completed reply — a stopped mid-reasoning block has no useful "answer" text,
+   * so no message is appended for that case). A no-op (safe to call) if nothing is generating.
+   */
+  stopGeneration: () => void;
 }
 
 function newId(): string {
@@ -179,6 +194,37 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
       activeAbortController: null,
     }));
     void clearAiChatHistory().catch(() => {});
+  },
+  stopGeneration: () => {
+    const s = get();
+    s.activeAbortController?.abort();
+    const partial = parseThinkResponse(s.streamingText).answer;
+    set((st) => {
+      if (!partial) {
+        return {
+          sending: false,
+          streamingText: '',
+          activeGenerationId: st.activeGenerationId + 1,
+          activeAbortController: null,
+        };
+      }
+      const stoppedMessage: AiChatMessage = {
+        id: newId(),
+        role: 'assistant',
+        content: partial,
+        createdAt: Date.now(),
+        stopped: true,
+      };
+      const messages = [...st.messages, stoppedMessage];
+      persist(messages, st.chips);
+      return {
+        messages,
+        sending: false,
+        streamingText: '',
+        activeGenerationId: st.activeGenerationId + 1,
+        activeAbortController: null,
+      };
+    });
   },
 }));
 

@@ -184,3 +184,59 @@ describe('useAiChatStore generation tracking (clear/new-chat mid-stream cancella
     expect(() => useAiChatStore.getState().clearHistory()).not.toThrow();
   });
 });
+
+describe('useAiChatStore stopGeneration ("Stop generating" — cancel without clearing history)', () => {
+  it('aborts the in-flight signal and supersedes the generation id, same as clearHistory/newChat', () => {
+    const { id, signal } = useAiChatStore.getState().beginGeneration();
+    useAiChatStore.getState().stopGeneration();
+    expect(signal.aborted).toBe(true);
+    expect(useAiChatStore.getState().isGenerationCurrent(id)).toBe(false);
+  });
+
+  it('does NOT clear existing conversation history (the key difference from clearHistory/newChat)', () => {
+    useAiChatStore.getState().addMessage({ id: 'm1', role: 'user', content: 'hi', createdAt: Date.now() });
+    useAiChatStore.getState().addChip(chip('p1'));
+    useAiChatStore.getState().beginGeneration();
+    useAiChatStore.getState().stopGeneration();
+    const s = useAiChatStore.getState();
+    expect(s.messages).toHaveLength(1);
+    expect(s.chips).toHaveLength(1);
+    expect(idbMocks.clearAiChatHistory).not.toHaveBeenCalled();
+  });
+
+  it('appends the partially-streamed text as a new assistant message marked stopped, and clears streamingText/sending', () => {
+    useAiChatStore.getState().beginGeneration();
+    useAiChatStore.getState().setSending(true);
+    useAiChatStore.getState().setStreamingText('Here is a partial ans');
+
+    useAiChatStore.getState().stopGeneration();
+
+    const s = useAiChatStore.getState();
+    expect(s.sending).toBe(false);
+    expect(s.streamingText).toBe('');
+    expect(s.messages).toHaveLength(1);
+    expect(s.messages[0]).toMatchObject({ role: 'assistant', content: 'Here is a partial ans', stopped: true });
+  });
+
+  it('strips an in-progress <think> chain-of-thought out of the stopped message, same as a completed reply', () => {
+    useAiChatStore.getState().beginGeneration();
+    useAiChatStore.getState().setStreamingText('Short intro <think>reasoning about the answer');
+    useAiChatStore.getState().stopGeneration();
+    const s = useAiChatStore.getState();
+    expect(s.messages).toHaveLength(1);
+    expect(s.messages[0].content).toBe('Short intro');
+    expect(s.messages[0].content).not.toContain('reasoning about the answer');
+  });
+
+  it('does not append a stopped message when nothing had streamed back yet (still cold-starting)', () => {
+    useAiChatStore.getState().beginGeneration();
+    useAiChatStore.getState().setStreamingText('');
+    useAiChatStore.getState().stopGeneration();
+    expect(useAiChatStore.getState().messages).toEqual([]);
+  });
+
+  it('is safe to call with no in-flight generation (no controller to abort, nothing streamed)', () => {
+    expect(() => useAiChatStore.getState().stopGeneration()).not.toThrow();
+    expect(useAiChatStore.getState().messages).toEqual([]);
+  });
+});

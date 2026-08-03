@@ -61,6 +61,24 @@ const DEFAULT_GENERATE_TIMEOUT_MS = 60_000;
 const DEFAULT_CHAT_INACTIVITY_TIMEOUT_MS = 120_000;
 const DEFAULT_CHAT_TOTAL_TIMEOUT_MS = 300_000;
 
+// ----------------------------------------------------------------------------
+// Generation-length ceiling (2026-08-04 "rambling on 'hello'" bug fix).
+//
+// Before this fix, the chat panel sent NO `options.num_predict` at all, which
+// Ollama treats as unbounded generation. Phi-4-mini-reasoning is trained to
+// always emit a `<think>...</think>` chain-of-thought before its answer (see
+// lib/ai/thinkParser.ts for the full citation/explanation) — combined with
+// no ceiling, a model that starts over-deliberating on a trivial input has
+// nothing to stop it from running for a very long time, which is exactly
+// what looked like "looping" to the owner. Chosen ceiling: generous enough
+// for a genuinely detailed reasoning trace + answer on a real compliance
+// question (per Microsoft's own Phi-4-reasoning technical report, complex
+// traces commonly run into the low thousands of tokens), but not literally
+// unbounded. This is a ceiling, not a target — most replies (including any
+// short "hello"-style greeting, per the new brevity system-prompt
+// instruction in aiChatContext.ts) will finish well under it.
+const DEFAULT_CHAT_NUM_PREDICT = 2048;
+
 function stripTrailingSlash(url: string): string {
   return url.replace(/\/+$/, '');
 }
@@ -245,6 +263,16 @@ export interface AiGenerateStreamOptions {
   inactivityTimeoutMs?: number;
   /** Called with the ACCUMULATED text so far every time a new streamed chunk arrives (not just the delta). */
   onChunk?: (accumulatedText: string) => void;
+  /** Hard ceiling on generated tokens (Ollama's `options.num_predict`). Default 2048 — see DEFAULT_CHAT_NUM_PREDICT. */
+  numPredict?: number;
+  /**
+   * Caller-supplied cancellation signal — e.g. AiChatPanel wires this to the chat store's
+   * `beginGeneration()` controller so clicking "Clear chat history"/"New chat" mid-stream actually
+   * aborts this request instead of leaving it to keep running (and eventually resolve into a
+   * conversation that has already moved on). Independent of, and in addition to, the internal
+   * inactivity/total timeouts below — either one aborts the same underlying fetch.
+   */
+  signal?: AbortSignal;
 }
 
 /**
@@ -281,6 +309,10 @@ export async function generateLocalAiResponseStream(
   const totalMs = opts?.timeoutMs ?? DEFAULT_CHAT_TOTAL_TIMEOUT_MS;
 
   const controller = new AbortController();
+  if (opts?.signal) {
+    if (opts.signal.aborted) controller.abort();
+    else opts.signal.addEventListener('abort', () => controller.abort(), { once: true });
+  }
   const totalTimer = setTimeout(() => controller.abort(), totalMs);
   let inactivityTimer: ReturnType<typeof setTimeout> | undefined;
   function resetInactivity() {
@@ -318,7 +350,12 @@ export async function generateLocalAiResponseStream(
     const res = await fetchImpl(`${stripTrailingSlash(baseUrl)}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, prompt, stream: true }),
+      body: JSON.stringify({
+        model,
+        prompt,
+        stream: true,
+        options: { num_predict: opts?.numPredict ?? DEFAULT_CHAT_NUM_PREDICT },
+      }),
       signal: controller.signal,
     });
     if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };

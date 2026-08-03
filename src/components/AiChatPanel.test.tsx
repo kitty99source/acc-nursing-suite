@@ -248,4 +248,238 @@ describe('<AiChatPanel />', () => {
     expect(container.textContent).toContain('timed out');
     expect(useAiChatStore.getState().sending).toBe(false);
   });
+
+  it('clicking "Clear chat history" mid-stream aborts the request and discards its late-arriving final message (owner-reported race)', async () => {
+    let capturedSignal: AbortSignal | undefined;
+    let resolveGenerate!: (value: { ok: true; text: string }) => void;
+    aiServiceMocks.generateLocalAiResponseStream.mockImplementation(
+      (_baseUrl: string, _prompt: string, opts: { signal?: AbortSignal }) => {
+        capturedSignal = opts.signal;
+        return new Promise((resolve) => {
+          resolveGenerate = resolve;
+        });
+      },
+    );
+    useAiChatStore.setState({ hydrated: true });
+    await act(async () => {
+      root.render(<AiChatPanel />);
+    });
+    await flush();
+
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    const setValue = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!;
+    await act(async () => {
+      setValue.call(textarea, 'hello');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const sendButton = container.querySelector('button[aria-label="Send"]') as HTMLButtonElement;
+    await act(async () => {
+      sendButton.click();
+    });
+    await flush();
+
+    // The old ("supposed to be cancelled") request is genuinely still in flight at this point —
+    // this mirrors the owner's live repro exactly: click send, then click the trash icon before
+    // the model has finished generating.
+    expect(useAiChatStore.getState().sending).toBe(true);
+    expect(capturedSignal?.aborted).toBe(false);
+
+    const clearButton = container.querySelector('button[aria-label="Clear chat history"]') as HTMLButtonElement;
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await act(async () => {
+      clearButton.click();
+    });
+    confirmSpy.mockRestore();
+
+    // Clearing should be instant: no more "thinking"/streaming state, and the request's own
+    // AbortController signal should already be aborted.
+    expect(useAiChatStore.getState().sending).toBe(false);
+    expect(useAiChatStore.getState().messages).toEqual([]);
+    expect(capturedSignal?.aborted).toBe(true);
+
+    // NOW let the stale request "finish" (simulates abort not being instant — e.g. it was already
+    // past the fetch/read and about to resolve). The final message must NOT reappear in the store.
+    await act(async () => {
+      resolveGenerate({ ok: true, text: 'stale reply that should never reappear' });
+    });
+    await flush();
+
+    expect(useAiChatStore.getState().messages).toEqual([]);
+    expect(useAiChatStore.getState().sending).toBe(false);
+    expect(container.textContent).not.toContain('stale reply that should never reappear');
+  });
+
+  it('clicking "New chat" mid-stream also cancels the in-flight request and discards its late-arriving final message', async () => {
+    let resolveGenerate!: (value: { ok: true; text: string }) => void;
+    aiServiceMocks.generateLocalAiResponseStream.mockImplementation(
+      () => new Promise((resolve) => { resolveGenerate = resolve; }),
+    );
+    useAiChatStore.setState({ hydrated: true });
+    await act(async () => {
+      root.render(<AiChatPanel />);
+    });
+    await flush();
+
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    const setValue = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!;
+    await act(async () => {
+      setValue.call(textarea, 'hello');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const sendButton = container.querySelector('button[aria-label="Send"]') as HTMLButtonElement;
+    await act(async () => {
+      sendButton.click();
+    });
+    await flush();
+    expect(useAiChatStore.getState().sending).toBe(true);
+
+    const newChatButton = container.querySelector('button[aria-label="New chat"]') as HTMLButtonElement;
+    await act(async () => {
+      newChatButton.click();
+    });
+
+    expect(useAiChatStore.getState().sending).toBe(false);
+    expect(useAiChatStore.getState().messages).toEqual([]);
+
+    await act(async () => {
+      resolveGenerate({ ok: true, text: 'stale reply from before New chat' });
+    });
+    await flush();
+
+    expect(useAiChatStore.getState().messages).toEqual([]);
+    expect(container.textContent).not.toContain('stale reply from before New chat');
+  });
+
+  it('a superseded streamed chunk (onChunk firing after Clear) does not repopulate streamingText', async () => {
+    let onChunkCb!: (accumulated: string) => void;
+    aiServiceMocks.generateLocalAiResponseStream.mockImplementation(
+      (_baseUrl: string, _prompt: string, opts: { onChunk?: (t: string) => void }) => {
+        onChunkCb = opts.onChunk!;
+        return new Promise(() => {
+          // never resolves — this test only cares about the onChunk guard, not the final message.
+        });
+      },
+    );
+    useAiChatStore.setState({ hydrated: true });
+    await act(async () => {
+      root.render(<AiChatPanel />);
+    });
+    await flush();
+
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    const setValue = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!;
+    await act(async () => {
+      setValue.call(textarea, 'hello');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const sendButton = container.querySelector('button[aria-label="Send"]') as HTMLButtonElement;
+    await act(async () => {
+      sendButton.click();
+    });
+    await flush();
+
+    await act(async () => {
+      onChunkCb('partial stream text');
+    });
+    expect(container.textContent).toContain('partial stream text');
+
+    const clearButton = container.querySelector('button[aria-label="Clear chat history"]') as HTMLButtonElement;
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await act(async () => {
+      clearButton.click();
+    });
+    confirmSpy.mockRestore();
+
+    // A chunk from the now-superseded generation arrives after the clear — must be discarded.
+    await act(async () => {
+      onChunkCb('partial stream text MORE STALE TEXT');
+    });
+    expect(useAiChatStore.getState().streamingText).toBe('');
+    expect(container.textContent).not.toContain('MORE STALE TEXT');
+  });
+
+  it('strips a <think>...</think> chain-of-thought out of the final reply, showing only the short answer plus a "Show reasoning" toggle (owner-reported rambling-on-"hello" bug)', async () => {
+    aiServiceMocks.generateLocalAiResponseStream.mockResolvedValue({
+      ok: true,
+      text:
+        '<think>\nThe user said hello. This is a simple greeting — respond briefly.\n</think>\n' +
+        'Hi! How can I help you today?',
+    });
+    useAiChatStore.setState({ hydrated: true });
+    await act(async () => {
+      root.render(<AiChatPanel />);
+    });
+    await flush();
+
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    const setValue = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!;
+    await act(async () => {
+      setValue.call(textarea, 'hello');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const sendButton = container.querySelector('button[aria-label="Send"]') as HTMLButtonElement;
+    await act(async () => {
+      sendButton.click();
+    });
+    await flush();
+
+    // The primary bubble is just the short final answer...
+    const bubbles = Array.from(container.querySelectorAll('.rounded-lg')).map((el) => el.textContent);
+    expect(bubbles.some((t) => t === 'Hi! How can I help you today?')).toBe(true);
+    // ...never the raw chain-of-thought inside that primary answer bubble.
+    expect(bubbles.some((t) => t?.includes('This is a simple greeting'))).toBe(false);
+    // ...but the reasoning is still available, transparently, behind a COLLAPSED (not open) toggle.
+    const details = Array.from(container.querySelectorAll('details')).find(
+      (d) => d.querySelector('summary')?.textContent === 'Show reasoning',
+    ) as HTMLDetailsElement;
+    expect(details).toBeTruthy();
+    expect(details.open).toBe(false);
+    expect(details.textContent).toContain('This is a simple greeting');
+
+    const stored = useAiChatStore.getState().messages;
+    const assistantMessage = stored.find((m) => m.role === 'assistant');
+    expect(assistantMessage?.content).toBe('Hi! How can I help you today?');
+    expect(assistantMessage?.reasoning).toContain('This is a simple greeting');
+  });
+
+  it('shows a "still reasoning" indicator (not raw <think> text) while a chain-of-thought block is streaming in, then reveals the short answer once it arrives', async () => {
+    let onChunkCb!: (accumulated: string) => void;
+    aiServiceMocks.generateLocalAiResponseStream.mockImplementation(
+      (_baseUrl: string, _prompt: string, opts: { onChunk?: (t: string) => void }) =>
+        new Promise(() => {
+          onChunkCb = opts.onChunk!;
+        }),
+    );
+    useAiChatStore.setState({ hydrated: true });
+    await act(async () => {
+      root.render(<AiChatPanel />);
+    });
+    await flush();
+
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    const setValue = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!;
+    await act(async () => {
+      setValue.call(textarea, 'hello');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const sendButton = container.querySelector('button[aria-label="Send"]') as HTMLButtonElement;
+    await act(async () => {
+      sendButton.click();
+    });
+    await flush();
+
+    await act(async () => {
+      onChunkCb('<think>The user said hello, I should be brief');
+    });
+    // Still inside the reasoning block — must never render the raw chain-of-thought as if it were the answer.
+    expect(container.textContent).not.toContain('The user said hello, I should be brief');
+    expect(container.textContent).toContain('Reasoning through your question');
+
+    await act(async () => {
+      onChunkCb('<think>The user said hello, I should be brief</think>Hi there!');
+    });
+    // Once the closing tag streams in, the short answer becomes the visible text.
+    expect(container.textContent).toContain('Hi there!');
+    expect(container.textContent).not.toContain('The user said hello, I should be brief');
+  });
 });

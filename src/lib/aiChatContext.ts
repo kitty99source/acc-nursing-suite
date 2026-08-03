@@ -45,6 +45,14 @@ export interface AiChatMessage {
   chips?: ContextChip[];
   /** The exact serialized context text sent to the model alongside this exchange, for the "Context used" disclosure. */
   contextUsed?: string;
+  /**
+   * The reasoning-model's chain-of-thought trace (from `<think>...</think>`), stripped out of
+   * `content` by `parseThinkResponse` (see lib/ai/thinkParser.ts) before display. Undefined for
+   * user messages, and for assistant messages where the model didn't emit a `<think>` block (or
+   * it was empty) — never shown as part of the primary bubble, only behind the "Show reasoning"
+   * toggle, same transparency pattern as `contextUsed`'s "Context used" disclosure.
+   */
+  reasoning?: string;
   /** Set when the local model call failed/timed out — rendered as a distinct, non-fatal notice. */
   error?: string;
 }
@@ -144,6 +152,10 @@ export const AI_ASSISTANT_SYSTEM_PROMPT = [
     'details (dates, NHI, notes) that are not present in it. If something the user asks about is not in ' +
     'the attached data, say what is missing rather than guessing.',
   'Keep answers concise and practical for a busy admin/billing worker.',
+  'For simple greetings or small talk (e.g. "hello", "thanks", "how are you"), respond briefly ' +
+    'and naturally in one or two sentences without extensive reasoning — do not deliberate over what ' +
+    'a casual greeting "means". Reserve detailed step-by-step reasoning for genuinely complex ' +
+    'questions about specific cases, compliance rules, or data.',
 ].join('\n\n');
 
 // ----------------------------------------------------------------------------

@@ -191,6 +191,27 @@ describe('generateLocalAiResponseStream', () => {
     expect(JSON.parse(init.body)).toMatchObject({ model: 'phi4-mini-reasoning', prompt: 'a prompt', stream: true });
   });
 
+  it('caps generation with a sane default num_predict so a rambling/looping reply cannot run unbounded', async () => {
+    const fetchImpl = vi.fn(async () => streamResponse([JSON.stringify({ response: 'ok', done: true })]));
+    await generateLocalAiResponseStream('http://127.0.0.1:11434', 'a prompt', {
+      fetchImpl: fetchImpl as unknown as FetchLike,
+    });
+    const [, init] = fetchImpl.mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.options?.num_predict).toBeGreaterThan(0);
+    expect(body.options?.num_predict).toBeLessThanOrEqual(4096);
+  });
+
+  it('lets a caller override the default num_predict ceiling', async () => {
+    const fetchImpl = vi.fn(async () => streamResponse([JSON.stringify({ response: 'ok', done: true })]));
+    await generateLocalAiResponseStream('http://127.0.0.1:11434', 'a prompt', {
+      fetchImpl: fetchImpl as unknown as FetchLike,
+      numPredict: 256,
+    });
+    const [, init] = fetchImpl.mock.calls[0];
+    expect(JSON.parse(init.body).options.num_predict).toBe(256);
+  });
+
   it('correctly reassembles a JSON line split across two stream reads', async () => {
     const encoder = new TextEncoder();
     const full = JSON.stringify({ response: 'split across reads', done: false }) + '\n';

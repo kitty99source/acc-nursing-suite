@@ -50,6 +50,35 @@ interface AiChatState {
   streamingText: string;
   /** True once the one-time load from IndexedDB has completed (or found nothing). */
   hydrated: boolean;
+  /**
+   * Monotonic id identifying the current (or most recently started) generation/send. Bumped by
+   * `beginGeneration` and again by `clearHistory`/`newChat` — a streamed chunk or final message
+   * belonging to an OLDER id than whatever is currently active is stale (the user cleared the
+   * chat or started a new one while that request was still in flight) and must be discarded
+   * instead of written into the store. This is the defense-in-depth half of the clear/new-chat
+   * cancellation fix (2026-08-04 owner-reported race: clicking the trash icon mid-stream did not
+   * actually stop the old response, which then reappeared once it finished) — the `AbortController`
+   * below is the other half, but abort isn't always instant (e.g. mid-chunk-processing inside the
+   * `for await`-style read loop in aiService.ts), so this id check is what actually guarantees a
+   * superseded response can never land in the store no matter when its abort takes effect.
+   */
+  activeGenerationId: number;
+  /**
+   * AbortController for the in-flight request started by the most recent `beginGeneration` call,
+   * if any. `clearHistory`/`newChat` abort this before wiping the conversation, so the underlying
+   * fetch is actually cancelled instead of merely orphaned (left running in the background with no
+   * one caring about its result).
+   */
+  activeAbortController: AbortController | null;
+  /**
+   * Starts a new generation: bumps `activeGenerationId`, creates a fresh `AbortController`, and
+   * returns both so the caller (AiChatPanel's `send()`) can pass the signal into the request and
+   * later confirm — via `isGenerationCurrent` — whether its result is still wanted before writing
+   * anything into the store.
+   */
+  beginGeneration: () => { id: number; signal: AbortSignal };
+  /** True if `id` is still the active (not superseded by a later send/clear/new-chat) generation. */
+  isGenerationCurrent: (id: number) => boolean;
   setOpen: (open: boolean) => void;
   toggleOpen: () => void;
   addChip: (chip: ContextChip) => void;
@@ -83,6 +112,15 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
   sending: false,
   streamingText: '',
   hydrated: false,
+  activeGenerationId: 0,
+  activeAbortController: null,
+  beginGeneration: () => {
+    const controller = new AbortController();
+    const id = get().activeGenerationId + 1;
+    set({ activeGenerationId: id, activeAbortController: controller });
+    return { id, signal: controller.signal };
+  },
+  isGenerationCurrent: (id) => get().activeGenerationId === id,
   setOpen: (open) => set({ open }),
   toggleOpen: () => set((s) => ({ open: !s.open })),
   addChip: (chip) =>
@@ -128,7 +166,18 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
     }
   },
   clearHistory: () => {
-    set({ messages: [], chips: [], sending: false, streamingText: '' });
+    // Cancel any in-flight request FIRST (before wiping state) so a stale response's own eventual
+    // `.then()`/stream-read continuation cannot land after `activeGenerationId` has already moved on
+    // — belt-and-braces with the id bump below, since `abort()` isn't always instant.
+    get().activeAbortController?.abort();
+    set((s) => ({
+      messages: [],
+      chips: [],
+      sending: false,
+      streamingText: '',
+      activeGenerationId: s.activeGenerationId + 1,
+      activeAbortController: null,
+    }));
     void clearAiChatHistory().catch(() => {});
   },
 }));

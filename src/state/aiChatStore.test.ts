@@ -147,3 +147,40 @@ describe('useAiChatStore persistence (IndexedDB, mocked)', () => {
     expect(idbMocks.clearAiChatHistory).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('useAiChatStore generation tracking (clear/new-chat mid-stream cancellation)', () => {
+  it('beginGeneration returns a fresh id + signal each call, and isGenerationCurrent is only true for the latest one', () => {
+    const first = useAiChatStore.getState().beginGeneration();
+    expect(useAiChatStore.getState().isGenerationCurrent(first.id)).toBe(true);
+
+    const second = useAiChatStore.getState().beginGeneration();
+    expect(second.id).not.toBe(first.id);
+    expect(useAiChatStore.getState().isGenerationCurrent(first.id)).toBe(false);
+    expect(useAiChatStore.getState().isGenerationCurrent(second.id)).toBe(true);
+  });
+
+  it('clearHistory aborts the in-flight generation\'s signal', () => {
+    const { signal } = useAiChatStore.getState().beginGeneration();
+    expect(signal.aborted).toBe(false);
+    useAiChatStore.getState().clearHistory();
+    expect(signal.aborted).toBe(true);
+  });
+
+  it('clearHistory supersedes the active generation id, so a late result can detect it is stale', () => {
+    const { id } = useAiChatStore.getState().beginGeneration();
+    expect(useAiChatStore.getState().isGenerationCurrent(id)).toBe(true);
+    useAiChatStore.getState().clearHistory();
+    expect(useAiChatStore.getState().isGenerationCurrent(id)).toBe(false);
+  });
+
+  it('newChat (an alias for clearHistory) also aborts and supersedes the active generation', () => {
+    const { id, signal } = useAiChatStore.getState().beginGeneration();
+    useAiChatStore.getState().newChat();
+    expect(signal.aborted).toBe(true);
+    expect(useAiChatStore.getState().isGenerationCurrent(id)).toBe(false);
+  });
+
+  it('clearHistory is safe to call with no in-flight generation (no controller to abort)', () => {
+    expect(() => useAiChatStore.getState().clearHistory()).not.toThrow();
+  });
+});

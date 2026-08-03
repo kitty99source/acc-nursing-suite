@@ -3,6 +3,7 @@ import { useStore } from '../state/store';
 import { useAiChatStore, makeMessageId, CHIP_DND_MIME, type AiChatMessage } from '../state/aiChatStore';
 import { buildChatPrompt, type ChatTurn, type ContextChip } from '../lib/aiChatContext';
 import { generateLocalAiResponseStream } from '../lib/aiService';
+import { parseThinkResponse } from '../lib/ai/thinkParser';
 import { IconChat, IconClose, IconMinimize, IconSend, IconTrash } from './icons';
 
 // ============================================================================
@@ -36,6 +37,8 @@ export function AiChatPanel() {
   const newChat = useAiChatStore((s) => s.newChat);
   const clearHistory = useAiChatStore((s) => s.clearHistory);
   const hydrate = useAiChatStore((s) => s.hydrate);
+  const beginGeneration = useAiChatStore((s) => s.beginGeneration);
+  const isGenerationCurrent = useAiChatStore((s) => s.isGenerationCurrent);
 
   const [input, setInput] = useState('');
   const [dragOver, setDragOver] = useState(false);
@@ -97,20 +100,41 @@ export function AiChatPanel() {
     setStreamingText('');
 
     const { prompt, contextBlock } = buildChatPrompt({ history, chips: attachedChips, data, userMessage: text });
+    // Tag this send with a fresh generation id + AbortController (see aiChatStore.ts
+    // `beginGeneration`/`isGenerationCurrent`) — clicking "Clear chat history" or "New chat" while
+    // this request is in flight aborts the controller AND bumps the id, so a late-arriving chunk or
+    // final message below can tell it's stale and must discard itself instead of writing into a
+    // conversation the user has since cleared/moved on from (2026-08-04 owner-reported race fix).
+    const { id: generationId, signal } = beginGeneration();
     // Streamed (Ollama `/api/generate` with `stream: true`) so the panel can render tokens as
     // they arrive instead of a blank spinner for the whole reply — see aiService.ts for the
     // inactivity-reset timeout that makes this both faster-feeling AND safer against premature
     // timeouts than the old single fixed deadline.
     const result = await generateLocalAiResponseStream(settings.aiServiceBaseUrl, prompt, {
-      onChunk: (accumulated) => setStreamingText(accumulated),
+      signal,
+      onChunk: (accumulated) => {
+        if (isGenerationCurrent(generationId)) setStreamingText(accumulated);
+      },
     });
 
+    // The chat may have been cleared/restarted while this request was still running — discard a
+    // superseded result silently rather than reappending it into (or overwriting) whatever the
+    // user has since started. No error toast: this is the deliberate, expected outcome of a
+    // user-initiated cancellation, not a failure.
+    if (!isGenerationCurrent(generationId)) return;
+
     if (result.ok) {
+      // Phi-4-mini-reasoning always emits a `<think>...</think>` chain-of-thought before its
+      // real answer (see lib/ai/thinkParser.ts) — split that out here so `content` (the primary
+      // bubble) is just the short final answer, with the reasoning trace kept for the "Show
+      // reasoning" disclosure below rather than either being shown inline or thrown away.
+      const { answer, reasoning } = parseThinkResponse(result.text);
       addMessage({
         id: makeMessageId(),
         role: 'assistant',
-        content: result.text.trim(),
+        content: answer || result.text.trim(),
         createdAt: Date.now(),
+        reasoning: reasoning || undefined,
         contextUsed: contextBlock || undefined,
       });
     } else {
@@ -223,6 +247,19 @@ export function AiChatPanel() {
                 </p>
               )}
             </div>
+            {m.role === 'assistant' && m.reasoning && (
+              <details className="mt-1" style={{ marginRight: '2rem' }}>
+                <summary className="text-[11px] cursor-pointer" style={{ color: 'var(--accent)' }}>
+                  Show reasoning
+                </summary>
+                <pre
+                  className="text-[10px] mt-1 p-2 rounded whitespace-pre-wrap"
+                  style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}
+                >
+                  {m.reasoning}
+                </pre>
+              </details>
+            )}
             {m.role === 'assistant' && m.contextUsed && (
               <details className="mt-1" style={{ marginRight: '2rem' }}>
                 <summary className="text-[11px] cursor-pointer" style={{ color: 'var(--accent)' }}>
@@ -238,29 +275,38 @@ export function AiChatPanel() {
             )}
           </div>
         ))}
-        {sending && (
-          <div className="text-sm" style={{ marginRight: '2rem' }}>
-            {streamingText ? (
-              <div
-                className="rounded-lg px-2.5 py-1.5 whitespace-pre-wrap"
-                style={{ background: 'var(--surface-2)', color: 'var(--text)' }}
-              >
-                {streamingText}
-                <span className="inline-block ml-1 animate-pulse" aria-hidden="true">
-                  ▍
-                </span>
-              </div>
-            ) : (
-              <div className="rounded-lg px-2.5 py-1.5 inline-flex items-center gap-2" style={{ background: 'var(--surface-2)' }}>
-                <span className="spinner" aria-hidden="true" />
-                <span className="text-xs" style={{ color: 'var(--muted)' }}>
-                  Thinking… small on-device models can take 30–90 seconds on this hardware, longer
-                  (up to a few minutes) right after Ollama has just started.
-                </span>
-              </div>
-            )}
-          </div>
-        )}
+        {sending && (() => {
+          // Parse the raw accumulated stream so the model's `<think>...</think>` chain-of-thought
+          // never flashes on screen as the live "answer" (the exact owner-reported bug) — while
+          // still-thinking, show the same "Thinking…" indicator as before (optionally naming that
+          // reasoning is genuinely in progress) rather than a wall of raw reasoning text.
+          const parsed = parseThinkResponse(streamingText);
+          return (
+            <div className="text-sm" style={{ marginRight: '2rem' }}>
+              {parsed.answer ? (
+                <div
+                  className="rounded-lg px-2.5 py-1.5 whitespace-pre-wrap"
+                  style={{ background: 'var(--surface-2)', color: 'var(--text)' }}
+                >
+                  {parsed.answer}
+                  <span className="inline-block ml-1 animate-pulse" aria-hidden="true">
+                    ▍
+                  </span>
+                </div>
+              ) : (
+                <div className="rounded-lg px-2.5 py-1.5 inline-flex items-center gap-2" style={{ background: 'var(--surface-2)' }}>
+                  <span className="spinner" aria-hidden="true" />
+                  <span className="text-xs" style={{ color: 'var(--muted)' }}>
+                    {parsed.thinking
+                      ? 'Reasoning through your question… the short answer will appear here once it\u2019s done.'
+                      : 'Thinking… small on-device models can take 30–90 seconds on this hardware, longer ' +
+                        '(up to a few minutes) right after Ollama has just started.'}
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       <div

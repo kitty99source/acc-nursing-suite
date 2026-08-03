@@ -113,7 +113,7 @@ const DEFAULT_CHAT_NUM_PREDICT = 2048;
 //    that model-card maximum when a request doesn't specify `num_ctx`, which
 //    allocates a KV-cache sized for a 128K-token conversation even for a
 //    two-line "hello" — a real, avoidable CPU/memory cost on every single
-//    request. This app's own prompt assembly (`buildChatPrompt` in
+//    request. This app's own prompt assembly (`buildChatMessages` in
 //    `aiChatContext.ts`, `MAX_HISTORY_TURNS = 8`) never sends anywhere close
 //    to that much text — a capped few-thousand-word system prompt + context
 //    chip + short history window comfortably fits well under 8K tokens in
@@ -337,6 +337,12 @@ function chatErrorMessage(err: unknown): string {
   return errorMessage(err);
 }
 
+/** One message in Ollama's `/api/chat` structured `messages` array. */
+export interface ChatApiMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
 export interface AiGenerateStreamOptions {
   fetchImpl?: FetchLike;
   model?: string;
@@ -363,31 +369,49 @@ export interface AiGenerateStreamOptions {
 }
 
 /**
- * Send one prompt to the local model server's generate endpoint with
- * streaming enabled (Ollama's `/api/generate` with `"stream": true`) and
- * return the final accumulated text once the stream ends. Reads the response
- * body as newline-delimited JSON objects (Ollama's actual streaming wire
- * format: one `{"response": "<token(s)>", "done": false}` object per line,
- * ending with a final `{"done": true, ...}`), calling `onChunk` with the
- * running total after each parsed line so a caller can render partial text
- * live instead of staring at a blank "thinking" spinner for the whole reply.
+ * Send a structured conversation to the local model server's CHAT endpoint
+ * with streaming enabled (Ollama's `/api/chat` with `"stream": true`) and
+ * return the final accumulated assistant text once the stream ends.
+ *
+ * WHY `/api/chat` AND NOT `/api/generate` (2026-08-04 "hallucinated fake
+ * conversation" bug fix): this used to be `generateLocalAiResponseStream`,
+ * which sent a single manually-flattened prompt STRING (built by
+ * `buildChatPrompt` in aiChatContext.ts, with literal "User:"/"Assistant:"
+ * text labels) to `/api/generate`. That endpoint applies no chat template
+ * and takes no `messages` structure — the model sees one big continuable
+ * document that already looks like a multi-turn transcript, and with no
+ * `stop` sequences configured, a reasoning model (this app's
+ * Phi-4-mini-reasoning) has no hard signal to stop generating after its own
+ * turn. On a real laptop this produced exactly what the owner reported: the
+ * model answered "hello" and then kept going, inventing further "User:"/
+ * "Assistant:" turns of a conversation that never happened. `/api/chat`
+ * takes a real `messages: [{role, content}, ...]` array and has Ollama apply
+ * the model's own trained chat template server-side (real turn-boundary
+ * tokens, not text this code invented) — the model was actually trained to
+ * stop at those boundaries, which is what `/api/generate` could never
+ * reliably reproduce no matter what stop-strings were guessed.
+ *
+ * Reads the response body as newline-delimited JSON objects — Ollama's
+ * `/api/chat` streaming wire format is one `{"message": {"role":
+ * "assistant", "content": "<token(s)>"}, "done": false}` object per line,
+ * ending with a final `{"done": true, ...}` (note: unlike `/api/generate`'s
+ * `response` field, the text lives at `message.content`) — calling `onChunk`
+ * with the running total after each parsed line so a caller can render
+ * partial text live instead of staring at a blank "thinking" spinner for the
+ * whole reply.
  *
  * This is the chat panel's entry point (see AiChatPanel.tsx) — kept as a
  * separate function from `generateLocalAiResponse` above rather than adding
- * a `stream` flag to it, since the two have genuinely different timeout
- * shapes (one fixed deadline for a short structured answer vs. an
+ * a `stream`/`messages` flag to it, since the two have genuinely different
+ * timeout shapes (one fixed deadline for a short structured answer vs. an
  * inactivity-reset deadline for a long free-form chat reply) and different
- * callers (duplicate-check vs. the chat panel).
- *
- * Deliberately still targets `/api/generate` (not `/api/chat`) — the chat
- * panel already flattens the whole conversation into one prompt string via
- * `buildChatPrompt` (for the "Context used" transparency disclosure), and
- * Ollama's streaming wire format is identical either way, so switching
- * endpoints would only add prompt-assembly risk for no UX benefit.
+ * callers (duplicate-check vs. the chat panel) — `generateLocalAiResponse`
+ * is a single-shot structured-answer prompt with no multi-turn transcript
+ * risk, so it is deliberately left on `/api/generate`.
  */
-export async function generateLocalAiResponseStream(
+export async function generateLocalAiChatResponseStream(
   baseUrl: string,
-  prompt: string,
+  messages: ChatApiMessage[],
   opts?: AiGenerateStreamOptions,
 ): Promise<AiGenerateResult> {
   const fetchImpl = opts?.fetchImpl ?? fetch;
@@ -415,9 +439,9 @@ export async function generateLocalAiResponseStream(
   function applyLine(line: string, state: { accumulated: string; error: string | null }): void {
     const trimmed = line.trim();
     if (!trimmed) return;
-    let parsed: { response?: unknown; error?: unknown };
+    let parsed: { message?: { content?: unknown }; error?: unknown };
     try {
-      parsed = JSON.parse(trimmed) as { response?: unknown; error?: unknown };
+      parsed = JSON.parse(trimmed) as { message?: { content?: unknown }; error?: unknown };
     } catch {
       // A chunk boundary can split one JSON line across two reads — an unparseable
       // fragment here is expected, never a reason to fail the whole stream.
@@ -427,19 +451,20 @@ export async function generateLocalAiResponseStream(
       state.error = parsed.error;
       return;
     }
-    if (typeof parsed.response === 'string' && parsed.response) {
-      state.accumulated += parsed.response;
+    const content = parsed.message?.content;
+    if (typeof content === 'string' && content) {
+      state.accumulated += content;
       opts?.onChunk?.(state.accumulated);
     }
   }
 
   try {
-    const res = await fetchImpl(`${stripTrailingSlash(baseUrl)}/api/generate`, {
+    const res = await fetchImpl(`${stripTrailingSlash(baseUrl)}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model,
-        prompt,
+        messages,
         stream: true,
         keep_alive: opts?.keepAlive ?? DEFAULT_KEEP_ALIVE,
         options: {
@@ -473,8 +498,8 @@ export async function generateLocalAiResponseStream(
       if (buffer.trim()) applyLine(buffer, state);
     } else {
       // No readable stream body available (some fetch polyfills/mocks) — fall back to a
-      // single parsed JSON object, same shape as `generateLocalAiResponse`'s non-streaming path.
-      const json = (await res.json()) as { response?: unknown; error?: unknown };
+      // single parsed JSON object, same shape as a single `/api/chat` chunk.
+      const json = (await res.json()) as { message?: { content?: unknown }; error?: unknown };
       applyLine(JSON.stringify(json), state);
     }
 

@@ -209,7 +209,28 @@ export const AI_ASSISTANT_SYSTEM_PROMPT = [
 ].join('\n\n');
 
 // ----------------------------------------------------------------------------
-// Conversation -> model-prompt assembly.
+// Conversation -> model-messages assembly.
+//
+// 2026-08-04 hallucination bug fix: this used to flatten the whole
+// conversation into ONE plain-text prompt string with hand-written
+// "User:"/"Assistant:" turn labels, sent to Ollama's `/api/generate`
+// endpoint. That gives the model a visible, literal, continuable
+// transcript pattern to imitate — combined with no real chat-template
+// turn-boundary tokens and no `stop` sequences, a reasoning model like
+// Phi-4-mini-reasoning has no hard signal for "stop after your own turn"
+// and can (and did, per the owner's "hello" report) keep predicting more
+// `User:`/`Assistant:` turns of a fully invented conversation.
+//
+// Fix: build a proper structured `messages` array (`{role, content}[]`) and
+// send it to Ollama's `/api/chat` endpoint instead (see aiService.ts
+// `generateLocalAiChatResponseStream`). Ollama applies the model's real
+// chat template server-side, which has actual turn-boundary tokens the
+// model was trained to respect — far more robust than guessing a stop-
+// string list to bolt onto `/api/generate`. Each history turn becomes its
+// own `user`/`assistant` message (never rendered as literal "User:"/
+// "Assistant:" text the model could pattern-match and continue), and the
+// system prompt + any attached record context live in a single leading
+// `system` message, cleanly separated from the live conversation.
 // ----------------------------------------------------------------------------
 
 export interface ChatTurn {
@@ -217,46 +238,49 @@ export interface ChatTurn {
   content: string;
 }
 
+/** One message in the structured array sent to Ollama's `/api/chat`. */
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
 const MAX_HISTORY_TURNS = 8;
 
-export interface BuildChatPromptOptions {
+export interface BuildChatMessagesOptions {
   history: ChatTurn[];
   chips: ContextChip[];
   data: AppData;
   userMessage: string;
 }
 
-export interface BuildChatPromptResult {
-  /** Full text sent to generateLocalAiResponse. */
-  prompt: string;
+export interface BuildChatMessagesResult {
+  /** Structured messages array sent to generateLocalAiChatResponseStream (Ollama `/api/chat`). */
+  messages: ChatMessage[];
   /** Just the serialized chip context, for the "Context used" UI — '' if no chips. */
   contextBlock: string;
 }
 
 /**
- * Assembles the final prompt string sent to the local model: grounding
- * system prompt, then the current context-chip block (if any), then a capped
- * window of recent conversation history, then the new user message. Pure
- * string assembly — no network call, so this is trivially unit-testable.
+ * Assembles the structured `messages` array sent to the local model: one
+ * leading `system` message (grounding system prompt + the current
+ * context-chip block, if any), then a capped window of recent conversation
+ * history as real `user`/`assistant` messages, then the new user message.
+ * Pure data assembly — no network call, so this is trivially unit-testable.
  */
-export function buildChatPrompt(opts: BuildChatPromptOptions): BuildChatPromptResult {
+export function buildChatMessages(opts: BuildChatMessagesOptions): BuildChatMessagesResult {
   const contextBlock = buildContextBlock(opts.chips, opts.data);
   const recentHistory = opts.history.slice(-MAX_HISTORY_TURNS);
 
-  const sections: string[] = [AI_ASSISTANT_SYSTEM_PROMPT];
-
+  let systemContent = AI_ASSISTANT_SYSTEM_PROMPT;
   if (contextBlock) {
-    sections.push(`Context used (attached by the user for this question):\n${contextBlock}`);
+    systemContent += `\n\nContext used (attached by the user for this question):\n${contextBlock}`;
   }
 
-  if (recentHistory.length > 0) {
-    const transcript = recentHistory
-      .map((t) => `${t.role === 'user' ? 'User' : 'Assistant'}: ${t.content}`)
-      .join('\n');
-    sections.push(`Conversation so far:\n${transcript}`);
+  const messages: ChatMessage[] = [{ role: 'system', content: systemContent }];
+  for (const turn of recentHistory) {
+    messages.push({ role: turn.role, content: turn.content });
   }
+  messages.push({ role: 'user', content: opts.userMessage });
 
-  sections.push(`User: ${opts.userMessage}\nAssistant:`);
-
-  return { prompt: sections.join('\n\n'), contextBlock };
+  return { messages, contextBlock };
 }

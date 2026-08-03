@@ -3,12 +3,13 @@ import {
   checkAiServiceStatus,
   extractJsonFromModelText,
   generateLocalAiResponse,
-  generateLocalAiResponseStream,
+  generateLocalAiChatResponseStream,
   modelListIncludes,
+  type ChatApiMessage,
   type FetchLike,
 } from './aiService';
 
-/** Builds a fake streaming Response whose body is newline-delimited JSON chunks, split across `chunks` reads — mirrors Ollama's actual `/api/generate` `stream: true` wire format. */
+/** Builds a fake streaming Response whose body is newline-delimited JSON chunks, split across `chunks` reads — mirrors Ollama's actual `/api/generate`/`/api/chat` `stream: true` wire format. */
 function streamResponse(lines: string[], ok = true, status = 200): Response {
   const encoder = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
@@ -19,6 +20,11 @@ function streamResponse(lines: string[], ok = true, status = 200): Response {
   });
   return { ok, status, body, json: async () => ({}) } as unknown as Response;
 }
+
+const sampleMessages: ChatApiMessage[] = [
+  { role: 'system', content: 'You are a helpful assistant.' },
+  { role: 'user', content: 'hello' },
+];
 
 function jsonResponse(body: unknown, ok = true, status = 200): Response {
   return {
@@ -185,18 +191,37 @@ describe('generateLocalAiResponse', () => {
   });
 });
 
-describe('generateLocalAiResponseStream', () => {
-  it('accumulates newline-delimited streamed chunks into the final text, calling onChunk incrementally', async () => {
+describe('generateLocalAiChatResponseStream', () => {
+  it('sends the structured messages array against /api/chat (not /api/generate, not a flattened prompt string)', async () => {
+    const fetchImpl = vi.fn(async () =>
+      streamResponse([JSON.stringify({ message: { role: 'assistant', content: 'ok' }, done: true })]),
+    );
+    await generateLocalAiChatResponseStream('http://127.0.0.1:11434', sampleMessages, {
+      fetchImpl: fetchImpl as unknown as FetchLike,
+    });
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe('http://127.0.0.1:11434/api/chat');
+    const body = JSON.parse(init.body);
+    expect(body).toMatchObject({ model: 'phi4-mini-reasoning', stream: true });
+    expect(body.messages).toEqual(sampleMessages);
+    // No manually-flattened prompt string field anywhere in the request body — this is the
+    // actual fix for the "hallucinated fake conversation" bug (2026-08-04): the old
+    // /api/generate call sent a single `prompt` string with literal "User:"/"Assistant:" text
+    // labels, which is exactly the pattern the model kept extending with invented turns.
+    expect(body.prompt).toBeUndefined();
+  });
+
+  it('accumulates newline-delimited /api/chat streamed chunks (message.content, not response) into the final text, calling onChunk incrementally', async () => {
     const fetchImpl = vi.fn(async () =>
       streamResponse([
-        JSON.stringify({ response: 'Hel', done: false }),
-        JSON.stringify({ response: 'lo ', done: false }),
-        JSON.stringify({ response: 'world', done: false }),
-        JSON.stringify({ response: '', done: true }),
+        JSON.stringify({ message: { role: 'assistant', content: 'Hel' }, done: false }),
+        JSON.stringify({ message: { role: 'assistant', content: 'lo ' }, done: false }),
+        JSON.stringify({ message: { role: 'assistant', content: 'world' }, done: false }),
+        JSON.stringify({ message: { role: 'assistant', content: '' }, done: true }),
       ]),
     );
     const onChunk = vi.fn();
-    const result = await generateLocalAiResponseStream('http://127.0.0.1:11434', 'hi', {
+    const result = await generateLocalAiChatResponseStream('http://127.0.0.1:11434', sampleMessages, {
       fetchImpl: fetchImpl as unknown as FetchLike,
       onChunk,
     });
@@ -205,19 +230,30 @@ describe('generateLocalAiResponseStream', () => {
     expect(onChunk).toHaveBeenLastCalledWith('Hello world');
   });
 
-  it('sends stream: true against /api/generate (not stream: false)', async () => {
-    const fetchImpl = vi.fn(async () => streamResponse([JSON.stringify({ response: 'ok', done: true })]));
-    await generateLocalAiResponseStream('http://127.0.0.1:11434', 'a prompt', {
+  it('never bleeds fake extra turns into the parsed output even if a bad model reply keeps emitting content after answering (regression guard for the reported bug)', async () => {
+    // Mimics what the owner actually saw: a model that answers, then (absent this fix) would
+    // have kept going. Even in that bad-model case, this function's job is just to faithfully
+    // accumulate whatever text content Ollama streams back — it must not itself inject, split,
+    // or otherwise fabricate turn structure. The REAL fix is upstream (this function's caller
+    // now sends `/api/chat`'s structured messages so the model has a real stop signal it didn't
+    // have before) — this test documents that the streaming layer was never the place doing the
+    // fabricating, and stays a faithful passthrough either way.
+    const badModelReply =
+      'Hello! How can I assist you today?\n\nUser: Docs have been officially received.\nAssistant: [fake advice]';
+    const fetchImpl = vi.fn(async () =>
+      streamResponse([JSON.stringify({ message: { role: 'assistant', content: badModelReply }, done: true })]),
+    );
+    const result = await generateLocalAiChatResponseStream('http://127.0.0.1:11434', sampleMessages, {
       fetchImpl: fetchImpl as unknown as FetchLike,
     });
-    const [url, init] = fetchImpl.mock.calls[0];
-    expect(url).toBe('http://127.0.0.1:11434/api/generate');
-    expect(JSON.parse(init.body)).toMatchObject({ model: 'phi4-mini-reasoning', prompt: 'a prompt', stream: true });
+    expect(result).toEqual({ ok: true, text: badModelReply });
   });
 
   it('caps generation with a sane default num_predict so a rambling/looping reply cannot run unbounded', async () => {
-    const fetchImpl = vi.fn(async () => streamResponse([JSON.stringify({ response: 'ok', done: true })]));
-    await generateLocalAiResponseStream('http://127.0.0.1:11434', 'a prompt', {
+    const fetchImpl = vi.fn(async () =>
+      streamResponse([JSON.stringify({ message: { role: 'assistant', content: 'ok' }, done: true })]),
+    );
+    await generateLocalAiChatResponseStream('http://127.0.0.1:11434', sampleMessages, {
       fetchImpl: fetchImpl as unknown as FetchLike,
     });
     const [, init] = fetchImpl.mock.calls[0];
@@ -227,8 +263,10 @@ describe('generateLocalAiResponseStream', () => {
   });
 
   it('lets a caller override the default num_predict ceiling', async () => {
-    const fetchImpl = vi.fn(async () => streamResponse([JSON.stringify({ response: 'ok', done: true })]));
-    await generateLocalAiResponseStream('http://127.0.0.1:11434', 'a prompt', {
+    const fetchImpl = vi.fn(async () =>
+      streamResponse([JSON.stringify({ message: { role: 'assistant', content: 'ok' }, done: true })]),
+    );
+    await generateLocalAiChatResponseStream('http://127.0.0.1:11434', sampleMessages, {
       fetchImpl: fetchImpl as unknown as FetchLike,
       numPredict: 256,
     });
@@ -237,8 +275,10 @@ describe('generateLocalAiResponseStream', () => {
   });
 
   it('sets a keep_alive so the model stays warm between chat turns instead of unloading after Ollama\'s 5-minute default', async () => {
-    const fetchImpl = vi.fn(async () => streamResponse([JSON.stringify({ response: 'ok', done: true })]));
-    await generateLocalAiResponseStream('http://127.0.0.1:11434', 'a prompt', {
+    const fetchImpl = vi.fn(async () =>
+      streamResponse([JSON.stringify({ message: { role: 'assistant', content: 'ok' }, done: true })]),
+    );
+    await generateLocalAiChatResponseStream('http://127.0.0.1:11434', sampleMessages, {
       fetchImpl: fetchImpl as unknown as FetchLike,
     });
     const [, init] = fetchImpl.mock.calls[0];
@@ -246,8 +286,10 @@ describe('generateLocalAiResponseStream', () => {
   });
 
   it('lets a caller override the default keep_alive', async () => {
-    const fetchImpl = vi.fn(async () => streamResponse([JSON.stringify({ response: 'ok', done: true })]));
-    await generateLocalAiResponseStream('http://127.0.0.1:11434', 'a prompt', {
+    const fetchImpl = vi.fn(async () =>
+      streamResponse([JSON.stringify({ message: { role: 'assistant', content: 'ok' }, done: true })]),
+    );
+    await generateLocalAiChatResponseStream('http://127.0.0.1:11434', sampleMessages, {
       fetchImpl: fetchImpl as unknown as FetchLike,
       keepAlive: -1,
     });
@@ -256,8 +298,10 @@ describe('generateLocalAiResponseStream', () => {
   });
 
   it('right-sizes num_ctx down from the model\'s 128K default for short chat prompts', async () => {
-    const fetchImpl = vi.fn(async () => streamResponse([JSON.stringify({ response: 'ok', done: true })]));
-    await generateLocalAiResponseStream('http://127.0.0.1:11434', 'a prompt', {
+    const fetchImpl = vi.fn(async () =>
+      streamResponse([JSON.stringify({ message: { role: 'assistant', content: 'ok' }, done: true })]),
+    );
+    await generateLocalAiChatResponseStream('http://127.0.0.1:11434', sampleMessages, {
       fetchImpl: fetchImpl as unknown as FetchLike,
     });
     const [, init] = fetchImpl.mock.calls[0];
@@ -267,8 +311,10 @@ describe('generateLocalAiResponseStream', () => {
   });
 
   it('lets a caller override the default num_ctx', async () => {
-    const fetchImpl = vi.fn(async () => streamResponse([JSON.stringify({ response: 'ok', done: true })]));
-    await generateLocalAiResponseStream('http://127.0.0.1:11434', 'a prompt', {
+    const fetchImpl = vi.fn(async () =>
+      streamResponse([JSON.stringify({ message: { role: 'assistant', content: 'ok' }, done: true })]),
+    );
+    await generateLocalAiChatResponseStream('http://127.0.0.1:11434', sampleMessages, {
       fetchImpl: fetchImpl as unknown as FetchLike,
       numCtx: 8192,
     });
@@ -278,7 +324,7 @@ describe('generateLocalAiResponseStream', () => {
 
   it('correctly reassembles a JSON line split across two stream reads', async () => {
     const encoder = new TextEncoder();
-    const full = JSON.stringify({ response: 'split across reads', done: false }) + '\n';
+    const full = JSON.stringify({ message: { role: 'assistant', content: 'split across reads' }, done: false }) + '\n';
     const splitAt = 10;
     const body = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -288,7 +334,7 @@ describe('generateLocalAiResponseStream', () => {
       },
     });
     const fetchImpl = vi.fn(async () => ({ ok: true, status: 200, body, json: async () => ({}) }) as unknown as Response);
-    const result = await generateLocalAiResponseStream('http://127.0.0.1:11434', 'a prompt', {
+    const result = await generateLocalAiChatResponseStream('http://127.0.0.1:11434', sampleMessages, {
       fetchImpl: fetchImpl as unknown as FetchLike,
     });
     expect(result).toEqual({ ok: true, text: 'split across reads' });
@@ -296,15 +342,17 @@ describe('generateLocalAiResponseStream', () => {
 
   it('surfaces a model-side error field found within a streamed chunk', async () => {
     const fetchImpl = vi.fn(async () => streamResponse([JSON.stringify({ error: 'model "phi4-mini-reasoning" not found' })]));
-    const result = await generateLocalAiResponseStream('http://127.0.0.1:11434', 'a prompt', {
+    const result = await generateLocalAiChatResponseStream('http://127.0.0.1:11434', sampleMessages, {
       fetchImpl: fetchImpl as unknown as FetchLike,
     });
     expect(result).toEqual({ ok: false, error: 'model "phi4-mini-reasoning" not found' });
   });
 
   it('fails gracefully on an empty streamed response', async () => {
-    const fetchImpl = vi.fn(async () => streamResponse([JSON.stringify({ response: '', done: true })]));
-    const result = await generateLocalAiResponseStream('http://127.0.0.1:11434', 'a prompt', {
+    const fetchImpl = vi.fn(async () =>
+      streamResponse([JSON.stringify({ message: { role: 'assistant', content: '' }, done: true })]),
+    );
+    const result = await generateLocalAiChatResponseStream('http://127.0.0.1:11434', sampleMessages, {
       fetchImpl: fetchImpl as unknown as FetchLike,
     });
     expect(result).toEqual({ ok: false, error: 'Empty response from local AI model' });
@@ -314,7 +362,7 @@ describe('generateLocalAiResponseStream', () => {
     const fetchImpl = vi.fn(async () => {
       throw new TypeError('Failed to fetch');
     });
-    const result = await generateLocalAiResponseStream('http://127.0.0.1:11434', 'a prompt', {
+    const result = await generateLocalAiChatResponseStream('http://127.0.0.1:11434', sampleMessages, {
       fetchImpl: fetchImpl as unknown as FetchLike,
     });
     expect(result.ok).toBe(false);
@@ -324,7 +372,7 @@ describe('generateLocalAiResponseStream', () => {
     const fetchImpl = vi.fn(async () => {
       throw Object.assign(new Error('The operation was aborted'), { name: 'AbortError' });
     });
-    const result = await generateLocalAiResponseStream('http://127.0.0.1:11434', 'a prompt', {
+    const result = await generateLocalAiChatResponseStream('http://127.0.0.1:11434', sampleMessages, {
       fetchImpl: fetchImpl as unknown as FetchLike,
     });
     expect(result.ok).toBe(false);
@@ -344,7 +392,10 @@ describe('generateLocalAiResponseStream', () => {
         read: vi.fn(async () => {
           readCount += 1;
           if (readCount === 1) {
-            return { value: encoder.encode(JSON.stringify({ response: 'a', done: false }) + '\n'), done: false };
+            return {
+              value: encoder.encode(JSON.stringify({ message: { role: 'assistant', content: 'a' }, done: false }) + '\n'),
+              done: false,
+            };
           }
           if (readCount === 2) {
             // Hold here until the test manually advances past the (short, test-only) inactivity
@@ -352,7 +403,10 @@ describe('generateLocalAiResponseStream', () => {
             await new Promise<void>((resolve) => {
               resolveSecondChunk = resolve;
             });
-            return { value: encoder.encode(JSON.stringify({ response: 'b', done: false }) + '\n'), done: false };
+            return {
+              value: encoder.encode(JSON.stringify({ message: { role: 'assistant', content: 'b' }, done: false }) + '\n'),
+              done: false,
+            };
           }
           return { value: undefined, done: true };
         }),
@@ -360,7 +414,7 @@ describe('generateLocalAiResponseStream', () => {
       const body = { getReader: () => reader } as unknown as ReadableStream<Uint8Array>;
       const fetchImpl = vi.fn(async () => ({ ok: true, status: 200, body, json: async () => ({}) }) as unknown as Response);
 
-      const promise = generateLocalAiResponseStream('http://127.0.0.1:11434', 'a prompt', {
+      const promise = generateLocalAiChatResponseStream('http://127.0.0.1:11434', sampleMessages, {
         fetchImpl: fetchImpl as unknown as FetchLike,
         inactivityTimeoutMs: 1000,
         timeoutMs: 5000,

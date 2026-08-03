@@ -45,7 +45,7 @@ interface AiChatState {
   /**
    * Live-accumulated text of the in-flight streamed reply, so the panel can render tokens as
    * they arrive instead of a blank spinner for the whole reply duration (see aiService.ts
-   * `generateLocalAiResponseStream`). '' while nothing has streamed back yet (still cold-starting
+   * `generateLocalAiChatResponseStream`). '' while nothing has streamed back yet (still cold-starting
    * / thinking); reset to '' once the final message is appended via `addMessage`.
    */
   streamingText: string;

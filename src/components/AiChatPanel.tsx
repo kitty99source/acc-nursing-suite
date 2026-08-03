@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { useAiChatStore, makeMessageId, CHIP_DND_MIME, type AiChatMessage } from '../state/aiChatStore';
-import { buildChatPrompt, type ChatTurn, type ContextChip } from '../lib/aiChatContext';
-import { generateLocalAiResponseStream } from '../lib/aiService';
+import { buildChatMessages, type ChatTurn, type ContextChip } from '../lib/aiChatContext';
+import { generateLocalAiChatResponseStream } from '../lib/aiService';
 import { parseThinkResponse } from '../lib/ai/thinkParser';
 import { shouldAutoScroll } from '../lib/chatScroll';
 import { IconChat, IconClose, IconMinimize, IconSend, IconStop, IconTrash } from './icons';
@@ -120,18 +120,24 @@ export function AiChatPanel() {
     setSending(true);
     setStreamingText('');
 
-    const { prompt, contextBlock } = buildChatPrompt({ history, chips: attachedChips, data, userMessage: text });
+    const { messages: chatMessages, contextBlock } = buildChatMessages({
+      history,
+      chips: attachedChips,
+      data,
+      userMessage: text,
+    });
     // Tag this send with a fresh generation id + AbortController (see aiChatStore.ts
     // `beginGeneration`/`isGenerationCurrent`) — clicking "Clear chat history" or "New chat" while
     // this request is in flight aborts the controller AND bumps the id, so a late-arriving chunk or
     // final message below can tell it's stale and must discard itself instead of writing into a
     // conversation the user has since cleared/moved on from (2026-08-04 owner-reported race fix).
     const { id: generationId, signal } = beginGeneration();
-    // Streamed (Ollama `/api/generate` with `stream: true`) so the panel can render tokens as
-    // they arrive instead of a blank spinner for the whole reply — see aiService.ts for the
-    // inactivity-reset timeout that makes this both faster-feeling AND safer against premature
-    // timeouts than the old single fixed deadline.
-    const result = await generateLocalAiResponseStream(settings.aiServiceBaseUrl, prompt, {
+    // Streamed (Ollama `/api/chat` with `stream: true`) so the panel can render tokens as they
+    // arrive instead of a blank spinner for the whole reply — see aiService.ts for both the
+    // inactivity-reset timeout that makes this faster-feeling/safer against premature timeouts,
+    // and why this uses the structured-messages `/api/chat` endpoint rather than a flattened
+    // prompt string (2026-08-04 "hallucinated fake conversation" bug fix).
+    const result = await generateLocalAiChatResponseStream(settings.aiServiceBaseUrl, chatMessages, {
       signal,
       onChunk: (accumulated) => {
         if (isGenerationCurrent(generationId)) setStreamingText(accumulated);

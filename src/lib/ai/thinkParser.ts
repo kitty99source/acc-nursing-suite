@@ -21,7 +21,7 @@
 // exactly why the owner saw a wall of visible reasoning instead of a short
 // reply to "hello".
 //
-// STREAMING: `generateLocalAiResponseStream`'s `onChunk` callback always
+// STREAMING: `generateLocalAiChatResponseStream`'s `onChunk` callback always
 // hands back the FULL accumulated text so far (not just the new delta — see
 // aiService.ts), so `parseThinkResponse` is deliberately a pure, stateless
 // function re-run on the whole growing string on every chunk rather than a

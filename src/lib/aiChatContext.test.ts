@@ -4,7 +4,7 @@ import type { AppData, Claim, Contract, Patient } from '../types';
 import {
   AI_ASSISTANT_SYSTEM_PROMPT,
   buildCaseStageSummary,
-  buildChatPrompt,
+  buildChatMessages,
   buildComplianceRuleSummary,
   buildContextBlock,
   makeContractChip,
@@ -168,11 +168,11 @@ describe('grounding system prompt', () => {
   });
 });
 
-describe('buildChatPrompt', () => {
-  it('assembles system prompt + context + history + new message in order', () => {
+describe('buildChatMessages', () => {
+  it('assembles a structured messages array: one leading system message (with context folded in), then real history turns, then the new user message', () => {
     const p = patient();
     const data = dataWith([p]);
-    const { prompt, contextBlock } = buildChatPrompt({
+    const { messages, contextBlock } = buildChatMessages({
       history: [
         { role: 'user', content: 'Hi' },
         { role: 'assistant', content: 'Hello, how can I help?' },
@@ -183,35 +183,46 @@ describe('buildChatPrompt', () => {
     });
 
     expect(contextBlock).toContain('Jane Doe');
-    const systemIdx = prompt.indexOf(AI_ASSISTANT_SYSTEM_PROMPT);
-    const contextIdx = prompt.indexOf('Context used');
-    const historyIdx = prompt.indexOf('Conversation so far');
-    const userIdx = prompt.indexOf("User: What's the status");
-    expect(systemIdx).toBe(0);
-    expect(contextIdx).toBeGreaterThan(systemIdx);
-    expect(historyIdx).toBeGreaterThan(contextIdx);
-    expect(userIdx).toBeGreaterThan(historyIdx);
-    expect(prompt.trim().endsWith('Assistant:')).toBe(true);
+    expect(messages[0].role).toBe('system');
+    expect(messages[0].content).toContain(AI_ASSISTANT_SYSTEM_PROMPT);
+    expect(messages[0].content).toContain('Context used');
+    expect(messages[0].content).toContain('Jane Doe');
+    expect(messages[1]).toEqual({ role: 'user', content: 'Hi' });
+    expect(messages[2]).toEqual({ role: 'assistant', content: 'Hello, how can I help?' });
+    expect(messages[3]).toEqual({ role: 'user', content: "What's the status of this patient's claim?" });
+    // No message anywhere contains a hand-written "User:"/"Assistant:" turn label — the exact
+    // pattern that let the model hallucinate more fake turns in the old flattened-string prompt
+    // (2026-08-04 bug fix regression guard).
+    for (const m of messages) {
+      expect(m.content).not.toMatch(/^\s*(User|Assistant):/m);
+    }
   });
 
-  it('omits the Context used section entirely when there are no chips', () => {
-    const { prompt, contextBlock } = buildChatPrompt({
+  it('omits the "Context used" text entirely when there are no chips', () => {
+    const { messages, contextBlock } = buildChatMessages({
       history: [],
       chips: [],
       data: dataWith([]),
       userMessage: 'What is NS04?',
     });
     expect(contextBlock).toBe('');
-    expect(prompt).not.toContain('Context used');
+    expect(messages[0].content).not.toContain('Context used');
+    expect(messages).toEqual([
+      { role: 'system', content: AI_ASSISTANT_SYSTEM_PROMPT },
+      { role: 'user', content: 'What is NS04?' },
+    ]);
   });
 
-  it('caps history to the most recent turns so the prompt stays bounded', () => {
+  it('caps history to the most recent turns so the messages array stays bounded', () => {
     const longHistory = Array.from({ length: 20 }, (_, i) => ({
       role: (i % 2 === 0 ? 'user' : 'assistant') as const,
       content: `turn-${i}`,
     }));
-    const { prompt } = buildChatPrompt({ history: longHistory, chips: [], data: dataWith([]), userMessage: 'latest' });
-    expect(prompt).not.toContain('turn-0\n');
-    expect(prompt).toContain('turn-19');
+    const { messages } = buildChatMessages({ history: longHistory, chips: [], data: dataWith([]), userMessage: 'latest' });
+    const contents = messages.map((m) => m.content);
+    expect(contents).not.toContain('turn-0');
+    expect(contents).toContain('turn-19');
+    // system + 8 history turns + new user message
+    expect(messages).toHaveLength(1 + 8 + 1);
   });
 });

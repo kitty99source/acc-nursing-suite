@@ -16,9 +16,9 @@ const idbMocks = vi.hoisted(() => ({
 vi.mock('../lib/idb', () => idbMocks);
 
 // Never hits a real network/model — this suite covers the panel's send/streaming/"thinking" UI
-// logic, which is exercised by the mocked generateLocalAiResponseStream below.
+// logic, which is exercised by the mocked generateLocalAiChatResponseStream below.
 const aiServiceMocks = vi.hoisted(() => ({
-  generateLocalAiResponseStream: vi.fn(),
+  generateLocalAiChatResponseStream: vi.fn(),
 }));
 vi.mock('../lib/aiService', () => aiServiceMocks);
 
@@ -41,7 +41,7 @@ beforeEach(() => {
   idbMocks.loadAiChatHistory.mockClear().mockResolvedValue(undefined);
   idbMocks.saveAiChatHistory.mockClear();
   idbMocks.clearAiChatHistory.mockClear();
-  aiServiceMocks.generateLocalAiResponseStream.mockReset();
+  aiServiceMocks.generateLocalAiChatResponseStream.mockReset();
   useAiChatStore.setState({ open: true, chips: [], messages: [], sending: false, streamingText: '', hydrated: false });
   useStore.setState({ data: { ...emptyData(), settings: { ...emptyData().settings, aiFeaturesEnabled: true } } });
   container = document.createElement('div');
@@ -139,7 +139,7 @@ describe('<AiChatPanel />', () => {
 
   it('shows a specific latency-expectation message (not a bare spinner) before any tokens have streamed back', async () => {
     let resolveGenerate!: (value: { ok: true; text: string }) => void;
-    aiServiceMocks.generateLocalAiResponseStream.mockImplementation(
+    aiServiceMocks.generateLocalAiChatResponseStream.mockImplementation(
       () => new Promise((resolve) => { resolveGenerate = resolve; }),
     );
     useAiChatStore.setState({ hydrated: true });
@@ -178,8 +178,8 @@ describe('<AiChatPanel />', () => {
   it('renders streamed partial text live as onChunk fires, before the final message is added', async () => {
     let onChunkCb!: (accumulated: string) => void;
     let resolveGenerate!: (value: { ok: true; text: string }) => void;
-    aiServiceMocks.generateLocalAiResponseStream.mockImplementation(
-      (_baseUrl: string, _prompt: string, opts: { onChunk?: (t: string) => void }) =>
+    aiServiceMocks.generateLocalAiChatResponseStream.mockImplementation(
+      (_baseUrl: string, _messages: unknown, opts: { onChunk?: (t: string) => void }) =>
         new Promise((resolve) => {
           onChunkCb = opts.onChunk!;
           resolveGenerate = resolve;
@@ -222,7 +222,7 @@ describe('<AiChatPanel />', () => {
   });
 
   it('shows the specific error and does not crash when the model call fails/times out', async () => {
-    aiServiceMocks.generateLocalAiResponseStream.mockResolvedValue({
+    aiServiceMocks.generateLocalAiChatResponseStream.mockResolvedValue({
       ok: false,
       error: 'The local AI model stopped responding and this request timed out.',
     });
@@ -252,8 +252,8 @@ describe('<AiChatPanel />', () => {
   it('clicking "Clear chat history" mid-stream aborts the request and discards its late-arriving final message (owner-reported race)', async () => {
     let capturedSignal: AbortSignal | undefined;
     let resolveGenerate!: (value: { ok: true; text: string }) => void;
-    aiServiceMocks.generateLocalAiResponseStream.mockImplementation(
-      (_baseUrl: string, _prompt: string, opts: { signal?: AbortSignal }) => {
+    aiServiceMocks.generateLocalAiChatResponseStream.mockImplementation(
+      (_baseUrl: string, _messages: unknown, opts: { signal?: AbortSignal }) => {
         capturedSignal = opts.signal;
         return new Promise((resolve) => {
           resolveGenerate = resolve;
@@ -311,7 +311,7 @@ describe('<AiChatPanel />', () => {
 
   it('clicking "New chat" mid-stream also cancels the in-flight request and discards its late-arriving final message', async () => {
     let resolveGenerate!: (value: { ok: true; text: string }) => void;
-    aiServiceMocks.generateLocalAiResponseStream.mockImplementation(
+    aiServiceMocks.generateLocalAiChatResponseStream.mockImplementation(
       () => new Promise((resolve) => { resolveGenerate = resolve; }),
     );
     useAiChatStore.setState({ hydrated: true });
@@ -352,8 +352,8 @@ describe('<AiChatPanel />', () => {
 
   it('a superseded streamed chunk (onChunk firing after Clear) does not repopulate streamingText', async () => {
     let onChunkCb!: (accumulated: string) => void;
-    aiServiceMocks.generateLocalAiResponseStream.mockImplementation(
-      (_baseUrl: string, _prompt: string, opts: { onChunk?: (t: string) => void }) => {
+    aiServiceMocks.generateLocalAiChatResponseStream.mockImplementation(
+      (_baseUrl: string, _messages: unknown, opts: { onChunk?: (t: string) => void }) => {
         onChunkCb = opts.onChunk!;
         return new Promise(() => {
           // never resolves — this test only cares about the onChunk guard, not the final message.
@@ -399,7 +399,7 @@ describe('<AiChatPanel />', () => {
   });
 
   it('strips a <think>...</think> chain-of-thought out of the final reply, showing only the short answer plus a "Show reasoning" toggle (owner-reported rambling-on-"hello" bug)', async () => {
-    aiServiceMocks.generateLocalAiResponseStream.mockResolvedValue({
+    aiServiceMocks.generateLocalAiChatResponseStream.mockResolvedValue({
       ok: true,
       text:
         '<think>\nThe user said hello. This is a simple greeting — respond briefly.\n</think>\n' +
@@ -444,8 +444,8 @@ describe('<AiChatPanel />', () => {
 
   it('streams the reasoning trace LIVE (Cursor-style) while a chain-of-thought block is open, then collapses it once the final answer starts (2026-08-04 owner ask)', async () => {
     let onChunkCb!: (accumulated: string) => void;
-    aiServiceMocks.generateLocalAiResponseStream.mockImplementation(
-      (_baseUrl: string, _prompt: string, opts: { onChunk?: (t: string) => void }) =>
+    aiServiceMocks.generateLocalAiChatResponseStream.mockImplementation(
+      (_baseUrl: string, _messages: unknown, opts: { onChunk?: (t: string) => void }) =>
         new Promise(() => {
           onChunkCb = opts.onChunk!;
         }),
@@ -499,8 +499,8 @@ describe('<AiChatPanel />', () => {
 
   it('shows a "Stop generating" control only while a response is streaming, which cancels via the shared abort mechanism, keeps the partial text visible marked "[stopped]", and re-enables sending immediately', async () => {
     let capturedSignal: AbortSignal | undefined;
-    aiServiceMocks.generateLocalAiResponseStream.mockImplementation(
-      (_baseUrl: string, _prompt: string, opts: { signal?: AbortSignal; onChunk?: (t: string) => void }) => {
+    aiServiceMocks.generateLocalAiChatResponseStream.mockImplementation(
+      (_baseUrl: string, _messages: unknown, opts: { signal?: AbortSignal; onChunk?: (t: string) => void }) => {
         capturedSignal = opts.signal;
         return new Promise(() => {
           // never resolves in this test — the user cancels before it would.

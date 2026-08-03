@@ -99,3 +99,15 @@ export const IconInbox = (p: IconProps) => (
 export const IconExpand = (p: IconProps) => (
   <svg {...base(p)}><path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="M21 3l-7 7" /><path d="M3 21l7-7" /></svg>
 );
+export const IconChat = (p: IconProps) => (
+  <svg {...base(p)}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+);
+export const IconSend = (p: IconProps) => (
+  <svg {...base(p)}><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+);
+export const IconMinimize = (p: IconProps) => (
+  <svg {...base(p)}><line x1="5" y1="12" x2="19" y2="12" /></svg>
+);
+export const IconPaperclip = (p: IconProps) => (
+  <svg {...base(p)}><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+);

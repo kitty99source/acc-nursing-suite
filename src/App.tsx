@@ -44,6 +44,7 @@ import { computeSidebarBadges } from './lib/sidebarBadges';
 import { shouldShowGettingStarted } from './lib/onboarding';
 import { DiscoCats } from './components/easter/DiscoCats';
 import { Companion } from './components/easter/Companion';
+import { AiChatPanel } from './components/AiChatPanel';
 import { applyCursorStyle } from './lib/easter/cursors';
 
 export default function App() {
@@ -444,6 +445,7 @@ export default function App() {
       <LetterImportModal />
       <DiscoCats />
       <Companion />
+      <AiChatPanel />
       <OnboardingWelcomeModal
         open={welcomeOpen}
         data={data}

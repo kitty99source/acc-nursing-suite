@@ -16,7 +16,9 @@ import {
   TextArea,
   EmptyState,
 } from '../components/ui';
-import { IconPlus, IconEdit, IconTrash, IconPatients, IconSearch, IconChevron } from '../components/icons';
+import { IconPlus, IconEdit, IconTrash, IconPatients, IconSearch, IconChevron, IconChat } from '../components/icons';
+import { useAiChatStore, CHIP_DND_MIME } from '../state/aiChatStore';
+import { makePatientChip } from '../lib/aiChatContext';
 import { PackageCalculatorPanel } from './CalculatorModule';
 import { determinePackage, effectivePackageValue } from '../lib/calculator';
 import { computeApproval } from '../lib/analytics';
@@ -87,6 +89,8 @@ export function Patients() {
   const updatePatient = useStore((s) => s.updatePatient);
   const removePatient = useStore((s) => s.removePatient);
   const mergePatients = useStore((s) => s.mergePatients);
+  const addAiChip = useAiChatStore((s) => s.addChip);
+  const openAiChat = useAiChatStore((s) => s.setOpen);
   const [confirm, confirmDialog] = useConfirm();
 
   const [search, setSearch] = useState('');
@@ -584,22 +588,49 @@ export function Patients() {
                 const stage = openClaim?.caseStage;
                 const lastPurpose = openClaim?.lastMemoPurpose;
                 return (
-                  <button
+                  <div
                     key={p.id}
-                    className="nav-item w-full text-left"
-                    data-active={selected?.id === p.id}
-                    onClick={() => setSelectedId(p.id)}
+                    className="flex items-center gap-1"
+                    draggable={data.settings.aiFeaturesEnabled}
+                    onDragStart={
+                      data.settings.aiFeaturesEnabled
+                        ? (e) => {
+                            e.dataTransfer.setData(CHIP_DND_MIME, JSON.stringify(makePatientChip(p)));
+                            e.dataTransfer.effectAllowed = 'copy';
+                          }
+                        : undefined
+                    }
                   >
-                    <span className="flex-1 min-w-0">
-                      <span className="block font-medium truncate">{p.name}</span>
-                      <span className="block text-xs truncate" style={{ color: 'var(--muted)' }}>
-                        {p.nhi || 'no NHI'} · {claimCount} claim{claimCount === 1 ? '' : 's'}
-                        {stage ? ` · ${CASE_STAGE_LABEL[stage]}` : ''}
-                        {lastPurpose ? ` · ${MEMO_PURPOSE_LABEL[lastPurpose]}` : ''}
+                    <button
+                      className="nav-item w-full text-left flex-1 min-w-0"
+                      data-active={selected?.id === p.id}
+                      onClick={() => setSelectedId(p.id)}
+                    >
+                      <span className="flex-1 min-w-0">
+                        <span className="block font-medium truncate">{p.name}</span>
+                        <span className="block text-xs truncate" style={{ color: 'var(--muted)' }}>
+                          {p.nhi || 'no NHI'} · {claimCount} claim{claimCount === 1 ? '' : 's'}
+                          {stage ? ` · ${CASE_STAGE_LABEL[stage]}` : ''}
+                          {lastPurpose ? ` · ${MEMO_PURPOSE_LABEL[lastPurpose]}` : ''}
+                        </span>
                       </span>
-                    </span>
-                    <IconChevron width={14} height={14} />
-                  </button>
+                      <IconChevron width={14} height={14} />
+                    </button>
+                    {data.settings.aiFeaturesEnabled && (
+                      <button
+                        type="button"
+                        className="btn btn-icon btn-ghost shrink-0"
+                        title="Add to AI chat context"
+                        aria-label={`Add ${p.name} to AI chat context`}
+                        onClick={() => {
+                          addAiChip(makePatientChip(p));
+                          openAiChat(true);
+                        }}
+                      >
+                        <IconChat width={14} height={14} />
+                      </button>
+                    )}
+                  </div>
                 );
               })}
               {filtered.length === 0 && (

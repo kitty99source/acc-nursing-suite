@@ -8,15 +8,24 @@ the owner to run the real one-time setup on their own work laptop.
 
 AdminSuite can optionally use a small AI model that runs **entirely on your own laptop** (no
 internet connection needed once installed, no data ever leaves the machine) to catch things a
-purely rule-based check misses. The first feature built on this is a **second, AI-assisted
-duplicate-patient check** — Patients already has an exact-match check (same NHI, or the exact
-same name + date of birth); the AI pass additionally catches near-misses like a typo'd surname,
-a nickname, or a transposed date-of-birth digit, which the exact-match rule is guaranteed to miss
-by design (see `src/lib/patients.ts` vs `src/lib/patientDuplicateAi.ts`).
+purely rule-based check misses, and to answer questions about your own data and this app's own
+rules. Two features are built on this so far, both gated by the same **Settings → "Enable AI
+features"** toggle:
 
-The AI pass **never merges anything automatically**. It only ever produces a dismissible
-suggestion banner in Patients, same "human reviews, then explicitly accepts" pattern the rest of
-this codebase already uses for staging/Review-Queue items.
+1. **AI-assisted duplicate-patient check** — Patients already has an exact-match check (same NHI,
+   or the exact same name + date of birth); the AI pass additionally catches near-misses like a
+   typo'd surname, a nickname, or a transposed date-of-birth digit, which the exact-match rule is
+   guaranteed to miss by design (see `src/lib/patients.ts` vs `src/lib/patientDuplicateAi.ts`).
+   It **never merges anything automatically** — only ever produces a dismissible suggestion banner
+   in Patients, same "human reviews, then explicitly accepts" pattern the rest of this codebase
+   already uses for staging/Review-Queue items.
+2. **Global AI chat assistant** — a persistent chat panel docked bottom-right (collapsed to a small
+   bubble by default), usable from any screen. Drag a patient row in (or click its chat icon) to
+   attach it as a "context chip" and ask about that specific case; every reply has a "Context used"
+   expandable section showing exactly what data was sent. See
+   `docs/research/ai-chat-assistant-2026-08.md` for the full design writeup, what's in scope this
+   pass (Patients only — no Contracts model exists in this repo), and documented future work
+   (contract-PDF-text RAG was explicitly NOT attempted).
 
 ## Why Ollama, and why no PowerShell proxy was needed
 

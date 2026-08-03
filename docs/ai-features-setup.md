@@ -48,11 +48,26 @@ port for a heavy service" this team's OCR work established as the right shape, w
 pointing at a pre-built one instead of compiling our own.
 
 One thing that had to be checked, and turned out to already work: Ollama's default CORS
-configuration (`OLLAMA_ORIGINS`) already includes `http://127.0.0.1:*`, which is exactly the kind
-of address AdminSuite's own local launcher serves the app from — so the browser's `fetch()` calls
-to `:11434` are not blocked by CORS out of the box. If a future Ollama version changes that
-default, the fix is a `setx OLLAMA_ORIGINS "http://127.0.0.1:*"` (no reinstall) — flagged here so
-a future "AI features says unavailable but Ollama is clearly running" report is fast to diagnose.
+configuration (`OLLAMA_ORIGINS`) already includes `http://127.0.0.1:*` and `http://localhost:*`
+(confirmed straight from Ollama's own `envconfig/config.go` source, not just docs prose), which is
+exactly the kind of address AdminSuite's own local launcher serves the app from — so the browser's
+`fetch()` calls to `:11434` are not blocked by CORS out of the box. If a future Ollama version
+changes that default, the fix is `setx OLLAMA_ORIGINS "http://127.0.0.1:*,http://localhost:*"`
+(no reinstall), then quit Ollama from the system tray and reopen it.
+
+**If "Check status" ever reports unreachable despite Ollama visibly running (e.g. the root
+`http://127.0.0.1:11434/` page in a browser tab says "Ollama is running"):** that root-page check
+and AdminSuite's real check are NOT the same thing. Typing a URL into the address bar is a plain
+page navigation, which browsers never subject to CORS — it only proves the TCP port is open, not
+that AdminSuite's own cross-origin `fetch()` calls to it succeed. To tell a real CORS block apart
+from Ollama actually not listening, open a new tab and go directly to
+`http://127.0.0.1:11434/api/tags` (the actual endpoint AdminSuite calls) — if that shows JSON, the
+port is fine and it's a CORS/proxy block from within AdminSuite's own tab (try the `OLLAMA_ORIGINS`
+fix above, or check for a corporate proxy/antivirus intercepting local browser traffic); if that
+tab also fails, Ollama isn't actually listening there. AdminSuite's own status-check message
+(Settings → AI features → Check status) now spells out this exact same diagnostic step and gives
+the precise `OLLAMA_ORIGINS` command when it hits this ambiguous "Failed to fetch" browser error,
+so this should be self-diagnosable from the app alone going forward.
 
 ## One-time setup (owner does this once, on the work laptop)
 
@@ -100,6 +115,18 @@ once.
 
 ## What's actually been verified vs. not
 
+- **Fixed (2026-08-04):** the first real-laptop test hit "Check status" reporting unavailable
+  even after `ollama pull phi4-mini-reasoning` completed. Root-caused: `checkAiServiceStatus`
+  never actually checked for the specific model at all — it only confirmed *some* Ollama server
+  was reachable, and on any failure collapsed connection-refused, CORS-block, and timeout into one
+  generic "not detected" message with no way to tell which had happened. Fixed: the check now (a)
+  compares installed models against the required name ignoring the `:tag` suffix (`ollama pull
+  phi4-mini-reasoning` always registers as `phi4-mini-reasoning:latest` in `/api/tags` — a strict
+  string match would never have matched that), so it correctly reports "detected" once a model
+  with any tag is pulled, and (b) surfaces three distinct, specific messages instead of one:
+  server unreachable (with the CORS-vs-really-down diagnostic above), server up but model not
+  pulled yet (with the exact `ollama pull` command to run), or ready. See `src/lib/aiService.ts`
+  (`checkAiServiceStatus`, `modelListIncludes`, `describeStatusError`) and its tests.
 - **Verified:** Ollama's Windows installer does not require admin rights (per Ollama's own
   current docs, checked 2026-08-04) and installs to `%LOCALAPPDATA%`.
 - **Verified:** the integration code (`src/lib/aiService.ts`, `src/lib/patientDuplicateAi.ts`) is

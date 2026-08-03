@@ -147,10 +147,20 @@ function AiFeaturesCard({
           {checking ? 'Checking…' : 'Check status'}
         </button>
         {checkResult && (
-          <span className="text-sm" style={{ color: checkResult.available ? 'var(--good-fg)' : 'var(--muted)' }}>
-            {checkResult.available
+          <span
+            className="text-sm"
+            style={{
+              color:
+                checkResult.available && checkResult.modelAvailable
+                  ? 'var(--good-fg)'
+                  : checkResult.available
+                    ? 'var(--warn-fg)'
+                    : 'var(--danger-fg)',
+            }}
+          >
+            {checkResult.available && checkResult.modelAvailable
               ? `✓ Local AI helper detected${checkResult.models.length ? ` (${checkResult.models.join(', ')})` : ''}.`
-              : `Not detected yet${checkResult.error ? ` (${checkResult.error})` : ''} — complete the setup steps above, or it may still be starting up.`}
+              : checkResult.error}
           </span>
         )}
       </div>

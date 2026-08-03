@@ -18,8 +18,16 @@
 export type FetchLike = typeof fetch;
 
 export interface AiServiceStatus {
+  /** The Ollama server itself responded (regardless of which models it has). */
   available: boolean;
+  /** The specific model this app needs (see `DEFAULT_AI_MODEL`) is present, tag-suffix-tolerant. */
+  modelAvailable: boolean;
   models: string[];
+  /**
+   * Human-readable, specific reason when `!available || !modelAvailable` — always one of three
+   * distinguishable problems ("server unreachable", "server up but model not pulled", or a raw
+   * non-OK HTTP status), never a single generic "not detected" catch-all. See `describeStatusError`.
+   */
   error?: string;
 }
 
@@ -49,26 +57,91 @@ function errorMessage(err: unknown): string {
 }
 
 /**
- * Ping the local model server's model-list endpoint. Used to decide whether
- * to show AI features at all — never blocks the UI for more than a couple
- * of seconds even when nothing is listening on that port.
+ * Ollama tags are `<name>` or `<name>:<tag>` (untagged pulls default to `:latest` server-side).
+ * A required model of `phi4-mini-reasoning` must match an installed `phi4-mini-reasoning:latest`
+ * (or any other tag) — comparing the raw strings would wrongly report "not detected" forever,
+ * since `ollama list` / `/api/tags` never returns a bare untagged name.
+ */
+function normalizeModelName(name: string): string {
+  return name.trim().toLowerCase().split(':')[0];
+}
+
+export function modelListIncludes(models: string[], requiredModel: string): boolean {
+  const target = normalizeModelName(requiredModel);
+  return models.some((m) => normalizeModelName(m) === target);
+}
+
+/**
+ * Turn a raw fetch failure into a specific, actionable reason instead of a generic "not
+ * detected". Browsers deliberately report connection-refused, DNS failure, and CORS-blocked
+ * requests with the exact same generic `TypeError: Failed to fetch` (or Safari's `Load failed`)
+ * — there is no way for this code to tell those apart, so the message below explains the fast
+ * manual way to tell them apart (visiting the URL directly bypasses CORS, since that's a plain
+ * navigation, not a cross-origin fetch) rather than pretending we know which one it is.
+ */
+function describeStatusError(err: unknown, tagsUrl: string): string {
+  if (err instanceof Error) {
+    if (err.name === 'AbortError') {
+      return `Timed out waiting for a response from ${tagsUrl} — Ollama may still be starting up, or nothing is listening on that address.`;
+    }
+    if (/failed to fetch|networkerror|load failed/i.test(err.message)) {
+      return (
+        `Could not reach ${tagsUrl} (browser said "${err.message}"). This means either Ollama isn't ` +
+        `actually listening there, or the request was blocked by the browser's CORS policy — the two ` +
+        `look identical to this app. To tell them apart: open a new browser tab and go directly to ` +
+        `${tagsUrl} — if that shows JSON, it's a CORS block (fix: run ` +
+        `setx OLLAMA_ORIGINS "http://127.0.0.1:*,http://localhost:*" in a Command Prompt, then quit ` +
+        `Ollama from the system tray and reopen it); if that tab also fails to load, Ollama itself ` +
+        `isn't running or isn't listening at this address.`
+      );
+    }
+    return err.message;
+  }
+  return 'Unknown error contacting the local AI service';
+}
+
+/**
+ * Ping the local model server's model-list endpoint and check whether the specific model this
+ * app needs is actually pulled. Used to decide whether to show AI features at all — never blocks
+ * the UI for more than a couple of seconds even when nothing is listening on that port.
+ *
+ * Distinguishes three states rather than collapsing them into one "not detected": the server
+ * being unreachable, the server responding but the required model not being pulled yet, and
+ * everything being ready — each gets its own specific, self-diagnosable message.
  */
 export async function checkAiServiceStatus(
   baseUrl: string,
-  opts?: { fetchImpl?: FetchLike; timeoutMs?: number },
+  opts?: { fetchImpl?: FetchLike; timeoutMs?: number; requiredModel?: string },
 ): Promise<AiServiceStatus> {
   const fetchImpl = opts?.fetchImpl ?? fetch;
+  const requiredModel = opts?.requiredModel ?? DEFAULT_AI_MODEL;
+  const tagsUrl = `${stripTrailingSlash(baseUrl)}/api/tags`;
   const { signal, clear } = withTimeout(opts?.timeoutMs ?? DEFAULT_STATUS_TIMEOUT_MS);
   try {
-    const res = await fetchImpl(`${stripTrailingSlash(baseUrl)}/api/tags`, { signal });
-    if (!res.ok) return { available: false, models: [], error: `HTTP ${res.status}` };
+    const res = await fetchImpl(tagsUrl, { signal });
+    if (!res.ok) {
+      return {
+        available: false,
+        modelAvailable: false,
+        models: [],
+        error: `Ollama responded with HTTP ${res.status} at ${tagsUrl} — the server is reachable but rejected the request.`,
+      };
+    }
     const json = (await res.json()) as { models?: Array<{ name?: string }> };
     const models = Array.isArray(json.models)
       ? json.models.map((m) => String(m?.name ?? '')).filter(Boolean)
       : [];
-    return { available: true, models };
+    const modelAvailable = modelListIncludes(models, requiredModel);
+    return {
+      available: true,
+      modelAvailable,
+      models,
+      error: modelAvailable
+        ? undefined
+        : `Ollama is running, but the model "${requiredModel}" isn't pulled yet — run: ollama pull ${requiredModel}`,
+    };
   } catch (err) {
-    return { available: false, models: [], error: errorMessage(err) };
+    return { available: false, modelAvailable: false, models: [], error: describeStatusError(err, tagsUrl) };
   } finally {
     clear();
   }

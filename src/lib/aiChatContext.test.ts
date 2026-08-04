@@ -312,6 +312,28 @@ describe('grounding system prompt', () => {
     expect(lower).toContain('not a multi-section essay');
     expect(lower).toContain('roughly 80 words');
   });
+
+  // 2026-08-04 owner failure: after nursing/PHAS, "other distinctly different schedules like
+  // this?" was answered with school timetables / bus routes. "Schedule" in this app = ACC
+  // Service Schedule / contract — regression guards below.
+  it('frames ACC schedule / Service Schedule / contract as provider Service Schedule documents', () => {
+    const lower = AI_ASSISTANT_SYSTEM_PROMPT.toLowerCase();
+    expect(lower).toContain('domain glossary');
+    expect(lower).toContain('service schedule');
+    expect(lower).toContain('nursing services service schedule');
+    expect(lower).toContain('elective surgery');
+    expect(lower).toContain('allied health');
+    expect(lower).toContain('school timetables');
+    expect(lower).toContain('bus/train routes');
+  });
+
+  it('instructs answering "other schedules like this" from ingested ACC schedules, not industry metaphors', () => {
+    const lower = AI_ASSISTANT_SYSTEM_PROMPT.toLowerCase();
+    expect(lower).toContain('other schedules');
+    expect(lower).toContain('schedules like this');
+    expect(lower).toContain('do not invent unrelated industry');
+    expect(lower).toContain('retail inventory');
+  });
 });
 
 describe('buildChatMessages', () => {
@@ -927,5 +949,37 @@ describe('buildChatMessages — real ACC document retrieval (RAG-lite)', () => {
     // we have a nursing question — only rules that scored as relevant.
     // (NS04-related rules may mention approval; the near-50-ns06 title should be absent.)
     expect(messages[0].content).not.toContain('Approaching the 50 NS06 cap');
+  });
+
+  it('keeps ACC Service Schedule framing for "other schedules like this" after nursing/PHAS context', async () => {
+    // Owner failure: model answered with school timetables / bus routes. Prompt + lexicon must
+    // stay ACC-oriented even when the follow-up omits the word "ACC".
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+    const { messages, ungroundedRefuse } = await buildChatMessages({
+      history: [
+        {
+          role: 'user',
+          content: 'Would district nursing services ever come under PHAS?',
+        },
+        {
+          role: 'assistant',
+          content:
+            'Generally no — community nursing under the Nursing Services Service Schedule is not PHAS.',
+        },
+      ],
+      chips: [],
+      data: dataWith([]),
+      userMessage: 'What are some other distinctly different schedules like this? summarise for me',
+    });
+    expect(ungroundedRefuse).toBeUndefined();
+    expect(messages.length).toBeGreaterThanOrEqual(2);
+    const system = messages[0].content.toLowerCase();
+    expect(system).toContain('domain glossary');
+    expect(system).toContain('service schedule');
+    expect(system).toContain('elective surgery');
+    expect(system).toContain('allied health');
+    expect(system).toContain('school timetables');
+    expect(system).toMatch(/service schedule \(provider contract schedule\)|acc service schedule/);
+    expect(system).not.toContain('school bus');
   });
 });

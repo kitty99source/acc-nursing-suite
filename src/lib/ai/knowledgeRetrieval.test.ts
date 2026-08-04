@@ -4,6 +4,9 @@ import { describe, expect, it } from 'vitest';
 import { chunkDocumentText } from './knowledgeChunking';
 import {
   buildCorpusIndex,
+  expandRetrievalQuery,
+  isAccServiceScheduleQuery,
+  isAccServiceScheduleSurveyQuery,
   MIN_RELEVANT_SCORE,
   NEAR_DUPLICATE_SIMILARITY_THRESHOLD,
   retrieveTopChunks,
@@ -13,6 +16,31 @@ import {
 describe('tokenize', () => {
   it('lowercases, strips punctuation and drops stopwords', () => {
     expect(tokenize('What is the Elective Surgery ARTP process?')).toEqual(['elective', 'surgery', 'artp', 'process']);
+  });
+});
+
+describe('ACC Service Schedule query expansion', () => {
+  it('detects "other schedules like this" survey questions', () => {
+    const q = 'What are some other distinctly different schedules like this?';
+    expect(isAccServiceScheduleQuery(q)).toBe(true);
+    expect(isAccServiceScheduleSurveyQuery(q)).toBe(true);
+    const expanded = expandRetrievalQuery(q);
+    expect(expanded.toLowerCase()).toContain('service schedule');
+    expect(expanded.toLowerCase()).toContain('elective surgery');
+    expect(expanded.toLowerCase()).toContain('allied health');
+    expect(expanded.toLowerCase()).toContain('nursing');
+  });
+
+  it('does not expand a Schedule 5.11 / NS04 package-cap question (avoids diluting retrieval)', () => {
+    const q = 'When does Extended Nursing NS04 need prior approval under Schedule 5.11?';
+    expect(isAccServiceScheduleQuery(q)).toBe(false);
+    expect(expandRetrievalQuery(q)).toBe(q);
+  });
+
+  it('does not expand explicit non-ACC timetable wording', () => {
+    const q = 'Compare school timetable schedules to bus route schedules';
+    expect(isAccServiceScheduleQuery(q)).toBe(false);
+    expect(expandRetrievalQuery(q)).toBe(q);
   });
 });
 
@@ -226,6 +254,33 @@ describe('retrieveTopChunks (RAG-lite relevance scoring)', () => {
  * after the §6/§7 travel + emergency-transport ingestion. Ensures the hard gate will see
  * real on-topic chunks — not nursing Schedule 5.11 / NS04 package-cap text.
  */
+describe('ingested corpus — other ACC Service Schedules survey', () => {
+  const corpusPath = path.join(__dirname, '../../../public/data/acc/knowledge-chunks.json');
+  const corpus = JSON.parse(fs.readFileSync(corpusPath, 'utf8')) as {
+    chunks: Array<{ id: string; sourceDocId: string; chunkIndex: number; text: string }>;
+  };
+  const chunks = corpus.chunks;
+  const index = buildCorpusIndex(chunks);
+
+  const SCHEDULE_FAMILY = /nursing|elective-surgery|allied-health|vrs-og/;
+
+  it('expanded "other schedules like this" retrieves chunks from multiple ACC schedule families', () => {
+    const q = 'What are some other distinctly different schedules like this?';
+    const expanded = expandRetrievalQuery(q);
+    const results = retrieveTopChunks(expanded, chunks, index, {
+      k: 5,
+      diversifyBySource: true,
+    });
+    expect(results.length).toBeGreaterThanOrEqual(2);
+    const sourceIds = new Set(results.map((r) => r.chunk.sourceDocId));
+    expect(sourceIds.size).toBeGreaterThanOrEqual(2);
+    expect([...sourceIds].some((id) => SCHEDULE_FAMILY.test(id))).toBe(true);
+    // Must not collapse to a single nursing-only result set when asking for OTHER schedules.
+    const nonNursing = [...sourceIds].filter((id) => !id.startsWith('nurs'));
+    expect(nonNursing.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
 describe('ingested corpus — emergency transport retrieval (§6/§7 closure)', () => {
   const corpusPath = path.join(__dirname, '../../../public/data/acc/knowledge-chunks.json');
   const corpus = JSON.parse(fs.readFileSync(corpusPath, 'utf8')) as {

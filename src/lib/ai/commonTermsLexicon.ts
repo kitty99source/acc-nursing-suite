@@ -232,6 +232,35 @@ export const COMMON_TERMS_LEXICON: LexiconTerm[] = [
       'and rehabilitation for personal injury.',
     source: 'acc.co.nz.',
   },
+  {
+    term: 'Service Schedule',
+    aliases: [
+      'service schedules',
+      'ACC schedule',
+      'ACC schedules',
+      'schedule',
+      'schedules',
+      'other schedules',
+      'schedules like this',
+      'service contract',
+      'service contracts',
+    ],
+    expansion: 'ACC Service Schedule (provider contract schedule)',
+    definition:
+      'In ACC provider work and this app, a “schedule” / “Service Schedule” / “contract” usually ' +
+      'means ACC’s published national provider Service Schedule for a service type — the document ' +
+      'that sets covered services, service codes, and prices (e.g. Nursing Services Service ' +
+      'Schedule, Elective Surgery Services Service Schedule, Allied Health Services Service ' +
+      'Schedule). Not a school timetable, bus route, or calendar roster.',
+    notes:
+      'When users ask for “other schedules like this” after nursing/PHAS discussion, summarise ' +
+      'other distinct ingested ACC schedules (Elective Surgery, Allied Health / physio, vocational ' +
+      'rehab where available) with real source titles — do not invent non-ACC industry schedule ' +
+      'taxonomies.',
+    source:
+      'ACC public contract PDFs ingested in this app (Nursing / Elective Surgery / Allied Health ' +
+      'Service Schedules and Operational Guidelines).',
+  },
 ];
 
 /** Cap how many lexicon entries we inject even if many acronyms appear in one question. */

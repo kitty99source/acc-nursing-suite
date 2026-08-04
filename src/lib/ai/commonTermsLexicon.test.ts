@@ -41,6 +41,19 @@ describe('matchLexiconTerms', () => {
     expect(phoOnly.some((h) => h.term === 'PHO')).toBe(true);
     expect(phoOnly.some((h) => h.term === 'PHAS')).toBe(false);
   });
+
+  it('matches Service Schedule / schedules for ACC-sense grounding (not calendar metaphors)', () => {
+    const hits = matchLexiconTerms(
+      'What are some other distinctly different schedules like this?',
+    );
+    expect(hits.some((h) => h.term === 'Service Schedule')).toBe(true);
+    const ss = hits.find((h) => h.term === 'Service Schedule')!;
+    expect(ss.definition.toLowerCase()).toMatch(/service schedule/);
+    expect(ss.definition.toLowerCase()).toMatch(/elective surgery|allied health|nursing/);
+    // Explicitly rejects calendar metaphors (must say what it is NOT).
+    expect(ss.definition.toLowerCase()).toMatch(/not a school timetable/);
+    expect(ss.notes?.toLowerCase()).toMatch(/other schedules like this/);
+  });
 });
 
 describe('buildLexiconSections', () => {

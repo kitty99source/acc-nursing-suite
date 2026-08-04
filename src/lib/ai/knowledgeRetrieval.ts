@@ -39,6 +39,80 @@ export function tokenize(text: string): string[] {
     .filter((t) => t.length > 1 && !STOPWORDS.has(t));
 }
 
+// ----------------------------------------------------------------------------
+// ACC Service Schedule query expansion (2026-08-04).
+//
+// Owner failure: after nursing/PHAS chat, "What are some other distinctly
+// different schedules like this?" was answered with school timetables / bus
+// routes / retail — because bare "schedules" has weak TF-IDF overlap with the
+// ingested Nursing / Elective Surgery / Allied Health Service Schedule corpus
+// and the model free-associated the everyday English sense of "schedule".
+//
+// Expansion adds ACC-domain synonyms (schedule ↔ service schedule ↔ contract)
+// and known schedule-type names so retrieval can surface those real docs.
+// Calendar/roster sense is deliberately NOT expanded — only ACC-ish wording.
+// ----------------------------------------------------------------------------
+
+/** Synonyms + known ACC schedule types appended when the query looks schedule/contract-related. */
+export const ACC_SERVICE_SCHEDULE_QUERY_EXPANSION =
+  'ACC Service Schedule service schedules provider contract contracts ' +
+  'Nursing Services Service Schedule Elective Surgery Services Service Schedule ' +
+  'Allied Health Services Service Schedule physiotherapy hand therapy podiatry ' +
+  'vocational rehabilitation Operational Guidelines';
+
+/**
+ * True when the user is asking about ACC Service Schedules as documents/types
+ * (including "other schedules like this"), not merely citing a clause like
+ * "Schedule 5.11" on a package-cap question — those must NOT get the multi-schedule
+ * expansion or TF-IDF dilutes toward Elective Surgery / Allied Health.
+ */
+export function isAccServiceScheduleQuery(query: string): boolean {
+  const q = query.trim();
+  if (!q) return false;
+  // Explicit non-ACC calendar/roster wording — never expand.
+  if (/\b(timetable|roster|calendar|bus\s+route|school\s+timetable|retail\s+inventory)\b/i.test(q)) {
+    return false;
+  }
+  // "service schedule(s)" / "service contract(s)" — always ACC-domain in this app.
+  if (/\bservice\s+(schedules?|contracts?)\b/i.test(q)) return true;
+  // "other / different / distinctly different schedules (like this)" survey questions.
+  if (
+    /\b(other|different|distinctly|similar|various|more)\b[\s\S]{0,60}\b(schedules?|contracts?)\b/i.test(
+      q,
+    ) ||
+    /\b(schedules?|contracts?)\b[\s\S]{0,60}\b(like\s+this|other|different|distinctly)\b/i.test(q)
+  ) {
+    return true;
+  }
+  // "what/which/list/summarise … schedules" without needing the word "other".
+  if (
+    /\b(what|which|list|summarise|summarize|name)\b[\s\S]{0,60}\b(schedules?|service\s+schedules?)\b/i.test(
+      q,
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * True when retrieval should diversify across source documents (survey-style
+ * "other schedules like this") rather than returning several chunks from one nursing PDF.
+ */
+export function isAccServiceScheduleSurveyQuery(query: string): boolean {
+  return isAccServiceScheduleQuery(query);
+}
+
+/**
+ * Expands an ACC Service Schedule–flavoured query with domain synonyms and known
+ * schedule-type names for TF-IDF retrieval. Leaves unrelated queries unchanged.
+ */
+export function expandRetrievalQuery(query: string): string {
+  const q = query.trim();
+  if (!q || !isAccServiceScheduleQuery(q)) return q;
+  return `${q} ${ACC_SERVICE_SCHEDULE_QUERY_EXPANSION}`;
+}
+
 interface CorpusIndex {
   /** Document frequency per term: how many chunks contain it at least once. */
   docFreq: Map<string, number>;
@@ -169,10 +243,11 @@ export function retrieveTopChunks(
   query: string,
   chunks: KnowledgeChunk[],
   index: CorpusIndex,
-  opts: { k?: number; minScore?: number } = {},
+  opts: { k?: number; minScore?: number; diversifyBySource?: boolean } = {},
 ): RetrievedChunk[] {
   const k = opts.k ?? 3;
   const minScore = opts.minScore ?? MIN_RELEVANT_SCORE;
+  const diversifyBySource = opts.diversifyBySource ?? false;
   const ranked = chunks
     // Defense-in-depth backstop, on top of knowledgeChunking.ts already excluding ToC-shaped
     // chunks at ingestion time — catches any corpus asset built before this fix, or a future chunk
@@ -185,15 +260,36 @@ export function retrieveTopChunks(
 
   const selected: RetrievedChunk[] = [];
   const selectedTokenSets: Set<string>[] = [];
-  for (const candidate of ranked) {
-    if (selected.length >= k) break;
+  const selectedSourceIds = new Set<string>();
+
+  const trySelect = (candidate: RetrievedChunk, enforceSourceDiversity: boolean): boolean => {
+    if (selected.length >= k) return false;
+    if (enforceSourceDiversity && selectedSourceIds.has(candidate.chunk.sourceDocId)) return false;
     const candidateTokens = new Set(tokenize(candidate.chunk.text));
     const isNearDuplicate = selectedTokenSets.some(
       (existing) => jaccardSimilarity(candidateTokens, existing) > NEAR_DUPLICATE_SIMILARITY_THRESHOLD,
     );
-    if (isNearDuplicate) continue;
+    if (isNearDuplicate) return false;
     selected.push(candidate);
     selectedTokenSets.push(candidateTokens);
+    selectedSourceIds.add(candidate.chunk.sourceDocId);
+    return true;
+  };
+
+  // Pass 1: optionally prefer one chunk per source document (survey-style "other schedules"
+  // questions) so Nursing / Elective Surgery / Allied Health all get a slot.
+  for (const candidate of ranked) {
+    if (selected.length >= k) break;
+    trySelect(candidate, diversifyBySource);
+  }
+  // Pass 2: if diversity left slots empty (few distinct sources scored), fill from remaining
+  // ranked chunks without the per-source constraint (still near-dupe filtered).
+  if (diversifyBySource && selected.length < k) {
+    for (const candidate of ranked) {
+      if (selected.length >= k) break;
+      if (selected.some((s) => s.chunk.id === candidate.chunk.id)) continue;
+      trySelect(candidate, false);
+    }
   }
   return selected;
 }

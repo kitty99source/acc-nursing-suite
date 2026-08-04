@@ -27,7 +27,13 @@
 // ============================================================================
 
 import type { KnowledgeChunk } from './knowledgeChunking';
-import { buildCorpusIndex, retrieveTopChunks, type RetrievedChunk } from './knowledgeRetrieval';
+import {
+  buildCorpusIndex,
+  expandRetrievalQuery,
+  isAccServiceScheduleSurveyQuery,
+  retrieveTopChunks,
+  type RetrievedChunk,
+} from './knowledgeRetrieval';
 
 export interface KnowledgeCorpusFile {
   generatedAt: string;
@@ -92,5 +98,12 @@ export interface KnowledgeRetrievalResult {
 export async function retrieveKnowledgeForQuery(query: string, k = 3): Promise<RetrievedChunk[]> {
   const corpus = await getKnowledgeCorpus();
   if (!corpus || corpus.chunks.length === 0) return [];
-  return retrieveTopChunks(query, corpus.chunks, corpus.index, { k });
+  // Expand ACC "schedule"/"other schedules like this" queries so TF-IDF can hit Nursing /
+  // Elective Surgery / Allied Health Service Schedule docs (not empty → model inventing bus routes).
+  const expanded = expandRetrievalQuery(query);
+  const scheduleSurvey = isAccServiceScheduleSurveyQuery(query);
+  return retrieveTopChunks(expanded, corpus.chunks, corpus.index, {
+    k: scheduleSurvey ? Math.max(k, 5) : k,
+    diversifyBySource: scheduleSurvey,
+  });
 }

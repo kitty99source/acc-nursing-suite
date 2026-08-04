@@ -186,6 +186,22 @@ describe('evaluateChatGrounding (hard gate)', () => {
     }
   });
 
+  it('allows "other schedules like this" via Service Schedule lexicon (ACC sense, not calendar metaphors)', async () => {
+    const d = await evaluateChatGrounding({
+      userMessage: 'What are some other distinctly different schedules like this?',
+      hasChips: false,
+      // Isolate lexicon path — real corpus retrieval is covered separately.
+      retrievedChunks: [],
+    });
+    expect(d.allowModel).toBe(true);
+    if (d.allowModel) {
+      expect(d.reason).toBe('lexicon-relevant');
+      expect(d.lexiconHits.some((h) => h.term === 'Service Schedule')).toBe(true);
+      expect(d.staticSections.join('\n').toLowerCase()).toMatch(/service schedule/);
+      expect(d.staticSections.join('\n').toLowerCase()).toMatch(/not a school timetable/);
+    }
+  });
+
   it('allows chip-attached turns even when the question has no KB overlap', async () => {
     const d = await evaluateChatGrounding({
       userMessage: 'what is going on with this person',

@@ -234,6 +234,11 @@ community nursing under ACC’s Nursing Services contract is generally **not** P
 Nursing Service Schedule excludes Nursing Services while care is managed acutely under PHAS
 (cl 3.3). Sources: ACC/MoH Accident Services guide; Nursing Services Service Schedule.
 
+**Schedule / Service Schedule / contract (ACC sense):** in this app these words mean ACC
+provider Service Schedule documents (Nursing, Elective Surgery, Allied Health, etc.), not
+school timetables or bus routes. The system prompt + lexicon + retrieval query expansion
+steer “other schedules like this?” answers to those ingested contracts.
+
 ## Push this laptop harder (2026-08-04 — primary speed path)
 
 Owner ask: make Ollama use more of the machine (cores / RAM / priority), not primarily switch

@@ -291,6 +291,22 @@ export const AI_ASSISTANT_SYSTEM_PROMPT_BASE = [
     'health (physiotherapy/occupational therapy/hand therapy/podiatry) — not just district nursing. ' +
     'You run entirely locally via Ollama on the user\'s own laptop — you must never claim to send, ' +
     'store, or need to send any data anywhere else.',
+  'Domain glossary — ACC "schedule" / "Service Schedule" / "contract": in this app and in ACC ' +
+    'provider work, these words normally mean ACC\'s published provider Service Schedule documents ' +
+    '(the national contract templates that define covered services, codes, and prices for a service ' +
+    'type) — e.g. Nursing Services Service Schedule, Elective Surgery Services Service Schedule, ' +
+    'Allied Health Services Service Schedule (physiotherapy / hand therapy / podiatry), plus related ' +
+    'Operational Guidelines and vocational rehabilitation materials in the knowledge base. They do ' +
+    'NOT mean school timetables, bus/train routes, retail opening hours, project-management ' +
+    'schedules, waterfall vs agile, or other calendar/roster metaphors — unless the user clearly ' +
+    'and explicitly asks about non-ACC calendar, roster, or timetable scheduling.',
+  'When the user asks for "other schedules", "schedules like this", "distinctly different ' +
+    'schedules", or similar — especially after discussing nursing, district nursing, PHAS, or any ' +
+    'ACC service type — answer from the ingested ACC Service Schedules / contracts in this ' +
+    'knowledge base. Give short plain-language summaries of other distinct ACC schedules (e.g. ' +
+    'Elective Surgery, Allied Health / physiotherapy, vocational rehabilitation where present) and ' +
+    'cite the real source titles. Do NOT invent unrelated industry "schedule" taxonomies (schools, ' +
+    'buses, retail inventory, software methodologies, etc.).',
   'Scope lock — NZ ACC / this knowledge base only: do NOT bring in other countries\' frameworks ' +
     '(USA HIPAA, Canadian/American air-ambulance schemes, French/European military systems, ' +
     'Geneva Conventions, Médecins Sans Frontières, IATA, foreign AerMed/EMERT schemes, etc.), ' +

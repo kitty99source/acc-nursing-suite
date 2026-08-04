@@ -5,6 +5,8 @@ import {
   generateLocalAiResponse,
   generateLocalAiChatResponseStream,
   modelListIncludes,
+  DEFAULT_CHAT_INACTIVITY_TIMEOUT_MS,
+  DEFAULT_CHAT_TOTAL_TIMEOUT_MS,
   type ChatApiMessage,
   type FetchLike,
 } from './aiService';
@@ -428,6 +430,53 @@ describe('generateLocalAiChatResponseStream', () => {
 
       const result = await promise;
       expect(result).toEqual({ ok: true, text: 'ab' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // 2026-08-04 3rd real owner timeout fix: a genuinely long, actively-progressing CPU-only
+  // reasoning reply was being killed by the old 5-minute hard ceiling even though it was never
+  // stuck (chunks kept arriving well within the inactivity window throughout) — see the full
+  // incident writeup in aiService.ts's DEFAULT_CHAT_TOTAL_TIMEOUT_MS comment.
+  it('raised the hard total-timeout ceiling to 15 minutes (was 5) so a healthy long reply is not cut off, while keeping the 2-minute inactivity timer unchanged', () => {
+    expect(DEFAULT_CHAT_TOTAL_TIMEOUT_MS).toBe(900_000);
+    expect(DEFAULT_CHAT_INACTIVITY_TIMEOUT_MS).toBe(120_000);
+  });
+
+  it('does not abort a stream still receiving regular chunks well past the OLD 5-minute ceiling, as long as it finishes before the new 15-minute one', async () => {
+    vi.useFakeTimers();
+    try {
+      const encoder = new TextEncoder();
+      let readCount = 0;
+      const TOTAL_CHUNKS = 8;
+      // Each chunk arrives 60s apart (well under the 120s inactivity deadline every time), for a
+      // total of 8 minutes — comfortably past the old 5-minute ceiling that used to kill this
+      // exact healthy pattern, but under the new 15-minute one.
+      const reader = {
+        read: vi.fn(async () => {
+          readCount += 1;
+          if (readCount > TOTAL_CHUNKS) return { value: undefined, done: true };
+          if (readCount > 1) {
+            await vi.advanceTimersByTimeAsync(60_000);
+          }
+          return {
+            value: encoder.encode(
+              JSON.stringify({ message: { role: 'assistant', content: `chunk${readCount} ` }, done: false }) + '\n',
+            ),
+            done: false,
+          };
+        }),
+      };
+      const body = { getReader: () => reader } as unknown as ReadableStream<Uint8Array>;
+      const fetchImpl = vi.fn(async () => ({ ok: true, status: 200, body, json: async () => ({}) }) as unknown as Response);
+
+      const result = await generateLocalAiChatResponseStream('http://127.0.0.1:11434', sampleMessages, {
+        fetchImpl: fetchImpl as unknown as FetchLike,
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) expect(result.text).toContain('chunk8');
     } finally {
       vi.useRealTimers();
     }

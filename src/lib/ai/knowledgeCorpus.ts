@@ -70,7 +70,25 @@ export interface KnowledgeRetrievalResult {
   results: RetrievedChunk[];
 }
 
-/** Retrieves the most relevant real-document chunks for `query`, or an empty array if the corpus failed to load or nothing scored above the relevance threshold. */
+/**
+ * Retrieves the most relevant real-document chunks for `query`, or an empty array if the corpus
+ * failed to load or nothing scored above the relevance threshold.
+ *
+ * 2026-08-04 speed-research note (default `k=3`, kept as-is): investigated dropping this to `k=2`
+ * or shrinking `knowledgeChunking.ts`'s `DEFAULT_MAX_CHUNK_CHARS` (1200) as a speed lever, not just
+ * a correctness one, per the owner's "any more ways to optimize" ask. Not applied: on a typical
+ * turn the assembled prompt is already well under `numCtx`'s budget (see `contextBudget.ts` /
+ * `aiChatContext.test.ts` measurements from the same-day context-overflow fix), so the ACTUAL
+ * bottleneck for a slow reply is decode (token generation) throughput, not prefill (prompt
+ * processing) — CPU prefill is typically many times faster per-token than decode, so trimming one
+ * ~1200-char (~300-token) chunk off an already-comfortably-sized prompt saves a small fraction of a
+ * second, not a meaningful chunk of the multi-minute replies the owner is seeing. Meanwhile losing a
+ * third of the retrieved evidence on every question is a real, guaranteed quality cost paid on
+ * every turn (not just the rare oversized one) for a speed win that doesn't move the needle where
+ * the owner's actual pain is. The existing dynamic trim-on-overflow safety net (`trimToBudget` in
+ * aiChatContext.ts) already handles the genuine correctness case (a prompt that would NOT fit) by
+ * dropping lowest-score chunks reactively — this default is left untouched.
+ */
 export async function retrieveKnowledgeForQuery(query: string, k = 3): Promise<RetrievedChunk[]> {
   const corpus = await getKnowledgeCorpus();
   if (!corpus || corpus.chunks.length === 0) return [];

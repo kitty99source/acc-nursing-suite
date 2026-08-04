@@ -58,8 +58,52 @@ const DEFAULT_GENERATE_TIMEOUT_MS = 60_000;
 //   - DEFAULT_CHAT_TOTAL_TIMEOUT_MS: a hard ceiling regardless of progress,
 //     purely as a backstop against a pathological "one token every 100s
 //     forever" case that would otherwise never trip the inactivity timer.
-const DEFAULT_CHAT_INACTIVITY_TIMEOUT_MS = 120_000;
-const DEFAULT_CHAT_TOTAL_TIMEOUT_MS = 300_000;
+//
+// 2026-08-04 UPDATE (3rd real owner timeout, THIS one caused by the ceiling
+// above, not by a stuck model): the owner reported the reply visibly
+// reasoning and streaming a real, substantial answer — not frozen — right up
+// until it was killed by the timeout. The app's own liveness self-test (see
+// `diagnoseTimeout` in AiChatPanel.tsx, added in the prior fix) correctly
+// showed Ollama was still responding to a basic ping throughout, which rules
+// out a hung/dead process; a stuck stream would also not match "quite far
+// through typing out its whole actual response". That leaves exactly one
+// remaining explanation: the OLD 5-minute `DEFAULT_CHAT_TOTAL_TIMEOUT_MS` was
+// firing on a healthy, still-progressing generation simply because the reply
+// was genuinely long. The math supports this: `DEFAULT_CHAT_NUM_PREDICT`
+// already caps a reply at 2048 tokens, but at the ~10-20 tok/s CPU-only rate
+// this file's own earlier comments already document, JUST the token
+// generation for a full 2048-token reply is 2048/10 = ~205s to 2048/20 =
+// ~102s — before adding the model's own hidden chain-of-thought overhead
+// (which counts against the same 2048-token budget, per Microsoft's Phi-4-
+// reasoning technical report showing complex traces commonly running into
+// the low thousands of tokens on their own), any cold-load time, and normal
+// laptop-under-load slowdown (background AV scan, other apps, thermal
+// throttling) that can easily push real-world CPU throughput below the
+// "typical" 10-20 tok/s estimate. A genuinely bounded (num_predict-capped),
+// actively-progressing generation can legitimately need close to or beyond 5
+// minutes end-to-end on this hardware — the old ceiling was cutting off
+// exactly the healthy case the inactivity timer is deliberately designed NOT
+// to punish.
+//
+// Fix: keep the inactivity timer exactly as-is (2 minutes, reset per chunk —
+// this is still the right, and only necessary, mechanism for detecting a
+// TRUE stall/crash: a real freeze produces zero chunks for 2 full minutes,
+// which is not a false positive on any known-legitimate slow-but-alive
+// case). Raise the hard ceiling from 5 to 15 minutes rather than removing it
+// outright — a bounded generation (num_predict=2048) that is still only
+// two-thirds done after 15 minutes implies a sustained real-world throughput
+// under ~2.3 tok/s, which is far outside even a heavily-loaded-laptop
+// estimate and is a reasonable line to draw for "even though technically
+// still receiving chunks, this has gone on absurdly long" — while a fully
+// healthy worst-case reply (per the math above, well under 4 minutes of
+// generation plus a one-off cold-load) now has generous headroom rather than
+// being cut off mid-sentence. Removing the ceiling entirely was considered
+// and rejected: it is real, cheap insurance against a genuinely pathological
+// "one token every 100s forever" case (e.g. Ollama itself degrading under
+// memory pressure into a near-stalled-but-technically-still-emitting state)
+// that would otherwise never trip the inactivity timer at all.
+export const DEFAULT_CHAT_INACTIVITY_TIMEOUT_MS = 120_000;
+export const DEFAULT_CHAT_TOTAL_TIMEOUT_MS = 900_000;
 
 // ----------------------------------------------------------------------------
 // Generation-length ceiling (2026-08-04 "rambling on 'hello'" bug fix).
@@ -176,6 +220,63 @@ const DEFAULT_CHAT_NUM_PREDICT = 2048;
 //   - `num_predict`: already tuned to 2048 in the prior fix (see
 //     DEFAULT_CHAT_NUM_PREDICT above) — left as-is; already overridable via
 //     `numPredict`.
+//
+// 2026-08-04 FURTHER SPEED RESEARCH (owner ask: "any more ways to optimize
+// speed?"). Investigated four more Ollama-level levers; NONE were applied as
+// code/request-option changes — all four are either inapplicable to this
+// specific CPU-only deployment or a real quality/stability tradeoff not
+// backed by evidence it's worth it here. Documented in full (not just "no")
+// per the owner's own "don't apply blindly" instruction:
+//   - Flash Attention (`OLLAMA_FLASH_ATTENTION=1`): confirmed via Ollama's
+//     own source (`envconfig`/`server.go` gating logic, checked against
+//     current GitHub issues/PRs as of 2026-08) that Ollama only enables flash
+//     attention when `discover.GpuInfoList.FlashAttentionSupported()` is
+//     true — i.e. it is a GPU-kernel optimization (NVIDIA Ampere+ or AMD
+//     RDNA3+ only) with no CPU code path at all. Setting the env var on a
+//     CPU-only machine like the owner's laptop is a silent no-op (confirmed:
+//     several open Ollama issues show the exact "flash attention enabled but
+//     not supported" warning on GPU hardware that's merely the wrong
+//     generation — a machine with NO GPU never even gets that far). Not
+//     applied: there is no CPU benefit to capture, and this is a
+//     server-process env var anyway (set where `ollama serve` runs), not
+//     something this app's request options can control.
+//   - KV cache quantization (`OLLAMA_KV_CACHE_TYPE=q8_0`/`q4_0`): confirmed
+//     this is REAL and worthwhile in general (roughly halves/quarters KV
+//     cache memory with q8_0's quality loss reported as negligible in
+//     published benchmarks), but Ollama's own server code requires flash
+//     attention to be active for the quantized cache type to take effect at
+//     all — with FA unavailable on this CPU-only hardware (see above), this
+//     setting would silently fall back to the f16 default, achieving
+//     nothing. Not applied for the same underlying reason as flash
+//     attention: no working code path on CPU-only Ollama.
+//   - `OLLAMA_NUM_PARALLEL` / `num_batch`: these tune how many requests/
+//     sequences Ollama processes concurrently — a lever for a shared,
+//     multi-user server fielding simultaneous requests. This app is a
+//     single laptop with a single local chat panel issuing one request at a
+//     time; there is nothing to parallelize, and increasing parallelism
+//     settings on an already CPU-core-constrained machine risks WORSE
+//     latency for the one real request (competing for the same limited
+//     cores) rather than better. Not applied — confirmed not a fit for a
+//     single-user workload, per the ask's own caution.
+//   - Smaller/different model (e.g. Q4_0 instead of Q4_K_M, or a different
+//     CPU-optimized architecture entirely): checked current (2026) GGUF
+//     quantization tables for this exact model
+//     (huggingface.co/bartowski and tensorblock Phi-4-mini-reasoning-GGUF
+//     listings) — Q4_0 is explicitly documented upstream as a "legacy
+//     format... very high quality loss - prefer using Q4_K_M" for THIS
+//     model specifically (not a generic quantization-ladder assumption);
+//     it is very slightly smaller (2.33GB vs 2.49GB) but is not presented
+//     anywhere as a speed win on CPU for this architecture, only a
+//     memory/quality tradeoff, and a bad one at that. No credible current
+//     (2026) CPU-optimized alternative architecture at a comparable
+//     reasoning-quality bar was found to be a clear, evidenced upgrade
+//     worth the disruption of a model swap. Not applied/recommended — the
+//     existing Q4_K_M choice already documented in the research doc as the
+//     right speed/quality balance stands; a downgrade here would trade real
+//     answer quality for an unproven, likely marginal speed gain.
+// See docs/ai-features-setup.md for the Windows-specific, non-code
+// owner-actionable tips (process priority, power plan, antivirus exclusion)
+// investigated alongside these.
 // ----------------------------------------------------------------------------
 export const DEFAULT_KEEP_ALIVE = '30m';
 export const DEFAULT_NUM_CTX = 8192;
@@ -385,7 +486,13 @@ export interface ChatApiMessage {
 export interface AiGenerateStreamOptions {
   fetchImpl?: FetchLike;
   model?: string;
-  /** Hard ceiling for the whole request regardless of progress. Default 5 minutes — see DEFAULT_CHAT_TOTAL_TIMEOUT_MS. */
+  /**
+   * Hard ceiling for the whole request regardless of progress — a loose backstop against a
+   * pathological "technically still emitting chunks, but absurdly slow" case, NOT the mechanism
+   * for detecting a genuinely stuck/frozen stream (that's `inactivityTimeoutMs`). Default 15
+   * minutes — see DEFAULT_CHAT_TOTAL_TIMEOUT_MS for why 15 minutes specifically (2026-08-04 fix:
+   * the previous 5-minute value was killing healthy, still-progressing long replies).
+   */
   timeoutMs?: number;
   /** Reset on every chunk received. Default 2 minutes — see DEFAULT_CHAT_INACTIVITY_TIMEOUT_MS. */
   inactivityTimeoutMs?: number;

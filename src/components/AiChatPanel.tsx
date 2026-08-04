@@ -101,6 +101,23 @@ export function AiChatPanel() {
   // see lib/chatScroll.ts. Starts true so a freshly-opened panel still lands on the latest message.
   const [stickToBottom, setStickToBottom] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Wall-clock start of the current in-flight send() — used purely to update the "Thinking…"
+  // copy's expectation-setting text as a reply runs long (2026-08-04: the hard-ceiling timeout that
+  // used to cut off a healthy long reply at 5 minutes was raised to a much looser 15-minute
+  // backstop — see aiService.ts DEFAULT_CHAT_TOTAL_TIMEOUT_MS — so a genuinely detailed response is
+  // now allowed to keep streaming well past the original "30-90 seconds" framing; leaving that
+  // stale once it's clearly already been a couple of minutes would look broken/stuck even though
+  // it's actually fine). Not persisted — purely a local UI concern for the current send.
+  const sendStartedAtRef = useRef<number | null>(null);
+  // Forces a re-render on an interval while a reply is streaming, purely so the elapsed-time-based
+  // message swap above actually appears without waiting for the next token to arrive (a real
+  // healthy stream can go tens of seconds between chunks on this hardware).
+  const [, forceElapsedTick] = useState(0);
+  useEffect(() => {
+    if (!sending) return;
+    const interval = setInterval(() => forceElapsedTick((t) => t + 1), 10_000);
+    return () => clearInterval(interval);
+  }, [sending]);
 
   // One-time load of any persisted conversation from IndexedDB. Runs even
   // while collapsed (the bubble's chip-count badge should be correct without
@@ -170,6 +187,7 @@ export function AiChatPanel() {
       chips: attachedChips,
     };
     addMessage(userMessage);
+    sendStartedAtRef.current = Date.now();
     setSending(true);
     setStreamingText('');
 
@@ -263,6 +281,7 @@ export function AiChatPanel() {
     }
     setStreamingText('');
     setSending(false);
+    sendStartedAtRef.current = null;
   }
 
   if (!open) {
@@ -432,6 +451,18 @@ export function AiChatPanel() {
           // live... instead of hiding it until after").
           const parsed = parseThinkResponse(streamingText);
           const reasoningDone = !parsed.thinking && !!parsed.reasoning;
+          const elapsedMs = sendStartedAtRef.current ? Date.now() - sendStartedAtRef.current : 0;
+          // Once a reply has clearly run past the original "30-90 seconds" framing, swap to copy
+          // that sets correct expectations for a genuinely long, still-healthy response instead of
+          // looking stuck/broken — see the ref's own comment above and aiService.ts's raised
+          // DEFAULT_CHAT_TOTAL_TIMEOUT_MS for why this is now expected to happen sometimes.
+          const runningLong = elapsedMs > 120_000;
+          const initialThinkingCopy =
+            'Thinking… small on-device models can take 30–90 seconds on this hardware, longer ' +
+            '(up to a few minutes) right after Ollama has just started.';
+          const longRunningCopy =
+            "Still generating — a detailed response like this can take several minutes on this " +
+            "hardware. It's still making progress; no need to resend or restart.";
           return (
             <div className="text-sm" style={{ marginRight: '2rem' }}>
               {parsed.thinking && (
@@ -444,7 +475,7 @@ export function AiChatPanel() {
                     <span className="spinner" aria-hidden="true" style={{ width: 10, height: 10 }} />
                     Reasoning…
                   </div>
-                  {parsed.reasoning || 'Starting to reason through your question…'}
+                  {parsed.reasoning || (runningLong ? longRunningCopy : 'Starting to reason through your question…')}
                   <span className="inline-block ml-1 animate-pulse" aria-hidden="true">
                     ▍
                   </span>
@@ -479,9 +510,12 @@ export function AiChatPanel() {
                     <span className="spinner" aria-hidden="true" />
                     <span className="text-xs" style={{ color: 'var(--muted)' }}>
                       {reasoningDone
-                        ? 'Reasoning finished — writing the answer now…'
-                        : 'Thinking… small on-device models can take 30–90 seconds on this hardware, longer ' +
-                          '(up to a few minutes) right after Ollama has just started.'}
+                        ? runningLong
+                          ? longRunningCopy
+                          : 'Reasoning finished — writing the answer now…'
+                        : runningLong
+                          ? longRunningCopy
+                          : initialThinkingCopy}
                     </span>
                   </div>
                 )

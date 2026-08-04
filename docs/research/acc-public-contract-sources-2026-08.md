@@ -219,3 +219,50 @@ allied-health-focused billing team.
 None of the above can be resolved by further public web research — they
 require the owner's own provider credentials or their organisation's internal
 contracts records, exactly as the owner already anticipated.
+
+## 6. Follow-up ingestion candidate found 2026-08-04 — travel / emergency transport billing
+
+While investigating an owner-reported AI-chat quality bug (the assistant was asked
+about emergency-vs-non-emergency **flight/travel transport billing** — a patient
+choosing Auckland over a geographically closer Wellington for surgery), a search of
+the actually-ingested `public/data/acc/knowledge-chunks.json` corpus (415 chunks
+across the 8 currently-ingested source documents: `nursing-service-schedule`,
+`nurse-og`, `elective-surgery-service-schedule`, `elective-surgery-og`,
+`allied-health-services-service-schedule`, `health-contract-terms-conditions`,
+`acc1523-specified-treatment-provider-costs`, `acc7909-working-together-cotr-providers`)
+found only 3 chunks mentioning travel/flight/transport at all, and all 3 are about
+**provider** travel (a treating nurse travelling to a client's home, invoiced via
+Travel service items under the Nursing Services Service Schedule) — none address
+**patient** travel/flight assistance, emergency-vs-non-emergency transport
+classification, or ACC's mileage/accommodation cost-coverage rules.
+
+One nursing-schedule chunk (`nursing-service-schedule#27`) explicitly references
+**"ACC's Travel Policy for Providers (available on ACC's website)"** as the actual
+governing document for those provider travel expenses — that document was never
+searched for, fetched, or ingested during the original Aug 2026 research pass
+(§0–§5 above), which was scoped to nursing/elective-surgery/allied-health service
+schedules + their operational guidelines + the Standard Terms and Conditions. ACC
+also very likely publishes a separate patient-facing travel/accommodation
+assistance policy (client travel and accommodation cost coverage, including any
+emergency-vs-non-emergency air-travel distinction) that is a different document
+again from the provider-travel-reimbursement policy referenced above — neither was
+found in, or was ever in scope for, the 4 currently-ingested schedules.
+
+**Conclusion: this is a genuine content-coverage gap, not a retrieval-algorithm bug.**
+The TF-IDF-lite scorer (`knowledgeRetrieval.ts`) correctly found the closest real
+content that exists in the corpus (ARTP priority classification, nursing eligibility
+and service-location rules) — there is no chunk about patient flight/travel billing
+criteria in the corpus for it to have missed. Confirmed live at the fix in this same
+pass: the AI-chat system prompt now instructs the model to say the reference
+material it has doesn't specifically cover a topic, rather than either denying
+document access outright or inventing an answer, once a gap like this is genuinely
+hit — see `src/lib/aiChatContext.ts` `AI_ASSISTANT_SYSTEM_PROMPT`.
+
+**Recommended future ingestion pass (not done in this task — scoped separately):**
+research and ingest ACC's actual "Travel Policy for Providers" (referenced by name
+above) and, separately, ACC's patient/client travel-and-accommodation assistance
+policy (the document that would define any emergency-vs-non-emergency air-travel
+billing distinction), using the same public-fetch-and-chunk methodology as §1–§5
+above. Both would need to be confirmed as real, currently-fetchable public
+documents (not assumed) before ingestion, per this doc's own "nothing here is
+fabricated or guessed" standard.

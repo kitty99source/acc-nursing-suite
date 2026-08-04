@@ -216,6 +216,23 @@ describe('grounding system prompt', () => {
     expect(AI_ASSISTANT_SYSTEM_PROMPT.toLowerCase()).toContain('locally');
     expect(AI_ASSISTANT_SYSTEM_PROMPT.toLowerCase()).toContain('do not invent');
   });
+
+  // 2026-08-04 owner-reported quality bugs: the model denied having document access despite real
+  // retrieved excerpts sitting in its own context, and separately hallucinated a concrete place
+  // name (San Diego) the user never mentioned. Both are prompt-framing gaps, not hardware/speed
+  // issues — regression guards below.
+  it('explicitly tells the model it already has real document access and must not deny it', () => {
+    const lower = AI_ASSISTANT_SYSTEM_PROMPT.toLowerCase();
+    expect(lower).toContain('you do have access to real reference material');
+    expect(lower).toContain('never say');
+    expect(lower).toContain('cannot access external documents');
+  });
+
+  it('includes an explicit groundedness instruction against inventing unstated specifics', () => {
+    const lower = AI_ASSISTANT_SYSTEM_PROMPT.toLowerCase();
+    expect(lower).toContain('groundedness');
+    expect(lower).toContain('never invent or substitute place names');
+  });
 });
 
 describe('buildChatMessages', () => {
@@ -332,9 +349,10 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
       data: dataWith([]),
       userMessage: 'Tell me about the ARTP process for this elective surgery contract',
       // A small numCtx forces trimming with this small sample corpus, deterministically, without
-      // needing a giant real-world fixture (empirically: all 3 sample chunks fit at numCtx >=
-      // ~2200, exactly 2 fit at 2100, exactly 1 — the most relevant — fits at 2000).
-      numCtx: 2100,
+      // needing a giant real-world fixture (empirically, with the current system prompt: all 3
+      // sample chunks fit at numCtx >= 2600, exactly 2 fit at 2500, exactly 1 — the most relevant
+      // — fits at 2400).
+      numCtx: 2500,
     });
     expect(contextTooLarge).toBeFalsy();
     expect(retrievedSources.length).toBeLessThan(SAMPLE_CORPUS.chunks.length);
@@ -370,7 +388,7 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
       userMessage: 'Tell me about the ARTP process for this elective surgery contract',
       // Same numCtx that forces chunk-dropping in the test above — confirms history/user survive
       // the SAME trim pass that drops knowledge chunks, not just an untrimmed happy path.
-      numCtx: 2100,
+      numCtx: 2500,
     });
     expect(contextTooLarge).toBeFalsy();
     expect(retrievedSources.length).toBeLessThan(SAMPLE_CORPUS.chunks.length);
@@ -433,8 +451,9 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
         userMessage: 'question four',
         // Small enough that 3 long replies + system prompt don't all fit, but NOT so small that
         // dropping history can't rescue it (unlike the numCtx:50 "refuse outright" case above) —
-        // empirically leaves room for exactly the newest (turn-3) pair once the older two are gone.
-        numCtx: 3400,
+        // empirically (with the current system prompt) leaves room for exactly the newest
+        // (turn-3) pair once the older two are gone.
+        numCtx: 3600,
       });
       expect(result.contextTooLarge).toBeFalsy();
       expect(result.historyTrimmed).toBe(true);
@@ -583,6 +602,12 @@ describe('buildChatMessages — real ACC document retrieval (RAG-lite)', () => {
     expect(retrievedSources[0].url).toContain('acc.co.nz');
     expect(messages[0].content).toContain('Real ACC document excerpts');
     expect(messages[0].content).toContain('105 days');
+    // 2026-08-04 "denied having document access despite real retrieved content" bug fix — the
+    // per-turn knowledge block header itself must also assert the material is available now, not
+    // just the static system prompt, since this is the text sitting immediately next to the
+    // excerpt in the model's actual context for this exact request.
+    expect(messages[0].content.toLowerCase()).toContain('available to you right now');
+    expect(messages[0].content.toLowerCase()).toContain('do not say you lack access');
   });
 
   it('does not inject the elective-surgery excerpt for a nursing-specific question', async () => {

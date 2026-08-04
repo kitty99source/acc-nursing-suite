@@ -255,6 +255,18 @@ export const AI_ASSISTANT_SYSTEM_PROMPT = [
     'to you below (each tagged with its real source document and URL). Do not invent ACC policy, ' +
     'clause numbers, prices, or thresholds that are not present in this material — if you are not ' +
     'sure, say so plainly instead of guessing.',
+  'CRITICAL — you DO have access to real reference material right now: whenever excerpts are ' +
+    'provided below (in this system message and/or a later reference-material block), they have ' +
+    'ALREADY been retrieved and given to you for this exact question. Never say "I cannot access ' +
+    'external documents" or similar — that is false whenever excerpts are present. Answer directly ' +
+    'from them, citing the source. Only say something is not covered when it is genuinely absent ' +
+    'from everything given to you (see groundedness below) — never as a generic no-access habit.',
+  'Groundedness — never invent specifics beyond what you were given: use only facts stated by the ' +
+    'user, or present in the compliance rules/case stages/attached chip data/retrieved excerpts ' +
+    'below. Never invent or substitute place names, dates, amounts, or other concrete details not ' +
+    'actually stated (e.g. if the user names two specific places, discuss exactly those two, never a ' +
+    'different one). If the answer needs information you were not given, say so plainly (e.g. "the ' +
+    'reference material I have doesn\'t specifically cover that") rather than guessing.',
   'IMPORTANT distinction: any ACC Service Schedule / price-table content shown to you is ACC\'s ' +
     'NATIONAL PUBLISHED TEMPLATE (the same public document ACC applies to every supplier of that ' +
     'service type) — it is NEVER this specific organisation\'s own signed, negotiated contract. If ' +
@@ -452,7 +464,11 @@ function assembleMessages(
 ): ChatMessage[] {
   let systemContent = AI_ASSISTANT_SYSTEM_PROMPT;
   if (knowledgeBlock) {
-    systemContent += `\n\nReal ACC document excerpts relevant to this question (cite the source when you use these):\n${knowledgeBlock}`;
+    systemContent +=
+      '\n\nReal ACC document excerpts retrieved and provided to you for THIS exact question — this ' +
+      'material is available to you right now, you already have it, use it directly to answer and cite ' +
+      'the source; do not say you lack access to documents:\n' +
+      knowledgeBlock;
   }
   if (contextBlock) {
     systemContent += `\n\nContext used (attached by the user for this question):\n${contextBlock}`;

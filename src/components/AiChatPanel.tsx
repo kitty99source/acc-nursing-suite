@@ -241,178 +241,192 @@ export function AiChatPanel() {
       return;
     }
 
+    // Long-chat context prep BEFORE the streamed answer. Default is extractive (local, instant)
+    // — never block the user on a multi-minute reasoning-model summarize call (owner 10+ min hang).
+    // Optional LLM summarize remains available via ensureConversationSummary({ mode: 'llm' }) with
+    // a hard ~75s ceiling + extractive fallback; see lib/ai/conversationSummary.ts.
     setSendPhase('summarizing');
     const model = resolveAiModel(settings.aiChatModelProfile);
     const numPredict = resolveChatNumPredict(settings.aiChatModelProfile);
     const keepAlive = resolveKeepAlive(settings.aiKeepModelLoaded);
     const numThread = settings.aiNumThread;
     const existingSummary = useAiChatStore.getState().conversationSummary;
-    const ensured = await ensureConversationSummary({
-      history,
-      historyMessageIds,
-      existing: existingSummary,
-      baseUrl: settings.aiServiceBaseUrl,
-      model,
-      numThread,
-      keepAlive,
-      signal,
-      summarizeFn: generateLocalAiChatResponse,
-    });
 
-    if (!isGenerationCurrent(generationId)) {
-      setSendPhase('idle');
-      return;
-    }
+    try {
+      const ensured = await ensureConversationSummary({
+        history,
+        historyMessageIds,
+        existing: existingSummary,
+        baseUrl: settings.aiServiceBaseUrl,
+        model,
+        numThread,
+        keepAlive,
+        signal,
+        mode: 'extractive',
+        summarizeFn: generateLocalAiChatResponse,
+      });
 
-    if (ensured.summary && (ensured.status === 'created' || ensured.status === 'reused')) {
-      setConversationSummary(ensured.summary);
-    } else if (
-      // Defense-in-depth new-chat isolation: if there is nothing older than the recent
-      // window (or history is empty), a leftover summary must not linger in the store even
-      // though buildChatMessages would not inject it when `ensured.summary` is absent.
-      !ensured.historySummarized &&
-      existingSummary &&
-      history.length <= RECENT_VERBATIM_MESSAGES
-    ) {
-      setConversationSummary(null);
-    }
-
-    const historyWindowed = ensured.historySummarized || ensured.summaryFailed;
-    setSendPhase('generating');
-
-    const {
-      messages: chatMessages,
-      contextBlock,
-      retrievedSources,
-      contextTooLarge,
-      contextTooLargeMessage: tooLargeMessage,
-      ungroundedRefuse,
-      ungroundedRefuseMessage,
-      historyTrimmed,
-      historySummarized,
-    } = await buildChatMessages({
-      history: ensured.recentHistory,
-      chips: attachedChips,
-      data,
-      userMessage: text,
-      conversationSummary: ensured.summary?.text,
-      historyAlreadyWindowed: historyWindowed,
-      grounding,
-    });
-
-    // Defense-in-depth: buildChatMessages also returns the gate result (e.g. if a future caller
-    // skips the early check above). Same UX as the early return — no Ollama, no Sources.
-    if (ungroundedRefuse) {
       if (!isGenerationCurrent(generationId)) {
-        setSendPhase('idle');
         return;
       }
-      addMessage({
-        id: makeMessageId(),
-        role: 'assistant',
-        content: ungroundedRefuseMessage || 'I don\'t have grounded ACC material on that in my current knowledge base.',
-        createdAt: Date.now(),
-      });
-      setSending(false);
-      setSendPhase('idle');
-      sendStartedAtRef.current = null;
-      return;
-    }
 
-    // 2026-08-04 context-overflow safety net (see aiChatContext.ts `buildChatMessages` /
-    // contextBudget.ts): even after dropping the lowest-relevance retrieved knowledge chunks, the
-    // assembled prompt would still be too large to fit the model's context window with room for a
-    // reply — refuse to send rather than risk the real "Ollama crashed or got stuck" timeout the
-    // owner hit. This is a clean, honest failure shown BEFORE any network call, not a generic
-    // error after a long stall.
-    if (contextTooLarge) {
-      if (!isGenerationCurrent(generationId)) {
-        setSendPhase('idle');
+      if (ensured.summary && (ensured.status === 'created' || ensured.status === 'reused')) {
+        setConversationSummary(ensured.summary);
+      } else if (
+        // Defense-in-depth new-chat isolation: if there is nothing older than the recent
+        // window (or history is empty), a leftover summary must not linger in the store even
+        // though buildChatMessages would not inject it when `ensured.summary` is absent.
+        !ensured.historySummarized &&
+        existingSummary &&
+        history.length <= RECENT_VERBATIM_MESSAGES
+      ) {
+        setConversationSummary(null);
+      }
+
+      const historyWindowed = ensured.historySummarized || ensured.summaryFailed;
+      setSendPhase('generating');
+
+      const {
+        messages: chatMessages,
+        contextBlock,
+        retrievedSources,
+        contextTooLarge,
+        contextTooLargeMessage: tooLargeMessage,
+        ungroundedRefuse,
+        ungroundedRefuseMessage,
+        historyTrimmed,
+        historySummarized,
+      } = await buildChatMessages({
+        history: ensured.recentHistory,
+        chips: attachedChips,
+        data,
+        userMessage: text,
+        conversationSummary: ensured.summary?.text,
+        historyAlreadyWindowed: historyWindowed,
+        grounding,
+      });
+
+      // Defense-in-depth: buildChatMessages also returns the gate result (e.g. if a future caller
+      // skips the early check above). Same UX as the early return — no Ollama, no Sources.
+      if (ungroundedRefuse) {
+        if (!isGenerationCurrent(generationId)) {
+          return;
+        }
+        addMessage({
+          id: makeMessageId(),
+          role: 'assistant',
+          content: ungroundedRefuseMessage || 'I don\'t have grounded ACC material on that in my current knowledge base.',
+          createdAt: Date.now(),
+        });
         return;
       }
-      addMessage({
-        id: makeMessageId(),
-        role: 'assistant',
-        content: tooLargeMessage || 'This request includes too much context to send safely.',
-        createdAt: Date.now(),
-        contextUsed: contextBlock || undefined,
+
+      // 2026-08-04 context-overflow safety net (see aiChatContext.ts `buildChatMessages` /
+      // contextBudget.ts): even after dropping the lowest-relevance retrieved knowledge chunks, the
+      // assembled prompt would still be too large to fit the model's context window with room for a
+      // reply — refuse to send rather than risk the real "Ollama crashed or got stuck" timeout the
+      // owner hit. This is a clean, honest failure shown BEFORE any network call, not a generic
+      // error after a long stall.
+      if (contextTooLarge) {
+        if (!isGenerationCurrent(generationId)) {
+          return;
+        }
+        addMessage({
+          id: makeMessageId(),
+          role: 'assistant',
+          content: tooLargeMessage || 'This request includes too much context to send safely.',
+          createdAt: Date.now(),
+          contextUsed: contextBlock || undefined,
+        });
+        return;
+      }
+
+      // Streamed (Ollama `/api/chat` with `stream: true`) so the panel can render tokens as they
+      // arrive instead of a blank spinner for the whole reply — see aiService.ts for both the
+      // inactivity-reset timeout that makes this faster-feeling/safer against premature timeouts,
+      // and why this uses the structured-messages `/api/chat` endpoint rather than a flattened
+      // prompt string (2026-08-04 "hallucinated fake conversation" bug fix).
+      const result = await generateLocalAiChatResponseStream(settings.aiServiceBaseUrl, chatMessages, {
+        model,
+        numPredict,
+        numThread,
+        keepAlive,
+        signal,
+        onChunk: (accumulated) => {
+          if (isGenerationCurrent(generationId)) setStreamingText(accumulated);
+        },
       });
-      setSending(false);
-      setSendPhase('idle');
-      sendStartedAtRef.current = null;
-      return;
-    }
 
-    // Streamed (Ollama `/api/chat` with `stream: true`) so the panel can render tokens as they
-    // arrive instead of a blank spinner for the whole reply — see aiService.ts for both the
-    // inactivity-reset timeout that makes this faster-feeling/safer against premature timeouts,
-    // and why this uses the structured-messages `/api/chat` endpoint rather than a flattened
-    // prompt string (2026-08-04 "hallucinated fake conversation" bug fix).
-    const result = await generateLocalAiChatResponseStream(settings.aiServiceBaseUrl, chatMessages, {
-      model,
-      numPredict,
-      numThread,
-      keepAlive,
-      signal,
-      onChunk: (accumulated) => {
-        if (isGenerationCurrent(generationId)) setStreamingText(accumulated);
-      },
-    });
+      // The chat may have been cleared/restarted while this request was still running — discard a
+      // superseded result silently rather than reappending it into (or overwriting) whatever the
+      // user has since started. No error toast: this is the deliberate, expected outcome of a
+      // user-initiated cancellation, not a failure.
+      if (!isGenerationCurrent(generationId)) {
+        return;
+      }
 
-    // The chat may have been cleared/restarted while this request was still running — discard a
-    // superseded result silently rather than reappending it into (or overwriting) whatever the
-    // user has since started. No error toast: this is the deliberate, expected outcome of a
-    // user-initiated cancellation, not a failure.
-    if (!isGenerationCurrent(generationId)) {
-      setSendPhase('idle');
-      return;
-    }
-
-    if (result.ok) {
-      consecutiveTimeoutsRef.current = 0;
-      // Phi-4-mini-reasoning always emits a `<think>...</think>` chain-of-thought before its
-      // real answer (see lib/ai/thinkParser.ts) — split that out here so `content` (the primary
-      // bubble) is just the short final answer, with the reasoning trace kept for the "Show
-      // reasoning" disclosure below rather than either being shown inline or thrown away.
-      const { answer, reasoning } = parseThinkResponse(result.text);
-      addMessage({
-        id: makeMessageId(),
-        role: 'assistant',
-        content: answer || result.text.trim(),
-        createdAt: Date.now(),
-        reasoning: reasoning || undefined,
-        contextUsed: contextBlock || undefined,
-        retrievedSources: retrievedSources.length ? retrievedSources : undefined,
-        historyTrimmed: historyTrimmed || undefined,
-        historySummarized: historySummarized || ensured.historySummarized || undefined,
-        summaryFallbackTrimmed: ensured.summaryFailed || undefined,
-      });
-    } else {
-      let diagnosticNote: string | undefined;
-      if (isChatTimeoutError(result.error)) {
-        consecutiveTimeoutsRef.current += 1;
-        diagnosticNote = await diagnoseTimeout(settings.aiServiceBaseUrl, consecutiveTimeoutsRef.current);
-      } else {
+      if (result.ok) {
         consecutiveTimeoutsRef.current = 0;
+        // Phi-4-mini-reasoning always emits a `<think>...</think>` chain-of-thought before its
+        // real answer (see lib/ai/thinkParser.ts) — split that out here so `content` (the primary
+        // bubble) is just the short final answer, with the reasoning trace kept for the "Show
+        // reasoning" disclosure below rather than either being shown inline or thrown away.
+        const { answer, reasoning } = parseThinkResponse(result.text);
+        addMessage({
+          id: makeMessageId(),
+          role: 'assistant',
+          content: answer || result.text.trim(),
+          createdAt: Date.now(),
+          reasoning: reasoning || undefined,
+          contextUsed: contextBlock || undefined,
+          retrievedSources: retrievedSources.length ? retrievedSources : undefined,
+          historyTrimmed: historyTrimmed || undefined,
+          historySummarized: historySummarized || ensured.historySummarized || undefined,
+          summaryFallbackTrimmed: ensured.summaryFailed || undefined,
+        });
+      } else {
+        let diagnosticNote: string | undefined;
+        if (isChatTimeoutError(result.error)) {
+          consecutiveTimeoutsRef.current += 1;
+          diagnosticNote = await diagnoseTimeout(settings.aiServiceBaseUrl, consecutiveTimeoutsRef.current);
+        } else {
+          consecutiveTimeoutsRef.current = 0;
+        }
+        const errorDetail = diagnosticNote ? `${result.error}\n\n${diagnosticNote}` : result.error;
+        addMessage({
+          id: makeMessageId(),
+          role: 'assistant',
+          content: "Couldn't reach the local AI model.",
+          createdAt: Date.now(),
+          error: ensured.summaryFailed
+            ? `${errorDetail}\n\n${ensured.summaryFailedMessage}`
+            : errorDetail,
+          contextUsed: contextBlock || undefined,
+          retrievedSources: retrievedSources.length ? retrievedSources : undefined,
+          summaryFallbackTrimmed: ensured.summaryFailed || undefined,
+        });
       }
-      const errorDetail = diagnosticNote ? `${result.error}\n\n${diagnosticNote}` : result.error;
-      addMessage({
-        id: makeMessageId(),
-        role: 'assistant',
-        content: "Couldn't reach the local AI model.",
-        createdAt: Date.now(),
-        error: ensured.summaryFailed
-          ? `${errorDetail}\n\n${ensured.summaryFailedMessage}`
-          : errorDetail,
-        contextUsed: contextBlock || undefined,
-        retrievedSources: retrievedSources.length ? retrievedSources : undefined,
-        summaryFallbackTrimmed: ensured.summaryFailed || undefined,
-      });
+    } catch (err) {
+      // Never leave the panel stuck in summarizing/generating after an unexpected throw.
+      if (isGenerationCurrent(generationId)) {
+        addMessage({
+          id: makeMessageId(),
+          role: 'assistant',
+          content: "Couldn't reach the local AI model.",
+          createdAt: Date.now(),
+          error: err instanceof Error ? err.message : 'Unexpected error while preparing the reply.',
+        });
+      }
+    } finally {
+      if (isGenerationCurrent(generationId)) {
+        setStreamingText('');
+        setSending(false);
+        setSendPhase('idle');
+        sendStartedAtRef.current = null;
+      } else {
+        setSendPhase('idle');
+      }
     }
-    setStreamingText('');
-    setSending(false);
-    setSendPhase('idle');
-    sendStartedAtRef.current = null;
   }
 
   if (!open) {
@@ -635,7 +649,7 @@ export function AiChatPanel() {
             "Still generating — a detailed response like this can take several minutes on this " +
             "hardware. It's still making progress; no need to resend or restart.";
           const summarizingCopy =
-            'Compressing earlier messages so this long chat stays within the model’s context window…';
+            'Preparing earlier messages for context (local digest — not a full model reply)…';
           return (
             <div className="text-sm" style={{ marginRight: '2rem' }}>
               {sendPhase === 'summarizing' && !streamingText && (

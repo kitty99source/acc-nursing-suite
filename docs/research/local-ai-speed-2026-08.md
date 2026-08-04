@@ -52,7 +52,7 @@ tokens the model must emit** (especially `<think>` on `phi4-mini-reasoning`) at 
 | --- | --- |
 | Streaming `/api/chat` | Done |
 | Context budget + refuse oversized prompts | Done |
-| Rolling conversation summarization | Done |
+| Rolling conversation summarization | Done (**extractive-first**; optional LLM with 75s ceiling — see §9) |
 | Cooler temperature (`0.3`) | Done |
 | Hard grounding gate (skip Ollama when ungrounded) | Done |
 | `num_ctx` capped at 8192 | Done (smaller than model max → less KV RAM, faster) |
@@ -152,3 +152,50 @@ Grounding gate unchanged for all of the above.
 - [HN / LocalLLaMA-class CPU model sizing](https://news.ycombinator.com/item?id=46518573),
   [8GB CPU Ollama picks](https://ai-jupyter.com/local-llm-real-world-test/best-ollama-models-for-8gb-ram)
 - Speculative/MTP on MLX: [Ollama PR #15980](https://github.com/ollama/ollama/pull/15980)
+
+---
+
+## 9. Long-chat summarize hang (owner report after `498e451`) — ranked solutions
+
+**Symptom:** long conversation → “Compressing earlier messages…” for a long time → “Still
+generating…” → “Couldn't reach the local AI model” after **>10 minutes**. Normal replies
+show brief 90–100% CPU peaks then average ~60–70% while streaming (not sustained pegged).
+
+### Root cause (evidence-backed)
+
+1. Pre-send summarization called the **same** `phi4-mini-reasoning` path as full answers
+   (`generateLocalAiChatResponse` / `/api/chat`, non-streaming) with `num_predict` 600 and a
+   **3-minute** client timeout.
+2. Reasoning models emit a long hidden `<think>…</think>` before useful text. Summarize spent
+   most/all of that budget on CoT, not a short summary.
+3. Aborting the HTTP client does **not** reliably stop Ollama’s in-flight generation. The next
+   streamed answer then queues behind (or shares a saturated runner with) that leftover work →
+   UI advances to “Still generating…” and eventually hits the chat timeout (“can't reach the
+   model”). Wall-clock can exceed the summarize timeout alone — matching the 10+ minute report.
+4. **~60–70% average CPU** during streaming is often still “maxing” what decode can use:
+   memory-bandwidth / cache / thermal limits, P/E-core scheduling, or idle-ish think-token
+   patterns — **not** proof that unused cores are “left on the table.” Do not overclaim that
+   more threads will fix it when peaks already hit 90–100%.
+
+### Ranked potential solutions (impact × durability on device)
+
+| Rank | Solution | Status | Notes |
+| --- | --- | --- | --- |
+| **1** | **Extractive (local) summary as default pre-send path** | **Shipped** | First/last-sentence digest of older turns; zero Ollama; instant; keeps last 4 turns verbatim. |
+| **2** | **Hard short ceiling on any LLM summarize (~75s) + extractive fallback** | **Shipped** (optional `mode: 'llm'`) | `Promise.race` + AbortSignal; never 10-min hang; tiny `num_predict` (180), temp 0, no-CoT prompt. |
+| **3** | **Do not block the answer on LLM summarize** | **Shipped** via (1) | Extractive-first; LLM summarize disabled by default on the panel path. |
+| **4** | **Smaller/faster day-to-day model (`phi4-mini` instruct)** | Available (Settings secondary) | Honest tradeoff: less CoT tax, slightly less “deliberation” style; same ~2.5GB class. |
+| **5** | **Reduce `num_ctx` / retrieved chunks / answer `num_predict`** | Partially shipped | Chat already caps ctx 8192 + grounding/RAG budget; further cuts help tok/s but risk chip overflow. |
+| **6** | **Windows power plan + `num_thread` + keep model loaded** | **Shipped** (`498e451`) | Helps under-use / cold reload; weak when already bandwidth-bound at 60–70% avg. |
+| **7** | **GPU laptop / different quant** | Speculative only | Real win if CUDA/Metal runner is available; Q3/Q4_0 quality loss may not buy much tok/s on this arch — measure, don’t assume. |
+| **8** | **Background LLM summarize after the answer** | Not shipped | Nice-to-have; extractive already unblocks send. |
+
+### What we changed in code (this pass)
+
+- `conversationSummary.ts`: default `mode: 'extractive'`; optional LLM path with
+  `SUMMARY_TIMEOUT_MS = 75_000`, `SUMMARY_NUM_PREDICT = 180`, no-CoT system prompt,
+  `raceSummarizeCall` hard ceiling, extractive fallback on LLM failure.
+- `AiChatPanel.tsx`: passes `mode: 'extractive'`; try/finally clears summarizing/generating
+  states; honest copy for the local digest phase.
+- Tests: extractive compactness; LLM timeout → extractive; hung summarizeFn cannot block forever;
+  panel long-chat send does not call LLM summarize and still answers.

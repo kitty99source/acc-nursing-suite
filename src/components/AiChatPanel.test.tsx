@@ -373,6 +373,49 @@ describe('<AiChatPanel />', () => {
     });
   });
 
+  it('long chat uses extractive summary (no LLM summarize call) and still answers — never hangs on summarizing (2026-08-04)', async () => {
+    aiServiceMocks.generateLocalAiChatResponseStream.mockResolvedValue({
+      ok: true,
+      text: 'Grounded short answer about NS01.',
+    });
+    // 8 prior turns → SUMMARIZE_MESSAGE_THRESHOLD; next send must compress older context.
+    const prior = Array.from({ length: 8 }, (_, i) => ({
+      id: `hist-${i}`,
+      role: (i % 2 === 0 ? 'user' : 'assistant') as 'user' | 'assistant',
+      content: i % 2 === 0 ? `Prior question ${i} about nursing packages` : `Prior answer ${i} on NS01 caps`,
+      createdAt: i + 1,
+    }));
+    useAiChatStore.setState({ hydrated: true, messages: prior, conversationSummary: null });
+    await act(async () => {
+      root.render(<AiChatPanel />);
+    });
+    await flush();
+
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    const setValue = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!;
+    await act(async () => {
+      // Greeting path is hard-grounding-allowed (same as other panel tests) — isolates summarize behaviour.
+      setValue.call(textarea, 'hello');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const sendButton = container.querySelector('button[aria-label="Send"]') as HTMLButtonElement;
+    await act(async () => {
+      sendButton.click();
+    });
+    await flush();
+
+    // Extractive path: never hit the non-streaming Ollama summarize helper.
+    expect(aiServiceMocks.generateLocalAiChatResponse).not.toHaveBeenCalled();
+    expect(aiServiceMocks.generateLocalAiChatResponseStream).toHaveBeenCalled();
+    expect(useAiChatStore.getState().sending).toBe(false);
+    const summary = useAiChatStore.getState().conversationSummary;
+    expect(summary?.text).toBeTruthy();
+    expect(summary?.text).toContain('extractive digest');
+    const assistant = useAiChatStore.getState().messages.filter((m) => m.role === 'assistant').at(-1);
+    expect(assistant?.content).toContain('NS01');
+    expect(assistant?.historySummarized).toBe(true);
+  });
+
   it('hard-gates genuinely off-topic questions (geneva conventions) — shows app refuse, never calls Ollama (2026-08-04 durable fix)', async () => {
     // Emergency transport is now ingested (§6/§7) so it is no longer the refuse exemplar.
     // Geneva conventions remains absent from both static KB and the ACC corpus.

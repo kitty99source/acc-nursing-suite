@@ -71,10 +71,7 @@ function readRaw(id) {
 // ---------------------------------------------------------------------------
 
 const nursingItems = nationalContracts.parseNursingText(readRaw('nursing-service-schedule'));
-const alliedItems = scheduleParser.parsePricedCodeTable(
-  readRaw('allied-health-services-service-schedule'),
-  knownCodes.ALLIED_HEALTH_CODES,
-);
+const alliedItems = nationalContracts.parseAlliedHealthText(readRaw('allied-health-services-service-schedule'));
 const electiveItems = nationalContracts.parseElectiveSurgeryText(readRaw('elective-surgery-service-schedule'));
 const cotrItems = scheduleParser.parseCotrRateSheet(
   readRaw('ACC1523-Specified-treatment-provider-costs'),

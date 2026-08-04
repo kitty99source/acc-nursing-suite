@@ -68,6 +68,26 @@ export function parseElectiveSurgeryText(text: string): ScheduleItem[] {
   ];
 }
 
+/**
+ * Same root cause as sliceNursingTable/sliceElectiveSurgeryTables: PP2T (the LAST known code in
+ * ALLIED_HEALTH_CODES, and the last of Table 7's real rows) had an unbounded segment search that
+ * ran to end-of-document, swallowing the rest of Table 7's own trailing "Price Review" clauses
+ * PLUS the entire unrelated "Table 8 - Relationship Management" section (roles/contacts, not
+ * codes/prices) and everything after it — a ~62KB single field instead of PP2T's real ~60-byte
+ * row. Slices the raw text to end at the real "Table 8" boundary before parsing. Falls back to
+ * the whole text (old behaviour) if the marker isn't found, so this never silently produces zero
+ * items.
+ */
+function sliceAlliedHealthTable(text: string): string {
+  const table8Start = text.indexOf('Table 8');
+  return table8Start === -1 ? text : text.slice(0, table8Start);
+}
+
+/** Exported so scripts/ingest-acc-schedules.mjs uses this exact same boundary-slicing logic. */
+export function parseAlliedHealthText(text: string): ScheduleItem[] {
+  return parsePricedCodeTable(sliceAlliedHealthTable(text), ALLIED_HEALTH_CODES);
+}
+
 /** Marker written into every seeded record's `customFields`, so seeding can be idempotent/detectable. */
 export const NATIONAL_SCHEDULE_MARKER_KEY = 'accNationalScheduleSourceId';
 
@@ -191,7 +211,7 @@ export function buildNationalScheduleContracts(rawText: Record<string, string>):
   if (nursingText) out.push(contractFromNursingItems(parseNursingText(nursingText)));
 
   const alliedText = rawText['allied-health-services-service-schedule'];
-  if (alliedText) out.push(contractFromAlliedHealthItems(parsePricedCodeTable(alliedText, ALLIED_HEALTH_CODES)));
+  if (alliedText) out.push(contractFromAlliedHealthItems(parseAlliedHealthText(alliedText)));
 
   const electiveText = rawText['elective-surgery-service-schedule'];
   if (electiveText) out.push(contractFromElectiveSurgeryItems(parseElectiveSurgeryText(electiveText)));

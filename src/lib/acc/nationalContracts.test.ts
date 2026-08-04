@@ -6,11 +6,18 @@ import {
   buildNationalScheduleContracts,
   hasNationalScheduleContract,
   NATIONAL_SCHEDULE_MARKER_KEY,
+  parseAlliedHealthText,
   parseElectiveSurgeryText,
   parseNursingText,
 } from './nationalContracts';
 import { parseCotrRateSheet, parsePricedCodeTable } from './scheduleParser';
-import { COTR_ALL_CODES, ELECTIVE_SURGERY_CODES, ELECTIVE_SURGERY_NONCORE_CODES, NURSING_CODES } from './knownCodes';
+import {
+  ALLIED_HEALTH_CODES,
+  COTR_ALL_CODES,
+  ELECTIVE_SURGERY_CODES,
+  ELECTIVE_SURGERY_NONCORE_CODES,
+  NURSING_CODES,
+} from './knownCodes';
 import type { Contract } from '../../types';
 
 const RAW_DIR = path.join(__dirname, '../../../docs/research/raw-text');
@@ -223,6 +230,40 @@ describe('parseNursingText — NSAC (last known code) row-boundary fix', () => {
   it('every other code is unaffected by the boundary fix (real prices still resolve)', () => {
     expect(byCode.NS01.price).toBe(525.4);
     expect(byCode.NST6.actualCost).toBe(true);
+  });
+});
+
+describe('parseAlliedHealthText — PP2T (last known code) row-boundary fix', () => {
+  const raw = loadRawText()['allied-health-services-service-schedule'];
+  const items = parseAlliedHealthText(raw);
+  const byCode = Object.fromEntries(items.map((i) => [i.code, i]));
+
+  it('extracts every known Allied Health code exactly once, with no duplicates', () => {
+    expect(items).toHaveLength(ALLIED_HEALTH_CODES.length);
+    const codes = items.map((i) => i.code);
+    expect(new Set(codes).size).toBe(codes.length);
+    expect(codes.sort()).toEqual([...ALLIED_HEALTH_CODES].sort());
+  });
+
+  it('bounds PP2T (the LAST known code, last row of Table 7) to its own real row, not the rest of the document', () => {
+    // Before the fix, PP2T's unbounded search swallowed everything after it to the end of the
+    // whole document as its own description text (~62KB single item), because it is the last
+    // code that occurs in document order and the old parse ran parsePricedCodeTable directly
+    // against the whole raw text with no "Table 8" (Relationship Management, an unrelated
+    // section) cutoff.
+    expect(byCode.PP2T).toBeDefined();
+    expect(byCode.PP2T.description.length).toBeLessThan(2000);
+    expect(byCode.PP2T.description).toContain('Pelvic');
+    expect(byCode.PP2T.description).toContain('MBI');
+    expect(byCode.PP2T.price).toBe(124.25);
+    // Must NOT have bled into the unrelated "Table 8 - Relationship Management" section's content.
+    expect(byCode.PP2T.description).not.toContain('Recovery Team');
+    expect(byCode.PP2T.description).not.toContain('Engagement');
+  });
+
+  it('every other code is unaffected by the boundary fix (real prices still resolve)', () => {
+    expect(byCode.PT01.price).toBe(65.97);
+    expect(byCode.PTP4.price).toBeDefined();
   });
 });
 

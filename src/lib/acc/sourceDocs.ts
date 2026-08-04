@@ -199,6 +199,58 @@ export const ACC_SOURCE_DOCS: AccSourceDoc[] = [
     versionNote: 'Trivially-found real source for the LOW-priority "home modifications" gap noted in docs/research/acc-public-contract-sources-2026-08.md §8',
     rawTextFile: 'housing-modification-services-og.txt',
   },
+  // --------------------------------------------------------------------------
+  // Added 4 Aug 2026 — closing §6 (patient/provider travel) and §7 (emergency
+  // transport / ambulance criteria) gaps in
+  // docs/research/acc-public-contract-sources-2026-08.md. Every URL was fetched
+  // and verified live on that date; nothing invented. Preferring a few strong
+  // authoritative sources over thin duplicates.
+  // --------------------------------------------------------------------------
+  {
+    id: 'ancillary-services-regulations-2002',
+    title: 'Accident Compensation (Ancillary Services) Regulations 2002',
+    url: 'https://www.legislation.govt.nz/regulation/public/2002/0013/latest/whole.html',
+    docType: 'info-sheet',
+    serviceTypes: ['emergency-transport', 'client-travel', 'accommodation'],
+    versionNote: 'SR 2002/13 — version as at 10 July 2026 (PDF fetched 4 Aug 2026)',
+    rawTextFile: 'ancillary-services-regulations-2002.txt',
+  },
+  {
+    id: 'accident-services-transport-accommodation',
+    title: 'Accident Services — A Guide for DHB and ACC Staff (Section 4.12 Transport and accommodation)',
+    url: 'https://www.acc.co.nz/assets/provider/accident-services-a-guide-for-dhb-and-acc-staff.pdf',
+    docType: 'handbook',
+    serviceTypes: ['emergency-transport', 'client-travel', 'accommodation', 'inter-hospital-transfer'],
+    versionNote: 'Extract of §4.12 only (emergency transport definition, ACC vs DHB funding tables, inter-hospital transfers, non-emergency air/ambulance prior approval)',
+    rawTextFile: 'accident-services-transport-accommodation.txt',
+  },
+  {
+    id: 'client-travel-and-transport',
+    title: 'Travel and transport (client guidance)',
+    url: 'https://www.acc.co.nz/im-injured/types-of-ongoing-support/travel-transport',
+    docType: 'info-sheet',
+    serviceTypes: ['client-travel', 'accommodation', 'emergency-transport'],
+    versionNote: 'Public acc.co.nz client page — last published 19 June 2024 (fetched 4 Aug 2026)',
+    rawTextFile: 'client-travel-and-transport.txt',
+  },
+  {
+    id: 'travel-policy-for-providers',
+    title: 'Travel Policy for Providers',
+    url: 'https://www.acc.co.nz/assets/provider/supplier-road-travel-guidelines.pdf',
+    docType: 'handbook',
+    serviceTypes: ['provider-travel', 'nursing', 'physiotherapy', 'occupational-therapy', 'home-and-community-support'],
+    versionNote: 'Dated 3 March 2025 — ACC policy on supplier/provider travel claims (distinct from client/patient travel assistance)',
+    rawTextFile: 'travel-policy-for-providers.txt',
+  },
+  {
+    id: 'ambulance-road-and-air-service',
+    title: 'Ambulance - road and air (Recovery services directory)',
+    url: 'https://www.acc.co.nz/for-providers/treatment-recovery/recovery-services-directory',
+    docType: 'info-sheet',
+    serviceTypes: ['emergency-transport', 'ambulance', 'aeromedical'],
+    versionNote: 'Public ACC Recovery services directory section — emergency road/air ambulance purpose, referral, dispatch, and client cost (fetched 4 Aug 2026)',
+    rawTextFile: 'ambulance-road-and-air-service.txt',
+  },
 ];
 
 export function sourceDocById(id: string): AccSourceDoc | undefined {

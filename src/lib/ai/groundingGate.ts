@@ -59,7 +59,7 @@ export const MAX_STATIC_RULES_INJECTED = 5;
 export const UNGROUNDED_REFUSE_MESSAGE =
   "I don't have grounded ACC material on that in my current knowledge base. I can help with " +
   'nursing/allied-health/elective-surgery schedules, package caps, review/appeal rights, weekly ' +
-  'compensation, telehealth, etc. — or ask a clarifying question about which of those you mean.';
+  'compensation, telehealth, emergency/patient transport, etc. — or ask a clarifying question about which of those you mean.';
 
 /** Pure-greeting / thanks turns that should still reach the model without requiring RAG or static KB. */
 const CASUAL_QUERY_RE =

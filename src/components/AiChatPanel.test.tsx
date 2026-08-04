@@ -368,7 +368,9 @@ describe('<AiChatPanel />', () => {
     });
   });
 
-  it('hard-gates off-topic questions (emergency transport) — shows app refuse, never calls Ollama (2026-08-04 durable fix)', async () => {
+  it('hard-gates genuinely off-topic questions (geneva conventions) — shows app refuse, never calls Ollama (2026-08-04 durable fix)', async () => {
+    // Emergency transport is now ingested (§6/§7) so it is no longer the refuse exemplar.
+    // Geneva conventions remains absent from both static KB and the ACC corpus.
     aiServiceMocks.generateLocalAiChatResponseStream.mockResolvedValue({
       ok: true,
       text: 'should never be used',
@@ -382,7 +384,7 @@ describe('<AiChatPanel />', () => {
     const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
     const setValue = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!;
     await act(async () => {
-      setValue.call(textarea, 'can you pull up the emergency transport criteria');
+      setValue.call(textarea, 'what do the geneva conventions say about medical transport');
       textarea.dispatchEvent(new Event('input', { bubbles: true }));
     });
     const sendButton = container.querySelector('button[aria-label="Send"]') as HTMLButtonElement;
@@ -394,10 +396,9 @@ describe('<AiChatPanel />', () => {
     expect(aiServiceMocks.generateLocalAiChatResponseStream).not.toHaveBeenCalled();
     expect(aiServiceMocks.generateLocalAiChatResponse).not.toHaveBeenCalled();
     const msgs = useAiChatStore.getState().messages;
-    expect(msgs.some((m) => m.role === 'user' && m.content.includes('emergency transport'))).toBe(true);
+    expect(msgs.some((m) => m.role === 'user' && m.content.toLowerCase().includes('geneva'))).toBe(true);
     const assistant = msgs.find((m) => m.role === 'assistant');
     expect(assistant?.content).toContain("don't have grounded ACC material");
-    expect(assistant?.content.toLowerCase()).not.toContain('geneva');
     expect(assistant?.content.toLowerCase()).not.toContain('schedule 5');
     expect(assistant?.retrievedSources).toBeUndefined();
     expect(useAiChatStore.getState().sending).toBe(false);

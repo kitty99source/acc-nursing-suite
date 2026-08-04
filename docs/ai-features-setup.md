@@ -170,13 +170,13 @@ air-ambulance encyclopaedia content in `<think>`. Soft instructions are not reli
 4. Prompt scope-lock / groundedness text remains for in-scope turns (never invent named criteria
    documents, Geneva Conventions, aircraft models, etc. unless literally in excerpts).
 
-So if you ask about emergency-transport / flight criteria (not in the ingested corpus) and get a
+So if you ask about a topic genuinely absent from the ingested corpus (e.g. Geneva conventions) and get a
 short "I don't have grounded ACC material…" reply with no reasoning toggle and no Sources, that is
 **working as designed** — the app refused before the model could hallucinate. In-scope questions
-(e.g. NS04 prior approval, 25-consult package caps, telehealth / review-rights topics covered by
-ingested docs) still reach the model normally. Chat sampling uses temperature `0.3`; `num_predict`
-stays at 2048. **New chat** clears messages, chips, and the rolling conversation summary together.
-See also `docs/research/acc-public-contract-sources-2026-08.md` §7.
+(e.g. NS04 prior approval, 25-consult package caps, telehealth / review-rights, **emergency
+transport / patient travel** — see `docs/research/acc-public-contract-sources-2026-08.md` §10)
+still reach the model normally. Chat sampling uses temperature `0.3`; `num_predict` stays at
+2048. **New chat** clears messages, chips, and the rolling conversation summary together.
 
 ## Long-chat summarization (2026-08-04)
 

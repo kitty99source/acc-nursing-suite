@@ -121,6 +121,13 @@ const NARRATIVE_DOC_IDS = [
   'acc8331-telehealth-guide',
   'acc-te-whanau-maori-guidance',
   'housing-modification-services-og',
+  // Added 4 Aug 2026 — closing §6/§7 travel & emergency-transport gaps
+  // (docs/research/acc-public-contract-sources-2026-08.md).
+  'ancillary-services-regulations-2002',
+  'accident-services-transport-accommodation',
+  'client-travel-and-transport',
+  'travel-policy-for-providers',
+  'ambulance-road-and-air-service',
 ];
 
 let allChunks = [];

@@ -1,6 +1,14 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { chunkDocumentText } from './knowledgeChunking';
-import { buildCorpusIndex, NEAR_DUPLICATE_SIMILARITY_THRESHOLD, retrieveTopChunks, tokenize } from './knowledgeRetrieval';
+import {
+  buildCorpusIndex,
+  MIN_RELEVANT_SCORE,
+  NEAR_DUPLICATE_SIMILARITY_THRESHOLD,
+  retrieveTopChunks,
+  tokenize,
+} from './knowledgeRetrieval';
 
 describe('tokenize', () => {
   it('lowercases, strips punctuation and drops stopwords', () => {
@@ -210,5 +218,46 @@ describe('retrieveTopChunks (RAG-lite relevance scoring)', () => {
       const jaccard = intersection / union;
       expect(jaccard).toBeGreaterThan(NEAR_DUPLICATE_SIMILARITY_THRESHOLD);
     });
+  });
+});
+
+/**
+ * Regression against the committed ingested corpus (public/data/acc/knowledge-chunks.json)
+ * after the §6/§7 travel + emergency-transport ingestion. Ensures the hard gate will see
+ * real on-topic chunks — not nursing Schedule 5.11 / NS04 package-cap text.
+ */
+describe('ingested corpus — emergency transport retrieval (§6/§7 closure)', () => {
+  const corpusPath = path.join(__dirname, '../../../public/data/acc/knowledge-chunks.json');
+  const corpus = JSON.parse(fs.readFileSync(corpusPath, 'utf8')) as {
+    chunks: Array<{ id: string; sourceDocId: string; chunkIndex: number; text: string }>;
+  };
+  const chunks = corpus.chunks;
+  const index = buildCorpusIndex(chunks);
+
+  const TRANSPORT_SOURCE_IDS = new Set([
+    'ancillary-services-regulations-2002',
+    'accident-services-transport-accommodation',
+    'client-travel-and-transport',
+    'travel-policy-for-providers',
+    'ambulance-road-and-air-service',
+  ]);
+
+  it('retrieves on-topic transport chunks above MIN_RELEVANT_SCORE for emergency-transport queries', () => {
+    for (const q of [
+      'emergency transport criteria',
+      'can you pull up the emergency transport criteria',
+      'ambulance covered',
+      'flight transport ACC',
+    ]) {
+      const results = retrieveTopChunks(q, chunks, index, { k: 3 });
+      expect(results.length, `expected hits for: ${q}`).toBeGreaterThan(0);
+      expect(results[0].score).toBeGreaterThan(MIN_RELEVANT_SCORE);
+      expect(TRANSPORT_SOURCE_IDS.has(results[0].chunk.sourceDocId), `top hit for "${q}" was ${results[0].chunk.sourceDocId}`).toBe(
+        true,
+      );
+      const joined = results.map((r) => r.chunk.text).join(' ').toLowerCase();
+      expect(joined).toMatch(/emergency transport|ambulance|air travel|dispatch/);
+      expect(joined).not.toMatch(/ns04|schedule 5\.11|25 consult/);
+    }
   });
 });

@@ -838,7 +838,10 @@ describe('buildChatMessages — real ACC document retrieval (RAG-lite)', () => {
     expect(JSON.stringify(result.messages)).not.toMatch(/Schedule 5\.11|25 consult|NS04/);
   });
 
-  it('hard-gates "emergency transport criteria" on a fresh chat — no system prompt with static rules, no model call', async () => {
+  it('hard-gates "emergency transport criteria" when the corpus asset is unavailable — no static Schedule 5.x dump, no model call', async () => {
+    // Corpus fetch failure → zero RAG. Static nursing rules must still NOT unlock this topic
+    // (original confabulation path). With §6/§7 ingested, a live corpus would allow the turn —
+    // covered by the retrieval regression below.
     const { UNGROUNDED_REFUSE_MESSAGE } = await import('./aiChatContext');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
     const result = await buildChatMessages({
@@ -852,6 +855,56 @@ describe('buildChatMessages — real ACC document retrieval (RAG-lite)', () => {
     expect(result.messages).toEqual([]);
     expect(result.ungroundedRefuse).toBe(true);
     expect(result.ungroundedRefuseMessage).toBe(UNGROUNDED_REFUSE_MESSAGE);
+  });
+
+  it('allows "emergency transport criteria" when the ingested transport corpus is available — RAG sources, no nursing package-cap dump', async () => {
+    // Use a slice of the real committed corpus (not a 2-chunk toy) so TF-IDF IDF scales match
+    // production — a tiny synthetic corpus scores just under MIN_RELEVANT_SCORE even for perfect
+    // text matches.
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const corpusPath = path.join(__dirname, '../../public/data/acc/knowledge-chunks.json');
+    const full = JSON.parse(fs.readFileSync(corpusPath, 'utf8')) as {
+      generatedAt: string;
+      chunks: Array<{ id: string; sourceDocId: string; chunkIndex: number; text: string }>;
+    };
+    const transportIds = new Set([
+      'ancillary-services-regulations-2002',
+      'accident-services-transport-accommodation',
+      'client-travel-and-transport',
+      'travel-policy-for-providers',
+      'ambulance-road-and-air-service',
+    ]);
+    // Keep all transport chunks + a handful of unrelated ones so retrieval still has to pick
+    // the right topic (not just "the only chunks present").
+    const unrelated = full.chunks.filter((c) => !transportIds.has(c.sourceDocId)).slice(0, 40);
+    const transport = full.chunks.filter((c) => transportIds.has(c.sourceDocId));
+    const TRANSPORT_CORPUS = {
+      generatedAt: full.generatedAt,
+      chunks: [...transport, ...unrelated],
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => TRANSPORT_CORPUS }));
+    const result = await buildChatMessages({
+      history: [],
+      chips: [],
+      data: dataWith([]),
+      userMessage: 'can you pull up the emergency transport criteria',
+    });
+    expect(result.ungroundedRefuse).toBeUndefined();
+    expect(result.messages.length).toBeGreaterThanOrEqual(2);
+    expect(result.retrievedSources.length).toBeGreaterThan(0);
+    expect(
+      result.retrievedSources.some((s) =>
+        /accident-services-transport-accommodation|ambulance-road-and-air-service|ancillary-services/.test(
+          s.sourceDocId,
+        ),
+      ),
+    ).toBe(true);
+    // Static nursing rules must not be injected for this RAG-only topic (the base system
+    // prompt still mentions "Schedule 5.11.1" as a *forbidden citation example* — that is fine;
+    // what we guard against is the COMPLIANCE_RULES dump that caused the original confabulation).
+    expect(result.messages[0].content).not.toMatch(/Extended Nursing \(NS04\)|25 in-person consultations/);
+    expect(result.messages[0].content).toMatch(/emergency transport|ambulance/i);
   });
 
   it('allows NS04 prior-approval questions and injects matching static rules (not the full rulebook dump on every turn)', async () => {

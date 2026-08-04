@@ -222,6 +222,8 @@ contracts records, exactly as the owner already anticipated.
 
 ## 6. Follow-up ingestion candidate found 2026-08-04 — travel / emergency transport billing
 
+> **CLOSED 2026-08-04** — see §10. Original gap note retained below for history.
+
 While investigating an owner-reported AI-chat quality bug (the assistant was asked
 about emergency-vs-non-emergency **flight/travel transport billing** — a patient
 choosing Auckland over a geographically closer Wellington for surgery), a search of
@@ -268,6 +270,14 @@ documents (not assumed) before ingestion, per this doc's own "nothing here is
 fabricated or guessed" standard.
 
 ## 7. Follow-up ingestion candidate found 2026-08-04 — emergency transport / ambulance triage criteria
+
+> **CLOSED 2026-08-04** — see §10. Original gap note retained below for history.
+> Honest remaining gap: no public ACC document publishes a named clinical
+> triage colour scheme (e.g. Red/Silver/Gold/Green) or specific clinical
+> timeframes like "MI >30 min for PCI" — those were model inventions. What
+> *is* public (and now ingested) is the legal/operational definition of
+> emergency vs non-emergency transport, ACC vs DHB funding split, inter-hospital
+> transfer rules, air-ambulance dispatch framing, and client cost.
 
 A repeat/related owner-reported AI-chat quality bug: asked about **emergency
 transport criteria** (again framed around a real Auckland-vs-Wellington
@@ -557,3 +567,41 @@ real generated files (not assumed):
   size (only the top-3 matches are ever used). The only thing that changed
   for a user is that more real, on-topic questions now get grounded answers
   instead of "I don't know" or (worse) a fabricated one.
+
+## 10. Gap closure (2026-08-04) — §6 travel + §7 emergency transport ingested
+
+Closed the §6 / §7 content gaps by fetching and ingesting **5 real, public**
+ACC / statutory documents (same pipeline as §9: `docs/research/raw-text/*.txt`
+→ `scripts/ingest-acc-schedules.mjs` → `public/data/acc/knowledge-chunks.json`).
+Nothing fabricated; every URL was live-fetched and verified on 4 Aug 2026.
+
+| Gap | Source ingested | Real URL | Date / version |
+|---|---|---|---|
+| §7 Emergency transport legal definition + contribution rules | Accident Compensation (Ancillary Services) Regulations 2002 (SR 2002/13) | legislation.govt.nz/regulation/public/2002/0013/latest/whole.html | Version as at 10 July 2026 |
+| §7 ACC vs DHB funding, 24-hour emergency transport, inter-hospital transfers, non-emergency air/ambulance prior approval | Accident Services — A Guide for DHB and ACC Staff, **§4.12 extract only** | acc.co.nz/assets/provider/accident-services-a-guide-for-dhb-and-acc-staff.pdf | Public ACC handbook (extract of transport/accommodation section) |
+| §6 Patient travel / accommodation / air travel / emergency travel invoice | Travel and transport (client guidance) | acc.co.nz/im-injured/types-of-ongoing-support/travel-transport | Last published 19 June 2024 |
+| §6 Provider travel policy (named by nursing schedule) | Travel Policy for Providers | acc.co.nz/assets/provider/supplier-road-travel-guidelines.pdf | Dated 3 March 2025 |
+| §7 Emergency road/air ambulance service overview (dispatch, no cost to ACC-injured client) | Ambulance - road and air (Recovery services directory) | acc.co.nz/for-providers/treatment-recovery/recovery-services-directory | Live page section fetched 4 Aug 2026 |
+
+**Honest remaining gap:** no public ACC document was found that publishes a
+named clinical triage colour scheme (Red/Silver/Gold/Green) or specific
+clinical timeframes (e.g. MI/PCI or stroke thrombolysis windows). Those were
+model inventions. Closest real public material is the Ancillary Services
+Regulations definition of emergency transport (starts within 24 hours + urgent
+treatment), Accident Services §4.12 operational funding tables, and the
+Recovery services directory's "dispatch criteria" / communications-centre
+triage framing — not a published clinical protocol.
+
+**Coverage / retrieval smoke (after ingest):**
+- `npm run check-knowledge-coverage` → Patient travel & accommodation
+  `[OK]`; Emergency / ambulance transport criteria `[OK]` (was zero/thin).
+- TF-IDF retrieval (`MIN_RELEVANT_SCORE` 0.21): "emergency transport
+  criteria", "ambulance covered", "flight transport ACC", "air ambulance ACC"
+  all return on-topic chunks from the new transport sources (not nursing
+  NS04 / Schedule 5.11 package caps).
+
+**Storage delta (post-§9 baseline → after this pass):**
+- Narrative chunks: **499 → 543** (+44)
+- `knowledge-chunks.json`: **~689 KB → ~766 KB** (+~77 KB)
+- `schedules.json` unchanged (no new structured price tables)
+- Same safety profile as §9.1 (local static asset, lazy-loaded, top-k=3 only)

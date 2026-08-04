@@ -37,7 +37,11 @@ describe('scoreStaticKnowledgeRelevance', () => {
     expect(cap.maxScore).toBeGreaterThan(MIN_STATIC_RELEVANT_SCORE);
   });
 
-  it('scores emergency transport / geneva / flight ambulance as irrelevant (score 0)', () => {
+  it('scores emergency transport / geneva / foreign flight questions as static-irrelevant (score 0) — transport is RAG-only, not Schedule 5.x', () => {
+    // Static COMPLIANCE_RULES still must NOT light up for emergency transport (that was the
+    // original confabulation path). After §6/§7 ingestion, emergency transport is answered via
+    // RAG chunks, not static nursing rules — so static score stays 0 even though the topic is now
+    // in the knowledge corpus.
     for (const q of [
       'can you pull up the emergency transport criteria',
       'geneva conventions',
@@ -88,12 +92,11 @@ describe('evaluateChatGrounding (hard gate)', () => {
     _resetKnowledgeCorpusCacheForTests();
   });
 
-  it('refuses emergency transport / geneva / flight questions — no model call path', async () => {
-    for (const q of [
-      'can you pull up the emergency transport criteria',
-      'geneva conventions',
-      'flight air ambulance USA',
-    ]) {
+  it('refuses genuinely off-topic questions (geneva / foreign flight) when corpus is unavailable — no model call path', async () => {
+    // With fetch stubbed to fail, RAG returns nothing. Topics that are still absent from both
+    // static KB and (in this stubbed path) RAG must refuse. Emergency transport is now ingested —
+    // covered by the retrieved-chunks allow test below, not this refuse path.
+    for (const q of ['geneva conventions', 'flight air ambulance USA']) {
       const d = await evaluateChatGrounding({ userMessage: q, hasChips: false });
       expect(d.allowModel).toBe(false);
       if (!d.allowModel) {
@@ -102,6 +105,35 @@ describe('evaluateChatGrounding (hard gate)', () => {
         expect(d.staticSections).toEqual([]);
         expect(d.retrievedChunks).toEqual([]);
       }
+    }
+  });
+
+  it('allows emergency transport criteria when RAG returns on-topic transport chunks (post §6/§7 ingest)', async () => {
+    const transportChunk = {
+      chunk: {
+        id: 'accident-services-transport-accommodation#6',
+        sourceDocId: 'accident-services-transport-accommodation',
+        chunkIndex: 6,
+        text:
+          'Regulation 3 of the Ancillary Services Regulations 2002 states Emergency transport means transport that: ' +
+          'starts within 24 hours of a claimant suffering a personal injury and is necessary for obtaining treatment urgently. ' +
+          'ACC is responsible for emergency transport (air, and road including water) within 24 hours. ' +
+          'All emergency transport, including emergency inter-hospital transfers, must be dispatched by an ambulance communications centre.',
+      },
+      score: 0.45,
+    };
+    const d = await evaluateChatGrounding({
+      userMessage: 'can you pull up the emergency transport criteria',
+      hasChips: false,
+      retrievedChunks: [transportChunk],
+    });
+    expect(d.allowModel).toBe(true);
+    if (d.allowModel) {
+      expect(d.reason).toBe('retrieved-chunks');
+      expect(d.retrievedChunks).toHaveLength(1);
+      expect(d.retrievedChunks[0].chunk.sourceDocId).toBe('accident-services-transport-accommodation');
+      // Must NOT inject static nursing Schedule 5.x / NS04 just because the model is allowed.
+      expect(d.staticSections.join('\n')).not.toMatch(/NS04|Schedule 5\.11|25 consult/i);
     }
   });
 

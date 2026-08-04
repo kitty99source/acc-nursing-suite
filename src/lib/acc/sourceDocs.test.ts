@@ -39,4 +39,23 @@ describe('ACC_SOURCE_DOCS registry', () => {
       expect(sourceDocById(id), `expected source doc ${id} to be registered`).toBeDefined();
     }
   });
+
+  it('includes the §6/§7 travel and emergency-transport documents (URL + on-disk fixture)', () => {
+    const expectedIds = [
+      'ancillary-services-regulations-2002',
+      'accident-services-transport-accommodation',
+      'client-travel-and-transport',
+      'travel-policy-for-providers',
+      'ambulance-road-and-air-service',
+    ];
+    for (const id of expectedIds) {
+      const doc = sourceDocById(id);
+      expect(doc, `expected source doc ${id} to be registered`).toBeDefined();
+      expect(doc!.url).toMatch(/^https:\/\//);
+      const rawPath = path.join(RAW_TEXT_DIR, doc!.rawTextFile);
+      expect(fs.existsSync(rawPath), `missing raw-text fixture for ${id}`).toBe(true);
+      const text = fs.readFileSync(rawPath, 'utf8');
+      expect(text.length).toBeGreaterThan(200);
+    }
+  });
 });

@@ -161,13 +161,15 @@ air-ambulance encyclopaedia content in `<think>`. Soft instructions are not reli
 
 1. Before any Ollama call (including long-chat summarization), the app runs RAG retrieval **and**
    scores the question against the static compliance rules / case stages (same TF-IDF-lite scorer
-   family as chunk retrieval; static threshold `MIN_STATIC_RELEVANT_SCORE = 0.25`).
-2. If **no retrieved chunks** AND **static KB is not relevant** AND no record chips are attached
-   AND the message is not a simple greeting/thanks → **the model is never called**. The panel
-   immediately shows a short deterministic assistant message (no Sources chips), e.g. that the
-   current knowledge base has no grounded ACC material on that topic.
-3. When the model *is* called, only static rules that scored as relevant are injected — not the
-   whole rulebook every turn. Retrieved document excerpts are preferred when present.
+   family as chunk retrieval; static threshold `MIN_STATIC_RELEVANT_SCORE = 0.25`) **and** matches
+   the common-terms lexicon (acronym/glossary hits only — see § Common-terms lexicon).
+2. If **no retrieved chunks** AND **static KB is not relevant** AND **no lexicon hit** AND no
+   record chips are attached AND the message is not a simple greeting/thanks → **the model is
+   never called**. The panel immediately shows a short deterministic assistant message (no Sources
+   chips), e.g. that the current knowledge base has no grounded ACC material on that topic.
+3. When the model *is* called, only static rules that scored as relevant (plus any matching lexicon
+   terms) are injected — not the whole rulebook / lexicon every turn. Retrieved document excerpts
+   are preferred when present.
 4. Prompt scope-lock / groundedness text remains for in-scope turns (never invent named criteria
    documents, Geneva Conventions, aircraft models, etc. unless literally in excerpts).
 
@@ -197,12 +199,40 @@ reasoning-model call on the critical path (that caused a real 10+ minute
    timeout/error it falls back to extractive (then cold trim only if that also fails). **Not**
    used on the default pre-send path — reserved for experiments / a future Settings toggle.
 4. **Where:** the rolling summary is saved with the chat in IndexedDB. Reload reuses it. The
-   panel shows an “Earlier messages summarized” note when a summary is active.
+   panel shows a **compact one-line chip** (“Earlier messages summarized…”) only when a
+   summary was **freshly created** for that send — with an **X to dismiss**. It **auto-clears
+   on the next send** and is **not** a permanent sticky banner just because a summary exists
+   in IndexedDB (owner report after extractive summarization).
 5. **Stuck UI:** send wraps summarize + answer in try/finally + shared `AbortController` so
    Stop / Clear / New chat never leave “summarizing…” forever.
 
 See `src/lib/ai/conversationSummary.ts`, `docs/research/local-ai-speed-2026-08.md` §9, and
 `src/lib/aiChatContext.ts` (`buildChatMessages`).
+
+## Common-terms lexicon (2026-08-04)
+
+Short acronym / glossary facts (e.g. **PHAS** = Public Health Acute Services) live in
+`src/lib/ai/commonTermsLexicon.ts`. They are **not** dumped into every turn:
+
+1. On each send, `matchLexiconTerms(userMessage)` finds term/alias hits only.
+2. Matching entries are injected into the system prompt (same “REFERENCE MATERIAL for this
+   turn only” framing as static compliance rules).
+3. Lexicon hits count as grounding for the hard gate (`reason: 'lexicon-relevant'`), so
+   questions like “would district nursing ever come under PHAS?” reach the model with a
+   verified definition instead of being refused or inventing a PHO mashup.
+
+**How to add a term:** append an object to `COMMON_TERMS_LEXICON` with `term`, optional
+`aliases`, `expansion`, short `definition`, optional `notes`, and a `source` citation.
+Prefer official ACC / MoH / legislation wording; if ambiguous, say so in `definition`
+rather than guessing. Keep entries short — detailed package-cap / approval rules stay in
+`COMPLIANCE_RULES` / the RAG corpus. Add a synthetic unit test in
+`commonTermsLexicon.test.ts` when the term is high-stakes (like PHAS).
+
+**PHAS (verified):** Public Health Acute Services — ACC’s acute public-hospital funding
+pathway via the Crown/MoH agreement (IPRC (PHAS) Regulations 2002; AC Act s 301). District /
+community nursing under ACC’s Nursing Services contract is generally **not** PHAS; the
+Nursing Service Schedule excludes Nursing Services while care is managed acutely under PHAS
+(cl 3.3). Sources: ACC/MoH Accident Services guide; Nursing Services Service Schedule.
 
 ## Push this laptop harder (2026-08-04 — primary speed path)
 

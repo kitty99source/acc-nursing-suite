@@ -448,7 +448,9 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
       data: dataWith([]),
       userMessage: 'Tell me about the ARTP process for this elective surgery contract',
       // Modest numCtx + padded sample chunks forces dropping at least one retrieved chunk.
-      numCtx: 4200,
+      // Slightly above the pre-lexicon 4200 so the injected ARTP common-terms entry still leaves
+      // room to keep the top elective-surgery chunk after dropping the lowest-scoring one(s).
+      numCtx: 4800,
     });
     expect(contextTooLarge).toBeFalsy();
     expect(retrievedSources.length).toBeLessThan(SAMPLE_CORPUS.chunks.length);

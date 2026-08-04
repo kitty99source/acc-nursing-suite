@@ -88,7 +88,6 @@ export function AiChatPanel() {
   const open = useAiChatStore((s) => s.open);
   const chips = useAiChatStore((s) => s.chips);
   const messages = useAiChatStore((s) => s.messages);
-  const conversationSummary = useAiChatStore((s) => s.conversationSummary);
   const sending = useAiChatStore((s) => s.sending);
   const streamingText = useAiChatStore((s) => s.streamingText);
   const setOpen = useAiChatStore((s) => s.setOpen);
@@ -109,6 +108,13 @@ export function AiChatPanel() {
   const [dragOver, setDragOver] = useState(false);
   /** Local UI phase while `sending` — summarization runs before the streamed answer, never nested. */
   const [sendPhase, setSendPhase] = useState<'idle' | 'summarizing' | 'generating'>('idle');
+  /**
+   * Ephemeral “earlier messages summarized” chip — NOT sticky for the whole session.
+   * Shown when this send used a rolling summary; cleared on the next send (or via X).
+   * Replaces the old permanent top banner that blocked the transcript whenever
+   * `conversationSummary` existed in IndexedDB.
+   */
+  const [summaryNoticeVisible, setSummaryNoticeVisible] = useState(false);
   // How many chat replies IN A ROW have timed out (see aiService.ts `isChatTimeoutError`) — reset
   // to 0 on any successful reply or any non-timeout failure. Purely a UI-escalation counter (never
   // persisted): a single timeout gets a mild "try again" note, but the SECOND consecutive one
@@ -175,7 +181,15 @@ export function AiChatPanel() {
     const confirmed = window.confirm(
       'Clear this AI chat conversation? This deletes it from this laptop and cannot be undone.',
     );
-    if (confirmed) clearHistory();
+    if (confirmed) {
+      setSummaryNoticeVisible(false);
+      clearHistory();
+    }
+  }
+
+  function handleNewChat() {
+    setSummaryNoticeVisible(false);
+    newChat();
   }
 
   function onDrop(e: React.DragEvent) {
@@ -211,6 +225,8 @@ export function AiChatPanel() {
     setSending(true);
     setStreamingText('');
     setSendPhase('generating');
+    // Auto-clear any prior summarization chip on the next send (compact notice, not sticky).
+    setSummaryNoticeVisible(false);
 
     // AbortController covers BOTH summarization and the streamed answer — Clear chat / Stop /
     // New chat cancel either phase (never leave a nested summarize hang behind a main reply).
@@ -281,6 +297,11 @@ export function AiChatPanel() {
         history.length <= RECENT_VERBATIM_MESSAGES
       ) {
         setConversationSummary(null);
+      }
+      // Compact chip only when summarization was freshly created this send — not on every
+      // later reuse (that would re-stick the notice). Cleared again on the next send / X.
+      if (ensured.status === 'created') {
+        setSummaryNoticeVisible(true);
       }
 
       const historyWindowed = ensured.historySummarized || ensured.summaryFailed;
@@ -466,7 +487,7 @@ export function AiChatPanel() {
           <h2 className="text-sm font-bold truncate">AI assistant (beta)</h2>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <button type="button" className="btn btn-icon btn-ghost" onClick={newChat} aria-label="New chat" title="New chat">
+          <button type="button" className="btn btn-icon btn-ghost" onClick={handleNewChat} aria-label="New chat" title="New chat">
             <span className="text-xs font-semibold px-1">New</span>
           </button>
           <button
@@ -493,14 +514,27 @@ export function AiChatPanel() {
         trash icon above to clear it.
       </p>
 
-      {conversationSummary?.text && (
-        <p
-          className="px-3 py-1.5 text-[11px] shrink-0 border-b"
+      {summaryNoticeVisible && (
+        <div
+          className="px-3 py-1 text-[11px] shrink-0 border-b flex items-center gap-2"
           style={{ color: 'var(--muted)', borderColor: 'var(--border)', background: 'var(--surface-2)' }}
           data-testid="earlier-messages-summarized"
+          role="status"
         >
-          Earlier messages summarized for the model — your full chat above is unchanged.
-        </p>
+          <span className="min-w-0 flex-1 truncate">
+            Earlier messages summarized for the model — full chat unchanged.
+          </span>
+          <button
+            type="button"
+            className="btn btn-icon shrink-0"
+            aria-label="Dismiss summarization notice"
+            title="Dismiss"
+            data-testid="dismiss-summarization-notice"
+            onClick={() => setSummaryNoticeVisible(false)}
+          >
+            <IconClose width={12} height={12} />
+          </button>
+        </div>
       )}
       {isConversationGettingLong(messages.length) && (
         <p
@@ -509,7 +543,7 @@ export function AiChatPanel() {
         >
           This conversation is getting long — older turns are compressed automatically when needed.
           Starting a{' '}
-          <button type="button" className="underline" style={{ color: 'var(--accent)' }} onClick={newChat}>
+          <button type="button" className="underline" style={{ color: 'var(--accent)' }} onClick={handleNewChat}>
             new chat
           </button>{' '}
           for a new topic can still help keep replies fast.
@@ -597,12 +631,6 @@ export function AiChatPanel() {
               <p className="text-[10px] mt-1" style={{ color: 'var(--muted)', marginRight: '2rem' }}>
                 Could not compress earlier messages, so some oldest turns were left out of context for this
                 reply. Your full chat above is unchanged — try again, or start a new chat for a fresh topic.
-              </p>
-            )}
-            {m.role === 'assistant' && m.historySummarized && !m.summaryFallbackTrimmed && (
-              <p className="text-[10px] mt-1" style={{ color: 'var(--muted)', marginRight: '2rem' }}>
-                Earlier messages were summarized for the model for this reply — your full chat above is
-                unchanged.
               </p>
             )}
             {m.role === 'assistant' && m.historyTrimmed && !m.summaryFallbackTrimmed && (

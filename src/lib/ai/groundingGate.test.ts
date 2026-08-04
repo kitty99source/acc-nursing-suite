@@ -166,6 +166,23 @@ describe('evaluateChatGrounding (hard gate)', () => {
     if (d.allowModel) {
       expect(d.reason).toBe('casual');
       expect(d.staticSections).toEqual([]);
+      expect(d.lexiconHits).toEqual([]);
+    }
+  });
+
+  it('allows PHAS / district-nursing acronym questions via lexicon grounding (not hallucination path)', async () => {
+    const d = await evaluateChatGrounding({
+      userMessage: 'would district nursing services ever come under PHAS?',
+      hasChips: false,
+    });
+    expect(d.allowModel).toBe(true);
+    if (d.allowModel) {
+      expect(d.reason).toBe('lexicon-relevant');
+      expect(d.lexiconHits.some((h) => h.term === 'PHAS')).toBe(true);
+      expect(d.staticSections.join('\n')).toMatch(/Public Health Acute Services/i);
+      expect(d.staticSections.join('\n').toLowerCase()).toMatch(/not/);
+      // Must not invent PHO mashups in the injected grounding text.
+      expect(d.lexiconHits.find((h) => h.term === 'PHAS')!.expansion).not.toMatch(/Primary Health Organisation/i);
     }
   });
 

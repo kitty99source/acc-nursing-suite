@@ -757,7 +757,9 @@ export async function buildChatMessages(opts: BuildChatMessagesOptions): Promise
   }
 
   const skipEmptyRetrievalRefuse =
-    grounding.reason === 'casual' || grounding.reason === 'chip-context';
+    grounding.reason === 'casual' ||
+    grounding.reason === 'chip-context' ||
+    grounding.reason === 'lexicon-relevant';
 
   const { messages, keptChunks, historyTrimmed, tooLarge } = trimToBudget(
     recentHistory,

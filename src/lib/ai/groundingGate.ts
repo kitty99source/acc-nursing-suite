@@ -12,11 +12,12 @@
 // This module is the durable fix:
 //   1. Score the user question against static compliance rules / case stages
 //      with the same TF-IDF-lite scorer used for RAG chunks.
-//   2. If retrieval returned nothing AND static KB is not relevant (and the
-//      turn is not a casual greeting / chip-grounded record question) → refuse
-//      in app code; never call the model.
+//   2. If retrieval returned nothing AND static KB is not relevant AND no
+//      common-terms lexicon hit (and the turn is not a casual greeting /
+//      chip-grounded record question) → refuse in app code; never call the model.
 //   3. When the model IS called, only inject the static sections that scored
-//      above the relevance threshold — never the whole rulebook every turn.
+//      above the relevance threshold — never the whole rulebook every turn —
+//      plus any matching lexicon acronym definitions (never the whole lexicon).
 // ============================================================================
 
 import { CASE_STAGE_LABEL } from '../caseWorkflow';
@@ -34,6 +35,11 @@ import {
 } from './knowledgeRetrieval';
 import type { KnowledgeChunk } from './knowledgeChunking';
 import { retrieveKnowledgeForQuery } from './knowledgeCorpus';
+import {
+  buildLexiconSections,
+  matchLexiconTerms,
+  type LexiconTerm,
+} from './commonTermsLexicon';
 
 /**
  * Minimum TF-IDF-lite score for a static compliance rule / case-stages block to
@@ -220,6 +226,7 @@ export type ChatGroundingDecision =
       retrievedChunks: [];
       staticRelevance: StaticKnowledgeRelevance;
       staticSections: [];
+      lexiconHits: [];
       reason: 'no-retrieval-and-static-irrelevant';
     }
   | {
@@ -227,7 +234,14 @@ export type ChatGroundingDecision =
       retrievedChunks: RetrievedChunk[];
       staticRelevance: StaticKnowledgeRelevance;
       staticSections: string[];
-      reason: 'retrieved-chunks' | 'static-relevant' | 'chip-context' | 'casual';
+      /** Matched common-terms lexicon entries for this turn (may be empty). */
+      lexiconHits: LexiconTerm[];
+      reason:
+        | 'retrieved-chunks'
+        | 'static-relevant'
+        | 'lexicon-relevant'
+        | 'chip-context'
+        | 'casual';
     };
 
 export interface EvaluateChatGroundingOptions {
@@ -249,6 +263,7 @@ export interface EvaluateChatGroundingOptions {
  * Allow paths (any one is enough):
  *   - RAG returned at least one chunk above `MIN_RELEVANT_SCORE`
  *   - Static compliance/stages scored above `MIN_STATIC_RELEVANT_SCORE`
+ *   - Common-terms lexicon hit (acronym/glossary match for this question)
  *   - User attached record chips (answer from chip data)
  *   - Casual greeting/thanks (no knowledge needed)
  */
@@ -256,7 +271,11 @@ export async function evaluateChatGrounding(
   opts: EvaluateChatGroundingOptions,
 ): Promise<ChatGroundingDecision> {
   const staticRelevance = scoreStaticKnowledgeRelevance(opts.userMessage);
-  const staticSections = buildRelevantStaticSections(staticRelevance);
+  const lexiconHits = matchLexiconTerms(opts.userMessage);
+  const lexiconSections = buildLexiconSections(lexiconHits);
+  // Lexicon sections append after static rules so acronym definitions sit next to
+  // any matching compliance text without replacing it.
+  const staticSections = [...buildRelevantStaticSections(staticRelevance), ...lexiconSections];
   const retrievedChunks =
     opts.retrievedChunks ?? (await retrieveKnowledgeForQuery(opts.userMessage));
 
@@ -266,6 +285,7 @@ export async function evaluateChatGrounding(
       retrievedChunks,
       staticRelevance,
       staticSections,
+      lexiconHits,
       reason: 'retrieved-chunks',
     };
   }
@@ -276,7 +296,19 @@ export async function evaluateChatGrounding(
       retrievedChunks: [],
       staticRelevance,
       staticSections,
+      lexiconHits,
       reason: 'static-relevant',
+    };
+  }
+
+  if (lexiconHits.length > 0) {
+    return {
+      allowModel: true,
+      retrievedChunks: [],
+      staticRelevance,
+      staticSections,
+      lexiconHits,
+      reason: 'lexicon-relevant',
     };
   }
 
@@ -286,6 +318,7 @@ export async function evaluateChatGrounding(
       retrievedChunks: [],
       staticRelevance,
       staticSections: [],
+      lexiconHits: [],
       reason: 'chip-context',
     };
   }
@@ -296,6 +329,7 @@ export async function evaluateChatGrounding(
       retrievedChunks: [],
       staticRelevance,
       staticSections: [],
+      lexiconHits: [],
       reason: 'casual',
     };
   }
@@ -306,6 +340,7 @@ export async function evaluateChatGrounding(
     retrievedChunks: [],
     staticRelevance,
     staticSections: [],
+    lexiconHits: [],
     reason: 'no-retrieval-and-static-irrelevant',
   };
 }

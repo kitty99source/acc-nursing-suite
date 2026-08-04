@@ -1,0 +1,5505 @@
+
+--- PAGE 1 ---
+ 
+ESS.Elective Surgery Services.2026 
+Page 1 of 80 
+SERVICE SCHEDULE FOR ELECTIVE 
+SURGERY SERVICES 
+CONTRACT NO: ______ 
+ 
+A. 
+QUICK REFERENCE INFORMATION 
+1. 
+TERM FOR PROVIDING ELECTIVE SURGERY SERVICES 
+1.1 
+The term for the provision of Elective Surgery Services is the period from 
+1 November 2019 (“Start Date”) until the close of 30 June 2027 (“End Date”) or 
+such earlier date upon which the period is lawfully terminated or cancelled. 
+2. 
+SERVICE LOCATION (PART B CLAUSE 4) 
+Facility Name 
+Location 
+Certification/Accreditation Type 
+______ 
+______ 
+______ 
+______ 
+______ 
+______ 
+3. 
+NAMED PROVIDERS 
+3.1 
+Named Providers (PART B CLAUSE 17). 
+Last Name 
+First Name 
+Specialty or 
+Category of 
+Professional 
+Registration 
+New Zealand 
+Medical 
+Council 
+Number or 
+Dental 
+Council of 
+New Zealand 
+Number 
+ACC Provider 
+Number 
+______ 
+______ 
+______ 
+______ 
+______ 
+
+--- PAGE 2 ---
+ESS.Elective Surgery Services.2026 
+Page 2 of 80 
+3.2 
+Named Red List Providers (PART B CLAUSE 17) [where applicable]. 
+Last Name 
+First Name 
+Specialty or 
+Category of 
+Professional 
+Registration, 
+including Red 
+List 
+accreditation 
+New Zealand 
+Medical 
+Council 
+Number or 
+Dental 
+Council of 
+New Zealand 
+Number 
+ACC Provider 
+Number 
+______ 
+______ 
+______ 
+______ 
+______ 
+4. 
+SERVICE ITEMS AND PRICES (PART B CLAUSE 31) 
+Table 1: Core Service Items and Prices 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+3DIMAGE1 
+Full Price use of 3D Intraoperative imaging within Theatre for 
+a total surgery time of 0 – 1 hour. 
+$1,390.60 
+3DIMAGE2 
+Full Price use of 3D Intraoperative imaging within Theatre for 
+a total surgery time of 1 – 2 hours. 
+$1,500.78 
+3DIMAGE3 
+Full Price use of 3D Intraoperative imaging within Theatre for 
+a total surgery time of 2 – 4 hours. 
+$1,831.30 
+3DIMAGE4 
+Full Price use of 3D Intraoperative imaging within Theatre for 
+a total surgery time of 4 or more hours 
+$2,161.84 
+AFT100 
+Ankle Arthrodesis Simple - Open, includes minor bone graft  $11,532.74 
+AFT101 
+Ankle Arthrodesis Simple - Arthroscopic, includes minor 
+bone graft 
+$12,240.48 
+AFT102 
+Ankle Arthrodesis Complex: Open– includes iliac crest 
+graft, structural graft, Tendo Achilles (TA) procedures, 
+osteotomy for access, removal metal ware 
+$14,227.34 
+AFT103 
+Ankle Arthrodesis Complex: Arthroscopic– includes iliac 
+crest graft, structural graft, Tendo Achilles (TA) procedures, 
+osteotomy for access, removal metal ware 
+$14,949.71 
+AFT104 
+Ankle Arthrodesis Revision: Includes bone graft, Tendo 
+Achilles (TA) procedures, removal metal ware 
+$17,839.20 
+AFT105 
+Subtalar Arthrodesis Simple - Open (includes minor bone 
+graft) 
+$11,532.74 
+AFT106 
+Subtalar Arthrodesis Simple - Arthroscopic includes minor 
+bone graft 
+$11,879.30 
+AFT107 
+Subtalar Arthrodesis Complex: Includes bone graft, Tendo 
+Achilles (TA) surgery, metal ware removal 
+$12,601.67 
+AFT108 
+Subtalar Arthrodesis Revision - Includes bone graft, Tendo 
+Achilles (TA) release, metal ware removal 
+$17,839.20 
+AFT109 
+Triple Arthrodesis Simple - open includes minor bone graft 
+$13,324.04 
+
+--- PAGE 3 ---
+ESS.Elective Surgery Services.2026 
+Page 3 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+AFT110 
+Triple Arthrodesis Simple - Arthroscopic (includes minor 
+bone graft) 
+$14,046.41 
+AFT111 
+Triple Arthrodesis Complex: Includes bone graft, Tendo 
+Achilles (TA) surgery, metal ware removal 
+$16,755.65 
+AFT112 
+Triple Arthrodesis Revision - Includes bone graft, Tendo 
+Achilles (TA) release, metal ware removal 
+$17,839.20 
+AFT113 
+Talonavicular Arthrodesis Simple - Open (includes minor 
+bone graft) 
+$9,453.37 
+AFT114 
+Talonavicular Arthrodesis Simple - Arthroscopic includes 
+minor bone graft 
+$10,103.41 
+AFT115 
+Talonavicular Arthrodesis Complex: Includes bone graft, 
+Tendo Achilles (TA) surgery, metal ware removal 
+$11,879.30 
+AFT116 
+Talonavicular Arthrodesis Revision - Includes bone graft, 
+Tendo Achilles (TA) release, metal ware removal 
+$14,046.41 
+AFT117 
+Calcaneocuboid Arthrodesis Simple - Open (includes minor 
+bone graft) 
+$9,453.37 
+AFT118 
+Calcaneocuboid 
+Arthrodesis 
+Simple 
+- 
+Arthroscopic 
+includes minor bone graft 
+$10,103.41 
+AFT119 
+Calcaneocuboid Arthrodesis Complex: Includes bone graft, 
+Tendo Achilles (TA) surgery, metal ware removal 
+$11,879.30 
+AFT120 
+Calcaneocuboid Arthrodesis Revision - Includes bone graft, 
+Tendo Achilles (TA) release, metal ware removal 
+$14,046.41 
+AFT121 
+Double Arthrodesis Simple - open includes minor bone graft 
+$12,601.67 
+AFT122 
+Double Arthrodesis Simple - Arthroscopic (includes minor 
+bone graft) 
+$13,324.04 
+AFT123 
+Double Arthrodesis Complex: Includes bone graft, Tendo 
+Achilles (TA) surgery, metal ware removal 
+$14,859.25 
+AFT124 
+Double Arthrodesis Revision - Includes bone graft, Tendo 
+Achilles (TA) release, metal ware removal 
+$17,116.82 
+AFT125 
+Tibio-talo-calcaneal (TTC) Arthrodesis Simple - open 
+includes minor bone graft 
+$14,768.78 
+AFT126 
+Tibio-talo-calcaneal 
+(TTC) 
+Arthrodesis 
+Simple 
+- 
+Arthroscopic (includes minor bone graft) 
+$14,768.78 
+AFT127 
+Tibio-talo-calcaneal (TTC) Arthrodesis Complex: Includes 
+bone graft, Tendo Achilles (TA) surgery, metal ware removal 
+$18,561.57 
+AFT128 
+Tibio-talo-calcaneal (TTC) Arthrodesis Revision - Includes 
+bone graft, Tendo Achilles (TA) release, metal ware removal 
+$20,728.70 
+AFT129 
+Navicular Cuneiform (N-C) Arthrodesis Simple - Open 
+single joint (includes minor bone graft) 
+$9,444.84 
+AFT130 
+Navicular Cuneiform (N-C) Arthrodesis Complex: Multiple 
+joints Includes bone graft, Tendo Achilles (TA) surgery, 
+metal ware removal 
+$11,879.30 
+
+--- PAGE 4 ---
+ESS.Elective Surgery Services.2026 
+Page 4 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+AFT131 
+Navicular Cuneiform (N-C) Arthrodesis Revision - Includes 
+bone graft, Tendo Achilles (TA) release, metal ware removal 
+$14,046.41 
+AFT132 
+Tarsometatarsal (TMT) Arthrodesis Simple - Open single 
+joint (includes minor bone graft) 
+$8,405.15 
+AFT133 
+Tarsometatarsal (TMT) Arthrodesis Complex: Multiple joints 
+Includes bone graft, Tendo Achilles (TA) surgery, metal ware 
+removal 
+$14,046.41 
+AFT134 
+Tarsometatarsal (TMT) Arthrodesis Revision - Includes bone 
+graft, Tendo Achilles (TA) release, metal ware removal 
+$15,491.16 
+AFT135 
+Metatarsophalangeal (MTP) Arthrodesis Simple - (includes 
+minor bone graft) 
+$9,106.84 
+AFT136 
+Metatarsophalangeal (MTP) Arthrodesis Complex: Includes 
+bone graft, structural graft, Tendon surgery, metal ware 
+removal 
+$10,493.05 
+AFT137 
+Metatarsophalangeal (MTP) Arthrodesis Revision - Includes 
+bone graft, tendon release, metal ware removal 
+$13,324.04 
+AFT138 
+PIP 
+/ 
+DIP 
+Arthrodesis 
+Simple- 
+1-2 
+Toes  
+(Proximal interphalangeal/Distal interphalangeal) 
+$5,979.23 
+AFT139 
+PIP/DIP 
+Arthrodesis 
+Complex: 
+Multiple 
+3+ 
+toes 
+(Proximal interphalangeal/Distal interphalangeal) 
+$8,058.61 
+AFT140 
+PIP/DIP Arthrodesis Revision - Includes bone graft, tendon 
+release, 
+metal 
+ware 
+removal 
+(Proximal interphalangeal/Distal interphalangeal) 
+$8,751.71 
+AFT141 
+Tarsal Coalition - Excision and interposition graft 
+$6,667.40 
+AFT142 
+Distal Tibial Osteotomy - Simple. Includes internal fixation, 
+bone graft, tendon release 
+$10,968.62 
+AFT143 
+Distal Tibial Osteotomy - Complex. Includes internal 
+fixation, bone graft, fibula osteotomy, tendon release 
+$13,543.51 
+AFT144 
+Distal Tibial Osteotomy -Revision. Includes internal fixation, 
+bone graft, tendon release and metal ware removal 
+$17,155.36 
+AFT145 
+Distal Fibular Osteotomy - Simple. Includes internal 
+fixation, cancellous bone graft 
+$10,622.08 
+AFT146 
+Distal Fibular Osteotomy - Complex. Includes internal 
+fixation, structural bone graft, tendon release 
+$13,543.51 
+AFT147 
+Distal Fibular Osteotomy -Revision. Includes internal 
+fixation, bone graft, tendon release and metal ware removal 
+$15,710.62 
+AFT148 
+Calcaneal Osteotomy - Simple. Includes internal fixation 
+$7,494.49 
+AFT149 
+Calcaneal Osteotomy Complex - Hind foot reconstruction. 
+Includes internal fixation, gastrocnemius slide or Tendo 
+Achilles (TA) lengthening, tendon transfer 
+$15,710.62 
+AFT150 
+Midtarsal Osteotomy 
+$6,801.39 
+AFT151 
+1st Metatarsal Osteotomy Simple - include internal fixation 
+$7,494.49 
+
+--- PAGE 5 ---
+ESS.Elective Surgery Services.2026 
+Page 5 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+AFT152 
+1st Metatarsal Osteotomy Complex - include exostectomy, 
+internal fixation, MTP release and realignment, bone graft 
+$8,187.62 
+AFT153 
+1st Metatarsal Osteotomy Revision - include exostectomy, 
+bone graft, internal fixation, MTP release and realignment, 
+metal 
+ware 
+removal, 
+Tendo 
+Achilles 
+(TA) 
+lengthening/gastrocnemius slide 
+$11,315.17 
+AFT154 
+Lesser Metatarsal Osteotomy - Single. Includes fixation and 
+bonegraft 
+$7,494.49 
+AFT155 
+Lesser Metatarsal Osteotomy - Multiple. Includes fixation 
+and bonegraft 
+$9,235.83 
+AFT156 
+Lesser Metatarsal Osteotomy Revision - Single, includes 
+fixation and bonegraft, removal metal ware 
+$10,960.08 
+AFT157 
+Lesser Metatarsal Osteotomy Revision - Multiple. Includes 
+fixation and bonegraft, removal metal ware 
+$12,730.65 
+AFT158 
+Phalangeal Osteotomy - Single. Includes fixation and 
+bonegraft 
+$6,108.25 
+AFT159 
+Phalangeal Osteotomy - Multiple. Includes fixation and 
+bonegraft 
+$8,534.14 
+AFT160 
+Phalangeal Osteotomy Revision - Single, includes fixation 
+and bonegraft, removal metal ware 
+$9,573.85 
+AFT161 
+Phalangeal Osteotomy Revision - Multiple. Includes fixation 
+and bonegraft, removal metal ware 
+$11,653.17 
+AFT162 
+Tenotomy of tendon ankle, foot or toe - Single: 
+Percutaneous 
+$4,241.47 
+AFT163 
+Tenotomy of tendon ankle, foot or toe - Single: Open 
+$5,974.28 
+AFT164 
+Tenotomy of tendon of ankle, foot or toe: - Multiple: 
+Percutaneous 
+$4,934.61 
+AFT165 
+Tenotomy of tendon of ankle, foot or toe: - Multiple: Open 
+$7,360.51 
+AFT166 
+Tenolysis of tendon ankle, foot or toe: - Single 
+$5,974.28 
+AFT167 
+Tenolysis of tendon ankle, foot or toe: - Multiple 
+$7,360.51 
+AFT168 
+Tendon Repair of foot: - Single 
+$5,974.28 
+AFT169 
+Tendon Repair of foot: - Multiple 
+$7,360.51 
+AFT170 
+Tendon Repair of Toe: Single 
+$5,974.28 
+AFT171 
+Tendon Repair of Toe: - Multiple 
+$7,360.51 
+AFT172 
+Amputation toe - MTP/IP/ DIP joint – Single 
+$5,974.28 
+AFT173 
+Amputation toe - MTP/IP/DIP joint - Multiple more than 2 
+toes including bilateral 
+$7,707.08 
+AFT174 
+Trans metatarsal amputation 
+$10,622.08 
+AFT175 
+Mid foot amputation 
+$10,622.08 
+AFT176 
+Hind foot amputation 
+$10,622.08 
+
+--- PAGE 6 ---
+ESS.Elective Surgery Services.2026 
+Page 6 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+AFT177 
+Joint release for claw toe - single 
+$5,627.72 
+AFT178 
+Joint release for claw toe - multiple 
+$7,013.95 
+AFT179 
+Tendo Achilles Repair Simple: Early (<6wks) 
+$7,022.50 
+AFT180 
+Tendo Achilles Repair - Complex: Delayed (>6wks) Includes 
+any debridement, lengthening and/or shortening 
+$9,101.85 
+AFT181 
+Tendo Achilles Reconstruction - Complex - delayed 
+reconstruction: Includes harvesting of graft and any 
+debridement, lengthening and/or gastrocnemius slide, 
+tendon transfer 
+$11,181.21 
+AFT182 
+Tendo Achilles Debridement 
+$5,974.28 
+AFT183 
+Tendo Achilles Lengthening - Percutaneous 
+$5,627.72 
+AFT184 
+Tendo Achilles Lengthening - Open 
+$9,101.85 
+AFT185 
+Tendo Achilles Gastrocnemius Slide 
+$6,667.40 
+AFT186 
+Plantar 
+Plate 
+Repair 
+-Single. 
+Includes 
+metatarsal 
+osteotomy, internal fixation, collateral ligament repair 
+$8,751.71 
+AFT187 
+Plantar Plate Repair -Multiple. Includes metatarsal 
+osteotomy, internal fixation, collateral ligament repair 
+$11,885.37 
+AFT189 
+Tendon Transfer Tibialis anterior 
+$9,101.85 
+AFT190 
+Tendon Transfer Tibialis posterior 
+$9,101.85 
+AFT191 
+Tendon Transfer involving FDL, FHL or peroneal tendons 
+(Flexor Digitorum Longus, Flexor Hallucis Longus) 
+$8,062.18 
+AFT192 
+Tendon Transfer Toe - Single. Includes split transfers 
+$6,667.40 
+AFT193 
+Tendon Transfer Toes - 2-3. Includes split transfers 
+$7,707.08 
+AFT194 
+Tendon Transfer Toes - > 3. Includes split transfers 
+$8,746.76 
+AFT195 
+Repair Flexor Tendon Ankle 
+$7,360.51 
+AFT196 
+Repair Extensor Tendon Ankle 
+$7,013.95 
+AFT197 
+Peroneal tendon Stabilisation - Simple. Includes peroneal 
+retinaculum repair, peroneal tendon repair 
+$7,707.08 
+AFT198 
+Peroneal tendon Stabilisation - Complex. Includes 
+Retinacular repair, peroneal tendon repair, groove 
+deepening, retinacular recon with graft 
+$11,181.21 
+AFT199 
+Ankle Lateral Ligament Reconstruction -Simple. Includes 
+Brostrum / Gould 
+$8,062.18 
+AFT200 
+Ankle Lateral Ligament Reconstruction - Complex. Includes 
+Graft, split tendon reconstruction 
+$9,794.99 
+AFT201 
+Ankle Lateral Ligament Reconstruction - Revision. Includes 
+Graft, split tendon reconstruction, removal implants 
+$11,181.21 
+AFT202 
+Ankle Medial Ligament Reconstruction -Simple. 
+$8,062.18 
+AFT203 
+Ankle Medial Ligament Reconstruction - Complex. Includes 
+Graft, split tendon reconstruction 
+$9,794.99 
+
+--- PAGE 7 ---
+ESS.Elective Surgery Services.2026 
+Page 7 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+AFT204 
+Ankle Medial Ligament Reconstruction - Revision. Includes 
+Graft, split tendon reconstruction, removal implants 
+$11,181.21 
+AFT205 
+Ankle Spring ligament reconstruction - Simple 
+$8,062.18 
+AFT206 
+Ankle Spring ligament reconstruction - Complex. Includes 
+spilt tendon, graft 
+$9,794.99 
+AFT207 
+Subtalar ligament reconstruction - Simple 
+$8,062.18 
+AFT208 
+Subtalar ligament reconstruction - Complex. Includes spilt 
+tendon, graft 
+$9,794.99 
+AFT209 
+Syndesmosis stabilisation - Simple. Early less than 6wks, 
+primary repair, includes fixation 
+$8,408.73 
+AFT210 
+Syndesmosis stabilisation - Complex. Late more than 6wks. 
+Includes debridement, graft and fixation 
+$11,181.21 
+AFT211 
+Syndesmosis fusion. Includes bone graft and fixation 
+$13,348.33 
+AFT212 
+Plantar Fascia Release 
+$5,627.72 
+AFT213 
+Decompression Fasciotomy Foot 
+$7,022.50 
+AFT214 
+Tarsal Tunnel Release - Includes neurolysis 
+$6,329.39 
+AFT215 
+Total Ankle replacement - Simple. 
+$19,351.47 
+AFT216 
+Total Ankle replacement - Complex. Includes debridement 
+Tendo Achilles (TA) lengthening/gastrocnemius slide, 
+removal metalware 
+$21,518.59 
+AFT220 
+ORIF Calcaneus - Simple. Anterior process and tubercle 
+avulsion (Open reduction internal fixation) 
+$7,720.59 
+AFT221 
+ORIF Calcaneus - Complex. Includes bone graft 
+$10,612.78 
+AFT222 
+ORIF talus fracture - Simple 
+$7,720.59 
+AFT223 
+ORIF talus fracture - Complex. Includes bone graft, 
+osteotomy 
+$11,305.89 
+AFT224 
+ORIF Other Tarsal fracture - Simple. Single bone 
+$7,365.47 
+AFT225 
+ORIF Other Tarsal fracture - Complex. Multiple bones 
+$11,305.89 
+AFT226 
+ORIF uni-malleolar fracture 
+$7,720.59 
+AFT227 
+ORIF bi-malleolar fracture 
+$9,799.94 
+AFT228 
+ORIF Trimalleolar fracture 
+$11,879.30 
+AFT229 
+ORIF metatarsal fracture - Single 
+$7,365.47 
+AFT230 
+ORIF metatarsal fracture - Multiple 
+$9,799.94 
+AFT231 
+ORIF of Lisfranc fracture/dislocation - Simple 1-2 joints 
+$8,760.28 
+AFT232 
+ORIF of Lisfranc fracture/dislocation - Complex >2 joints 
+$12,692.13 
+AFT233 
+ORIF phalanx fracture -Single 
+$6,325.79 
+AFT234 
+ORIF phalanx fracture - Multiple 
+$8,405.15 
+
+--- PAGE 8 ---
+ESS.Elective Surgery Services.2026 
+Page 8 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+AFT250 
+Arthroscopy Ankle + additional procedure simple - Anterior 
+OR Posterior - includes: 
+Biopsy synovium 
+Loose body / osteochondral fragment removal 
+Chondral debridement 
+Soft tissue impingement debridement 
+$7,322.41 
+AFT251 
+Arthroscopy Ankle proceed to open surgery- simple - 
+Anterior OR Posterior - includes: 
+Biopsy synovium 
+Loose body / osteochondral fragment removal 
+Chondral debridement 
+Soft tissue impingement debridement 
+$8,370.64 
+AFT252 
+Ankle open surgery - simple- Anterior OR Posterior - 
+includes: 
+Biopsy synovium, and/or ganglion 
+Loose body/osteophyte, and/or osteochondral fragment or 
+lesion 
+Excision of os trigonum, and/or ganglion 
+Chondral debridement 
+Soft tissue impingement debridement 
+$6,975.85 
+AFT260 
+Arthroscopy Ankle + additional procedure - Complex 1 – 
+Anterior OR Posterior - includes any combination of 
+procedures found in AFT250 or one of the following 
+procedures 
+Synovectomy 
+Microfracture and debridement OCL Talus / Tibia 
+Internal fixation fragment 
+Debridement syndesmosis 
+Removal os trigonum 
+Debridement bony impingement spurs 
+$8,015.53 
+AFT261 
+Arthroscopy Ankle proceed to open surgery - Complex 1 - 
+Anterior OR Posterior - includes any combination of 
+procedures found in AFT250 together with any procedures 
+found in AFT251 or one of the following procedures 
+Synovectomy 
+Internal fixation of os trigonum 
+Microfracture and debridement OCL Talus / Tibia 
+Internal fixation osteochondral fragment 
+$9,410.33 
+AFT262 
+Ankle Open Surgery - Complex 1 – Anterior OR Posterior - 
+includes any combination of procedures found in AFT252 or 
+one of the following procedures 
+Internal fixation of os trigonum 
+Microfracture and debridement OCL Talus / Tibia 
+Internal fixation osteochondral fragment 
+$8,370.64 
+
+--- PAGE 9 ---
+ESS.Elective Surgery Services.2026 
+Page 9 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+AFT270 
+Arthroscopy Ankle Complex 2 - Anterior OR Posterior - 
+includes: any combination of procedures found under 
+AFT250 and AFT260 
+$8,708.65 
+AFT271 
+Arthroscopy Ankle proceed to open surgery - Complex 2 - 
+Anterior OR Posterior - includes: any AFT251 and AFT261 
+procedures or these in combination with AFT250 or AFT260 
+procedures 
+$9,748.33 
+AFT272 
+Ankle open surgery - Complex 2 - Anterior OR Posterior - 
+includes: any combination of procedures found under 
+AFT252 and AFT262 
+$8,708.65 
+AFT280 
+Arthroscopy Ankle - Complex 3 - requiring Anterior AND 
+Posterior approach - Includes: any combination of 
+procedures found under AFT250 and AFT260 
+$12,558.61 
+AFT281 
+Arthroscopy Ankle proceed to open surgery - Complex 3 - 
+requiring Anterior AND Posterior approach. Includes: any 
+combination of procedures found in AFT251 and AFT261 or 
+these in combination with AFT250 or AFT260 procedures 
+$12,558.61 
+AFT282 
+Ankle open surgery - Complex 3 - requiring Anterior AND 
+Posterior approach - Includes: any combination of 
+procedures found under AFT252 and AFT262 
+$11,836.23 
+AFT290 
+Arthroscopy Ankle in combination with stabilisation 
+procedures 
+$10,450.00 
+AFT295 
+Arthroscopy Ankle in combination with augmentation 
+procedures 
+$11,836.23 
+AFT300 
+Botox for release of spasm/contractures 1 body site 
+May be used as an equivalent for other body sites. 
+Does not include costs for botox ampoules. These are billed 
+separately using the addon block AFTBOTOX (see below) 
+$3,899.84 
+AFT301 
+Botox for release of spasm/contractures 2 body sites 
+May be used as an equivalent for other body sites. 
+Does not include costs for botox ampoules. These are billed 
+separately using the add-on block AFTBOTOX (see below) 
+$4,246.40 
+AFT302 
+Botox for release of spasm/contractures 3 body sites 
+May be used as an equivalent for other body sites. 
+Does not include costs for botox ampoules. These are billed 
+separately using the add-on block AFTBOTOX (see below) 
+$4,592.96 
+AFT303 
+Botox for release of spasm/contractures 4 or more body 
+sites 
+May be used as an equivalent for other body sites. 
+Does not include costs for botox ampoules. These are billed 
+separately using the add-on block AFTBOTOX (see below) 
+$4,939.52 
+AFTABOTX 
+Orthopaedic botox.  For costs of botox ampoules used with 
+the codes AFT300 - AFT303 
+Actual 
+and 
+Reasonable 
+Cost 
+DNS01 
+lntra-oral Dental Implant x 1- stage 1 (includes bone graft) 
+$5,773.10 
+DNS02 
+Intra-oral Dental Implant x 2 - stage 1 (includes bone graft) 
+$7,940.63 
+
+--- PAGE 10 ---
+ESS.Elective Surgery Services.2026 
+Page 10 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+DNS03 
+Bone Graft - Alveolar Osseous 
+$5,950.40 
+DNS04 
+Surgical Extraction of Teeth 
+$3,962.20 
+DNS06 
+Removal of Metal ware – Wire, Screw or Plate 
+$4,317.86 
+ELF01 
+Excision Un-united Olecranon Process 
+$5,066.56 
+ELF02 
+Excision Radial Head 
+$4,646.05 
+ELF03 
+Arthroplasty - Radial Head 
+$6,536.02 
+ELF06 
+Epicondylitis Release 
+$4,184.34 
+ELF07 
+Ulnar Nerve Transposition - Elbow 
+$5,500.00 
+ELF08 
+Posterior Interosseus Nerve Release for Radial Tunnel 
+Syndrome 
+$5,523.43 
+ELF09 
+ORIF Fracture Radius or Ulna 
+$6,784.07 
+ELF10 
+Total Elbow Replacement 
+$18,150.13 
+ELF11 
+Reconstr. /Corrective Osteotomy Radius 
+$7,112.18 
+ELF21 
+Removal of plate and screws – Radius, includes 
+excision/revision of initial scar including hypertrophic or 
+keloid scarring 
+$4,637.85 
+ELF22 
+Removal 
+of 
+plate 
+and 
+screws 
+– 
+Ulna, 
+includes 
+excision/revision of initial scar including hypertrophic or 
+keloid scarring 
+$4,637.85 
+ELF23 
+Removal of Flexible Intramedullary Nail - Radius/Ulna 
+(includes 
+Titanium 
+Elastic 
+Nail 
+(TEN) 
+includes 
+excision/revision of initial scar including hypertrophic or 
+keloid scarring) 
+$4,160.90 
+ELF24 
+Removal of Tension Band Wiring Elbow includes 
+excision/revision of initial scar including hypertrophic or 
+keloid scarring 
+$4,160.90 
+ELF25 
+Distal Biceps tendon repair 
+$7,339.43 
+ELF50 
+Elbow Arthroscopic Surgery - Simple 
+$6,617.10 
+ELF51 
+Elbow Arthroscopy Proceed to Open Surgery - Simple 
+$7,665.73 
+ELF52 
+Elbow Open Surgery - Simple 
+$5,885.21 
+ELF60 
+Elbow Arthroscopic Surgery - Complex 
+$8,098.07 
+ELF61 
+Elbow Arthroscopy Proceed to Open Surgery - Complex 
+$8,090.88 
+ELF62 
+Elbow Open Surgery - Complex 
+$7,062.27 
+GNS01 
+Inguinal Hernia Repair (unilateral) 
+$5,894.38 
+GNS02 
+Incisional Hernia Repair 
+$8,275.99 
+GNS03 
+Laparosc. Ing. Hernia Repair - Prim. /Recurr. (unilateral) 
+$7,428.10 
+GNS04 
+Umbilical Hernia Repair 
+$5,803.63 
+GNS05 
+Femoral Hernia Repair (unilateral) 
+$5,476.98 
+
+--- PAGE 11 ---
+ESS.Elective Surgery Services.2026 
+Page 11 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+GNS06 
+Ventral Hernia Repair 
+$6,129.12 
+GOP01 
+Bone Graft - any area, minor or small *from a site other than 
+the initial surgical site 
+$6,529.27 
+GOP02 
+Bone Graft - any area, major *from a site other than the 
+initial surgical site 
+$7,137.66 
+GOP03 
+Excision Exostosis - superficial 
+$4,780.49 
+GOP04 
+Excision Exostosis - deep 
+$5,720.09 
+GOP05 
+Excision Bursa (not to be used for excision ganglion) 
+$4,818.19 
+GOP07 
+Diagnostic Arthroscopy any joint (excluding wrist and hip) 
+$4,451.34 
+GOP20 
+Removal of plate and screws not elsewhere specified, 
+includes 
+excision/revision 
+of 
+initial 
+scar 
+including 
+hypertrophic or keloid scarring 
+$4,637.85 
+GOP21 
+Removal of screws not elsewhere specified x 1-3, includes 
+removal of diastasis screws, includes excision/revision of 
+initial scar including hypertrophic or keloid scarring 
+$4,160.90 
+GOP22 
+Removal wires/pins not elsewhere specified 1-3, includes 
+excision/revision of initial scar including hypertrophic or 
+keloid scarring 
+$4,160.90 
+GOP23 
+Removal wires/pins not elsewhere specified >3, includes 
+excision/revision of initial scar including hypertrophic or 
+keloid scarring 
+$4,576.98 
+GOP24 
+Removal screws not elsewhere specified >3, includes 
+removal of diastasis screws, includes excision/revision of 
+initial scar including hypertrophic or keloid scarring 
+$4,993.08 
+HIT01 
+Total Hip Replacement (not to be used for hip resurfacing) 
+$16,416.39 
+HIT02 
+Hemi-arthroplasty (Partial Hip Replacement) 
+$13,431.85 
+HIT03 
+Revision Hip Replacement 
+$19,472.65 
+HIT05 
+ORIF Fracture Femur 
+$15,999.60 
+HIT06 
+Osteotomy - Distal Femur with Fixation 
+$10,386.24 
+HIT07 
+Adductor/Hamstring Tendon Release, Percutaneous 
+$3,510.23 
+HIT08 
+Lateral Cutaneous Nerve of Thigh Release 
+$3,314.09 
+HIT09 
+Decompression Fasciotomy - Thigh/Knee 
+$7,066.28 
+HIT17 
+Primary Removal Compression Hip screw and plate 
+includes 
+excision/revision 
+of 
+initial 
+scar 
+including 
+hypertrophic or keloid scarring 
+$7,031.69 
+HIT18 
+Primary Removal of Cannulated Hip screws (not to be used 
+in 
+combination 
+with 
+Hip 
+Arthroplasty), 
+includes 
+excision/revision of initial scar including hypertrophic or 
+keloid scarring 
+$5,825.27 
+
+--- PAGE 12 ---
+ESS.Elective Surgery Services.2026 
+Page 12 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+HIT19 
+Intraoperative Removal of Cannulated Hip screws (for use 
+in 
+combination 
+with 
+Hip 
+Arthroplasty), 
+includes 
+excision/revision of initial scar including hypertrophic or 
+keloid scarring 
+$4,160.90 
+HIT20 
+Primary Removal of plate and screws Femur includes 
+excision/revision of initial scar including hypertrophic or 
+keloid scarring 
+$7,617.67 
+HIT21 
+Removal Intramedullary Femoral Rod (includes removal of 
+all locking screws at time of procedure), includes 
+excision/revision of initial scar including hypertrophic or 
+keloid scarring 
+$8,203.60 
+HIT22 
+Removal Intramedullary Femoral Rod Locking Screws x 1-3 
+(not to be used in combination with Removal of 
+Intramedullary Femoral Rod), includes excision/revision of 
+initial scar including hypertrophic or keloid scarring 
+$4,993.08 
+HIT50A 
+Hip Arthroscopy simple 
+$11,689.06 
+HIT60A 
+Hip Arthroscopy Complex 1 
+$14,461.52 
+HIT70A 
+Hip Arthroscopic Surgery - Complex 2 
+$15,408.70 
+IMAGE1 
+Use of Image intensifier within Theatre for up to 30 minutes 
+$180.09 
+IMAGE2 
+Use of Image intensifier within Theatre for between 31 and 
+60 minutes. 
+$309.62 
+IMAGE3 
+Use of Image intensifier within Theatre for between 61 and 
+90 minutes. 
+$439.20 
+IMAGE4 
+Use of Image intensifier within Theatre for between 91 and 
+120 minutes. 
+$568.76 
+IMAGE5 
+Use of Image intensifier within Theatre for 121 and 150 
+minutes. 
+$698.33 
+KNE01 
+MUA - Knee Joint +/- injection 
+If used in combination with other codes good reasoning 
+must be supplied 
+$3,205.00 
+KNE03 
+Reconstruction Collateral Ligament 
+$7,534.10 
+KNE07 
+Patellectomy 
+$6,738.18 
+KNE09 
+Primary Total Knee Replacement 
+Includes removal of ACL screws/metalware at the time of 
+operation 
+$17,402.87 
+KNE10 
+Partial Knee Replacement (hemiarthroplasty – e.g. Oxford) 
+Includes removal of ACL screws/metalware at the time of 
+operation 
+$15,634.75 
+
+--- PAGE 13 ---
+ESS.Elective Surgery Services.2026 
+Page 13 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+KNE11 
+Revision Total Knee Replacement 
+Single stage revision (can be used for revision of a 
+hemiarthroplasty) 
+Not to be used for: 
+Staged Revision or for bearing exchange and/or patella 
+resurfacing 
+(Staged Revision is Non-Core; Bearing exchange and/or 
+patella resurfacing is KNE99) 
+Includes removal of existing implants 
+$17,639.28 
+KNE12 
+Arthrodesis Knee 
+$11,115.77 
+KNE124 
+Repair 
+of 
+Patella 
+Tendon 
+– 
+primary. 
+Not to be used in combination with KNE128 and/or KNE129 
+and/or KNE130 
+$6,811.55 
+KNE125 
+Patella Tendon Reconstruction (includes harvesting of 
+graft) 
+Not to be used in combination with KNE128 and/or KNE129 
+and/or KNE130 
+$8,855.00 
+KNE128 
+Arthroscopic examination of the patellofemoral joint 
+AND open or arthroscopic Patella realignment - soft tissue 
+repair/reconstruction Simple 
+Includes any procedure found in a KNE50, KNE51, KNE52 
+AND 
+1. 
+Primary repair of medial retinacular soft tissues 
+including tightening suturing 
+2. 
+Vastus 
+medialis 
+obliquus 
+(VMO) 
+muscle 
+advancement 
+3. 
+Lateral Release 
+4. 
+Treatment of articular cartilage 
+$10,766.43 
+KNE129 
+Arthroscopic examination of the patellofemoral joint 
+AND open or arthroscopic Patella realignment - soft tissue 
+repair/reconstruction Complex 
+Includes any procedure found in a KNE128 
+AND 
+Medial Patellofemoral Ligament Reconstruction with Graft 
+includes harvesting and preparation; tunnel drilling; graft. 
+Cannot be used in combination with KNE130 
+$15,026.98 
+KNE13 
+ORIF # Tibia or Fibula (includes tibial plateau fracture) 
+$8,872.12 
+KNE130 
+Arthroscopic examination of the patellofemoral joint 
+AND 
+Patella 
+Realignment 
+– 
+Reconstruction/distal 
+realignment bony procedure 
+Includes any procedure found in a KNE128 AND 
+$15,026.98 
+
+--- PAGE 14 ---
+ESS.Elective Surgery Services.2026 
+Page 14 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+Tibial tubercle realignment – includes tibial tubercle 
+transfer medially and/or distally and internal fixation +/- 
+excision lateral patellar osteophyte 
+Cannot be used in combination with KNE129 
+KNE14 
+Amputation - Below Knee 
+$11,739.62 
+KNE15 
+Revision of Below Knee Amputation (not to be used as an 
+equivalent code) 
+$6,150.14 
+KNE16 
+Osteotomy - Proximal Tibia with Fixation (not to be used in 
+combination with KNE124, KNE125, KNE128 and/or 
+KNE129 and/or KNE130 
+Not to be used for Tibial Tubercle Transfer 
+$11,396.39 
+KNE17 
+Lateral Popliteal Nerve Decompression 
+$4,021.40 
+KNE18 
+Fasciotomy Calf 
+$4,980.39 
+KNE20 
+Removal of plate and screws Tibia includes removal of 
+diastasis screws) 
+Includes: any excision/revision of initial scar including 
+hypertrophic or keloid scarring 
+$4,637.85 
+KNE21 
+Removal of Intramedullary Tibial Rod (includes removal of 
+all locking screws at time of procedure). Includes: any 
+excision/revision of initial scar including hypertrophic or 
+keloid scarring 
+$7,524.09 
+KNE22 
+Removal of Locking Screws from Intramedullary Tibial Rod 
+(includes removal of any number of locking screws at time 
+of procedure) 
+Not to be used in combination with KNE21 - Removal of 
+Intramedullary Tibial Rod 
+Includes: any excision/revision of initial scar including 
+hypertrophic or keloid scarring. 
+$4,576.98 
+KNE23 
+Removal of Tension Wiring Patella. 
+Includes: any excision/revision of initial scar including 
+hypertrophic or keloid scarring 
+$4,160.90 
+KNE28 
+Extra-articular 
+tenodesis/anterolateral 
+ligament 
+reconstruction for ACL instability (open with graft) 
+$7,534.10 
+KNE50 
+Knee Arthroscopic Surgery – Simple 
+Includes 
+Arthroscopy 
+of 
+the 
+Knee 
+and 
+chondral 
+debridement with one of the following listed procedures: 
+• 
+Arthroscopic Biopsy synovium or 
+• 
+Arthroscopic removal of loose bodies or 
+• 
+Arthroscopic removal of osteophytes or 
+• 
+Arthroscopic Meniscectomy medial and/or lateral or 
+• 
+Arthroscopic Plica Excision or 
+• 
+Arthroscopic Excision of intra-articular scar or 
+• 
+Arthroscopic Fat Pad excision or 
+$5,514.28 
+
+--- PAGE 15 ---
+ESS.Elective Surgery Services.2026 
+Page 15 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+• 
+Arthroscopic notchplasty and excision of any ACL 
+remnants or 
+• 
+Arthroscopic Patella tendon debridement or 
+• 
+Arthroscopic lateral Retinacular release or 
+• 
+Arthroscopic meniscal cyst drainage 
+KNE51 
+Knee Arthroscopy Proceed to Open Surgery – Simple 
+includes: Arthroscopy of the Knee and Arthrotomy of the 
+Knee and chondral debridement with one of the following 
+listed procedures: 
+• 
+Biopsy synovium or 
+• 
+Removal of loose bodies or 
+• 
+Removal of osteophytes or 
+• 
+Meniscectomy medial and/or lateral or 
+• 
+Plica Excision or 
+• 
+Excision of intra-articular scar or 
+• 
+Fat Pad excision or 
+• 
+Notchplasty and excision of any ACL remnants or 
+• 
+Patella tendon debridement or 
+• 
+Lateral Retinacular release or 
+• 
+Meniscal cyst drainage 
+$11,949.77 
+KNE52 
+Knee Open surgery – Simple 
+Includes: 
+Arthrotomy 
+of 
+the 
+knee 
+and 
+chondral 
+debridement with one of the following listed procedures: 
+• 
+Biopsy synovium or 
+• 
+Removal of loose bodies or 
+• 
+Removal of osteophytes or 
+• 
+Meniscectomy medial and/or lateral or 
+• 
+Plica Excision or 
+• 
+Excision of intra-articular scar or 
+• 
+Fat Pad excision or 
+• 
+Notchplasty and excision of any ACL remnants or 
+• 
+Patella tendon debridement or 
+• 
+Lateral Retinacular release or 
+• 
+Meniscal cyst drainage 
+$7,498.42 
+KNE60 
+Knee Arthroscopic Surgery - Complex 1 
+Complex 1 Includes more than one procedure listed under 
+KNE50  
+OR one of the following listed procedures: 
+• 
+Arthroscopic Meniscal repair   
+• 
+Arthroscopic Grade III - IV Chondroplasty (drilling or 
+microfracture) 
+• 
+Arthroscopic Synovectomy 
+$6,748.37 
+
+--- PAGE 16 ---
+ESS.Elective Surgery Services.2026 
+Page 16 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+KNE61 
+Knee Arthroscopy - Proceed to Open Surgery - Complex 1 
+Complex 1 – Includes more than one procedure listed under 
+KNE51 
+OR one of the following listed procedures: 
+• 
+Meniscal repair 
+• 
+Grade III - IV Chondroplasty (drilling or microfracture) 
+• 
+Synovectomy 
+$13,012.66 
+KNE62 
+Knee Open Surgery - Complex 1 
+Includes more than one procedure listed under KNE52 OR 
+one of the following listed procedures: 
+• 
+Open Meniscal Repair 
+• 
+Open 
+Grade 
+III-IV 
+Chondroplasty 
+(drilling 
+or 
+microfracture) 
+• 
+Open synovectomy 
+$8,998.09 
+KNE66 
+Meniscal Root Repair (arthroscopic) 
+$8,213.59 
+KNE70 
+Knee Arthroscopic Surgery – Complex 2 
+Includes: more than one procedure listed under KNE50 
+AND one or more of the procedures listed under KNE60 
+OR 
+More than one procedure listed under KNE60 
+$8,213.59 
+KNE71 
+Knee Arthroscopic Surgery – Complex 2 
+Includes: more than one procedure listed under KNE51 
+AND one or more of the procedures listed under KNE61 
+OR 
+More than one procedure listed under KNE61 
+$14,246.77 
+KNE72 
+Knee Arthroscopic Surgery – Complex 2 
+Includes: more than one procedure listed under KNE52 
+AND one or more of the procedures listed under KNE62 
+OR 
+More than one procedure listed under KNE62 
+$10,497.80 
+KNE81 
+Primary Knee ACL reconstruction (Anterior Cruciate 
+Ligament) 
+Primary and Simple: Arthroscopic and/or Open. 
+Allograft is not to be used in this procedure except for when 
+the reconstruction involves multiple ligament transfers, 
+and/or the patient has a medical condition that precludes 
+the use of autograft tissue 
+$12,522.51 
+KNE83 
+Revision Knee ACL Reconstruction (Anterior Cruciate 
+Ligament) 
+Simple: arthroscopic and/or open 
+$14,186.86 
+
+--- PAGE 17 ---
+ESS.Elective Surgery Services.2026 
+Page 17 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+KNE85A 
+Primary Knee PCL reconstruction (Posterior Cruciate 
+Ligament) – arthroscopic and/or open – Simple 
+Includes: 
+Harvesting, preparation of GRAFT 
+and any combination of: 
+Chondral debridement irrespective of Grade (including 
+notchplasty, chondromalacia) 
+and/or debridement of any soft tissue impingement 
+(including Patella Tendon, ganglion, Hoffa's fat pad) 
+and/or loose body removal 
+and/or Meniscal debridement and/or lateral retinacular 
+release 
+$17,542.99 
+KNE91 
+Primary Knee ACL Reconstruction (Anterior Cruciate 
+Ligament) 
+Complex Includes a KNE81 with Meniscal Repair &/or 
+Outerbridge drilling. 
+Allograft is not to be used in this procedure except for when 
+the reconstruction involves multiple ligament transfers, 
+and/or the patient has a medical condition that precludes 
+the use of autograft tissue 
+$15,026.98 
+KNE93 
+Revision Knee ACL Reconstruction (Anterior Cruciate 
+Ligament) 
+Complex Includes a KNE83 with Meniscal Repair &/or 
+Outerbridge III-IV drilling or microfracture 
+$17,024.22 
+KNE95A 
+Primary Knee PCL reconstruction (Posterior Cruciate 
+Ligament) – arthroscopic and/or open – Complex Includes a 
+KNE85A with Meniscal Repair &/or Outerbridge III-IV drilling 
+or microfracture 
+$20,074.99 
+NRV01 
+Delayed Repair of Major Nerve 
+$8,559.74 
+NRV02 
+Delayed Repair of Digital Nerve 
+$5,300.24 
+NRV03 
+Excision of Neuroma 
+$4,824.34 
+NRV04 
+Reconstruction Digital Nerve with Nerve Graft 
+$11,353.37 
+NRV05 
+Reconstruction Single Major Nerve with Nerve Grafts 
+$13,475.82 
+NRV06 
+Neurolysis 
+$5,049.53 
+NRV07 
+Suture of Nerve requiring extensive mobilisation 
+$8,306.19 
+NRV09 
+Excision of Neurofibroma Major Peripheral Nerve 
+$6,980.56 
+OPT04 
+YAG Laser Capsulotomy 
+$1,740.38 
+OPT05 
+Repair of Blepharoptosis 
+$4,124.57 
+OPT06 
+Lid/Adnexa - lid surgery - minor 
+$3,244.73 
+OPT07 
+Lid/Adnexa - lid surgery - major 
+$4,533.91 
+OPT08 
+Dacryocystorhinostomy with intubation 
+$6,915.02 
+
+--- PAGE 18 ---
+ESS.Elective Surgery Services.2026 
+Page 18 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+OPT09 
+Strabismus Surgery - one muscle 
+$3,335.30 
+OPT10 
+Strabismus Surgery - two muscles 
+$4,246.94 
+OPT101 
+Cataract Extraction Simple – Phacoemulsion + Insertion of 
+Intraocular lens (IOL) 
+$5,345.58 
+OPT102 
+Cataract Surgery 
+– including capsule stains with 
+specialised OVDs (ophthalmic viscoelastic devices) 
+$5,456.74 
+OPT103 
+Cataract Surgery – includes capsule stains with specialised 
+OVDs (ophthalmic viscoelastic devices) and/or: 
+• 
+Iris hooks/pupil expanders – and/or 
+• 
+Division of synechiae/iridoplasty and/or 
+• 
+Capsular ring 
+$6,149.85 
+OPT104 
+Cataract Surgery - includes procedures under OPT103 plus: 
+• 
+Limited anterior vitrectomy and/or 
+• 
+Sutured segments/rings and/or 
+• 
+Scleral sutured Intraocular lens (IOL) 
+$8,365.55 
+OPT105 
+Cataract Surgery - includes procedures under OPT103 and 
+OPT104 plus: 
+• 
+Sutured iris repair and/or 
+• 
+Intracapsular iris segments and/or 
+• 
+Aniridic intraocular lens and/or 
+• 
+Artificial iris 
+$9,058.68 
+OPT106 
+Cataract Surgery – Includes procedures under OPT103 plus: 
+• 
+Endothelial corneal transplant DMEK (Descemet 
+Membrane Endothelial Keratoplasty) and/or 
+• 
+Endothelial corneal transplant DSAEK (Descemet’s 
+stripping automated endothelial keratoplasty) and/or 
+• 
+Penetrating corneal transplant 
+$9,751.76 
+OPT107 
+Cataract Surgery – Includes procedures under OPT103 plus: 
+• 
+Glaucoma drainage surgery – trabeculectomy 
+• 
+OR 
+• 
+Glaucoma drainage surgery – tube or seton surgery 
+$6,842.97 
+OPT11 
+Strabismus Surgery - more than two muscles 
+$5,158.54 
+OPT120 
+Cataract Surgery – Revision – Includes: 
+• 
+Anterior Vitrectomy and/or - Pupilloplasty 
+$6,632.77 
+OPT121 
+Cataract Surgery – Revision – Includes: 
+• 
+Intra-ocular Lens Intraocular lens (IOL) repositioning 
+and/or Anterior Vitrectomy 
+$6,632.77 
+OPT122 
+Cataract Surgery – Revision – Includes: 
+• 
+Intra-ocular Lens Intraocular lens (IOL) replacement 
+and/or Anterior Vitrectomy 
+$6,632.77 
+
+--- PAGE 19 ---
+ESS.Elective Surgery Services.2026 
+Page 19 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+OPT123 
+Cataract Surgery – Revision – Including:  Mechanical 
+Capsulotomy 
+• 
+to address Posterior Capsule Opacification 
+$5,456.74 
+OPT13 
+Phototherapeutic Keratectomy (PTK) 
+$3,769.26 
+OPT130 
+Cataract Surgery combined with Vitreo-retinal surgery - 
+Including: 
+• 
+Posterior Vitrectomy 
+$7,145.85 
+OPT131 
+Cataract Surgery combined with posterior vitrectomy 
+• 
+Including: Intraocular lens (IOL) repositioning 
+$6,143.26 
+OPT132 
+Cataract Surgery combined with posterior vitrectomy 
+• 
+Including: pupilloplasty 
+$6,143.26 
+OPT133 
+Cataract Surgery combined with posterior vitrectomy 
+• 
+Including: sutured Intraocular lens (IOL) 
+$6,143.26 
+OPT14 
+Trabeculectomy with Antimetabolite Application 
+$7,105.09 
+OPT15 
+Enucleation/Evisceration with implant 
+$8,473.35 
+OPTAEYEB 
+National Eye Bank fee. Add on to be used in conjunction 
+with OPT106 
+Actual 
+and 
+Reasonable 
+Cost 
+OPTAFRAG 
+Fragmatome Use. Add on to be used in conjunction with 
+OPT101-OPT133. 
+Actual 
+and 
+Reasonable 
+Cost 
+ORAMAJB 
+Major bone graft (add on) for use with procedure codes that 
+don't 
+already 
+include 
+bone 
+graft 
+For bone harvested from the iliac crest. 
+$1,194.10 
+ORAMINB 
+Minor bone graft (add on) for use with procedure codes that 
+don't 
+already 
+include 
+bone 
+graft 
+For bone harvested from a site other than the operation site 
+or the iliac crest. 
+$693.11 
+OTY02 
+Cauterisation +/- Ablation Mucosa of Turbinates (not to be 
+used in combination) 
+$4,298.50 
+OTY08 
+Tympanostomy/Myringotomy 
+$2,609.71 
+OTY09 
+Myringoplasty - simple +/- patch 
+$4,302.22 
+OTY10 
+Myringoplasty - Endaural/Transcanal/Postauricular 
+$7,298.70 
+OTY100 
+Closed reduction of Fractured Nose – Simple – closed 
+reduction only 
+$3,038.22 
+OTY101 
+Closed reduction of Fractured Nose – Complex - with 
+septoplasty/ Open reduction 
+$6,226.76 
+OTY103 
+Septoplasty – Primary or Revision: - Including cartilage 
+harvested from the operative site 
+$6,596.48 
+OTY104 
+Endonasal Septorhinoplasty – Primary or Revision - 
+Including cartilage harvested from the operative site 
+$8,722.19 
+
+--- PAGE 20 ---
+ESS.Elective Surgery Services.2026 
+Page 20 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+OTY105 
+External Approach Septoplasty OR Septorhinoplasty – 
+Primary or Revision: - Including cartilage harvested from the 
+operative site 
+$11,584.90 
+OTY106 
+Endonasal Septorhinoplasty Primary or Revision: - Includes 
+minor cartilage graft, temporalis fascia or similar 
+Not for cartilage harvested from the operative site 
+$11,922.89 
+OTY107 
+External Approach Septoplasty OR Septorhinoplasty - 
+Includes minor cartilage graft, temporalis fascia or similar 
+Not for cartilage harvested from the operative sited 
+$12,330.43 
+OTY108 
+Endonasal Septorhinoplasty Primary or Revision with a 
+major graft: - Bone graft – (major) - Autograft (Costal 
+cartilage or Calvarial bone or similar) 
+$15,371.57 
+OTY109 
+Septorhinoplasty External Approach with a major graft – 
+Primary Or Revision: - Bone graft – (major) - Autograft 
+(Costal cartilage or Calvarial bone or similar) 
+$17,899.87 
+OTY11 
+Tympanoplasty - Ossicular Reconstruction +/- prosthesis 
+$8,608.75 
+OTY120 
+Unilateral mini endoscopic sinus surgery (ESS) 
+$6,046.22 
+OTY121 
+Unilateral comprehensive endoscopic sinus surgery (ESS) 
+$7,779.03 
+OTY122 
+Bilateral mini endoscopic sinus surgery (ESS) 
+$7,085.90 
+OTY123 
+Bilateral comprehensive endoscopic sinus surgery (ESS) 
+$9,858.37 
+OTYATURB 
+Endoscopic Powered Inferior Turbinoplasties. Add on to be 
+used in conjunction with OTY103 - OTY109. 
+$1,137.57 
+SHU01 
+MUA Shoulder Joint +/- injection 
+NOT TO BE USED IN COMBINATION WITH OTHER CODES 
+NOT TO BE USED AS AN EQUIVALENT 
+$2,943.11 
+SHU06 
+Excision Outer End of Clavicle 
+(not to be used in combination with other codes) 
+$5,874.98 
+SHU07 
+ORIF Clavicle 
+$7,655.38 
+SHU08 
+Open Reduction of AC Dislocation 
+$8,526.66 
+SHU09 
+Proximal Biceps Tendon Tenotomy/Tenolysis/Release. 
+(not to be used in combination with other codes) 
+$7,339.43 
+SHU13 
+Partial Shoulder Replacement 
+$13,092.15 
+SHU14 
+Total Shoulder Replacement 
+$16,363.42 
+SHU15 
+Arthrodesis Shoulder 
+$10,136.11 
+SHU16 
+ORIF Humeral Fracture 
+$8,599.06 
+SHU17A 
+Reverse Total Shoulder Replacement 
+$16,363.42 
+SHU20 
+Removal of plate and screws Humerus. 
+Includes: any excision/revision of initial scar including 
+hypertrophic or keloid scarring 
+$5,859.70 
+
+--- PAGE 21 ---
+ESS.Elective Surgery Services.2026 
+Page 21 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+SHU21 
+Removal Intramedullary Humeral Rod. 
+Includes: Removal of all locking screws at time of 
+procedure; excision/revision of initial scar 
+$7,524.09 
+SHU22 
+Removal Intramedullary Humeral Rod Locking Screws x 1-3 
+Includes: excision/revision of initial scar. 
+(Not to be used in combination with Removal of 
+Intramedullary Humeral Rod) 
+$4,576.98 
+SHU23 
+Removal of plate and screws Clavicle. 
+Includes: any excision/revision of initial scar including 
+hypertrophic or keloid scarring. 
+$5,187.34 
+SHU50 
+Shoulder Arthroscopic Surgery - Simple 
+$7,318.61 
+SHU51 
+Shoulder Arthroscopy Proceed to Open Surgery - Simple 
+$6,091.89 
+SHU52 
+Shoulder Open Surgery - Simple 
+$5,538.11 
+SHU60 
+Shoulder Arthroscopic Surgery - Complex 1 
+$7,743.77 
+SHU61 
+Shoulder Arthroscopy - Proceed to Open Surgery - Complex 
+1 
+$7,384.25 
+SHU62 
+Shoulder Open Surgery - Complex 1 
+$6,645.71 
+SHU70 
+Shoulder Arthroscopic Surgery - Complex 2 
+$8,954.06 
+SHU71 
+Shoulder Arthroscopy Proceed to Open Surgery - Complex 
+2 
+$9,589.97 
+SHU72 
+Shoulder Open Surgery - Complex - 2 
+$8,491.89 
+SHU80 
+Shoulder Arthroscopic Repair - 1 (if majority of procedure is 
+arthroscopic then SHU80 applies) 
+Includes: 
+Any combination of procedures listed under SHU70 AND: 
+Single Tendon rotator cuff repair 
+or 
+Biceps Tenodesis * 
+* Note: Tenodesis means the actual removal of the long 
+head of biceps from its normal attachment and re-
+anchoring it along its length to the humerus including within 
+the bicipital groove 
+$13,471.18 
+SHU81 
+Shoulder Arthroscopy and Proceed to Open Repair 1 
+Includes: 
+Any combination of procedures listed under SHU71 AND: 
+Single Tendon rotator cuff repair  
+or 
+Biceps Tenodesis * 
+* Note: Tenodesis means the actual removal of the long 
+head of biceps from its normal attachment and re-
+anchoring it along its length to the humerus including within 
+the bicipital groove 
+$13,056.72 
+
+--- PAGE 22 ---
+ESS.Elective Surgery Services.2026 
+Page 22 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+SHU82 
+Shoulder Open Repair 1 
+Includes: 
+Any combination of procedures listed under SHU72 AND: 
+Single Tendon rotator cuff repair 
+or 
+Biceps Tenodesis * 
+* Note: Tenodesis means the actual removal of the long 
+head of biceps from its normal attachment and re-
+anchoring it along its length to the humerus including within 
+the bicipital groove 
+$11,276.13 
+SHU85 
+Shoulder Instability Repair – Simple Arthroscopic and/or 
+Open 
+Includes: 
+Any procedure listed in SHU70; SHU71; SHU72 and 
+capsular shift AND: 
+ 
+Repair of Recurrent Dislocation Shoulder Single labral 
+region: 
+Anterior including inferior or; 
+Posterior including inferior 
+OR 
+Repair of SLAP lesion and/or labral tear Single labral region: 
+Superior including posterosuperior and anterosuperior. 
+$13,471.18 
+SHU90 
+Shoulder Arthroscopic Repair 2 (if majority of procedure is 
+arthroscopic then SHU90 applies) 
+Rotator Cuff Repair two or more tendons (one of which may 
+include tenodesis of the Biceps tendon) 
+Includes: 
+Any combination of procedures listed under SHU70 AND: 
+Rotator Cuff repair two or more tendons and may include 
+Biceps Tenodesis * 
+* Note: Tenodesis means the actual removal of the long 
+head of biceps from its normal attachment and re-
+anchoring it along its length to the humerus including within 
+the bicipital groove 
+$16,627.63 
+SHU91 
+Shoulder Arthroscopy and Proceed to Open Repair 2 
+Rotator Cuff Repair two or more tendons (one of which may 
+include tenodesis of the Biceps tendon) 
+Includes: 
+$13,481.84 
+
+--- PAGE 23 ---
+ESS.Elective Surgery Services.2026 
+Page 23 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+Any combination of procedures listed under SHU71 AND: 
+Rotator Cuff repair two or more tendons and may include 
+Biceps Tenodesis * 
+* Note: Tenodesis means the actual removal of the long 
+head of biceps from its normal attachment and re-
+anchoring it along its length to the humerus including within 
+the bicipital groove 
+SHU92 
+Shoulder Open Repair 2 
+Rotator Cuff Repair two or more tendons (one of which may 
+include tenodesis of the Biceps tendon) 
+Includes: 
+Any combination of procedures listed under SHU72 AND: 
+Rotator Cuff repair two or more tendons and may include 
+Biceps Tenodesis* 
+* Note: Tenodesis means the actual removal of the long 
+head of biceps from its normal attachment and re-
+anchoring it along its length to the humerus including within 
+the bicipital groove 
+$13,531.38 
+SHU95 
+Shoulder Instability Repair – Complex 1 Includes: 
+Any combination of procedures listed under SHU85 and 
+rotator cuff repair one or more tendons (one of which may 
+include tenodesis of the biceps tendon) 
+AND/OR: 
+Repair of extensive labral tear – More than one region and/or 
+Revision Repair of Recurrent Dislocation Shoulder and/or 
+Labral repair and Remplissage of Hill Sachs defect 
+*Remplissage is defined as a posterior capsulotenodesis 
+into a Hill Sach’s lesion 
+$16,627.63 
+SHU96A 
+Shoulder Instability Repair – Complex 2: Latarjet Procedure  
+Includes: 
+Osteotomy, transfer and fixation of the coracoid process 
+and attachments and/or other bone graft to glenoid) 
+NOT TO BE USED IN COMBINATION WITH OTHER CODES. 
+NOT TO BE USED AS AN EQUIVALENT 
+$16,627.63 
+SKP01 
+Removal of foreign body 
+$4,127.31 
+SKP02 
+Debridement of skin and subcutaneous tissue 
+$5,073.99 
+SKP03 
+Debridement of skin-partial thickness 
+$4,738.36 
+SKP04 
+Revision of Scar of Face 
+$4,461.55 
+SKP05 
+Revision of Scars of Face (2-4 scars) 
+$5,573.36 
+SKP06 
+Revision of Scar Trunk/limbs 
+$4,969.05 
+SKP07 
+Revision of Scars Trunk/Limbs (2-4 scars) 
+$5,998.30 
+SKP09 
+Split skin graft face and /or neck 
+$6,869.81 
+
+--- PAGE 24 ---
+ESS.Elective Surgery Services.2026 
+Page 24 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+SKP10 
+Split skin graft trunk and/or limbs 
+$6,069.68 
+SKP11 
+Full thickness skin graft, <20cm 
+$5,890.28 
+SKP12 
+Insertion of tissue expander 
+$8,656.57 
+SKP13 
+Removal of tissue expander(s) and reconstruction 
+$9,451.91 
+SKP14 
+Minor finger surgery (stump revision/cyst) 
+$3,077.68 
+SKP15 
+Excision of Nail and Nail bed (Toe) 
+$3,381.31 
+SPN300 
+Occipito -cervical fusion with instrumentation, any levels. 
++/- decompression. 
+Includes bone graft 
+$27,917.55 
+SPN301 
+Posterior Fusion - C1/2 with instrumentation. Includes bone 
+graft 
+$22,926.52 
+SPN302 
+Posterior C1/2 to cervical fusion with instrumentation, any 
+levels. +/- decompression. Includes bone graft 
+$27,917.55 
+SPN303 
+Posterior Cervical Fusion - Simple – Single Level with 
+instrumentation (excludes C1/2 with instrumentation). 
+Includes bone graft 
+$14,811.01 
+SPN304 
+Posterior Cervical Fusion Complex – Single Level with 
+instrumentation. 
+Includes: 
+Discectomy 
+and/or 
+Decompression 
+and 
+Posterior 
+Laminectomy 
+or 
+Foraminotomy. 
+Includes bone graft 
+$20,673.45 
+SPN305 
+Posterior Cervical Fusion - Simple – Two Levels with 
+instrumentation. 
+Includes bone graft 
+$21,454.78 
+SPN306 
+Posterior Cervical Fusion Complex – Two Levels with 
+instrumentation. 
+Includes: 
+Discectomy 
+and/or 
+Decompression 
+and 
+Posterior 
+Laminectomy 
+or 
+Foraminotomy. 
+Includes bone graft 
+$25,732.81 
+SPN307 
+Posterior Cervical Fusion - Simple – Three or more Levels 
+with instrumentation. 
+Includes bone graft 
+$25,188.82 
+SPN308 
+Posterior Cervical Fusion Complex – Three or more Levels 
+with 
+instrumentation. 
+Includes: 
+Discectomy 
+and/or 
+Decompression 
+and 
+Posterior 
+Laminectomy 
+or 
+Foraminotomy. 
+ Includes bone graft 
+$28,040.83 
+SPN309 
+Cervical Laminoplasty 1-2 Levels 
+$19,080.77 
+SPN310 
+Cervical Laminoplasty Complex 1-2 Levels. 
+Includes Decompression (Foraminotomies) 
+$20,506.78 
+SPN311 
+Cervical Laminoplasty 3 or more Levels 
+$23,527.79 
+
+--- PAGE 25 ---
+ESS.Elective Surgery Services.2026 
+Page 25 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+SPN312 
+Cervical Laminoplasty Complex 3 or more Levels. Includes 
+Decompression (Foraminotomies) 
+$25,666.80 
+SPN313 
+Posterior Cervical Decompression Simple 1 Level  
+$15,111.25 
+SPN314 
+Posterior Cervical Decompression Complex 1 Level. 
+Includes Posterior Discectomy 
+$16,537.25 
+SPN315 
+Posterior Cervical Decompression Simple 2 Levels bilateral 
+$18,799.21 
+SPN316 
+Posterior Cervical Decompression Complex 2 Levels 
+bilateral. 
+Includes Posterior Discectomy 
+$20,225.21 
+SPN317 
+Posterior Cervical Decompression Simple 3 Levels or more 
+bilateral 
+$21,820.22 
+SPN318 
+Posterior Cervical Decompression Complex 3 Levels or 
+more bilateral. 
+Includes Posterior Discectomy 
+$25,453.56 
+SPN319 
+Anterior Cervical Discectomy with Fusion 1 Level. No 
+instrumentation. 
+Includes bone graft 
+$16,470.36 
+SPN320 
+Anterior Cervical Discectomy with Fusion - Two or more 
+levels. No instrumentation. 
+Includes bone graft 
+$19,251.08 
+SPN321 
+Anterior Cervical Discectomy and Instrumented Fusion with 
+Graft - Single level. Includes: Discectomy and/or 
+Decompression. 
+Includes bone graft 
+$17,105.48 
+SPN322 
+Anterior Cervical Discectomy Fusion with Instrumentation – 
+One Level. 
+Includes Removal of adjacent segment (s) plate. Includes 
+bone graft 
+$21,740.01 
+SPN323 
+Anterior 
+Cervical 
+Discectomy 
+Revision 
+with 
+Instrumentation - One Level. 
+Includes Removal of Plate or Disc prosthesis. Includes 
+bone graft 
+$21,740.01 
+SPN324 
+Anterior Cervical Discectomy Fusion with Instrumentation – 
+Two or more levels. 
+Includes bone graft 
+$23,573.17 
+SPN325 
+Anterior Cervical Discectomy Fusion with Instrumentation – 
+Two or more levels. 
+Includes Removal of adjacent segment (s) plate. Includes 
+bone graft 
+$26,425.18 
+SPN326 
+Anterior 
+Cervical 
+Discectomy 
+Revision 
+with 
+Instrumentation - Two or more levels. 
+Includes Removal of Plate or Disc prosthesis. Includes 
+bone graft 
+$26,425.18 
+
+--- PAGE 26 ---
+ESS.Elective Surgery Services.2026 
+Page 26 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+SPN327 
+Cervical Disc Replacement (Arthroplasty) – Single Level. 
+Includes: Discectomy and/or Decompression 
+$18,457.53 
+SPN328 
+Cervical Disc Replacement (Arthroplasty) - Two or more 
+Levels. 
+Includes: Discectomy and/or Decompression 
+$21,085.42 
+SPN329 
+Cervical Hybrid Disc Replacement (Arthroplasty) - Two or 
+more Levels. A single level anterior cervical intervertebral 
+fusion in combination with a single level disc replacement. 
+Includes: Discectomy and/or Decompression. Includes 
+bone graft 
+$22,279.51 
+SPN330 
+Posterior 
+Thoracic/Thoracolumbar 
+Fusion 
+with 
+instrumentation – Simple. 1 Level (3 segments). Includes 
+bone graft 
+$25,072.02 
+SPN331 
+Posterior 
+Thoracic/Thoracolumbar 
+Fusion 
+with 
+instrumentation – Complex. 1 Level. 
+Includes: Discectomy and/or Decompression. Includes 
+bone graft 
+$31,132.57 
+SPN332 
+Posterior 
+Thoracic/Thoracolumbar 
+Fusion 
+with 
+instrumentation – Simple. 2 Levels (5 segments). Includes 
+bone graft 
+$28,093.05 
+SPN333 
+Posterior 
+Thoracic/Thoracolumbar 
+Fusion 
+with 
+instrumentation – Complex. 2 Levels. 
+Includes: Discectomy and/or Decompression. Includes 
+bone graft 
+$32,371.07 
+SPN334 
+Posterior 
+Thoracic/Thoracolumbar 
+Fusion 
+with 
+instrumentation – Simple. 3 Levels (7 - 12 segments). 
+Includes bone graft 
+$33,321.40 
+SPN335 
+Posterior 
+Thoracic/Thoracolumbar 
+Fusion 
+with 
+instrumentation – Complex. 3 Levels. 
+Includes: Discectomy and/or Decompression. Includes 
+bone graft 
+$33,609.59 
+SPN340 
+Posterolateral Lumbar Fusion Without Instrumentation 
+Simple – Single Level. 
+Includes bone graft 
+$12,040.51 
+SPN341 
+Posterolateral Lumbar Fusion Without Instrumentation 
+Complex - Single Level. 
+Includes: Discectomy and/or Decompression (Including 
+Laminectomy). 
+Includes bone graft 
+$18,757.72 
+SPN342 
+Posterolateral Lumbar Fusion Without Instrumentation 
+Simple – Two or more levels. If the procedure involves more 
+than two levels and the procedure is more complex, non-
+core pricing can be used. 
+Includes bone graft 
+$19,283.23 
+
+--- PAGE 27 ---
+ESS.Elective Surgery Services.2026 
+Page 27 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+SPN343 
+Posterolateral –Lumbar Fusion, without instrumentation 
+Complex – Two or more levels. If the procedure involves 
+more than two levels and the procedure is more complex, 
+non-core pricing can be used. 
+Includes: Discectomy and/or Decompression. Includes 
+bone graft 
+$19,996.22 
+SPN344 
+Posterolateral Lumbar Fusion with instrumentation Simple 
+– Single level. 
+Includes bone graft 
+$20,604.25 
+SPN345 
+Posterolateral 
+Lumbar 
+Fusion 
+with 
+instrumentation 
+Complex - Single level. Includes: Discectomy and/or 
+Decompression. 
+Includes bone graft 
+$24,918.72 
+SPN346 
+Revision 
+Posterolateral 
+Lumbar 
+Fusion 
+with 
+Instrumentation – Single Level. Includes removal implants 
+same level. 
+Includes bone graft 
+$25,275.21 
+SPN347 
+Revision 
+Posterolateral 
+Lumbar 
+Fusion 
+with 
+Instrumentation – Single Level. 
+Includes removal implants at another level. 
+Includes bone graft 
+$25,275.21 
+SPN348 
+Revision 
+Posterolateral 
+Lumbar 
+Fusion 
+with 
+Instrumentation - Single Level. 
+Includes removal implants same level. 
+Includes Discectomy and/or decompression. Includes 
+bone graft 
+$29,653.42 
+SPN349 
+Posterolateral Lumbar Fusion with instrumentation Simple 
+- Two or more levels. 
+Includes bone graft. 
+If the procedure involves more than two levels or the 
+procedure is more complex, non-core pricing can be used. 
+$22,912.27 
+SPN350 
+Posterolateral 
+Lumbar 
+Fusion 
+with 
+instrumentation 
+Complex – Two or more levels. 
+Includes: Discectomy and/or Decompression. Includes 
+bone graft. 
+If the procedure involves more than two levels or the 
+procedure is more complex, non-core pricing can be used. 
+$28,652.74 
+SPN351 
+Revision 
+Posterolateral 
+Lumbar 
+Fusion 
+with 
+instrumentation Simple - Two or more levels. Includes 
+removal implants same level. 
+Includes bone graft. 
+If the procedure involves more than two levels and the 
+procedure is more complex, non-core pricing can be used. 
+$29,909.96 
+
+--- PAGE 28 ---
+ESS.Elective Surgery Services.2026 
+Page 28 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+SPN352 
+Revision 
+Posterolateral 
+Lumbar 
+Fusion 
+with 
+instrumentation Simple - Two or more levels. Includes 
+removal implants another level. 
+Includes bone graft. 
+If the procedure involves more than two levels and the 
+procedure is more complex, non-core pricing can be used. 
+$29,909.96 
+SPN353 
+Revision 
+Posterolateral 
+Lumbar 
+Fusion 
+with 
+Instrumentation Complex - Two or More Levels. Includes 
+removal implants same level. 
+Includes Discectomy and/or decompression. Includes 
+bone graft. 
+If the procedure involves more than two levels or the 
+procedure is more complex, non-core pricing can be used. 
+$37,744.59 
+SPN354 
+Revision 
+Posterolateral 
+Lumbar 
+Fusion 
+with 
+Instrumentation Complex - Two or More Levels. Includes 
+removal implants another level. 
+Includes Discectomy and/or decompression. Includes 
+bone graft. 
+If the procedure involves more than two levels or the 
+procedure is more complex, non-core pricing can be used. 
+$37,744.59 
+SPN355 
+Single Level Transforaminal Lumbar Interbody Fusion (TLIF) 
+single interbody cage. Includes posterior lateral fusion 
+(PLF). 
+Includes bone graft 
+$29,027.73 
+SPN356 
+Single Level Transforaminal Lumbar Interbody Fusion (TLIF) 
+double cage. Includes posterior lateral fusion (PLF). 
+Includes bone graft 
+$31,166.74 
+SPN357 
+Double Level Transforaminal Lumbar Interbody Fusion 
+(TLIF) single cage. Includes posterior lateral fusion (PLF). 
+Includes bone graft 
+$33,305.75 
+SPN358 
+Double Level Transforaminal Lumbar Interbody Fusion 
+(TLIF) with double cages. Includes posterior lateral fusion 
+(PLF). 
+Includes bone graft 
+$35,444.77 
+SPN360 
+Anterior Lumbar Fusion Simple – Single Level. Anterior 
+Lumbar Interbody Fusion (ALIF), or Lateral lumbar interbody 
+fusion (LLIF) or. Direct lateral interbody fusion (DLIF). 
+Includes: Discectomy and/or Decompression. Includes 
+Access Surgeon. 
+Includes bone graft. 
+Not to be used for laparoscopic/endoscopic techniques. 
+These should be done non-core. 
+$30,822.97 
+
+--- PAGE 29 ---
+ESS.Elective Surgery Services.2026 
+Page 29 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+SPN361 
+Anterior Lumbar Fusion Simple – Single Level. Anterior 
+Lumbar Interbody Fusion (ALIF), or Lateral lumbar interbody 
+fusion (LLIF) or. Direct lateral interbody fusion (DLIF). 
+Includes: Discectomy and/or Decompression. 
+No Access Surgeon. 
+Includes bone graft. 
+Not to be used for laparoscopic/endoscopic techniques. 
+These should be done non-core. 
+$24,036.70 
+SPN362 
+Anterior and Posterior Lumbar Fusion Complex - Single 
+Level. Anterior Lumbar Interbody Fusion (ALIF), or Lateral 
+lumbar interbody fusion (LLIF) or Direct lateral interbody 
+fusion (DLIF). And Posterolateral Lumbar Fusion with or 
+without instrumentation. 
+Includes Access Surgeon. 
+Includes: Discectomy and/or Decompression. Includes 
+bone graft. 
+Not to be used in combination. 
+Not to be used for laparoscopic/endoscopic techniques. 
+These should be done non-core. 
+$37,203.25 
+SPN363 
+Anterior and Posterior Lumbar Fusion Complex - Single 
+Level. Anterior Lumbar Interbody Fusion (ALIF), or Lateral 
+lumbar interbody fusion (LLIF) or Direct lateral interbody 
+fusion (DLIF). And Posterolateral Lumbar Fusion with or 
+without instrumentation. 
+Includes bone graft. 
+No Access Surgeon. 
+Includes: Discectomy and/or Decompression. 
+Not to be used in combination. Not to be used for 
+laparoscopic/endoscopic techniques. These should be 
+done non-core. 
+$30,416.98 
+SPN364 
+Revision Anterior Lumbar Fusion - Single Level. Anterior 
+Lumbar Interbody Fusion (ALIF), or Lateral lumbar interbody 
+fusion (LLIF) or Direct lateral interbody fusion (DLIF). 
+Includes removal implants same level. 
+Includes Access Surgeon. 
+Includes: Discectomy and/or Decompression. Includes 
+bone graft. 
+Not to be used for laparoscopic/endoscopic techniques. 
+These should be done non-core. 
+$33,003.00 
+SPN365 
+Revision Anterior Lumbar Fusion - Single Level. Anterior 
+Lumbar Interbody Fusion (ALIF), or Lateral lumbar interbody 
+fusion (LLIF) or Direct lateral interbody fusion (DLIF). 
+Includes removal implants same level. 
+No Access Surgeon. 
+Includes: Discectomy and/or Decompression. Includes 
+bone graft. 
+$25,462.70 
+
+--- PAGE 30 ---
+ESS.Elective Surgery Services.2026 
+Page 30 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+Not to be used for laparoscopic/endoscopic techniques. 
+These should be done non-core. 
+SPN366 
+Anterior Lumbar Fusion Simple - Two or more levels. 
+Anterior Lumbar Interbody Fusion (ALIF), or Lateral lumbar 
+interbody fusion (LLIF) or Direct lateral interbody fusion 
+(DLIF). 
+Includes Access Surgeon. 
+Includes: Discectomy and/or Decompression. Includes 
+bone graft. 
+If the procedure involves more than two levels and the 
+procedure is more complex, non-core pricing can be used. 
+Not to be used for laparoscopic/endoscopic techniques. 
+These should be done non-core 
+$37,532.09 
+SPN367 
+Anterior Lumbar Fusion Simple - Two or more levels. 
+Anterior Lumbar Interbody Fusion (ALIF), or Lateral lumbar 
+interbody fusion (LLIF) or Direct lateral interbody fusion 
+(DLIF). 
+No Access Surgeon. 
+Includes: Discectomy and/or Decompression. Includes 
+bone graft. 
+Not to be used for laparoscopic/endoscopic techniques. 
+These should be done non-core. If the procedure involves 
+more than two levels and the procedure is more complex, 
+non-core pricing can be used. 
+$28,483.74 
+SPN368 
+Anterior and Posterior Lumbar Fusion Complex - Two or 
+More Levels. Anterior Lumbar Interbody Fusion (ALIF), or 
+Lateral lumbar interbody fusion (LLIF) or Direct lateral 
+interbody fusion (DLIF). And Posterolateral Lumbar Fusion 
+with or without instrumentation. 
+Includes Access Surgeon. 
+Includes bone graft. 
+Includes: Discectomy and/or Decompression 
+Not to be used in combination. If the procedure involves 
+more than two levels and the procedure is more complex, 
+non-core pricing can be used. 
+$42,486.14 
+SPN369 
+Anterior and Posterior Lumbar Fusion Complex - Two or 
+More Levels. Anterior Lumbar Interbody Fusion (ALIF), or 
+Lateral lumbar interbody fusion (LLIF) or Direct lateral 
+interbody fusion (DLIF). And Posterolateral Lumbar Fusion 
+with or without instrumentation. 
+No Access Surgeon. 
+Includes bone graft. 
+Includes: Discectomy and/or Decompression 
+Not to be used in combination. If the procedure involves 
+more than two levels and the procedure is more complex, 
+non-core pricing can be used. 
+$33,437.78 
+
+--- PAGE 31 ---
+ESS.Elective Surgery Services.2026 
+Page 31 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+SPN370 
+Revision Anterior Lumbar Fusion -Two or more Levels. 
+Anterior Lumbar Interbody Fusion (ALIF), or Lateral lumbar 
+interbody fusion (LLIF) or Direct lateral interbody fusion 
+(DLIF). 
+Includes removal implants same level. 
+Includes Access Surgeon. 
+Includes bone graft. 
+If the procedure involves more than two levels and the 
+procedure is more complex, non-core pricing can be used. 
+$50,612.33 
+SPN371 
+Revision Anterior Lumbar Fusion -Two or more Levels. 
+Anterior Lumbar Interbody Fusion (ALIF), or Lateral lumbar 
+interbody fusion (LLIF) or Direct lateral interbody fusion 
+(DLIF). 
+Includes removal implants same level. 
+No Access Surgeon. 
+Includes bone graft. 
+If the procedure involves more than two levels and the 
+procedure is more complex, non-core pricing can be used. 
+$37,039.80 
+SPN372 
+Lumbar Disc Replacement (Arthroplasty) – Single Level. 
+Includes Access Surgeon. 
+Includes: Discectomy and/or Decompression 
+$30,886.07 
+SPN373 
+Lumbar Disc Replacement (Arthroplasty) – Single Level. 
+No Access Surgeon. 
+Includes: Discectomy and/or Decompression 
+$24,099.82 
+SPN374 
+Lumbar Disc Replacement (Arthroplasty) Two or more 
+levels. 
+Includes Access Surgeon. 
+Includes: Discectomy and/or Decompression; 
+If the procedure involves more than two levels and the 
+procedure is more complex, non-core pricing can be used. 
+$36,337.99 
+SPN375 
+Lumbar Hybrid Disc Replacement (Arthroplasty) Two or 
+more levels. Includes a single level anterior lumbar 
+intervertebral fusion in combination with a single level disc 
+replacement. 
+Includes Access Surgeon. 
+Includes: Discectomy and/or Decompression; Includes 
+bone graft. 
+If the procedure involves more than two levels and the 
+procedure is more complex, non-core pricing can be used. 
+$37,532.09 
+
+--- PAGE 32 ---
+ESS.Elective Surgery Services.2026 
+Page 32 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+SPN376 
+Lumbar Disc Replacement (Arthroplasty) Two or more 
+levels. 
+No Access Surgeon. 
+Includes: Discectomy and/or Decompression; Includes 
+Hybrid 
+operation 
+(a 
+single 
+level 
+anterior 
+lumbar 
+intervertebral fusion in combination with a single level disc 
+replacement). 
+Includes bone graft. 
+If the procedure involves more than two levels and the 
+procedure is more complex, non-core pricing can be used. 
+$28,483.74 
+SPN380 
+Lumbar Discectomy Simple – Single level 
+$11,653.56 
+SPN381 
+Lumbar Discectomy Complex – Single level. Includes: 
+extensive foraminal and/or extraforaminal and/or far lateral 
+disc 
+protrusions/extrusions 
+and 
+central 
+disc 
+protrusions/extrusions requiring bilateral approach. 
+$13,701.13 
+SPN382 
+Lumbar Discectomy Simple - Two or more Levels. If the 
+procedure involves more than two levels and the procedure 
+is more complex, non-core pricing can be used. 
+$14,903.19 
+SPN383 
+Lumbar Discectomy Complex - Two or More Levels. 
+Includes: Extensive foraminal and/or extraforaminal and/or 
+far lateral disc protrusions/extrusions and/or central disc 
+protrusions/extrusions requiring bilateral approach. If the 
+procedure involves more than two levels and the procedure 
+is more complex, non-core pricing can be used. 
+$16,329.18 
+SPN384 
+Revision Lumbar Discectomy – Single level 
+$12,543.24 
+SPN385 
+Revision Lumbar Discectomy – Two or More Levels. If the 
+procedure involves more than two levels and the procedure 
+is more complex, non-core pricing can be used. 
+$14,560.76 
+SPN386 
+Spinal Stenosis Decompression - Single level. Includes: 
+Discectomy, Revision discectomy 
+$14,461.99 
+SPN387 
+Spinal Stenosis Decompression - Two or more levels. 
+Includes: Discectomy, Revision discectomy. If the 
+procedure involves more than two levels and the procedure 
+is more complex, non-core pricing can be used. 
+$16,742.13 
+SPN388 
+Revision Spinal Stenosis Decompression - Single Level. 
+Includes: Discectomy, Revision discectomy 
+$15,709.53 
+SPN389 
+Revision Spinal Stenosis Decompression - Two or more 
+levels. Includes: Discectomy, Revision discectomy. If the 
+procedure involves more than two levels and the procedure 
+is more complex, non-core pricing can be used. 
+$18,866.31 
+SPN390 
+Coccygectomy 
+$13,190.84 
+SPN391 
+Removal of Spinal Instrumentation (Posterior only). Not to 
+be used in combination (See Revision codes) 
+$12,988.12 
+SPN392 
+Removal 
+Spinal 
+Instrumentation 
+Anterior 
+only.  
+Not to be used in combination (See Revision codes) 
+$18,047.48 
+
+--- PAGE 33 ---
+ESS.Elective Surgery Services.2026 
+Page 33 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+URABASKT 
+Urology baskets 
+Actual Costs 
+URABOTOX 
+Urology botox and botox needle 
+Actual 
+and 
+Reasonable 
+Cost 
+URADILAT 
+Urology dilator 
+Actual 
+and 
+Reasonable 
+Cost 
+URAGRASP 
+Urology grasping and Biopsy forceps 
+Actual Costs 
+URAGWIRE 
+Urology guidewires 
+Actual 
+and 
+Reasonable 
+Cost 
+URALASER 
+Urology Laser Charges (including Hire) 
+Actual 
+and 
+Reasonable 
+Cost 
+URASTENT 
+Urology Stents and ureteric catheters 
+Actual 
+and 
+Reasonable 
+Cost 
+URL01 
+Cystoscopy 
+and 
+urethral 
+dilatation 
+(inclusive 
+of 
+urethroscopy) 
+*Extra costs via Urology add-on codes list above 
+$4,842.01 
+URL02 
+Endoscopic urethrotomy (inclusive of cystoscopy and 
+urethroscopy; visual/optical) 
+*Extra costs via Urology add-on codes list above 
+$5,348.41 
+URL03 
+Cystoscopy (diagnostic/check cystoscopy without any 
+additional procedure) 
+*Extra costs via Urology add-on codes list above 
+$4,498.59 
+URL04 
+Cystoscopy 
+And 
+Injections of botox 
+Injections of bulking agents 
+*Extra costs via Urology add-on codes list above 
+$5,600.15 
+URL05 
+Cystoscopy and bladder biopsy 
+*Extra costs via Urology add-on codes list above 
+$5,600.15 
+URL06 
+Cystoscopy and bladder washout 
+*Extra costs via Urology add-on codes list above 
+$5,600.15 
+URL07 
+Cystoscopy and hydrodistension 
+*Extra costs via Urology add-on codes list above 
+$5,600.15 
+URL08 
+Cystoscopy and retrograde pyelogram 
+*Extra costs via Urology add-on codes list above 
+$5,600.15 
+URL09 
+Cystoscopy and bladder stone removal (with or without 
+laser) 
+*Extra costs via Urology add-on codes list above 
+$8,769.02 
+
+--- PAGE 34 ---
+ESS.Elective Surgery Services.2026 
+Page 34 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+URL10 
+Cystoscopy and sphincterotomy (with or without laser) 
+*Extra costs via Urology add-on codes list above 
+$8,769.02 
+URL11 
+Cystoscopy and Stent Insertion (unilateral procedure) 
+*Extra costs via Urology add-on codes list above 
+$5,600.15 
+URL12 
+Cystoscopy and Stent Insertion (bilateral procedure) 
+*Extra costs via Urology add-on codes list above 
+$6,604.57 
+URL13 
+Cystoscopy and Removal of Stent (unilateral procedure) 
+*Extra costs via Urology add-on codes list above 
+$5,600.15 
+URL14 
+Cystoscopy and Removal of Stent (bilateral procedure) 
+*Extra costs via Urology add-on codes list above 
+$6,604.57 
+URL15 
+Ureteroscopy and/or laser and/or basketing of stones (not 
+meeting criteria for complex stones) – Unilateral 
+*Extra costs via Urology add-on codes list above 
+$10,992.15 
+URL16 
+Ureteroscopy and/or laser and/or basketing of stones 
+(complex stones: renal stones > 10 mm or ureteric stones > 
+7 mm or > 3 stones or BMI > 30) - Unilateral 
+*Extra costs via Urology add-on codes list above 
+$13,698.86 
+URL17 
+Ureteroscopy and/or laser and/or basketing of stones (not 
+meeting criteria for complex stones) – Bilateral 
+*Extra costs via Urology add-on codes list above 
+$13,349.92 
+URL18 
+Ureteroscopy and/or laser and/or basketing of stones 
+(complex stones: renal stones > 10 mm or ureteric stones > 
+7 mm or > 3 stones or BMI > 30) – Bilateral 
+*Extra costs via Urology add-on codes list above 
+$17,188.26 
+URL19 
+Insertion of Artificial Urinary Sphincter. Includes activation 
+fee. (First procedure, without history of radiation or urethral 
+surgery). 
+*Extra costs via Urology add-on codes list above 
+$12,912.88 
+URL20 
+Insertion of Artificial Urinary Sphincter. Includes activation 
+fee. (first procedure with history of radiation or history of 
+previous urethral surgery) *Extra costs via Urology add-on 
+codes list above 
+$18,467.63 
+URL21 
+Insertion of Artificial Urinary Sphincter. Includes activation 
+fee. (Revision procedure, includes: partial or total removal 
+of device, partial or total replacement, addition of tandem 
+sphincter cuff). 
+$18,467.63 
+URL22 
+Urethroplasty - with and without graft and harvesting. 
+Operation is performed as an assisted procedure. 
+Additional time for a second surgeon can be invoiced using 
+the 
+ESR09 
+code.  
+*Extra costs via Urology add-on codes list above 
+$14,466.24 
+URL23 
+Urethroplasty - with and without graft and harvesting. 
+Operation is performed by a single surgeon only.  
+*Extra costs via Urology add-on codes list above 
+$17,606.68 
+
+--- PAGE 35 ---
+ESS.Elective Surgery Services.2026 
+Page 35 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+URL24 
+Urethroplasty (revision) - with and without graft and 
+harvesting. Operation is performed as an assisted 
+procedure. Additional time for a second surgeon can be 
+invoiced using the ESR09 code.  To be used where there has 
+been 
+a 
+previous 
+urethroplasty.  
+*Extra costs via Urology add-on codes list above 
+$17,245.51 
+URL25 
+Urethroplasty (revision) - with and without graft and 
+harvesting. Operation is performed by a single surgeon only. 
+To be used where there has been a previous urethroplasty.  
+*Extra costs via Urology add-on codes list above 
+$21,316.51 
+URL26 
+Suprapubic catheter insertion (inclusive of cystoscopy if 
+performed) 
+*Extra costs via Urology add-on codes list above 
+$5,109.22 
+URL27 
+Bladder 
+neck 
+incision  
+*Extra costs via Urology add-on codes list above 
+$6,931.04 
+URL28 
+TUR 
+bladder 
+neck 
+contracture  
+*Extra costs via Urology add-on codes list above 
+$8,270.28 
+URL29 
+Vesico-vaginal 
+fistula 
+repair 
+(vaginal 
+approach) 
+*Extra costs via Urology add-on codes list above 
+$21,232.65 
+URL30 
+Vesico-vaginal 
+fistula 
+repair 
+(abdominal 
+approach)  
+*Extra costs via Urology add-on codes list above 
+$26,815.67 
+URL31 
+Urethral synthetic sling for urinary incontinence 
+Can include any of the following: 
+Revision surgery of male synthetic sling 
+Removal of male synthetic sling 
+Revision of female sling via vaginal approach only 
+including: 
+• 
+Removal of female synthetic sling 
+• 
+Partial excision of TVT sling 
+• 
+Transvaginal urethrolysis of synthetic sling 
+*Extra costs via Urology add-on codes list above 
+$9,374.75 
+URL32 
+Urethral autologous sling for urinary incontinence 
+Transvaginal urethrolysis of autologous sling 
+Urethral autologous sling for urinary incontinence 
+Can include any of the following: 
+Revision surgery of synthetic or autologous slings via an 
+abdominal approach (or abdominal and vaginal), including: 
+• 
+Partial excision of TVT sling 
+• 
+Removal of female synthetic sling 
+*Extra costs via Urology add-on codes list above 
+$11,383.61 
+URL33 
+Can include any of the following: 
+Frenuloplasty 
+Circumcision 
+$5,022.74 
+
+--- PAGE 36 ---
+ESS.Elective Surgery Services.2026 
+Page 36 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+URL34 
+Penile plication surgery for penile trauma 
+$7,689.17 
+URL35 
+Hydrocele repair (including redo) and evacuation of 
+haematoma 
+$9,057.34 
+WAH100 
+Closed reduction and k-wiring of phalangeal and 
+metacarpal fractures 
+$6,395.67 
+WAH101 
+Open Reduction Internal Fixation (ORIF) phalangeal 
+fracture - Simple 
+Includes: - simple shaft fractures 
+• 
+if 2 digits, each attract a separate code 
+• 
+if > 2 digits then this becomes a noncore procedure 
+$8,474.99 
+WAH102 
+Open Reduction Internal Fixation (ORIF) phalangeal 
+fracture – Complex 
+Includes: - intra-articular fractures, complex comminuted 
+shaft fractures, pilon fractures 
+• 
+if 2 digits, each attract a separate code 
+• 
+if > 2 digits then this becomes a noncore procedure 
+$10,207.79 
+WAH103 
+Hemi-hamate reconstruction of pilon fracture 
+$13,761.16 
+WAH104 
+Open Reduction Internal Fixation (ORIF) metacarpal – 
+Simple 
+Includes: - simple metacarpal shaft fractures 
+• 
+if 2 digits, each attract a separate code 
+• 
+if > 2 digits then this becomes a noncore procedure 
+$7,081.56 
+WAH105 
+Open Reduction Internal Fixation (ORIF) metacarpal – 
+Complex 
+Includes: - intra-articular fractures and 4th and 5th 
+carpometacarpal fracture dislocation 
+• 
+if 2 digits, each attract a separate code 
+• 
+if > 2 digits then this becomes a noncore procedure 
+$9,160.92 
+WAH106 
+Corrective Osteotomy of phalanx 
+Includes: - internal fixation 
+• 
+if 2 digits, each attract a separate code 
+• 
+if > 2 digits then this becomes a non-core procedure 
+$9,160.92 
+WAH107 
+Corrective osteotomy of metacarpal 
+Includes: - internal fixation 
+$9,160.92 
+WAH108 
+Arthrodesis Interphalangeal (IP) joint 
+Includes: - internal fixation 
+• 
+if 2 digits, each attract a separate code 
+• 
+if > 2 digits then this becomes a non-core procedure 
+$8,467.78 
+
+--- PAGE 37 ---
+ESS.Elective Surgery Services.2026 
+Page 37 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+WAH109 
+Arthrodesis Carpometacarpal (CMC) joint 
+Includes: 
+• 
+internal fixation 
+• 
+bone graft 
+$11,240.27 
+WAH110 
+Arthrodesis Metacarpophalangeal (MCP) joint 
+Includes: 
+• 
+internal fixation 
+• 
+bone graft 
+$8,121.26 
+WAH111 
+Carpometacarpal (CMC) joint arthroplasty – Simple 
+Includes: - trapeziumectomy, debridement of joints, 
+excision of avulsion fragments 
+$9,167.67 
+WAH112 
+Carpometacarpal (CMC) joint arthroplasty – Complex 
+Includes: trapeziumectomy plus ligament reconstruction 
+and tendon interposition (LRTI), implant arthroplasty and 
+beak ligament reconstruction 
+$11,247.02 
+WAH113 
+Metacarpophalangeal (MCP) joint arthroplasty – Simple 
+Includes: - silicone arthroplasty (e.g. Swanson) 
+• 
+if 2 digits, each attract a separate code 
+• 
+if > 2 digits then this becomes a noncore procedure 
+$9,167.67 
+WAH114 
+Metacarpophalangeal (MCP) joint arthroplasty – Complex 
+Includes: - cemented and uncemented 2 component 
+implant 
+• 
+if 2 digits, each attract a separate code 
+• 
+if > 2 digits then this becomes a non-core procedure 
+$11,247.02 
+WAH115 
+Repair 
+collateral 
+ligament 
+MCP 
+joint/ 
+IP 
+joint   
+(Metacarpophalangeal joint/Interphalangeal joint) 
+Includes: - volar plate repair 
+$6,990.15 
+WAH116 
+Reconstruction collateral ligament MCP joint/ IP joint - 
+using 
+tendon 
+graft  
+(Metacarpophalangeal joint/Interphalangeal joint) 
+Includes: - volar plate reconstruction with FDS (flexor 
+digitorum superficialis tendon), volar plate advancement 
+$6,643.59 
+WAH117 
+Simple amputation - Digit 
+• 
+if 2 digits, each attract a separate code 
+• 
+if > 2 digits then this becomes a non-core procedure 
+$6,041.89 
+WAH118 
+Ray Amputation - Digit 
+$7,081.56 
+WAH119 
+Tenolysis flexor tendon – Simple 
+ Includes: - A1 pulley release, traction tenolysis, flexor 
+tenotomy 
+• 
+if 2 digits, each attract a separate code 
+• 
+if > 2 digits then this becomes a non-core procedure 
+$5,603.93 
+
+--- PAGE 38 ---
+ESS.Elective Surgery Services.2026 
+Page 38 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+WAH120 
+Tenolysis flexor tendon – Complex 
+Includes: - excision of slip of FDS (flexor digitorum 
+superficialis tendon), tenolysis plus arthrolysis of MCPJ/IPJ  
+(Metacarpophalangeal joint/Interphalangeal joint) 
+• 
+if 2 digits, each attract a separate code 
+• 
+if > 2 digits then this becomes a non-core procedure 
+$10,802.30 
+WAH121 
+Tenolysis extensor tendon – 
+Simple 
+Includes: - release stenosing tenosynovitis (incl. De 
+Quervains), intersection syndrome, extensor tenotomy 
+• 
+if 2 digits, each attract a separate code 
+• 
+if > 2 digits then this becomes a non-core procedure 
+$5,257.37 
+WAH122 
+Tenolysis extensor tendon – Complex 
+Includes: 
+- 
+tenolysis 
+plus 
+arthrolysis 
+MCPJ/IPJ  
+(Metacarpophalangeal joint/Interphalangeal joint) 
+• 
+if 2 digits, each attract a separate code 
+• 
+if > 2 digits then this becomes a non-core procedure 
+$9,416.09 
+WAH123 
+Repair flexor tendon digit or palm 
+• 
+if two tendons, each attract a separate code, 
+• 
+if > 2 then this becomes a non-core procedure 
+$8,722.96 
+WAH124 
+Repair flexor tendon wrist or forearm – proximal to the 
+carpal tunnel 
+• 
+if two tendons, each attract a separate code, 
+• 
+if > 2 then this becomes a non-core procedure 
+$6,643.59 
+WAH125 
+Repair extensor tendon – digit or hand/ wrist or forearm 
+• 
+if two tendons, each attract a separate code, 
+• 
+if > 2 then this becomes a non-core procedure 
+$6,643.59 
+WAH126 
+Reconstruction flexor tendon using primary tendon graft 
+Includes: - harvest of tendon graft 
+• 
+if two tendons, each attract a separate code, 
+• 
+if > 2 then this becomes a non-core procedure 
+Excludes: tendon transfer 
+$10,109.19 
+WAH127 
+Reconstruction 
+flexor 
+tendon 
+- 
+1st 
+Stage 
+tendon 
+reconstruction 
+Includes: - insertion of spacer/rod 
+• 
+if two tendons, each attract a separate code, 
+• 
+if > 2 then this becomes a non-core procedure 
+Excludes: tendon transfer 
+$10,109.19 
+
+--- PAGE 39 ---
+ESS.Elective Surgery Services.2026 
+Page 39 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+WAH128 
+Reconstruction flexor tendon - 2nd Stage tendon 
+reconstruction 
+Includes: - harvest of tendon graft 
+• 
+if two tendons, each attract a separate code, 
+• 
+if > 2 then this becomes a non-core procedure 
+Excludes: tendon transfer 
+$12,969.44 
+WAH129 
+Reconstruction extensor tendon using primary tendon graft 
+Includes: - harvest of tendon graft 
+• 
+if two tendons, each attract a separate code, 
+• 
+if > 2 then this becomes a non-core procedure 
+Excludes: tendon transfer 
+- Should a Staged procedure be required, this would 
+become noncore 
+$7,336.71 
+WAH130 
+Pulley reconstruction - 
+Includes: required tenolysis, use of local tendon or free 
+tendon graft, extensor retinacular reconstruction i.e. ECU 
+(extensor carpi ulnaris) stabilization 
+• 
+if two tendons, each attract a separate code, 
+• 
+if > 2 then this becomes a non-core procedure 
+$10,455.76 
+WAH131 
+Tendon transfer for tendon rupture - 
+Includes: side to side transfer, end to end transfer, end to 
+side 
+• 
+if two transfers required, each attract a separate code, 
+• 
+if > 2 then this becomes a non-core procedure 
+$8,722.96 
+WAH132 
+Carpal tunnel release – Simple - open surgery Primary 
+$4,564.24 
+WAH133 
+Carpal tunnel release – Complex – Open surgery 
+Includes 
+Revision 
+Deep exploration, 
+Extensive neurolysis and tenolysis, +/- vein conduit wrap, 
++/- local fat flap 
+$5,603.93 
+WAH134 
+Carpal tunnel release – endoscopic 
+$6,372.23 
+WAH135 
+Open Reduction Internal Fixation (ORIF) scaphoid or other 
+carpal bone (includes Hook of Hamate) 
+Includes: - open or percutaneous screw fixation 
+$9,514.67 
+WAH136 
+Scaphoid or other carpal bone reconstruction – Simple 
+Includes: - bone graft from distal radius and fixation 
+$9,076.70 
+WAH137 
+Scaphoid or other carpal bone reconstruction – Complex  
+Using structural bone grafting from iliac crest and fixation. 
+Includes: - bone graft from iliac crest and fixation 
+• 
+if a vascularised bone graft is required, this becomes a 
+noncore procedure 
+$15,490.31 
+
+--- PAGE 40 ---
+ESS.Elective Surgery Services.2026 
+Page 40 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+WAH138 
+Wrist arthroscopic surgery – Simple 
+Includes: - diagnostic arthroscopy and/or removal of loose 
+bodies, simple debridement of synovitis 
+$6,372.23 
+WAH139 
+Wrist arthroscopy proceed to open surgery – Simple 
+Includes: - diagnostic arthroscopy and/or removal of loose 
+bodies, simple debridement of synovitis 
+$7,411.91 
+WAH140 
+Wrist open surgery – Simple 
+Includes: - removal of loose bodies, simple debridement of 
+synovitis 
+$5,603.93 
+WAH141 
+Wrist arthroscopy - Complex 1 - (Intercarpal ligament injury)  
+Includes: - Percutaneous K wiring of joints for intercarpal 
+ligament injury 
+$7,411.91 
+WAH142 
+Wrist arthroscopy and proceed to open - Complex 1 
+Includes: - Repair of intercarpal ligament and K-wiring of 
+joints 
+$11,570.59 
+WAH143 
+Wrist arthroscopy and proceed to open – Complex 1 – 
+Includes: - Reconstruction of intercarpal ligament and K-
+wiring of joints 
+$13,737.72 
+WAH144 
+Wrist Open Surgery – Complex 1 – Repair of intercarpal 
+ligament and K-wiring of joints 
+$12,600.82 
+WAH145 
+Wrist open surgery - Complex 1 - Reconstruction of 
+intercarpal ligament and K-wiring of joints 
+$11,156.08 
+WAH146 
+Wrist arthroscopy and proceed to open - Complex 2 - 
+Arthroscopic and proceed to open Proximal Row 
+Carpectomy (PRC) 
+$10,538.13 
+WAH147 
+Wrist arthroscopy and proceed to open - Complex 2 - Partial 
+wrist fusion and Sauve-Kapandji procedure 
+$11,924.38 
+WAH148 
+Wrist arthroscopy and proceed to open - Complex 2 – Total 
+Wrist Fusion 
+$16,258.61 
+WAH149 
+Wrist open surgery - Complex 2 - Proximal Row Carpectomy 
+(PRC) 
+$9,514.67 
+WAH150 
+Wrist open surgery - Complex 2 - Partial wrist fusion and 
+Sauve-Kapandji procedure 
+$11,594.03 
+WAH151 
+Wrist open surgery - Complex 2 - Total wrist fusion 
+$13,761.16 
+WAH152 
+Wrist arthroscopy - Complex 3 TFCC injury (triangular 
+fibrocartilage complex) 
+Includes: - diagnosis and TFCC (triangular fibrocartilage 
+complex) debridement 
+$7,411.91 
+WAH153 
+Wrist arthroscopy - Complex 3 
+Includes: - diagnosis, debridement & repair of TFCC 
+(triangular fibrocartilage complex) tear 
+$9,491.24 
+
+--- PAGE 41 ---
+ESS.Elective Surgery Services.2026 
+Page 41 of 80 
+Procedure 
+Code 
+Procedure Description 
+Pricing 
+(excl. GST) 
+WAH154 
+Wrist arthroscopy and proceed to open - Complex 3 
+Includes: - diagnosis, debridement & open repair of TFCC 
+(triangular fibrocartilage complex) tear 
+$11,924.38 
+WAH155 
+Wrist arthroscopy and proceed to open - Complex 3 - Open 
+TFCC (triangular fibrocartilage complex) reconstruction 
+with tendon graft 
+$14,091.50 
+WAH156 
+Wrist open surgery - Complex 3 - Open TFCC (triangular 
+fibrocartilage complex) repair 
+$9,769.85 
+WAH157 
+Wrist open surgery - Complex 3 - Open TFCC (triangular 
+fibrocartilage complex) reconstruction with tendon graft 
+$11,156.08 
+WAH158 
+Open Reduction Internal Fixation (ORIF) distal radius 
+Includes: - ORIF radial styloid 
+$11,240.27 
+WAH159 
+Corrective 
+osteotomy 
+distal 
+radius  
+Includes: Internal fixation 
+$11,240.27 
+WAH160 
+Styloidectomy distal radius 
+$7,435.32 
+WAH161 
+Open Reduction Internal Fixation (ORIF) ulna 
+Includes: - Open Reduction Internal Fixation (ORIF) shaft - 
+distal and styloid 
+$9,160.92 
+WAH162 
+Corrective osteotomy ulna 
+Includes: 
+• 
+Realignment and shortening 
+• 
+Internal fixation 
+$9,160.92 
+WAH163 
+Styloidectomy ulna 
+$7,435.32 
+WAH164 
+Release of Scar/ Fasciectomy – hand - major 
+$7,336.71 
+WAH165 
+Release of Scar/ Fasciectomy - palm/ finger - minor 
+$5,603.93 
+WAH166 
+Excision Pisiform 
+$7,774.68 
+WAH167 
+Excision Hook of Hamate 
+$8,814.35 
+WAH168 
+Repair Nail Bed 
+$4,910.81 
+WAH169 
+Nailbed (finger) reconstruction – Simple 
+Includes: - excision and partial ablation 
+$5,603.93 
+WAH170 
+Nailbed (finger) reconstruction – Complex 
+Includes: - nailbed grafting locally or from toe 
+$6,643.59 
+Table 2:  Non-core Service Items and Prices 
+Non-core 
+Procedure 
+Code 
+Description 
+Unit of 
+Measure 
+Price 
+(excl. GST) 
+ESRNC 
+Includes Theatre set up, Base Supplies and 
+Recovery Fee 
+Flat Fee 
+$1,587.64 
+ESR01 
+Theatre time (up to 120 minutes) 
+Per minute ≤ 
+120 minutes 
+$57.73 
+
+--- PAGE 42 ---
+ESS.Elective Surgery Services.2026 
+Page 42 of 80 
+Non-core 
+Procedure 
+Code 
+Description 
+Unit of 
+Measure 
+Price 
+(excl. GST) 
+ESR02 
+Theatre time (over 120 minutes) 
+Per minute > 
+120 minutes 
+$60.84 
+ESR03 
+Anaesthetist’s set up RVU 
+Per RVU 
+$85.37 
+ESR04 
+Anaesthetic other 
+Actual Costs 
+Actual 
+Costs 
+ESR05 
+Ward stay 
+Per day 
+$894.68 
+ESR06 
+High Dependency Unit (HDU) 
+Per day 
+$1,894.98 
+ESR07 
+Intensive Care Unit (ICU) 
+Per day 
+$6,518.84 
+ESR08 
+Plain x-rays 
+Per x-ray (max 
+amount 
+$250.21 
+ESR09 
+2nd surgeon - consultant 
+Per minute 
+$32.49 
+ESR10 
+2nd surgeon - assistant 
+Per minute 
+$4.23 
+ESR11 
+Splints/Orthotics 
+Actual Costs 
+Actual 
+Costs 
+ESR12 
+Unique Supplies (consumables, drugs – extra to 
+base) 
+Actual Costs 
+less $799.70 
+included 
+in 
+ESRNC 
+for 
+these costs 
+Actual 
+Costs less 
+$799.70 
+included in 
+ESRNC for 
+these costs 
+ESR13 
+Unusual/Unspecified costs 
+Actual Costs 
+Actual 
+Costs 
+ESR14 
+Laparoscopic/Endoscopic supplies 
+Actual Costs 
+Actual 
+Costs 
+ESR16 
+Day stay only 
+Per day 
+$468.64 
+ESR17 
+Inpatient allied health 
+Per visit 
+$62.73 
+ESR18 
+Follow up specialist visits 
+Per visit 
+$159.82 
+ 
+Price Review 
+ACC will review pricing when, at ACC’s sole discretion, we consider a review 
+necessary.  The factors ACC may take into account during a review include, but 
+are not limited to: 
+• 
+general inflation 
+• 
+changes in service component costs 
+• 
+substantial changes in the market 
+If ACC finds that the factors we take into account have not had a significant impact 
+on price, the prices will remain unchanged. 
+
+--- PAGE 43 ---
+ESS.Elective Surgery Services.2026 
+Page 43 of 80 
+If ACC provides a price increase, the Supplier must agree any adjustment in 
+writing. The price increase will take effect from a date specified by ACC. 
+5. 
+RELATIONSHIP MANAGEMENT 
+Table 3:  Relationship Management 
+Level 
+ACC 
+Supplier 
+Client 
+Recovery Team / Recovery Team 
+Member 
+Individual 
+staff 
+or 
+operational contact 
+Contract Management 
+Engagement 
+and 
+Performance 
+Manager 
+Operational 
+contact 
+/ 
+National Manager 
+Service Management 
+Portfolio Team or equivalent 
+National Manager 
+6. 
+ADDRESSES FOR NOTICES (STANDARD TERMS AND CONDITIONS, 
+CLAUSE 23) 
+NOTICES FOR ACC TO: 
+ACC Health Procurement 
+(for deliveries) 
+Justice Centre 
+19 Aitken Street 
+Wellington 6011 
+ACC Health Procurement 
+(for mail) 
+P O Box 242 
+Wellington 6140 
+Marked: “Attention: Procurement Partner” 
+Phone: 0800 400 503 
+Email: health.procurement@acc.co.nz 
+NOTICES FOR SUPPLIER TO: 
+______ 
+______ 
+______ 
+(for deliveries) 
+______ 
+______ 
+______ 
+(for mail) 
+______ 
+______ ______ 
+Marked: “Attention: ______ ______, ______” 
+Phone: ______ 
+Mobile: ______ 
+Email: ______ 
+ 
+ 
+
+--- PAGE 44 ---
+ 
+ESS.Elective Surgery Services.2026 
+Page 44 of 80 
+TABLE OF CONTENTS 
+1. PURPOSE ........................................................................................................... 45 
+2. SERVICE OBJECTIVES ......................................................................................... 45 
+3. DEFINITION OF “SERVICES” ................................................................................ 46 
+4. SERVICE LOCATIONS .......................................................................................... 48 
+5. ELIGIBILITY FOR SERVICE .................................................................................... 48 
+6. SUMMARY OF REFERRAL PROCESS ..................................................................... 49 
+7. CONTENT REQUIREMENTS FOR AN ARTP ............................................................. 49 
+8. TRANSFER OF LEAD SUPPLIER ............................................................................ 50 
+9. COMMENCEMENT AND ENDING OF SERVICES UNDER THIS SERVICE SCHEDULE . 50 
+10. TREATMENT ........................................................................................................ 51 
+11. OUTPATIENT POST DISCHARGE / POST PROCEDURE CARE .................................. 52 
+12. FURTHER PROVIDER LEVEL CARE ........................................................................ 53 
+13. IMPACT ON CLIENTS OF TERMINATION OF SERVICE ............................................. 54 
+14. SERVICE REQUIREMENTS AND RESOURCES ........................................................ 54 
+15. CREDENTIALING PROGRAMME ........................................................................... 56 
+16. ELECTRONIC COMMUNICATION ......................................................................... 57 
+17. NAMED PROVIDERS ............................................................................................ 57 
+18. FUNDING APPROVAL .......................................................................................... 59 
+19. FUNDING FOR TREATMENT INJURY PROCEDURES ............................................... 62 
+20. RETROSPECTIVE 
+FUNDING 
+APPROVAL 
+FOR 
+ALTERNATIVE 
+UNANTICIPATED 
+TREATMENT OR ALTERNATIVE TREATMENT .......................................................... 62 
+21. NO PAYMENT OUTSIDE APPROVAL PROCESS ...................................................... 64 
+22. PRIORITY CATEGORY TIMEFRAMES AND DEFINITIONS .......................................... 64 
+23. SIGNIFICANT COMPLICATION TRANSFER OF CARE .............................................. 65 
+24. DISCHARGE INFORMATION – NOTICE OF DISCHARGE ......................................... 66 
+25. REFERRAL FOR SUPPORT SERVICES ON DISCHARGE ........................................... 67 
+26. MANAGE CASE MIX ............................................................................................. 67 
+27. SUFFICIENT RESOURCES .................................................................................... 67 
+28. OPERATIONAL GUIDELINES ................................................................................ 67 
+29. PERFORMANCE MEASURES ................................................................................ 68 
+30. QUALITY IMPROVEMENT AND QUALITY INDICATOR REPORTING REQUIREMENTS .. 68 
+31. PRICES, PAYMENT AND INVOICING ..................................................................... 69 
+32. PAYMENTS FOR A TREATMENT INJURY PROCEDURE ............................................. 70 
+33. IMPLANTS PRICE IN ADDITION TO PROCEDURE PRICE ......................................... 70 
+34. TAX INVOICE ...................................................................................................... 71 
+35. OPERATION NOTE .............................................................................................. 72 
+36. TIMEFRAMES FOR INVOICING ............................................................................. 72 
+37. PAYMENT ........................................................................................................... 72 
+38. CONTINUOUS SERVICE IMPROVEMENT AND CO-DESIGN .................................... 73 
+39. CLAUSES RELATING TO HEALTH NEW ZEALAND – TE WHATU ORA ........................ 73 
+40. DEFINITIONS AND INTERPRETATION ................................................................... 76 
+ 
+ 
+
+--- PAGE 45 ---
+ESS.Elective Surgery Services.2026 
+Page 45 of 80 
+B. 
+SERVICE SPECIFICATIONS FOR ELECTIVE SURGERY SERVICES 
+1. 
+PURPOSE 
+1.1 
+ACC wishes to purchase Elective Surgery Services. 
+1.2 
+The purpose of the Service is: 
+1.2.1 
+To purchase timely, effective elective surgical, perioperative and post-
+discharge procedures and care for eligible ACC Clients (Clients) who have 
+a covered personal injury which requires surgical treatment to meet their 
+rehabilitation outcomes. 
+1.2.2 
+The Service consists of a package of care including client liaison, 
+preparation for surgery, delivery of surgical procedures, recovery, 
+discharge and follow-up care for a period from the date of discharge. 
+1.2.3 
+The Service is provided on a ‘Lead Supplier’ model, whereby the Supplier 
+ensures the provision of all services and resources required as part of the 
+Service, through owned, employed, leased, or subcontracted resources. 
+1.2.4 
+The Service commences upon receipt by the Supplier of a draft surgical 
+Assessment Report and Treatment Plan (ARTP) from a referring specialist 
+and concludes either at the point an ARTP submitted as a request for 
+approval is declined by ACC or the Client terminates treatment, or (if the 
+ARTP is approved) six weeks from the date of discharge from the 
+Treatment Facility.  This period from commencement of Services to 
+conclusion of the Services is the Care Period. 
+1.2.4.1 
+If a Procedure is specified in Appendix 4 of the Elective Surgery 
+Operational Guidelines and meets the conditions specified in 
+that Appendix, the Service commences when the Provider 
+notifies the Supplier of the impending procedure. 
+1.2.5 
+The Supplier is the accountable party during the Care Period for the 
+delivery of all services to the Client, including non-clinical support 
+services such as organising treatment, treatment preparation advice, 
+recovery support advice and similar activities, which may not be explicit 
+in the codes listed in Part A, but are normally expected as contributing to 
+a high standard of customer service. 
+2. 
+SERVICE OBJECTIVES 
+2.1 
+ACC will measure the success of this Service based on the following objectives: 
+2.1.1 
+This Service aims to contribute to optimal treatment and rehabilitation 
+outcomes for the Client. 
+
+--- PAGE 46 ---
+ESS.Elective Surgery Services.2026 
+Page 46 of 80 
+2.1.2 
+This service specification covers the purchasing of elective surgical 
+treatment through inpatient and day-patient procedures and outpatient 
+post discharge/post procedure care and includes diagnosis for all clients 
+where this has not been completed earlier. 
+2.1.3 
+This service specification outlines the requirements that the Supplier and 
+Named Provider must meet in the specialties included in (but not limited 
+to) the list below: 
+2.1.3.1 
+General Surgery; 
+2.1.3.2 
+Maxillo-facial; 
+2.1.3.3 
+Neurology and neurosurgery; 
+2.1.3.4 
+Obstetrics and Gynaecology 
+2.1.3.5 
+Ophthalmology; 
+2.1.3.6 
+Oral surgery; 
+2.1.3.7 
+Orthopaedics; 
+2.1.3.8 
+Otorhinolaryngology (ENT) 
+2.1.3.9 
+Plastic surgery; and 
+2.1.3.10 
+Urology. 
+3. 
+DEFINITION OF “SERVICES” 
+3.1 
+In this Service Schedule, unless the context otherwise requires: 
+3.2 
+“Services” includes all and any part of the Treatment and Outpatient Post-
+Discharge/Post Procedure Care Services described below, and other services 
+described elsewhere in this Service Schedule, to be provided for Clients subject to 
+and in accordance with provisions of this Contract, and includes: 
+3.2.1 
+All incidental services which a reasonable and responsible supplier of 
+similar services would provide to meet the physiological, cultural, 
+spiritual and social needs of clients receiving the Services, for example 
+interpreter services 
+3.2.2 
+Access for the Client to education (such as but not limited to advisory 
+material) about injury prevention and rehabilitation consistent with the 
+goals and strategic directions of ACC (noting that this Service Schedule 
+only addresses the actual delivery of Elective Surgery Services and that 
+the Supplier is not contracted to provide injury prevention services or 
+rehabilitation services beyond the scope of this Service Schedule). 
+
+--- PAGE 47 ---
+ESS.Elective Surgery Services.2026 
+Page 47 of 80 
+3.3 
+Lead Supplier 
+3.3.1 
+The Lead Supplier is the organisation with which ACC contracts for the 
+purposes of procuring elective surgery and associated services, and 
+which is accountable for a range of activities (which are elaborated upon 
+in the following clauses of this Service Schedule as indicated) including 
+but not limited to: 
+3.3.1.1 
+All invoicing to ACC (as per clauses 31 to 37); 
+3.3.1.2 
+All 
+payments 
+to 
+subcontractors, 
+including 
+hospitals, 
+clinicians, allied health or support staff; 
+3.3.1.3 
+All quality standards required under this contract and/or 
+generally accepted in the New Zealand Health Sector; 
+3.3.1.4 
+All administration required in providing care to the client, 
+including a comprehensive Patient Management System 
+meeting the normally accepted standards of the New Zealand 
+health sector, including the Health Industry Privacy Code of 
+Practice; 
+3.3.1.5 
+All reporting to ACC or other agencies including Health 
+New Zealand – Te Whatu Ora); 
+3.3.1.6 
+All health and safety obligations under this contract or under 
+legislation (as per our Standard Terms and Conditions; 
+3.3.1.7 
+All information technology or related system requirements to 
+interface with ACC systems as defined from time to time (as 
+per clause 16, or other applicable clauses); and 
+3.3.1.8 
+Maintaining and developing professional skills for all clinicians 
+and other staff who either are employed by or subcontract for 
+an annual average of over 20 hours per week to the 
+organisation, to a standard required by professional bodies or 
+which meets the normally accepted standards of the New 
+Zealand health sector. 
+3.4 
+Package of Care 
+3.4.1 
+Those services which are delivered to a Client (including administrative 
+services pursuant to treatment and case reporting as required to ACC) 
+form a ‘package of care’, which by definition occurs within the  Care 
+Period defined in Part B Clause 1.2.4. 
+
+--- PAGE 48 ---
+ESS.Elective Surgery Services.2026 
+Page 48 of 80 
+3.4.2 
+The following Services are not purchased under this Service Schedule but 
+may be purchased by ACC under other contracts or under Regulations, if 
+required or as applicable: 
+3.4.2.1 
+Public Health Acute Services (PHAS) as defined under the 
+Accident Compensation Act 2001; 
+3.4.2.2 
+Client and escort transport and escort accommodation costs 
+as a result of the provision of Assessment or follow-up 
+Treatment; 
+3.4.2.3 
+Home-help provision; 
+3.4.2.4 
+Attendant Care; 
+3.4.2.5 
+Childcare; 
+3.4.2.6 
+Outpatient allied health follow-up care (post Discharge Date); 
+3.4.2.7 
+Long term Equipment for Independence or Orthotics (i.e. 
+Equipment for Independence or Orthotics which will be 
+required for longer than six weeks post Discharge Date); 
+3.4.2.8 
+Prosthetics (e.g. artificial limbs); 
+3.4.2.9 
+Diagnostic imaging services required after Discharge Date; 
+3.4.2.10 
+Outpatient and community nursing services; 
+3.4.2.11 
+Replacement of simple dressings or castings post-discharge 
+within the Care Period; 
+3.4.2.12 
+Inpatient rehabilitation following Treatment; and 
+3.4.2.13 
+Pharmaceuticals required after Discharge. 
+4. 
+SERVICE LOCATIONS 
+4.1 
+The Supplier will provide Services only at the locations specified in Part A Clause 2. 
+5. 
+ELIGIBILITY FOR SERVICE 
+5.1 
+A Client is entitled to Services from the Supplier under this Service Schedule if 
+5.1.1 
+They have suffered a personal injury as defined in the AC Act; 
+5.1.2 
+They have been accepted by ACC as having cover for that injury; 
+5.1.3 
+The Supplier has submitted a completed ARTP, unless Part B clause 18.7 
+applies; 
+
+--- PAGE 49 ---
+ESS.Elective Surgery Services.2026 
+Page 49 of 80 
+5.1.4 
+ACC has approved funding for the Treatment, unless Part B clause 18.7 
+applies; and 
+5.1.5 
+All the relevant provisions of this Service Schedule are complied with. 
+6. 
+SUMMARY OF REFERRAL PROCESS 
+6.1 
+Unless Part B clause 18.7 applies, the Supplier will receive a draft ARTP from a 
+referring specialist and is accountable for ensuring the ARTP meets the standards 
+required by ACC.  The ARTP form on the ACC Website is the ACC approved version 
+and is the only version of ARTP form that will be accepted by ACC.  (This clause will 
+also cover any subsequent automation of the ARTP process). 
+6.2 
+The Supplier will ensure they are able to meet the Clinical Priority timeframe 
+requirement for each Client, including ensuring that they have sufficient capacity in 
+and theatre (see Part B clause 22.7 for process to be followed if the Supplier cannot 
+ensure this). 
+6.3 
+Unless Part B clause 18.7 applies the Supplier will follow the applicable funding 
+approval process set out at Part B clauses 18 (excluding Part B clause 18.7) to 21. 
+6.4 
+Unless Part B clause 18.7 applies, ACC will process the application and advise the 
+Client and the Supplier simultaneously in writing whether ACC approves or declines 
+funding for the recommended Treatment. If approved, ACC will advise the Supplier 
+of the Purchase Order Number and any change in the Priority Category for the 
+Treatment. 
+6.5 
+If Part B clause 18.7 applies, the Supplier may procced with the Treatment without 
+approval from ACC and invoice ACC without a Purchase Order Number. 
+7. 
+CONTENT REQUIREMENTS FOR AN ARTP 
+7.1 
+The Supplier will ensure that an ARTP clearly identifies the procedure the Client will 
+undergo using the codes in Part A of this Service Schedule, and any additional 
+requirements beyond those considered standard for the procedure and Client 
+involved, including (but not limited to) unusual rehabilitation equipment, 
+anticipated follow-up procedures (for instance for the removal of metalware) or 
+non-standard pharmaceuticals. 
+7.2 
+The Supplier will ensure that an ARTP adequately identifies the reasonable clinical 
+prognosis for the Client, including estimated return to independence and/or work 
+durations, and any reasonably-anticipated follow-up care, including: 
+7.2.1 
+The further treatment or support which will be necessary as a component 
+of rehabilitation; 
+
+--- PAGE 50 ---
+ESS.Elective Surgery Services.2026 
+Page 50 of 80 
+7.2.2 
+The reasonably-expected timeframe for the client to return to 
+independence (or, in the case of an employed person, a possible staged 
+return to work involving, for instance, light duties); 
+7.2.3 
+Any other information reasonably required by ACC, including but not 
+limited to relevant diagnostic imaging or any additional information, 
+including reports, for the purposes of considering the Client’s cover and 
+entitlement to ACC funding or for the purposes of invoice processing; 
+7.2.4 
+Any other recommendations or comments which might be helpful to the 
+Client and to ACC in optimising the Client’s recovery. 
+7.3 
+ACC is under no obligation to the Supplier or referring specialist to process an ARTP 
+which does not meet ACC’s requirements as set out in this Service Schedule and 
+on the ACC Website. 
+7.4 
+If an ARTP does not meet ACC’s standards the Supplier will return the ARTP to the 
+relevant Named Provider for the ARTP to be completed. 
+8. 
+TRANSFER OF LEAD SUPPLIER 
+8.1 
+If, after the approval of an ARTP by ACC, or if Part B clause 18.7 applies, but before 
+Treatment starts, a Client consents to being transferred from one Supplier to 
+another, both the ‘sending’ and ‘receiving’ suppliers will ensure a smooth transfer 
+of care and establish reasonable standards for the supply of medical notes and 
+other appropriate documentation. 
+8.2 
+The sending Supplier is responsible for notifying the receiving Supplier that a 
+transfer of Lead Supplier has been made. 
+8.3 
+The ‘receiving’ supplier will assume all supplier responsibilities in respect of the 
+transferred Client’s Treatment and service levels described in this Service Schedule 
+from the date the ‘sending’ Supplier agrees to the transfer. 
+9. 
+COMMENCEMENT AND ENDING OF SERVICES UNDER THIS SERVICE 
+SCHEDULE 
+9.1 
+Unless Part B clause 18.7 applies, the Services that ACC purchases may not 
+commence until ACC has approved funding for the Treatment under clause 18 
+(excluding Part B clause 18.7) of this Service Schedule. 
+9.2 
+The Services end when: 
+9.2.1 
+A written Referral of the Client to the original Referrer has been completed 
+following a transfer of clinical responsibility and care; and 
+9.2.2 
+Appropriate documentation has been completed (e.g. Referral, Notice of 
+Discharge, Operation Note) and received electronically by ACC. 
+
+--- PAGE 51 ---
+ESS.Elective Surgery Services.2026 
+Page 51 of 80 
+10. 
+TREATMENT 
+10.1 Commencement and Ending 
+10.1.1 
+Treatment is initiated by: 
+10.1.1.1 
+ACC funding approval of an ARTP pursuant to Part B clauses 6, 
+7 and 18 (excluding Part B clause 18.7) to 21; or 
+10.1.1.2 
+if Part B clause 18.7 applies, the Provider notifying the Supplier 
+of the impending procedure. 
+10.1.2 
+Treatment ends after Discharge, Referral to Post Discharge/Post 
+Procedure Care or on a Significant Complication Transfer of Care, and 
+when appropriate documentation has been completed and submitted 
+electronically. 
+10.2 Definition of “Treatment” 
+10.2.1 
+Treatment includes, but is not limited to: 
+10.2.1.1 
+anaesthetic pre-assessment including completion of a pre-
+surgical anaesthetic form in accordance with standards 
+required by the Australian and New Zealand College of 
+Anaesthetists and other relevant professional bodies.  Where 
+the Client has significant co-morbidities, the Supplier will 
+ensure that the Client is seen under the Clinical Services 
+contract by a vocationally registered Anaesthetist.  Where the 
+co-morbidities are identified as requiring services outside the 
+normal services for this type of surgery the Supplier will apply 
+for funding for a Non-Core Procedure in accordance with Part 
+B, clause 18.4; 
+10.2.1.2 
+surgical treatment on an inpatient or day patient basis as is 
+appropriate for the type of treatment, and the circumstances 
+of the Client; 
+10.2.1.3 
+post procedure care before discharge; 
+10.2.1.4 
+delivery of all associated care and treatment by a team of 
+professionals including medical, nursing, physiotherapy, 
+anaesthetist, occupational therapy, social work, technical 
+and (on an inpatient basis only) allied health professionals, as 
+well as Referral to, and assessment by, other types of 
+Suppliers / Providers during the treatment, as required; 
+
+--- PAGE 52 ---
+ESS.Elective Surgery Services.2026 
+Page 52 of 80 
+10.2.1.5 
+all consumables, implants, supplies, standard hotel type 
+costs, transfer costs, laboratory (pathology) tests, diagnostic 
+imaging services, pharmaceutical items (including pre-
+operative pharmaceuticals), and other associated items to 
+perform the treatment; 
+10.2.1.6 
+availability and use of a range of equipment appropriate to the 
+specialty, level of service and the treatment being provided; 
+10.2.1.7 
+short term Equipment for Independence if required by Clients 
+prior to or on Discharge to achieve a suitable rehabilitation 
+outcome from the treatment, for up to six weeks post-
+Discharge Date (for example, a shower stool, walking frame, 
+crutches or a wheelchair); 
+10.2.1.8 
+any Orthotics (and any associated Orthoses) required by 
+Clients prior to or on Discharge to achieve a suitable 
+rehabilitation outcome from the treatment, for up to six weeks 
+post-Discharge Date (for example, splints, shoulder braces); 
+10.2.1.9 
+clinical support services to a level appropriate for the type of 
+treatment to be provided; and 
+10.2.1.10 any administrative matters as would normally be required to 
+allow the Supplier to monitor the outcome of treatment.  
+Recording of service outcomes in clinical notes and/or 
+through internal information systems is required to allow the 
+Supplier or ACC to evaluate the Service. 
+11. 
+OUTPATIENT POST DISCHARGE / POST PROCEDURE CARE 
+11.1 Post Discharge/Post Procedure Care for a Client begins following Discharge from a 
+facility where Treatment has been carried out and ends six weeks after discharge. 
+11.2 On conclusion of Post Discharge/Post Procedure Care, the Supplier will arrange a 
+Referral of the Client from the care of the Supplier back to the Client’s original 
+Referrer or (with the Client’s consent) to another General Practitioner if 
+appropriate. 
+11.3 Post Discharge/Post Procedure Care includes but is not limited to: 
+11.3.1 
+any necessary and appropriate follow-up and care by the Named 
+Provider, other staff or subcontractors to the Supplier, provided in Named 
+Provider clinics on an Outpatient (but not inpatient or day patient) basis, 
+but excluding services listed under Part B clause 3.4.2; 
+
+--- PAGE 53 ---
+ESS.Elective Surgery Services.2026 
+Page 53 of 80 
+11.3.2 
+provision of any short-term Equipment for Independence from the date of 
+discharge to the conclusion of the Care Period if not already provided in 
+the Treatment phase; and 
+11.3.3 
+any Orthotics (and any associated Orthoses) required from the date of 
+discharge to the conclusion of the Care Period. 
+11.4 The Supplier will also provide the following administrative services required by this 
+Service Schedule: 
+11.4.1 
+producing the invoice; 
+11.4.2 
+entering National Health Index (NHI) data (if relevant); 
+11.4.3 
+arranging further follow up; 
+11.4.4 
+monitoring outcomes and recording of Service outcomes in clinical notes 
+and/or through internal information systems to allow the Supplier or ACC 
+to evaluate the Service; 
+11.4.5 
+any other administrative requirements reasonably required by ACC from 
+time to time. 
+11.5 On expiry of the Care Period the Supplier will arrange a Referral of the Client from 
+the care of the Named Provider back to the Client’s original Referrer or General 
+Practitioner (whichever is appropriate). 
+11.6 Where the Named Provider identifies that a Client will require inpatient 
+rehabilitation following Treatment, the Supplier will advise the appropriate public 
+hospital prior to the transfer and arrange for such inpatient rehabilitation to be 
+provided by the Health New Zealand – Te Whatu Ora hospital nearest to the Client’s 
+home. (Note: such inpatient rehabilitation will be provided as a community 
+admission under ACC’s contract with Health New Zealand – Te Whatu Ora for non-
+acute inpatient rehabilitation and requires the Rehabilitation supplier to obtain 
+prior approval from ACC). 
+12. 
+FURTHER PROVIDER LEVEL CARE 
+12.1 If, at the end of the Care Period, further specialist follow-up care is required, this 
+may be provided only under the Clinical Services contract, or under the applicable 
+regulations. 
+12.2 A further ARTP and funding approval from ACC will be required before the Supplier 
+may proceed with further Treatment for a Client at the end of the Care Period, 
+unless this requirement had been specified and agreed in the initial ARTP as integral 
+to a staged approach to surgery and treatment as defined in this Service Schedule, 
+or Part B clause 18.7 applies. 
+
+--- PAGE 54 ---
+ESS.Elective Surgery Services.2026 
+Page 54 of 80 
+13. 
+IMPACT ON CLIENTS OF TERMINATION OF SERVICE 
+13.1 If the term of this Service Schedule is terminated or ends without replacement, or 
+where the Supplier terminates the Term, the following provisions shall apply in 
+respect of Clients whose package of care has commenced: 
+13.1.1 
+If a Client has not been admitted prior to the End Date or earlier 
+Termination Date and the Supplier does not enter into a further agreement 
+with ACC that provides for the Treatment of that Client, then the Supplier 
+will immediately refer the Client to another contracted supplier. 
+13.1.2 
+Despite any other clause in this Service Schedule, if a Client has not been 
+discharged from Post Discharge / Post Procedure Care prior to the End 
+Date or earlier Termination Date, the Supplier shall continue to provide 
+Treatment and ACC shall pay the Supplier for such Services, as if the 
+Contract had not ended. 
+14. 
+SERVICE REQUIREMENTS AND RESOURCES 
+14.1 Clinical Resources 
+14.1.1 
+The Supplier must have or ensure the availability of a Vocational 
+Registered Medical Specialist acting in the role of Chief Clinical Officer at 
+the facility where service is being provided, noting that formal titles may 
+differ. 
+14.2 The Supplier must have or ensure the availability of a multidisciplinary team which 
+includes: 
+14.2.1 
+A medical team led by a qualified surgeon, with the appropriate level of 
+training and experience.  Ideally two surgeons working closely together 
+should form the core of the surgical team in the specialty to ensure 
+adequate backup and opportunity for peer review; 
+14.2.2 
+An Anaesthetist who will ensure that pre-assessments are undertaken on 
+all Clients and who will make final recommendations on HDU/ICU access 
+for those Clients deemed to need that level of care; 
+14.2.3 
+A nursing team led by a registered nurse with specialised surgical 
+experience; 
+14.2.4 
+Theatre staff who are sufficiently skilled to provide the necessary 
+assistance during each surgery to maintain safe clinical practice; 
+14.2.5 
+Other allied staff including physiotherapists, occupational therapists, 
+social workers and technicians with appropriate specialty experience and 
+qualifications; 
+
+--- PAGE 55 ---
+ESS.Elective Surgery Services.2026 
+Page 55 of 80 
+14.2.6 
+Ongoing staff education programmes or access to education 
+programmes aimed at keeping staff up to date with developments in the 
+field as an integral part of the service; 
+14.2.7 
+Access to 24-hour emergency cover provided by qualified staff.  
+Procedures must be in place for people re-presenting with complications 
+following day surgery.  Clients will be given written instructions and an 
+explanation of how to gain access to after-hours medical attention in the 
+event of complications arising.  All Clients who have had day surgery will 
+be contacted within 24 hours of discharge by a member of the day unit 
+staff; 
+14.2.8 
+A contingency plan to maintain continuity of Service in the event of 
+temporary or permanent loss to the Supplier of any key personnel. 
+14.3 Managing Conflicts of Interest 
+14.3.1 
+In addition to the obligations of clause 18 of ACC’s Standard Terms and 
+Conditions, where the Supplier is fully or partly owned directly or 
+beneficially by a clinician who may be making referrals to the Supplier in 
+the course of treating ACC Clients, you will follow the process in clause 
+18.2 to satisfy ACC that there are appropriate safeguards in place to 
+ensure that the treatment provided to such Clients is demonstrably 
+appropriate and effective.  The parties note that the Medical Council of 
+New Zealand has issued guidance on this matter, available on the 
+Council’s website. 
+14.3.2 
+The Supplier will provide a list to ACC of its actual or beneficial owners 
+who are clinicians who may refer ACC clients to the Supplier for services 
+and will update that list when necessary during the term of this Service 
+Schedule. 
+14.4 Organisational Quality Standards 
+14.5 In addition to the requirements specified in clause 27 of the Standard Terms and 
+Conditions, the Supplier will ensure that each facility listed in Part A clause 2 meets 
+and maintains the following requirements (whether the facility is operated by the 
+Supplier or an approved subcontractor): 
+14.5.1 
+Hold current certification with the Ministry of Health under the Health and 
+Disability Services (Safety) Act 2001 (NZS 8134:2021 Ngā paerewa Health 
+and Disability Services Standard); and/or 
+14.5.2 
+If not required by the Ministry of Health to hold current certification with 
+the Ministry of Health under the Health and Disability Services (Safety) Act 
+2001, hold current accreditation with the NZS 8164:2005 Standard for 
+Day-stay Surgery and Procedures; 
+
+--- PAGE 56 ---
+ESS.Elective Surgery Services.2026 
+Page 56 of 80 
+14.5.3 
+Ensure that only Named Providers who are working within their vocational 
+scope of practice, and that hold a current certificate of practice, provide 
+services. 
+14.5.4 
+The Supplier will provide ACC, upon request, with evidence that these 
+requirements are met. 
+14.6 Philosophy 
+14.7 The following underlying philosophies apply to this service specification: 
+14.7.1 
+Package of Care – the Supplier will provide all necessary and appropriate 
+services deemed necessary to carry out the Service as a package of care 
+for the total price set out in this Contract for the applicable Procedure 
+from the time of a Client’s first visit to the Supplier’s facility through the 
+operative and day stay or inpatient stay until six weeks from that date of 
+discharge. 
+14.7.2 
+Customer Service - the Supplier will ensure that the highest standards of 
+customer service prevailing in the health sector generally are provided to 
+all Clients. 
+14.7.3 
+Multi-disciplinary Management - the Supplier will have a multidisciplinary 
+team of clinicians who jointly treat and assess Clients. 
+14.7.4 
+Minimally Invasive Techniques - ACC encourages the recommendation 
+and use of minimally invasive techniques. 
+14.7.5 
+Increase in Day Surgery – ACC supports the trend towards a greater 
+proportion of surgery being undertaken on a day case basis where this is 
+clinically appropriate. 
+14.7.6 
+Referrals to and from other Providers – the important role of consultation 
+and access to a second opinion are acknowledged and unnecessary 
+barriers to these should be avoided. 
+14.7.7 
+Reduced Length of Stay – ACC supports reduced length of stay.  Where 
+appropriate, home care arrangements shall be made available where 
+patient safety is not risked. 
+15. 
+CREDENTIALING PROGRAMME 
+15.1 The Supplier will have a credentialing programme acceptable to ACC which: 
+15.1.1 
+Must include an organisational Credentialing Policy which is documented 
+and is consistent with the Ministry of Health Credentialing Framework for 
+New Zealand Health Professionals 2010 (or any replacement document). 
+
+--- PAGE 57 ---
+ESS.Elective Surgery Services.2026 
+Page 57 of 80 
+15.2 The Supplier will provide evidence to ACC of the credentialing programme and the 
+Named Providers who have been credentialed under the credentialing programme 
+when there have been any significant, relevant changes to the credentialed status 
+of a Named Provider, or on request from ACC. 
+16. 
+ELECTRONIC COMMUNICATION 
+16.1 All ARTPs, Notices of Discharge, Operation Notes, and Referrals must be sent to 
+ACC electronically, in accordance with any reasonable processes for electronic 
+communication specified by ACC. 
+17. 
+NAMED PROVIDERS 
+17.1 All Named Providers and Named Red List Providers must have vocational 
+registration.  This may include a provisional scope registration with the Medical 
+Council of New Zealand, where the named provider is acting according to the 
+conditions of that limited scope registration.  Registrars cannot, under any 
+circumstances, be Named Providers or Named Red List Providers for the purposes 
+of this Contract.  ACC may in its sole discretion accept or decline each such request 
+to accept a proposed Named Provider with or without conditions, by providing 
+written notification to the Supplier. 
+17.2 The Supplier will utilise the services of only: 
+17.2.1 
+the Providers named in Part A clause 3.1 (the “Named Providers”) in the 
+course of providing Services for Clients which are Core Procedures or 
+Non-Core Procedures; 
+17.2.2 
+the Providers named in Part A clause 3.2 (the “Named Red List Providers”) 
+in the course of providing Services for Clients which are Red List 
+Procedures. 
+17.3 Addition of Named Providers 
+17.3.1 
+The Supplier may make a written request to ACC for a Provider to be 
+added to the list of Named Providers or the list of Named Red List 
+Providers. 
+17.3.2 
+If a request is accepted under this clause, the Provider shall be deemed 
+added to the list of Named Providers or the list of Named Red List 
+Providers, whichever is applicable, from the date of ACC’s written 
+notification to the Supplier. 
+
+--- PAGE 58 ---
+ESS.Elective Surgery Services.2026 
+Page 58 of 80 
+17.4 Proper Consideration 
+17.4.1 
+If the Supplier is approached by a properly qualified Provider seeking the 
+Supplier’s support to be included in the list of Named Providers, the 
+Supplier must give reasonable and proper consideration to that request 
+in accordance with the law including, without limitation, the Commerce 
+Act 1986, for instance in respect of taking advantage of market power. 
+17.5 Removal of Named Providers 
+17.5.1 
+Either party may provide written notification to the other party that a 
+Named Provider or a Named Red List Provider is to cease to be a Named 
+Provider or a Named Red List Provider under this Contract.  The Provider 
+shall be deemed to cease to be a Named Provider or a Named Red List 
+Provider 5 (five) business days after receipt of the notice.  ACC shall not 
+issue such a notice arbitrarily. 
+17.6 Named Red List Providers 
+17.6.1 
+Each Named Red List Provider may only provide Red List services for 
+Clients whose personal injury relates to that Provider’s selected sub-
+speciality or sub-specialities as listed in Part A clause 3.2. 
+17.6.2 
+A Provider may only be named as a Red List Provider if the Provider has 
+obtained approval by the New Zealand Orthopaedic Association, on 
+behalf of its various Speciality Societies, or the appropriate professional 
+body for a non-orthopaedic surgeon, and ACC has approved the 
+application in accordance with Part B clause 17.1 above. ACC reserves 
+the right to decline to accept new Named Red List Providers. 
+17.7 Use of Registrars 
+17.7.1 
+Notwithstanding section (a) of this clause, the Supplier may permit a 
+Named Provider to employ or contract a Registrar to provide follow-up 
+consultations after discharge, or to assist in Ward.  Such a Registrar will 
+be a trainee in a relevant vocational training programme approved by the 
+Medical Council of New Zealand and by other relevant Colleges or 
+professional bodies for training specialists, and will be working at a level 
+permitted by the training programme under the standards of supervision 
+that training programme requires.  The Named Provider will assume full 
+accountability to the Supplier under this contract for the quality of any 
+service provided by a Registrar under this clause. 
+17.7.2 
+ACC will not pay for additional surgeon or other resource where a 
+Registrar provides services under clause 17.7. 
+
+--- PAGE 59 ---
+ESS.Elective Surgery Services.2026 
+Page 59 of 80 
+18. 
+FUNDING APPROVAL 
+18.1 Process Limited 
+18.1.1 
+Unless Part B clause 18.7 applies (where an application is not required for 
+Procedures), an application for funding approval, except for a Treatment 
+Injury Procedure, may be made only for Core Procedures included in Part 
+A clause 4, Red List Procedures included in Appendix 2 of the Elective 
+Surgery Services Operational Guidelines, or for Non-Core procedures in 
+accordance with Part B clause 31. 
+18.1.2 
+An application for funding approval for a Treatment Injury Procedure may 
+be made under this Contract only in accordance with Part B clause 32. 
+18.1.3 
+Unless Part B clause 18.7 applies, the Supplier will not accept any 
+Referrals that are not approved by ACC in accordance with this Part B 
+clause 18. 
+18.2 Approval Process 
+18.2.1 
+The Supplier will forward the following information to the Treatment 
+Assessment Centre, for all applications for funding approvals under this 
+Part B clause 18: 
+18.2.1.1 
+The completed ARTP; 
+18.2.1.2 
+The date that the Supplier received the draft ARTP; 
+18.2.1.3 
+Contract number of this Service Schedule; 
+18.2.1.4 
+Proposed month for the Procedure. 
+18.2.2 
+The Supplier will forward this information in electronic format.  The list of 
+appropriate electronic addresses is available on the ACC Website. 
+18.2.3 
+The Supplier will use the ARTP document available on the ACC Website.  
+This is the only version that will be accepted by ACC. 
+18.3 Core or Red List Procedure Approval Process 
+18.3.1 
+ACC will consider the Client’s cover and entitlement upon receipt of an 
+application for funding approval. 
+18.3.2 
+ACC will advise the Supplier and Client in writing of its funding decision, 
+and if approved, the approval number and any change in the Priority 
+Category. 
+
+--- PAGE 60 ---
+ESS.Elective Surgery Services.2026 
+Page 60 of 80 
+18.3.3 
+Appendix 2 of the Elective Surgery Services Operational Guidelines 
+contains the full list of Red List Procedures. Part A clause 4 includes the 
+agreed prices for these procedures.  In addition to the agreed prices, the 
+Supplier may submit a quotation for the price prior to the Procedure or 
+submit an invoice for the Procedure using the codes and descriptions in 
+the Additional Resources list on the ARTP. 
+18.3.4 
+Where the main component of a Procedure is equivalent to a Core 
+Procedure but additional service items are required (examples of 
+additional service items may include, but are not limited to, 2nd Surgeon 
+Consultant, extra ward stay, HDU care if deemed clinically appropriate, 
+specialist in-ward follow-up consultations), the Supplier must apply for 
+the approval of the procedure, and then invoice the procedure as a Core 
+Procedure with the additional service items listed as ESR units. 
+18.3.5 
+If the Supplier applies for approval of price prior to a Procedure where the 
+main component of a Procedure is equivalent to a Core Procedure, but 
+additional service items are required, the Supplier must provide clinical 
+information with these requests to support costs.  ACC may decline an 
+application for approval as a Non-Core Procedure and approve the 
+Procedure as a Core Procedure with additional service items. 
+18.3.6 
+If the Supplier submits an invoice for a Procedure as a Non-Core 
+Procedure where the main component of a Procedure is equivalent to a 
+Core Procedure, but additional service items are required, the Supplier 
+must provide clinical information with the invoice to support costs.  ACC 
+may decline to pay an invoice for such a Procedure as a Non-Core 
+Procedure and instead approve and pay for the Procedure as a Core 
+Procedure with additional service items. 
+18.3.7 
+The Supplier will forward all information to the Treatment Assessment 
+Centre, or such other location advised by ACC. 
+18.4 Non-Core Procedures 
+18.4.1 
+When any Non-Core Procedure is recommended the Supplier will forward 
+the following information to the Treatment Assessment Centre, or such 
+other location advised by ACC, in addition to the information required 
+under Part B clause 18.4: 
+18.4.2 
+a completed ARTP ensuring the Non-Core Units pricing sheet is 
+completed with an accurate estimate of potential procedure and implant 
+costs; and 
+18.4.3 
+any additional information such as reports reasonably requested by ACC 
+for the purposes of considering the Client’s cover and entitlement to ACC 
+funding or for the purposes of invoice processing. 
+
+--- PAGE 61 ---
+ESS.Elective Surgery Services.2026 
+Page 61 of 80 
+18.4.4 
+ACC will advise the Supplier and Client in writing of its funding decision, 
+and if approved, the approval number and any change in the Priority 
+Category. 
+18.5 If Funding Approved 
+18.5.1 
+On receiving ACC’s advice that funding has been approved, the Supplier 
+will promptly contact the Client to arrange a mutually appropriate date for 
+Admission or attendance for Treatment.  When that date has been agreed, 
+the Supplier will confirm the booking in writing to the Client. 
+18.5.2 
+If ACC advises the Supplier that funding has been approved for a 
+Procedure under Part B clause 18.4 and the Supplier and ACC are unable 
+to agree a price for the Procedure, ACC will require the Supplier to Refer 
+the Client to another supplier approved for the purpose by ACC. 
+18.6 If Funding Declined 
+18.6.1 
+If ACC advises the Supplier that funding has been declined the Client will 
+not be eligible for Services, and payment will not be made to the Supplier 
+under this Contract. 
+18.7 Procedures that are exempt from the funding process and do not require prior-
+approval: 
+18.7.1 
+Procedures listed in Appendix 4 of the Elective Surgery Operational 
+Guidelines (the “Non-Prior Approval Procedures” list) that meet the 
+corresponding conditions specified in Appendix 4 are exempt from the 
+Funding Approval Process specified in Part B clauses 18.2 to 18.6 above 
+and do not require approval from ACC. Those Procedures may be 
+commenced by the Supplier. 
+18.7.2 
+The Non-Prior Approval Procedures list and Part B clause 18.7.1 applies 
+to all Suppliers unless ACC has notified the Supplier otherwise. If a 
+Supplier has been notified by ACC that clause 18.7.1 does not apply to 
+them and they cannot use the Non-Prior Approval Procedures list, they 
+must follow the Funding Approval Process specified in Part B clauses 18.2 
+to 18.6 for all Procedures. 
+18.7.3 
+ACC reserves the right to amend the Non-Prior Approval Procedures list 
+at any time and will provide reasonable notice to the Supplier of the 
+changes to the list. 
+ 
+ 
+
+--- PAGE 62 ---
+ESS.Elective Surgery Services.2026 
+Page 62 of 80 
+19. 
+FUNDING FOR TREATMENT INJURY PROCEDURES 
+19.1 When a Treatment Injury Procedure is recommended the Supplier will forward to 
+the Treatment Assessment Centre or such other location advised by ACC, in 
+addition to the information required under Part B clause 18.2: 
+19.1.1 
+information as is required in accordance with Part B clauses 18.3 to 18.4 
+(whichever category the proposed Treatment Injury Procedure falls into); 
+19.1.2 
+Notification that the Procedure for which funding approval is sought is a 
+Treatment Injury Procedure. 
+19.2 On receipt of an application for funding approval for a Treatment Injury Procedure 
+ACC will process the application in accordance with Part B clause 18.3 to 18.4 
+(whichever category the proposed Treatment Injury Procedure falls into); 
+19.3 If ACC approves the application the Supplier will receive confirmation from ACC 
+that ACC will pay the price approved or agreed with the Supplier in accordance with 
+Part B clause 18.3 to 18.4 (whichever category the proposed Treatment Injury 
+Procedures falls into) if cover is subsequently granted to the Client in respect of the 
+injury which is the subject of the Treatment Injury Procedure. 
+19.4 To avoid doubt, this clause 19 does not apply to Procedures specified on the Non-
+Prior Approval Procedures list. 
+20. 
+RETROSPECTIVE FUNDING APPROVAL FOR ALTERNATIVE UNANTICIPATED 
+TREATMENT OR ALTERNATIVE TREATMENT 
+20.1 This clause will apply if, on commencing a Procedure approved by ACC under Part 
+B clause 18, a Named Provider concludes, for clinical reasons, that an alternative 
+unanticipated Procedure or an alternative Procedure is necessary and is more 
+appropriate for the treatment of the Client’s personal injury for which cover has 
+been accepted by ACC under the AC Act 2001. 
+20.2 If a Named Provider reaches this conclusion, the alternative unanticipated 
+Procedure or alternative Procedure may be carried out, and the Supplier may 
+forward to ACC a detailed invoice and, other than where Part B clause 18.7 applies 
+for the alternative unanticipated Procedure or an alternative Procedure, application 
+for retrospective funding approval as described in in Part B clauses 20.3 to 20.6 
+below. 
+20.3 Application 
+20.3.1 
+An application for retrospective funding approval must include: 
+20.3.2 
+Name and details, including MBS-E Code (or replacement code), of the 
+alternative unanticipated Procedure or alternative Procedure; 
+
+--- PAGE 63 ---
+ESS.Elective Surgery Services.2026 
+Page 63 of 80 
+20.3.3 
+Clinical reasons, and any other reasons, why the alternative 
+unanticipated Procedure or alternative Procedure was necessary and 
+more appropriate; 
+20.3.4 
+Any other information ordinarily required from the Supplier to enable ACC 
+to complete the approval process. 
+20.4 Consideration of Application 
+20.4.1 
+ACC will: 
+20.4.1.1 
+Consider such an application as if the alternative 
+unanticipated Procedure or alternative Procedure had not yet 
+been carried out, in accordance with all applicable provisions 
+of this Contract; 
+20.4.1.2 
+Advise the Supplier in writing of ACC’s decision regarding ACC 
+funding for the Treatment.  The advice will be deemed to have 
+been received by the Supplier 2 (two) business days after 
+dispatch from ACC by courier or by email to the suppliers 
+stated contact email address on this contract or its normal 
+email address for correspondence with ACC, and will be 
+effective from the date the Procedure was performed. 
+20.5 Prices 
+20.5.1 
+This clause applies if ACC approves the unanticipated Procedure. 
+20.5.2 
+If the alternative unanticipated Procedure or alternative Procedure is 
+listed in Part A clause 4 ACC will pay the price provided for that Procedure 
+in Part A clause 4. 
+20.5.3 
+ACC will pay the Market Price for the Procedure if the alternative 
+unanticipated Procedure or alternative Procedure is: 
+20.5.3.1 
+Not listed in Part A clause 4; and 
+20.5.3.2 
+Not a Procedure on ACC’s Core Procedure List, 
+20.6 If the alternative unanticipated Procedure or alternative Procedure is: 
+20.6.1 
+Not listed in Part A clause 4; and 
+20.6.2 
+Not a Procedure on ACC’s Core Procedure List, 
+20.6.3 
+the Supplier will forward a completed Non-Core Units table (from the 
+ARTP form) to the Treatment Assessment Centre, or such other location 
+advised by ACC, and ACC will negotiate with the Supplier about what 
+price to pay in respect of the Procedure. 
+ 
+ 
+
+--- PAGE 64 ---
+ESS.Elective Surgery Services.2026 
+Page 64 of 80 
+21. 
+NO PAYMENT OUTSIDE APPROVAL PROCESS 
+21.1 Unless Part B clause 18.7 applies, ACC will not pay the Supplier for any Treatment 
+or Post Discharge/Post Procedure Care where Treatment is carried out prior to 
+funding approval or, in respect of a Treatment Injury Procedure, where ACC has not 
+subsequently granted cover for the injury. 
+21.2 Funding Approval Lapses 
+21.2.1 
+Where the Client has not been admitted for treatment within twelve 
+months of the date of ACC’s decision to approve funding, the funding 
+approval will lapse. A new ARTP must be submitted to request further 
+approval. 
+21.2.2 
+ACC will not pay the Supplier for any Services provided to Clients when 
+Part B clause 21.2 applies unless a new ACC funding approval has been 
+received. 
+22. 
+PRIORITY CATEGORY TIMEFRAMES AND DEFINITIONS 
+22.1 Unless Part B clause 18.7 applies, the Supplier will ensure that any recommended 
+Treatment for a Client will be completed within the Priority Category timeframe 
+described in the Client’s ARTP measured from the date of ACC’s decision to 
+approve funding or such earlier time as ACC may advise, if the Priority Category 
+changes pursuant to Part B clause 22.6 below. 
+22.1.1 
+Where Part B Clause 18.7 applies, the Supplier will ensure that any 
+recommended Treatment will be completed within the Priority Category 
+timeframe. This will be measured from the date of the Provider’s decision 
+to perform the procedure, to the date Treatment takes place. 
+22.2 The Supplier must ensure that an ARTP is prioritised ‘High” if the Client meets one 
+or more of the criteria specified in clause 7 of the Elective Surgery Services 
+Operational Guidelines at the time of the Client's surgical consultation. 
+22.3 All clients with approved High Priority ARTPs should receive treatment within 30 
+days of the date of approval. 
+22.4 All other ARTPs will be prioritised ‘routine.’ 
+22.5 All clients with approved Routine Priority ARTPs should receive treatment within six 
+months of the date of approval. 
+22.6 ACC Input into “Priority Category” for Treatment 
+22.6.1 
+ACC may request a change to the Client’s Priority Category if the Client 
+meets, or no longer meets, one or more of the criteria specified in the 
+Elective Surgery Services Operational Guidelines. 
+ 
+ 
+
+--- PAGE 65 ---
+ESS.Elective Surgery Services.2026 
+Page 65 of 80 
+22.7 Monitoring of Priority Category Timeframe Requirements 
+22.7.1 
+The ability of the Supplier to meet Clinical Priority timeframe 
+requirements is a critical factor in the contract monitoring framework and 
+will be reported upon by ACC from time to time to the Supplier. 
+22.7.2 
+Where ACC and the Supplier are unable to agree on a change to the 
+Priority Category following a request by ACC under Part B clause 22.6 
+above; or the Supplier is not able to meet, or foresees that it may be 
+unable to meet, the Clinical Priority timeframe for a Client or Clients, the 
+Supplier will immediately notify the Recovery Team Member or Treatment 
+Support Team as appropriate responsible for each particular Client. 
+22.7.3 
+ACC may, at its sole discretion, either endeavour to agree with the 
+Supplier and the relevant Client an extension of the Clinical Priority 
+timeframe, or, work with Suppliers to make alternative arrangements for 
+the Treatment of the Client, including transferring the client to another 
+Supplier. 
+23. 
+SIGNIFICANT COMPLICATION TRANSFER OF CARE 
+23.1 In the event a Client suffers a Significant Complication after Admission, the 
+Supplier will: 
+23.1.1 
+Arrange a Significant Complication Transfer of Care; 
+23.1.2 
+Report to the Case Manager or Treatment Assessment Centre as 
+appropriate in accordance with Part B clause 23.2; and 
+23.1.3 
+Be entitled to charge ACC in accordance with Part B clause 31.7. 
+23.2 Notification of a Significant Complication Transfer of Care 
+23.2.1 
+If a Significant Complication Transfer of Care occurs, the Supplier will, 
+within 2 (two) business days, send a written report to the Case Manager 
+or Treatment Assessment Centre as appropriate, the original Referrer, 
+and the Client’s General Practitioner (where the General Practitioner is 
+not the original Referrer) which identifies the Client and describes the 
+Significant Complication and subsequent steps taken by the Supplier 
+(including the Transfer of Care).  If the Transfer of Care occurred prior to 
+Discharge, this report will be accompanied by a Notice of Discharge. 
+ 
+ 
+
+--- PAGE 66 ---
+ESS.Elective Surgery Services.2026 
+Page 66 of 80 
+24. 
+DISCHARGE INFORMATION – NOTICE OF DISCHARGE 
+24.1 Purpose 
+24.1.1 
+The purpose of a Notice of Discharge is to provide ACC with information 
+on individual Clients, to monitor the completion of Treatment and to 
+provide evidence of appropriate co-ordinated discharge planning. 
+24.1.2 
+In the event of staged episodes of Treatment requiring more than one 
+Admission, a Notice of Discharge is required in relation to each discrete 
+surgical episode. 
+24.2 To Whom 
+24.2.1 
+The Notice of Discharge will be sent to ACC at the address specified in the 
+Operational Guidelines. 
+24.2.2 
+If required for ongoing client care, relevant information regarding 
+Treatment is to be sent to the original Referrer and the Client’s General 
+Practitioner (where the General Practitioner is not the original Referrer). 
+24.3 Time Limit 
+24.3.1 
+A Notice of Discharge is to be received by the recipients listed in Part B 
+clauses 11.2 and 24.2.2 above, within 2 (two) business days of Discharge 
+of each Client. 
+24.4 Contents 
+A Notice of Discharge must contain the following information about a 
+Client: 
+24.4.1 
+Client name, date of birth and address; 
+24.4.2 
+ACC claim number; 
+24.4.3 
+Injury diagnosis; 
+24.4.4 
+The name of the responsible Named Provider; 
+24.4.5 
+Name and MBS-E Code (or replacement code) for the Procedure for which 
+the Client was Admitted as well as any unintended surgery/Procedure or 
+Treatment that was required and/or any special unexpected difficulties or 
+Significant Complication encountered; 
+24.4.6 
+Date of Admission; 
+24.4.7 
+Date of Discharge or transfer; 
+24.4.8 
+Information on arrangements for support, community and Outpatient 
+treatments and follow up consultations; and 
+
+--- PAGE 67 ---
+ESS.Elective Surgery Services.2026 
+Page 67 of 80 
+24.4.9 
+The expected date for return to work (including light duties) and/or normal 
+activities of daily living. 
+25. 
+REFERRAL FOR SUPPORT SERVICES ON DISCHARGE 
+25.1 Where the Supplier identifies that a Client requires home and community support 
+services after discharge the Supplier will submit a completed Referral for Support 
+Services on Discharge form (ACC705) to ACC as soon as the need is identified.  
+Consideration of Post-Discharge needs will commence at Admission. 
+26. 
+MANAGE CASE MIX 
+26.1 The Supplier shall manage its case mix to optimise its efficiencies, subject to 
+complying with the requirements of the Clinical Priority timeframes and other 
+requirements of this Contract. 
+27. 
+SUFFICIENT RESOURCES 
+27.1 In any event, the Supplier will take sufficient steps to ensure that, subject to 
+receiving sufficient funding approvals, physical and human resources will be 
+available to complete Services (excluding Implants) across the term of this 
+Contract. 
+28. 
+OPERATIONAL GUIDELINES 
+28.1 ACC will publish Operational Guidelines from time to time which will inform the 
+interpretation of the provisions of this Service Schedule, including relevant 
+addresses for submission of forms.  The Supplier will provide Services in 
+accordance with the Operational Guidelines but in the event of any conflict 
+between these Guidelines and this Contract, the provisions of this Contract shall 
+apply. 
+
+--- PAGE 68 ---
+ESS.Elective Surgery Services.2026 
+Page 68 of 80 
+29. 
+PERFORMANCE MEASURES 
+29.1 The performance measures in Part B, Table 1 below represent initial key service 
+areas that ACC will monitor to help assess service delivery. It is anticipated that the 
+performance measures will evolve over time to reflect collective priorities.  
+Feedback on performance measures will be through the ACC Engagement and 
+Performance network to allow the Supplier the opportunity to address any areas of 
+concern. 
+Table 1:  Performance Measures 
+Reports 
+Measures 
+Volume of ACC surgeries performed by 
+Supplier and number of surgeries performed 
+by body site 
+Average days by facility and surgeon for 
+High priority surgery to be undertaken; 
+Average days by facility and surgeon for 
+Routine priority surgery to be undertaken 
+Targets 
+1. 75% of High priority is provided within 30 
+days of the date of ACC’s decision to 
+approve surgery or the decision to proceed 
+with surgery if Part B clause 18.7 applies, 
+and 
+2. 80% of Routine priority surgery is provided 
+within 6 months of the date of ACC’s 
+decision to approve surgery or the decision 
+to proceed with surgery if Part B clause 18.7 
+applies. 
+ 
+29.2 Where there are factors outside the control of the Supplier which impact on the 
+Supplier’s ability to meet the targets identified in Part B, Table 1, then the Supplier 
+and ACC may agree in writing to amend or waive these targets for a specified period. 
+30. 
+QUALITY IMPROVEMENT AND QUALITY INDICATOR REPORTING 
+REQUIREMENTS 
+30.1 The Supplier will actively participate as appropriate in sector-wide quality 
+improvement activities, which may be initiated, co-ordinated, and/or monitored by: 
+30.1.1 
+The Ministry of Health 
+30.1.2 
+The Health Quality and Safety Commission 
+30.1.3 
+ACC 
+30.1.4 
+Relevant professional associations or bodies, or 
+30.1.5 
+Other body with appropriate standing in the sector. 
+
+--- PAGE 69 ---
+ESS.Elective Surgery Services.2026 
+Page 69 of 80 
+30.2 Reporting 
+30.2.1 
+The Supplier will provide a report to ACC on 31 May and 31 October of 
+each year of the term of this Contract describing: 
+30.2.1.1 
+their participation in quality improvement activities, 
+30.2.1.2 
+the results of such initiatives, 
+30.2.1.3 
+the benefits to be expected for ACC clients from these 
+activities, and 
+30.2.1.4 
+the results of a Patient Reported Experience Measure (using a 
+tool generally accepted in the sector as being robust) noting 
+changes over time. 
+31. 
+PRICES, PAYMENT AND INVOICING 
+31.1 This clause 31 replaces clauses 10.2 to 10.7 of the Standard Terms and Conditions. 
+31.2 The table in Part A clause 4 contains the Procedures that may be performed under 
+this Contract, and the agreed purchase price for each.  ACC agrees to pay the prices 
+set out in Part A Table 1:  Service Items and Prices for Procedures provided in 
+accordance with this Contract. 
+31.3 Any Implant required during a Procedure may be charged for in addition to the 
+purchase price in accordance with Part B clause 33 below. 
+31.4 The prices set out are the entire amount chargeable to ACC in relation to the 
+Services and no additional amount may be charged to ACC, the Client or other 
+person for Services under this Contract. 
+31.5 Applicable Price 
+31.5.1 
+The Supplier will invoice ACC for Services provided to a Client using the 
+Prices that applied on the Client’s Discharge Date following Treatment. 
+31.6 Prices of Multiple Procedures per Theatre Session 
+31.6.1 
+If two Procedures are carried out or are to be carried out during the same 
+theatre session, the total price for all such Procedures will not be the sum 
+of the prices of the respective Procedures shown in Part A clause 4 but 
+will be: 
+31.6.1.1 
+the price of the most expensive of the Procedures; plus 
+31.6.1.2 
+40% of the price of each of the other Procedure/s. 
+
+--- PAGE 70 ---
+ESS.Elective Surgery Services.2026 
+Page 70 of 80 
+31.6.2 
+If three or more Procedures are carried out or are to be carried out during 
+the same theatre session, the total price for all such Procedures will not 
+be the sum of the prices of the respective Procedures but the Procedures 
+will be deemed to be a Non-Core Procedure and the price will be agreed 
+in accordance with the process set out in clause 18.4. Where a Procedure 
+forms part, or is a subset, of a more comprehensive Procedure, ACC will 
+only pay for the more comprehensive Procedure. 
+31.7 Significant Complication 
+31.7.1 
+At the point of a Significant Complication Transfer of Care (whether 
+internal, or to another supplier), charges to ACC for Treatment will cease. 
+31.7.2 
+If, at this point, the Supplier has not completed all Services for a Client, 
+the Supplier shall be entitled to charge a pro-rata proportion of the 
+relevant Procedure price/s.  The proportion paid will take into account 
+such factors as the length of time and level of resources committed to the 
+Client.  The proportions and prices shall be agreed with the Client’s Case 
+Manager or Treatment Assessment Centre as appropriate, or the 
+Treatment Assessment Centre, prior to submitting an invoice. 
+31.7.3 
+If agreement cannot be reached within a reasonable period of time 
+including by escalation within each party’s organisation, either party can 
+refer the dispute for resolution under the procedures described in clause 
+19 of the Standard Terms and Conditions. 
+32. 
+PAYMENTS FOR A TREATMENT INJURY PROCEDURE 
+32.1 Where funding approval has been given for a Treatment Injury Procedure under Part 
+B clause 18 the price approved for that Treatment Injury Procedure will not be paid 
+by ACC to the Supplier unless ACC subsequently approves the claim for cover for 
+the injury in respect of which the Treatment Injury Procedure was undertaken. 
+33. 
+IMPLANTS PRICE IN ADDITION TO PROCEDURE PRICE 
+33.1 ACC will pay the Supplier separately for the cost of surgical implants identified in 
+the ARTP, and the price of such implants is excluded from the prices listed in Part 
+A. 
+33.2 ACC will pay the Supplier’s cost price. 
+33.3 Documentary evidence of the cost is required if the total cost of the Implant/s used 
+for a Client is $10,000 or greater (excluding GST). Documentary evidence will 
+include but is not limited to the invoice on which the Supplier pays for the Implant/s 
+or the Supplier’s agreed schedule of Implant prices. 
+
+--- PAGE 71 ---
+ESS.Elective Surgery Services.2026 
+Page 71 of 80 
+33.4 ACC, at its discretion, may audit the price of any Implants in accordance with this 
+Contract. 
+33.5 The Supplier will minimise the cost of Implants having regard to issues of quality 
+and performance and when required by ACC shall demonstrate that it has made all 
+reasonable enquiries of the market when required by ACC. 
+33.6 If ACC enters into supply arrangements directly with vendors of surgical implants, 
+Suppliers will, on reasonable notice by ACC, be required to accept those supply 
+arrangements and use the selected implants unless a sound clinical reason exists, 
+which will be identified on the ARTP. 
+34. 
+TAX INVOICE 
+34.1 The Supplier is entitled to raise a separate Tax Invoice for each Client following the 
+completion of the service.  To ensure efficient payment processing by ACC, this 
+invoice will contain information consistent with that received in the ACC purchase 
+order which initiated the Service, particularly with regard to service codes. 
+34.2 The GST invoice will be submitted electronically using one of ACC’s prescribed 
+methods (available on the ACC Website). Non-electronic invoices will only be 
+accepted for treatment injury claims. 
+34.3 The Supplier’s invoice will be addressed to ACC and will contain the following 
+details: 
+34.3.1 
+The Supplier’s name, address and ACC Supplier number; 
+34.3.2 
+The GST number of the Supplier; 
+34.3.3 
+The words “Tax Invoice” in a prominent place; 
+34.3.4 
+An invoice number; 
+34.3.5 
+The invoice date; 
+34.3.6 
+The relevant ACC purchase order number (unless Part B clause 18.7 
+applies); 
+34.3.7 
+The name of the Contract and the contract number; 
+34.3.8 
+The name and claim number of the Client receiving the Service; 
+34.3.9 
+The name of Procedure, MBS-E code (or replacement code) and 
+Procedure code for the Procedure (where applicable); 
+34.3.10 The name of Named Provider(s) delivering the Services and ACC provider 
+registration number; 
+34.3.11 The name of the facility where surgery was performed; 
+34.3.12 An itemised list of any unique supplies used, including price; and 
+
+--- PAGE 72 ---
+ESS.Elective Surgery Services.2026 
+Page 72 of 80 
+34.3.13 The date on which the Service was provided, or if more appropriate, the 
+start and end date, and the length of inpatient stay (where applicable). 
+34.3.14 The Supplier’s invoice may also contain the theatre time for surgical 
+treatment. 
+35. 
+OPERATION NOTE 
+35.1 The Supplier will send a copy of the Operation Note for the Procedure with the 
+invoice.  The Operation Note will contain all usual details recorded as a matter of 
+good clinical practice including the New Zealand Medical Council number or Dental 
+Council of New Zealand number of the Named Provider, whichever is applicable. 
+36. 
+TIMEFRAMES FOR INVOICING 
+36.1 An invoice charging for Services incidental to Treatment and Post Discharge/Post 
+Procedure Care shall be forwarded with or after any Notice of Discharge has been 
+sent to ACC; 
+36.2 A Significant Complication Transfer of Care invoice shall be forwarded after 
+agreement on the pro-rata Procedure price and with or after the required report/s 
+have been sent to ACC (pursuant to Part B clause 31.7). 
+36.3 ACC will not pay for a Service where the invoice for that Service is not submitted 
+within twelve months of the date the Service was provided. 
+37. 
+PAYMENT 
+37.1 Acceptable invoices received by the 5th of the month will be paid on or before the 
+20th of the same month.  Invoices received after the 5th of the month will be paid 
+the following month. 
+37.2 Advice of payment will be forwarded under separate cover, detailing the individual 
+invoices that make up the lodgement. 
+37.3 If any invoices cannot be approved for payment, ACC will advise the Supplier, 
+detailing the reasons why payment cannot be approved, and what steps need to be 
+taken by the Supplier to obtain approval.  After these steps have been taken, 
+payment will then be made within 10 business days of approval being given. 
+
+--- PAGE 73 ---
+ESS.Elective Surgery Services.2026 
+Page 73 of 80 
+38. 
+CONTINUOUS SERVICE IMPROVEMENT AND CO-DESIGN 
+38.1 ACC is committed to continuously improving the quality of services provided to its 
+clients and to achieving its strategic priorities. ACC will seek opportunities to 
+collaborate with Suppliers to refine service delivery using a process of continuous 
+improvement. The Supplier is expected to: 
+38.1.1 
+Work in partnership with ACC in refining its services using a process of 
+continuous improvement; 
+38.1.2 
+Collaborate with ACC in any service co-design initiatives either initiated 
+by the Supplier or ACC and agreed by the other party; 
+38.1.3 
+Support ACC to identify innovative ways that contribute towards 
+improved service delivery for its clients; 
+38.1.4 
+Complete ACCs annual survey of all Suppliers. 
+39. 
+CLAUSES RELATING TO HEALTH NEW ZEALAND – TE WHATU ORA 
+39.1 In respect of Part B any data supplied by Health New Zealand – Te Whatu Ora to the 
+Ministry of Health which meets the requirements of this Service Schedule will be 
+deemed to satisfy that requirement, the parties noting that a Memorandum of 
+Understanding exists between the Ministry of Health and ACC to share such data. 
+Part B clause 21 is modified as follows: where Health New Zealand – Te Whatu Ora, 
+in the course of managing its public health activities in an efficient manner, fails to 
+gain approval for treatment through the funding approval process described in Part 
+B clause 18 above, ACC may retrospectively consider cover, eligibility and the 
+strength of the case for payment outside the approval process according to 
+procedures and processes published from time to time in the Operational 
+Guidelines relating to this contract. 
+40. 
+SAFETY CHECKS 
+40.1 To protect and uphold the safety of Clients at all times, the Supplier must: 
+40.1.1 
+Carry out appropriate screening/vetting, including Police vetting, for all 
+authorised persons (including, but not limited to employees, Service 
+Providers and Subcontractors) the Supplier engages to deliver the 
+Services under this Contract. 
+40.1.2 
+Establish and maintain appropriate systems, processes and security 
+screening practices, for all supplier authorised persons, (including, but 
+not limited to employees, Service Providers and Subcontractors) the 
+Supplier engages to deliver the Services under this Contract. 
+
+--- PAGE 74 ---
+ESS.Elective Surgery Services.2026 
+Page 74 of 80 
+40.1.3 
+Ensure all authorised persons who work with children must complete a 
+Children’s Workforce Safety Check to ensure they are safety checked to 
+the standard required under the Children’s Act 2014 and the Children’s 
+(Requirements for Safety Checks of Children’s Workers) Regulations 
+2015. 
+40.1.4 
+Immediately notify ACC of any actual, possible or anticipated issues that 
+could impact the safety of Clients. 
+40.2 The Supplier expressly acknowledges and agrees that where ACC receives any 
+information from any source related to the safety of Clients in relation to these 
+Services, ACC may take steps to investigate and take appropriate action. If ACC 
+considers on reasonable grounds that the safety of a Client or Clients may be 
+impacted, ACC may, at its sole discretion, suspend or terminate all or any part of 
+the Services, or this contract. 
+41. 
+SECURITY OF PERSONAL INFORMATION 
+41.1 In addition to the privacy and information management requirements detailed in 
+ACC’s Standard Terms and Conditions, the Supplier must: 
+41.1.1 
+Ensure that Personnel who receives and/or accesses to ACC Client 
+Personal Information from ACC in respect of a Client only does so for the 
+purposes of delivering the Services and in a manner that complies with 
+the Supplier’s privacy, security and confidentiality obligations under this 
+Contract. 
+41.1.2 
+Not transmit, transfer, export or store Personal Information and 
+Confidential Information outside of New Zealand and/or Australia. 
+41.1.3 
+Maintain information security systems, procedures and processes in 
+accordance with Good Industry Practice to protect Client Personal 
+Information and Confidential Information against loss or unlawful access, 
+use, modification or disclosure. 
+41.1.4 
+Undertake regular security assurance, monitoring and testing of its 
+information management systems. 
+41.1.5 
+Promptly remediate any identified security vulnerabilities, in accordance 
+with Good Industry Practice. 
+41.1.6 
+Comply with any security information, accreditation and certification 
+requirements requested or notified by ACC from time to time. 
+41.1.7 
+Ensure and confirm all Subcontractors meet the requirements in this 
+clause before releasing any ACC Client Personal Information or 
+Confidential Information under this Contract. 
+
+--- PAGE 75 ---
+ESS.Elective Surgery Services.2026 
+Page 75 of 80 
+42. 
+HEALTH AND SAFETY 
+42.1 In addition to the Supplier’s obligations under clause 8.16 of ACC’s Standard Terms 
+and Conditions, the Supplier acknowledges and agrees that: 
+42.1.1 
+the Supplier is responsible for managing the health and safety risks arising 
+from the performance of the Services; and 
+42.1.2 
+ACC is reliant on the Supplier's expertise and ability to influence and 
+control the performance of the Services to manage the health and safety. 
+Risk Management Plan 
+42.2 The Supplier must maintain health and safety risk management plan(s) relating to 
+the delivery of Services that at a minimum: 
+42.2.1 
+identify health and safety risks arising from the Services; 
+42.2.2 
+establish controls to eliminate or minimise those health and safety risks 
+so far as reasonably practicable; 
+42.2.3 
+ensure all workplaces, fixtures, fittings and plant (as defined in the Health 
+and Safety at Work Act 2015) are, so far as reasonably practicable, 
+without risk to health and safety; and 
+42.2.4 
+describe the duties that overlap with other persons conducting a 
+business or undertaking ('PCBUs' as defined by the Health and Safety at 
+Work Act 2015) and ensure there are arrangements to consult, cooperate 
+and coordinate with those other PCBUs in order to manage health and 
+safety risks and events (including accidents, harm or near misses), so far 
+as is reasonably practicable. 
+Systems to report risks and events 
+42.3 The Supplier will maintain systems to enable all workers (as defined by the Health 
+and Safety at Work Act 2015) and all Service Providers and Subcontractors to report 
+health, safety and security events and risks relating to the Services to the Supplier. 
+42.4 The Supplier must have procedures in place to manage the events and risks 
+reported. 
+42.5 In addition to its obligations under ACC's Standard Terms and Conditions, the 
+Supplier must also report on health and safety incidents, events and risks related 
+to the Services to ACC via ACC’s online health and safety form. 
+42.6 ACC’s online health and safety form can be accessed here: Third party health and 
+safety form (acc.co.nz). 
+
+--- PAGE 76 ---
+ESS.Elective Surgery Services.2026 
+Page 76 of 80 
+43. 
+DEFINITIONS AND INTERPRETATION 
+In this Service Schedule, unless the context otherwise requires: 
+“ACC Core Procedure List” means the Procedure List made up of ACC’s Core and 
+Red List Procedures set out in the Table of Procedure Prices at Part A clause 4 which 
+may be updated from time to time; 
+“Admission” means the documentation process by which a person becomes 
+resident in a Health Care Facility; and “Admitted” has a corresponding meaning; 
+“Adverse Event” means an unexpected event which affects the patient’s outcome; 
+“Assessment Report and Treatment Plan” and “ARTP” is the report completed on 
+the template specified by ACC from time to time, available on the ACC Website, 
+required to have been prepared and signed by a Named Provider as a result of an 
+assessment of a Client; 
+“Care Period” means the period from receipt by the Supplier of a draft ARTP from 
+a referring clinician, or if Part B clause 18.7 applies the Provider notifying the 
+Supplier of the impending procedure, to a date either at which approval is declined 
+by ACC, or treatment terminated by the client, or a date six weeks after the client 
+has been discharged from the facility at which the treatment was delivered; 
+“Community Services” includes (without limitation) services such as 
+physiotherapy, occupational therapy, speech therapy, orthotics and prosthetics, 
+social work, dietetics, district nursing, personal care, home help and meals on 
+wheels, when those services are provided outside a Health Care Facility setting; 
+“Discharge” means the process of documentation that changes the admission 
+status of a Client whereby the Client leaves the inpatient or day patient facilities of 
+the supplier having received Treatment; 
+“Discharge Date” has a corresponding meaning; 
+“Elective Services” means Personal Health Services which are Services in terms 
+of this Contract, but which are not “Acute Treatment” or “Public Health Acute 
+Services within the meaning of section 6(1) of the AC Act; 
+“Equipment for Independence” means a manufactured item that is likely to assist 
+a Client to achieve his or her optimal independence in daily living or which is 
+required by a Client for reasons of safety.  Examples include shower stools, 
+crutches, walking frames, wheelchairs, etc; 
+“Good Industry Practice” means the exercise of the due care, skill and diligence, 
+and to the appropriate professional or industry standard, as would be expected 
+form a leading provider or person in the relevant industry. 
+
+--- PAGE 77 ---
+ESS.Elective Surgery Services.2026 
+Page 77 of 80 
+“Health Care Facility” means a place which may be permanent, temporary or 
+mobile (excluding rest homes, supervised hostels, half-way houses and staff 
+residences) which people attend, or are resident in, for the primary purpose of 
+receiving Personal Health Service; 
+“Implant” refers to medical and surgical implant devices or biological items that 
+are placed inside or on the surface of the body.  They may replace or supplement 
+body parts or functions, deliver medication, or provide support to organs and 
+tissues. They may be permanent or temporary. Examples may include but are not 
+limited to: 
+• 
+joint replacement prosthesis 
+• 
+cement and cement restrictors 
+• 
+plates, screws, wires, staples, pins 
+• 
+intramedullary rods and nails 
+• 
+customised implants (e.g. hip, pelvis, skull, TMJ) 
+• 
+anchors, tapes, fibre-wires, endo-buttons 
+• 
+mesh: absorbable and non-absorbable 
+• 
+allografts: bone, tendon, corneas 
+• 
+bio-absorbable screws and plates 
+• 
+bio products used to control bleeding or reduce scarring 
+• 
+other specialised products - Suture wrap, Integra skin 
+• 
+intrathecal pumps, nerve stimulators, urinary sphincters, cochlear implants 
+• 
+breast and testicular implants 
+• 
+implant specific equipment (where applicable and as required); 
+“Implant specific equipment” refers to specialised, implant specific equipment 
+that is required for either the insertion or removal of the implant. These are normally 
+an integral component of the implant system, are single use items, unique to the 
+implant system and are invoiced as part of the total implants supplier invoice. ACC 
+will currently accept these as part of the implant invoiced costs, and they are not 
+classed as part of normal or unique supply costs. Please refer to the Elective 
+Surgery Operational Guideline for more detailed information of what ACC consider 
+as inclusions and exclusion for implant cost. 
+“Market Price” means the average agreed price for a particular Procedure of ACC’s 
+contracted providers in the relevant Region; 
+“MBS-E Code” means Medical Benefit Schedule – Extended coding which are 
+procedure codes which relate to the ICD11-AM Diagnostic Codes which is the 
+International Statistical Classification of Diseases and Related Health Problems 
+11th Revision as set out in Appendix Three.  In the context of this contract, reference 
+to MBS-E codes will be assumed to mean reference to any replacement codes if 
+ACC replaces the relevant coding system during the life of this contract; 
+
+--- PAGE 78 ---
+ESS.Elective Surgery Services.2026 
+Page 78 of 80 
+“Named Provider” means: 
+• 
+A Medical Practitioner other than a General Practitioner who holds or is 
+deemed to hold vocational registration and Annual Practicing Certificate 
+granted by the Medical Council of New Zealand that is relevant, or, in the 
+reasonable opinion of a General Practitioner, likely to be relevant, to the 
+injury suffered or apparently suffered by the Client; or 
+• 
+an oral surgeon or oral maxillo-facial surgeon vocationally registered with 
+the Dental Council of New Zealand; 
+• 
+and who has been identified by the Supplier to ACC pursuant to this contract 
+as a Named Provider to this Supplier; 
+“Non-Core Procedure” means a Procedure which is not on ACC’s Core Procedure 
+List and cannot be fairly and reasonably matched to a Procedure on ACC’s Core 
+Procedure List; 
+“Notice of Discharge” means the notice required under Part B clause 24 to be 
+provided to ACC upon Discharge; 
+“Operation Note” means the surgeon’s record of the procedure performed which 
+is recorded in the patient’s hospital file; 
+“Orthosis” means an addition to any existing bodily segment.  Examples include 
+splints, shoulder braces etc; and “Orthoses” has a corresponding meaning; 
+“Orthotics” means the fitting and fabrication of Orthoses or related technical aids 
+used to support or correct the function of the trunk and upper and lower 
+extremities; 
+“Outpatient” means a patient who is not admitted but receives treatment, therapy, 
+advice, diagnostic or investigatory procedures or pre-admission assessment at a 
+Health Care Facility and who leaves within three hours of the start of consultation; 
+“Outpatient Clinic” means a scheduled administrative arrangement enabling 
+Outpatients to receive Outpatient Services at a Health Care Facility; 
+“Outpatient Services” means Personal Health Services provided to an Outpatient; 
+“Personal Health Services” means goods, services, and facilities provided to an 
+individual for the purpose of improving or protecting the health of that individual, 
+whether or not they are also provided for another purpose; and includes goods, 
+services, and facilities provided for related or incidental purposes; 
+“Post Discharge/Post Procedure Care” includes the Services referred to in Part B 
+clause 11; 
+
+--- PAGE 79 ---
+ESS.Elective Surgery Services.2026 
+Page 79 of 80 
+“Priority Category” means the High or Routine category for any recommended 
+Treatment selected by the assessing Named Provider based on the definitions 
+outlined in Part B clause 22 and clause 7 of the Elective Surgery Services 
+Operational Guidelines and recorded in the Client’s ARTP; or as deemed by ACC 
+based on the same definitions; 
+“Procedure” includes a surgical procedure or service which is included in Part A 
+clause 4 or is agreed under Part B clause 18.4; 
+“Red List” means ACC’s list of procedures which ACC categorises under this 
+heading from time to time on the advice of the relevant professional bodies as being 
+relatively low volume/high cost procedures which are undertaken by Named Red 
+List Providers only at specified facilities and which are denoted as Red List 
+procedures in Appendix 2 of the Elective Surgery Services Operational Guidelines. 
+The Table of Procedure Prices is included in Part A clause 4; 
+“Referrer” means the Medical Practitioner or another provider of Personal Health 
+Services who requests that the Provider provide an Assessment of or medical 
+services for the Client and, if appropriate, Treatment or, where the context 
+otherwise requires, means the Provider who requests that a Medical Practitioner 
+accept a transfer of clinical responsibility for a Client or requests that another 
+provider of Personal Health Services provide an Assessment of or medical services 
+for the Client and, if appropriate, Treatment; and “Referral” and “Referred” have a 
+corresponding meaning; 
+“Referring Specialist” means the medical specialist who has assessed the client 
+as requiring certain treatment, has completed the draft ARTP and referred the draft 
+ARTP to the Supplier.  This party will typically be the Named Provider, but exceptions 
+may occur. 
+“Routine” means less than six months (but not within seven days of the date the 
+decision was made by the assessing Specialist that the Admission was necessary 
+or the date of Referral for treatment by the assessing Provider); 
+“Services” has the meaning defined in Part B clause 3; 
+“Significant Complication Transfer of Care” means the transfer of clinical 
+responsibility for the care and treatment of the Client because of a Significant 
+Complication in connection with the medical condition of the Client to one of the 
+following (whichever is most appropriate for the Client): 
+• 
+a Health New Zealand – Te Whatu Ora; or 
+• 
+a medical, nursing and ancillary team internally within the Supplier, if that 
+complication is within the Supplier’s expertise and if the Supplier is publicly 
+funded by the Ministry of Health to provide the necessary care and 
+Treatment as if they were “public health acute services” within the meaning 
+of the AC Act and without charge to the Client or ACC; 
+
+--- PAGE 80 ---
+ESS.Elective Surgery Services.2026 
+Page 80 of 80 
+“Significant Complication” means a medical complication which arises 
+unexpectedly after Admission and is of such a nature that the Client’s clinical 
+priority becomes that of requiring “public health acute services” within the meaning 
+of the AC Act or services or treatment that would be “public health acute services” 
+if provided in a hospital and health service.  A Significant Complication is not 
+covered in the Services specified in this Contract.  An example of a Significant 
+Complication includes, but is not limited to where a significant medical 
+complication arises unexpectedly, or because of an underlying medical condition 
+that is not related to an ACC claim (for example, a significant asthma attack that 
+has resulted in a pneumothorax, or a myocardial infarction); 
+“Theatre Time” means the period of elapsed time (in minutes) from the 
+commencement of the anaesthetic (induction) or entry to the Operating Room to 
+the exit from the Operating Room or transfer to Post Anaesthetic Care Unit.  This 
+period does not include time waiting in the anaesthetic room or anteroom, nor does 
+it include the time from insertion of a regional block to entry to the Operating Room; 
+“Treatment” includes the Services referred to in Part B clause 10.2; 
+“Treatment Injury Procedure” means a Procedure for an injury arising out of 
+medical treatment for which a claim for cover for treatment injury or medical 
+misadventure has been lodged with ACC. 

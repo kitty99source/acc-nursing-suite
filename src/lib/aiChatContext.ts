@@ -23,6 +23,9 @@ import type { AppData, Claim, Contract, Patient } from '../types';
 import { CASE_STAGE_LABEL } from './caseWorkflow';
 import { formatDateNZ } from './format';
 import { buildCaseStageSummary, buildComplianceRuleSummary, buildKnowledgeBaseSections } from './ai/knowledgeBase';
+import { retrieveKnowledgeForQuery } from './ai/knowledgeCorpus';
+import { sourceDocById } from './acc/sourceDocs';
+import type { RetrievedChunk } from './ai/knowledgeRetrieval';
 
 // Re-exported for backwards compatibility with existing callers/tests — the
 // actual implementation now lives in lib/ai/knowledgeBase.ts (see that file
@@ -46,6 +49,8 @@ export interface AiChatMessage {
   chips?: ContextChip[];
   /** The exact serialized context text sent to the model alongside this exchange, for the "Context used" disclosure. */
   contextUsed?: string;
+  /** Real ACC source documents retrieved and injected for this exchange (see buildChatMessages) — shown in the "Context used" disclosure alongside `contextUsed` so source citation is visible, not just record-chip context. */
+  retrievedSources?: RetrievedSourceCitation[];
   /**
    * The reasoning-model's chain-of-thought trace (from `<think>...</think>`), stripped out of
    * `content` by `parseThinkResponse` (see lib/ai/thinkParser.ts) before display. Undefined for
@@ -189,13 +194,26 @@ export function buildContextBlock(chips: ContextChip[], data: AppData): string {
 // ----------------------------------------------------------------------------
 
 export const AI_ASSISTANT_SYSTEM_PROMPT = [
-  'You are the built-in assistant for ACCAdminsuite, an offline, on-device admin tool for a ' +
-    'district nursing ACC (Accident Compensation Corporation, New Zealand) billing/compliance team. ' +
-    'You run entirely locally via Ollama on the user\'s own laptop — you must never claim to send, ' +
-    'store, or need to send any data anywhere else.',
+  'You are the built-in assistant for ACCAdminsuite, an offline, on-device admin tool for an ACC ' +
+    '(Accident Compensation Corporation, New Zealand) billing/compliance team. This app covers ' +
+    'multiple ACC-funded service types with real ingested source material — nursing, elective ' +
+    'surgery, and allied health (physiotherapy/occupational therapy/hand therapy/podiatry) — not ' +
+    'just district nursing. You run entirely locally via Ollama on the user\'s own laptop — you must ' +
+    'never claim to send, store, or need to send any data anywhere else.',
   'Base your advice ONLY on the real rules and workflow stages below, taken directly from this ' +
-    'app\'s own compliance engine and case-workflow model. Do not invent ACC policy, clause numbers, ' +
-    'or thresholds that are not listed here — if you are not sure, say so plainly instead of guessing.',
+    'app\'s own compliance engine and case-workflow model, PLUS any real ACC document excerpts shown ' +
+    'to you below (each tagged with its real source document and URL). Do not invent ACC policy, ' +
+    'clause numbers, prices, or thresholds that are not present in this material — if you are not ' +
+    'sure, say so plainly instead of guessing.',
+  'IMPORTANT distinction: any ACC Service Schedule / price-table content shown to you is ACC\'s ' +
+    'NATIONAL PUBLISHED TEMPLATE (the same public document ACC applies to every supplier of that ' +
+    'service type) — it is NEVER this specific organisation\'s own signed, negotiated contract. If ' +
+    'asked about "our contract" specifically, say that the national schedule is real grounding but ' +
+    'this organisation\'s own contract number, named-provider list, or any negotiated rate variation ' +
+    'is not in this data and would need to come from their own contracts/records team.',
+  'When you use one of the real document excerpts shown below to answer, mention which source ' +
+    'document it came from (e.g. "per the Nursing Services Service Schedule...") so the user can see ' +
+    'where the information came from — do not present it as if you already knew it.',
   ...buildKnowledgeBaseSections(),
   'If the user has attached one or more record "chips" (a patient, etc.), a block of that record\'s real ' +
     'data will follow this system message — answer using that data specifically, and do not fabricate ' +
@@ -253,25 +271,68 @@ export interface BuildChatMessagesOptions {
   userMessage: string;
 }
 
+/** One real source document whose text was retrieved and injected for a given chat turn — the "Context used" disclosure's citation list. */
+export interface RetrievedSourceCitation {
+  sourceDocId: string;
+  title: string;
+  url: string;
+  /** How relevant the RAG-lite scorer judged this chunk to the question (see knowledgeRetrieval.ts) — shown for transparency, not a probability. */
+  score: number;
+  /** The exact retrieved excerpt text, so "Context used" can show precisely what was injected — same faithfulness rule as the chip serializers. */
+  excerpt: string;
+}
+
 export interface BuildChatMessagesResult {
   /** Structured messages array sent to generateLocalAiChatResponseStream (Ollama `/api/chat`). */
   messages: ChatMessage[];
   /** Just the serialized chip context, for the "Context used" UI — '' if no chips. */
   contextBlock: string;
+  /** Real ACC source documents whose text was retrieved (via the RAG-lite keyword/TF-IDF scorer — see knowledgeRetrieval.ts) and injected into the system message for this turn — [] if nothing scored above the relevance threshold. */
+  retrievedSources: RetrievedSourceCitation[];
+}
+
+function buildRetrievedKnowledgeBlock(chunks: RetrievedChunk[]): { text: string; citations: RetrievedSourceCitation[] } {
+  const citations: RetrievedSourceCitation[] = chunks.map((r) => {
+    const doc = sourceDocById(r.chunk.sourceDocId);
+    return {
+      sourceDocId: r.chunk.sourceDocId,
+      title: doc?.title ?? r.chunk.sourceDocId,
+      url: doc?.url ?? '',
+      score: r.score,
+      excerpt: r.chunk.text,
+    };
+  });
+  const text = citations
+    .map((c) => `Source: "${c.title}" (${c.url})\n${c.excerpt}`)
+    .join('\n---\n');
+  return { text, citations };
 }
 
 /**
  * Assembles the structured `messages` array sent to the local model: one
  * leading `system` message (grounding system prompt + the current
- * context-chip block, if any), then a capped window of recent conversation
- * history as real `user`/`assistant` messages, then the new user message.
- * Pure data assembly — no network call, so this is trivially unit-testable.
+ * context-chip block, if any, + any relevant real ACC document excerpts
+ * retrieved for this question — see knowledgeCorpus.ts/knowledgeRetrieval.ts),
+ * then a capped window of recent conversation history as real `user`/
+ * `assistant` messages, then the new user message.
+ *
+ * Async ONLY because of the knowledge-corpus retrieval step (a `fetch` of the
+ * static, locally-served corpus asset — see knowledgeCorpus.ts; still zero
+ * external network calls). The retrieval step degrades to "no sources"
+ * (never throws) if the corpus asset is unavailable — this function's
+ * chip/history/system-prompt assembly is otherwise exactly as before.
  */
-export function buildChatMessages(opts: BuildChatMessagesOptions): BuildChatMessagesResult {
+export async function buildChatMessages(opts: BuildChatMessagesOptions): Promise<BuildChatMessagesResult> {
   const contextBlock = buildContextBlock(opts.chips, opts.data);
   const recentHistory = opts.history.slice(-MAX_HISTORY_TURNS);
 
+  const retrievedChunks = await retrieveKnowledgeForQuery(opts.userMessage);
+  const { text: knowledgeBlock, citations: retrievedSources } = buildRetrievedKnowledgeBlock(retrievedChunks);
+
   let systemContent = AI_ASSISTANT_SYSTEM_PROMPT;
+  if (knowledgeBlock) {
+    systemContent += `\n\nReal ACC document excerpts relevant to this question (cite the source when you use these):\n${knowledgeBlock}`;
+  }
   if (contextBlock) {
     systemContent += `\n\nContext used (attached by the user for this question):\n${contextBlock}`;
   }
@@ -282,5 +343,5 @@ export function buildChatMessages(opts: BuildChatMessagesOptions): BuildChatMess
   }
   messages.push({ role: 'user', content: opts.userMessage });
 
-  return { messages, contextBlock };
+  return { messages, contextBlock, retrievedSources };
 }

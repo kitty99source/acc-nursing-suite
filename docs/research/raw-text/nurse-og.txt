@@ -1,0 +1,1658 @@
+
+--- PAGE 1 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 0 of 43 
+ 
+ 
+Nursing Services 
+Operational Guidelines for Providers 
+ 
+March 2025 
+ 
+ 
+
+--- PAGE 2 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 1 of 43 
+ 
+Table of Contents 
+ACC contact details ...................................................................................................... 3 
+Introduction ................................................................................................................. 4 
+Purpose of the Service .................................................................................................. 5 
+Service objectives ...................................................................................................................................... 5 
+Service eligibility and exclusions ................................................................................................................. 5 
+Referral into Nursing Services ...................................................................................................................... 7 
+Declining referrals .................................................................................................................................. 8 
+Service location .......................................................................................................................................... 8 
+Service Exit ................................................................................................................................................ 9 
+Designated Providers .................................................................................................... 9 
+Designated Provider criteria .......................................................................................................................10 
+Minimum Designated Provider availability requirements ..............................................................................10 
+Service item code overview ......................................................................................... 11 
+Treatment for non-permanent nursing needs ................................................................ 13 
+Initial assessment and treatment plan ........................................................................................................15 
+Determining the appropriate service for the client........................................................................................16 
+Examples of how the appropriate package and amount of extended nursing is determined ........................18 
+Use of Extended Nursing outside of packages of care ..............................................................................18 
+Interruption of services ..........................................................................................................................19 
+Re-entry into the service ........................................................................................................................19 
+Transfer of service .....................................................................................................................................20 
+Treatment for subsequent injuries ............................................................................... 21 
+Examples for Treatment of Subsequent Injuries ...........................................................................................22 
+Subsequent vs. consequential injuries ...................................................................................................23 
+ACC179 Nursing Services Notification form ................................................................. 23 
+Treatment for permanent nursing needs / Ongoing Nursing ........................................... 26 
+Referral into Ongoing Nursing .....................................................................................................................26 
+Initial assessment and treatment plan ........................................................................................................27 
+Reassessment of Nursing Services .............................................................................................................27 
+Invoicing for Ongoing Nursing .....................................................................................................................28 
+Nursing Services for consequential injuries .................................................................................................28 
+Lodging claims for consequential injuries ...............................................................................................29 
+Pressure injury guidelines ......................................................................................................................30 
+Consumables ............................................................................................................. 31 
+
+--- PAGE 3 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 2 of 43 
+ 
+Consumables for non-permanent treatment ...............................................................................................31 
+High cost consumables process ............................................................................................................32 
+Consumables for Ongoing Nursing .............................................................................................................33 
+Negative Pressure Wound Therapy (NPWT) ..................................................................................................33 
+Assessment Services .................................................................................................. 34 
+Oversight Consultation (NS07) ...................................................................................................................34 
+Oversight Consultations initiated by ACC ................................................................................................34 
+Comprehensive Nursing Assessment (NS20 / NS20T) ..................................................................................35 
+Referral for Comprehensive Nursing Assessments ..................................................................................35 
+Comprehensive Nursing Assessment reports ..........................................................................................36 
+Telehealth .............................................................................................................................................37 
+Travel ......................................................................................................................... 37 
+Interaction with Cost of Treatment Regulations ............................................................ 38 
+Treatment for other injuries on the same claim ............................................................................................38 
+Initial treatment for a new injury prior to referral into the Nursing Services contract .......................................38 
+Invoicing ..................................................................................................................... 39 
+Provider registration and claims lodgement ................................................................. 40 
+Provider Registration ..................................................................................................................................40 
+Need assistance? ..................................................................................................................................40 
+Claims lodgement .....................................................................................................................................41 
+Working with clients who may pose a health and safety risk .......................................... 41 
+Communication regarding care indicated clients .........................................................................................42 
+Stopping a treatment or assessment ...........................................................................................................42 
+Reporting health and safety risks and incidents ...........................................................................................43 
+ 
+ 
+
+--- PAGE 4 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 3 of 43 
+ 
+ACC contact details 
+Provider Contact 
+Centre 
+If you have a general query or need assistance regarding a 
+specific invoice, please contact the provider helpline: 
+Phone: 0800 222 070 
+Email: providerhelp@acc.co.nz 
+Client Helpline 
+Phone: 0800 101 996 
+Provider 
+Registration 
+Phone: 04 560 5211  
+Email: registrations@acc.co.nz  
+Fax: 04 560 5213 
+ 
+eBusiness 
+Phone: 0800 222 994, 
+option 1 
+Email: 
+ebusinessinfo@acc.co.nz   
+Health 
+Procurement 
+If you have a question about your contract or need to update 
+your details, please contact the ACC Health Procurement 
+team:  
+Phone: 0800 400 503 
+Email: health.procurement@acc.co.nz   
+Engagement and 
+Performance 
+Managers 
+Engagement and Performance Managers (EPMs) can help you 
+to provide the services outlined in your contract. Contact the 
+EPM team via the form on our website: Contact our provider 
+relationship team (acc.co.nz). 
+Website 
+For more information about ACC, please visit: 
+https://www.acc.co.nz 
+ 
+ 
+
+--- PAGE 5 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 4 of 43 
+ 
+Introduction 
+The Operational Guidelines for Nursing Services (“the Guidelines”) are designed to assist with 
+your service delivery.  
+The Guidelines should be read in conjunction with: 
+• the Accident Compensation Act 2001 (AC Act) 
+• the ACC Standard Terms and Conditions 
+• the Nursing Services Service Schedule 
+ 
+Further information to support your delivery of services for ACC clients is available on our 
+webpage Health providers (acc.co.nz). 
+Services must be provided in accordance with the Guidelines unless there is a conflict 
+between the Guidelines and the contract (Standard Terms and Conditions and/or Service 
+Schedule), in which case the provision within the contract takes precedence. 
+Updates to the guidelines will be made available as the need arises. 
+ 
+ 
+
+--- PAGE 6 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 5 of 43 
+ 
+Purpose of the Service 
+The purpose of Nursing Services is to provide community-based nursing treatment – usually in 
+the client’s home – for the injury-related needs of clients whose treatment cannot be delivered 
+by their General Practice Team (GPT).  
+Injuries, that can be managed by the GPT, will vary between different GPTs and this depends on 
+the experience of the practice team. 
+ 
+Service objectives 
+Nursing Services should be client centred and flexible to meet the diverse needs of our clients, 
+while also being cost effective to achieve an optimal outcome for the best value. 
+ 
+Service eligibility and exclusions 
+To be eligible for Nursing Services, the client must have an accepted ACC claim and treatment 
+provided must be directly related to the covered injury. 
+Clients must also meet one or more of the following eligibility criteria: 
+• the client’s nursing needs are too complex to be managed by the GPT, or 
+• the client is physically unable, or unsafe to travel to their GPT, or 
+• the client requires nursing treatment outside of usual GPT opening hours, and/or 
+• the client is not enrolled with a GPT. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+--- PAGE 7 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 6 of 43 
+ 
+Table One – Examples to determine eligibility 
+Meets Eligibility Criteria… 
+Does Not Meet Eligibility Criteria… 
+ 
+The client has reduced 
+mobility. 
+ 
+The client, or a client’s 
+parents, would prefer a home-
+based service for their 
+convenience.   
+ 
+The client has little or no 
+natural support making it 
+unsafe or impractical for them 
+to attend their General 
+Practice Team (GPT).   
+ 
+General skin integrity 
+management for an ACC-
+covered spinal cord injury. 
+ 
+The client requires nursing 
+treatment for Serious Injury. 
+ 
+The nursing treatment is to 
+assist a medical specialist 
+ 
+The client needs care outside 
+of normal practice hours. 
+ 
+The client receives nursing 
+treatment at an outpatient 
+clinic that could be managed 
+by a GPT, e.g. suture removal 
+or nurse-led fracture clinics. 
+ 
+Complex injuries, e.g. ulcers, 
+wounds with heavy exudates, 
+large bacterial burden, 
+pressure wounds or skin grafts 
+ 
+The referral is considered to 
+allow the client to access a 
+fully funded service rather 
+than incur a co-payment at 
+their GPT. 
+ 
+Specialised treatment needs, 
+e.g. stoma care, compression 
+therapy, Negative Pressure 
+Wound Treatment (NPWT). 
+ 
+ 
+The client lives in residential 
+care and requires treatment 
+for a minor injury that would 
+usually be self-managed or 
+managed through natural 
+supports. Residential care 
+facilities are expected to 
+manage these injuries 
+(without lodging a claim) in 
+lieu of self-management or 
+family support. Residents can 
+ 
+Where the client has a history 
+of leg ulcers, slow healing 
+wounds, heart disease, 
+diabetes, or is 
+immunocompromised, which 
+may adversely impact on their 
+injury related rehabilitation. 
+
+--- PAGE 8 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 7 of 43 
+ 
+access Nursing Services for 
+more significant injuries. 
+ 
+Where the client requires 
+nursing treatment but is 
+unable to access timely care 
+from a GPT, e.g. if the client is 
+not enrolled or not able to 
+enrol with a GPT. 
+ 
+The client has recovered from 
+an ACC-covered wound but 
+requires ongoing skin integrity 
+checks. 
+ 
+Referral into Nursing Services 
+Clients can access Nursing Services via referral from one of the following: 
+• A medical practitioner, Nurse Practitioner, or a Registered Nurse under the supervision 
+of a medical practitioner or Nurse Practitioner. 
+• Community-Based Health Service Provider e.g. community pharmacist, paramedic, 
+physiotherapist, rongoā Māori practitioner. 
+• Self-referral where a Client lives in a rural nursing services area either permanently or 
+temporarily (e.g. tourist or visitor), as defined in clause 6.9. 
+• Self-referral where there are barriers to accessing a General Practice Team (e.g. the 
+client is unable to enrol with a general practice).  
+ACC Claims Management staff may also refer clients, however most referrals will come from 
+hospital teams, GP teams or other community-based providers as above. 
+ 
+Suppliers can refer clients into their own service when: 
+• They are a Health New Zealand hospital and the referral follows discharge from 
+inpatient care. 
+• A Client who is currently receiving services from the supplier either for health-related 
+issues or a previous injury sustains a new injury that requires Nursing Services 
+treatment. 
+
+--- PAGE 9 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 8 of 43 
+ 
+However, clients should still be given the choice between the supplier’s own community 
+nursing service and other Nursing Services suppliers in the region. ACC may request 
+confirmation that the client was given a choice of supplier. 
+ 
+Clients can refer themselves for Nursing Services when:  
+• The client lives in or is temporarily visiting a rural area where the Nursing Services base 
+is 50km or 30 minutes away from the nearest hospital or general practice with a doctor 
+in regular attendance.  
+• The client experiences barriers to accessing a GPT, e.g. the client is unable to enrol with 
+a general practice. 
+ 
+Declining referrals  
+You can decline a referral under the following circumstances:  
+• The client doesn’t meet the eligibility criteria. 
+• Another supplier is already providing Nursing Services. 
+• There is a conflict of interest. 
+• The referral originated within your own organisation (or within their community nursing 
+service for Health New Zealand). 
+• You don’t have the capacity or capability to provide the required services in a timely 
+manner. 
+ 
+Service location 
+Nursing Services can be provided at the client’s home, school or workplace, as well as the 
+suppliers outpatient clinic, or another suitable community location. The location is determined 
+by the client’s ability to travel and the complexity of the treatment they require. 
+Client choice should be considered when determining where services are delivered. The 
+exception would be where the client is physically able to travel, has transport available and 
+lives within reasonable travelling distance from a supplier outpatient clinic. In these cases the 
+supplier can require the client to attend the clinic.  
+
+--- PAGE 10 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 9 of 43 
+ 
+ACC will not approve travel costs (e.g. taxis) for a client to attend the clinic if there are barriers 
+to transport for the client. In these cases, the service provider must travel to the client to 
+provide Nursing Services.  
+Prior approval from ACC is not required for the choice of service location. The supplier should 
+ensure the service location is clinically safe for their patient, provides client privacy and 
+doesn’t pose a health and safety risk for the nurse. 
+ 
+Service Exit  
+Clients usually exit the service for one of the following reasons: 
+• The injury has resolved and no further treatment is required. 
+• The injury is no longer of a complexity that requires nursing services input and can now 
+be managed by the client’s GPT. 
+• The client no longer requires treatments outside of their GPT’s opening hours. 
+• The client is now able to travel to receive treatment and can therefore be seen at their 
+GPT. 
+• The injury is no longer wholly or substantially caused by the covered accident and 
+therefore the client is no longer eligible to treatment funding from ACC (e.g. some non-
+healing wounds may be deemed no longer caused by the covered accident). 
+Once you have completed Nursing Services for a client we expect you send the client’s GPT a 
+discharge summary as part of your commitment to maintaining effective linkages with other 
+providers. 
+ 
+Designated Providers 
+A Designated Provider (DP) is a Registered Nurse or Nurse Practitioner, with applicable 
+postgraduate qualifications and work experience. From 1 March 2025, Designated Providers 
+are not required to be approved by ACC, however the Supplier is responsible for ensuring they 
+have at least one DP on staff who meets the Designated Provider criteria. 
+
+--- PAGE 11 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 10 of 43 
+ 
+DPs have an important role within the Nursing Services contract. They ensure service quality 
+by: 
+• providing clinical oversight for the supplier’s nursing staff treating ACC clients, 
+• conducting Oversight Consultations and Comprehensive Nursing Assessments, and 
+• reviewing the use of high cost consumables. 
+ 
+Designated Provider criteria 
+The criteria required for a nurse to be approved as a Designated Provider is described in clause 
+7.7 of the Service Schedule. They are: 
+• has a current Annual Practising Certificate with no known conditions/restrictions on 
+their practice and is not undergoing any formal or informal competency 
+review/investigation; and 
+• has demonstrated post graduate experience of not less than three years full time work 
+in the assessment and treatment of injury related conditions; and 
+• has demonstrated post graduate experience working with people in their own homes for 
+no less than three years full time work; and 
+• provides clinical assessment and treatment services to clients as a regular component 
+of their role; and 
+• Is readily accessible to the nursing staff who are treating clients under the Nursing 
+Services contract.  In this regard, accessibility may be in the form of clinical governance, 
+assessment, treatment or supervision. 
+• has or is undertaking post graduate education at NZQF Level 8 (minimum post graduate 
+certificate) in relevant nursing specialties, and 
+• participates in annual professional development directly related to their sphere of 
+practice (e.g. wound care / aged care / nutrition / infection control); and 
+• maintains membership with a relevant professional organisation. 
+ 
+Minimum Designated Provider availability requirements 
+Suppliers are required to have enough DPs on staff to ensure all their treating nurses have 
+access to DP support during all hours of operation. 
+
+--- PAGE 12 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 11 of 43 
+ 
+If at any time you don’t have sufficient DP cover (outside of short term planned or unplanned 
+leave) to provide support to all your treating nurses and complete Comprehensive Nursing 
+Assessments, please inform your local Engagement and Performance Manager (EPM) 
+immediately. 
+You are not required to have DPs located in every Territorial Authority (TA) you provide services 
+in. However we will not pay for travel from outside the TA for a DP to conduct Oversight 
+Consultations.. 
+ 
+Service item code overview 
+The Nursing Services contract is invoiced via service item codes for treatment, assessment 
+services, consumables and travel as outlined in Table Two below. 
+Table Two – Service item codes 
+ 
+Type of service 
+Service code and 
+description 
+Used for… 
+See section… 
+Treatment 
+NS01 – Short Term 
+Nursing Package 
+Non-permanent 
+nursing needs 
+Treatment for non-
+permanent nursing 
+needs 
+NS02 – Medium Term 
+Nursing Package 
+NS03 – Long Term 
+Nursing Package 
+NS04 – Extended 
+Nursing 
+NS05 – Ongoing 
+Nursing 
+Permanent nursing 
+needs – usually 
+accessed by Serious 
+Injury clients 
+Treatment for 
+permanent nursing 
+needs / Ongoing 
+Nursing 
+NS06 – Treatment of 
+Subsequent Injury 
+Treatment for injuries 
+on a new claim 
+Treatment for 
+subsequent injuries 
+
+--- PAGE 13 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 12 of 43 
+ 
+Assessment 
+NS07 – Oversight 
+Consultation by a 
+Designated Provider 
+Assessment by the 
+treating nurse’s 
+Designated Provider 
+to review the injury 
+and the treatment 
+plan. 
+Oversight 
+Consultations 
+NS20 – 
+Comprehensive 
+Nursing Assessment 
+In-depth assessment 
+conducted by the 
+Designated Provider 
+of a secondary 
+supplier 
+Comprehensive 
+Nursing Assessment 
+NS20T – 
+Comprehensive 
+Nursing Assessment 
+- Telehealth 
+In-depth assessment 
+conducted by the 
+Designated Provider 
+of a secondary 
+supplier via 
+telehealth where 
+clinically 
+appropriate. 
+Comprehensive 
+Nursing Assessment 
+High Cost 
+Consumables 
+NS10 – Medical 
+Consumables per 
+consultation 
+Reimbursement for 
+high cost 
+consumables 
+outside of Ongoing 
+Nursing 
+Consumables 
+Travel 
+Various codes NST 
+and NSAC codes 
+Travel and 
+accommodation 
+reimbursement for 
+provider travel 
+Travel 
+ 
+ 
+ 
+
+--- PAGE 14 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 13 of 43 
+ 
+Treatment for non-permanent nursing needs 
+These services are for clients, who have sustained an injury that requires Nursing Services for 
+an acute episode. It is predominantly used for wound management and most clients accessing 
+this service are elderly. Diagram One outlines the process for non-permanent nursing 
+treatment (excluding treatment for subsequent injuries) and this will be explained in detail in 
+the sections below. 
+ 
+
+--- PAGE 15 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 14 of 43 
+ 
+ 
+ 
+Diagram One – Overview non-permanent nursing needs 
+ 
+ 
+
+--- PAGE 16 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 15 of 43 
+ 
+Initial assessment and treatment plan 
+Once you have received a referral or identified a need for non-permanent treatment, you 
+should arrange for a Registered Nurse or Nurse Practitioner to meet with the client within two 
+business days to complete an initial assessment and treatment plan. 
+A whole person assessment, including wound assessment (where applicable), is required for 
+every client. You need to use an initial assessment and treatment plan template that includes 
+the information in table below. 
+ 
+Initial assessment section 
+Treatment plan section 
+• client’s personal details  
+• ACC claim number 
+• NHI number  
+• reason for referral into the services 
+• accident and diagnosis details 
+• relevant past health history 
+• medications 
+• co-morbidities  
+• relevant non-injury details which may 
+impact on the management of the 
+covered injury 
+• wound/injury status and health status 
+• pressure injury stage using 
+classification tool (when present) 
+• risk assessment and prevention plan 
+for falls, pressure injuries, healthcare 
+acquired infections, medication 
+adverse events and any other risks 
+• treatment to date 
+• treatment goal(s)  
+• approximate timeframe and number of 
+consultations required to reach the 
+goal 
+• required package of care and/or 
+Extended Nursing 
+• consumables required, and  
+• location of service delivery. 
+ 
+ 
+
+--- PAGE 17 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 16 of 43 
+ 
+Determining the appropriate service for the client 
+There are three packages of care for non-permanent treatment: 
+ 
+Service item 
+Duration of 
+treatment 
+Minimum number of 
+consultations 
+ACC approval 
+required? 
+Short Term Package 
+(NS01) 
+One to 13 days 
+one 
+No 
+Medium Term 
+Package (NS02) 
+14 to 42 days 
+six 
+No 
+Long Term Package 
+(NS03) 
+43 to 105 days 
+12 
+No 
+ 
+All packages of care cover a maximum of 25 consultations. Extended Nursing (NS04) requires 
+approval from ACC and is available for Nursing Services beyond 105 days or from the 26th 
+consultation onward. The duration of treatment is the time between the initial face to face 
+assessment (Day 1 of package of care) and the last face to face consultation with the client. 
+You need to estimate the required service level for the client as part of your initial assessment 
+and treatment plan. The appropriate service level is primarily determined by how long the 
+client will require Nursing Services. 
+The number of consultations required is only relevant if: 
+a) the minimum number of consultations for a package is not needed 
+b) more than 25 consultations are required, in which case Extended Nursing is used from 
+the 26th consultation onward. 
+ 
+To estimate the appropriate service level, please follow the steps below: 
+1. On Day 1, assess how long the client is likely to require nursing services 
+ 
+ 
+
+--- PAGE 18 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 17 of 43 
+ 
+Treatment duration 
+Service level 
+under 14 days 
+Short Term Package 
+between 14 and 42 days 
+Medium Term Package 
+between 43 and 105 days 
+Long Term Package 
+over 105 days 
+Extended Nursing for the consultations from Day 106 onward 
+plus package of care 
+ 
+ 
+2. Estimate the number of face to face consultations the client will require and check that: 
+a) the minimum number of consultations for the package of care identified in Step 1 is 
+met. 
+If the client will not require the minimum number of consultations for a package of 
+care, the appropriate package defaults to a smaller package of care, i.e. Short Term 
+Package for fewer than six consultations, and Medium Term Package for under 12 
+consultations. 
+b) the consultations required don’t exceed 25.  
+Extended Nursing can be used in addition to the identified package of care where 
+over 25 consultations are required. 
+3. If you identify that the client requires Extended Nursing, please submit an ACC179 
+Nursing Services Notification form to ACC to request approval for these services. 
+ 
+ 
+If at any point during the client’s treatment it becomes apparent that the client will require 
+treatment for longer than initially estimated, you should update your assessment and 
+treatment plan accordingly. If the treatment is now estimated to require Extended Nursing 
+please advise ACC and request (additional) prior approval for these services. 
+You can only invoice for packages of care once the service has been completed. This is 
+because your initial estimate may not have been accurate, and the applicable package of care 
+can only be determined once you provided either services for 105 days or 25 consultations. 
+
+--- PAGE 19 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 18 of 43 
+ 
+Extended Nursing can be invoiced after each individual consultation. In some cases all of the 
+pre-approved consultations may not be required, in which case the supplier will only invoice 
+for the number of consultations delivered. 
+ 
+Examples of how the appropriate package and amount of extended nursing is 
+determined 
+1. A client needs 24 nursing consultations over 12 days. The treatment timeframe falls 
+within the Short Term Package (up to 13 days) and doesn’t exceed the maximum 
+number of consultations of that package. 
+2. A client requires 20 nursing consultations over 44 days. The treatment timeframe falls 
+within the Long Term Package (between 43 and 105 days) and more than the minimum 
+number of treatments for that package is required. 
+3. A client needs 10 nursing consultations over 50 days. Even though this falls within the 
+timeframe for a Long Term Package, the minimum number of consultations for the Long 
+Term Package is not met (12 consultations). Therefore the Medium Term Package is the 
+appropriate service level in this case. 
+4. A client requires weekly visits for a period of 20 weeks. The Long Term Package will 
+cover the first 15 weeks (105 days) of this service. In addition, five Extended Nursing 
+consultations are required to cover the remaining weeks. 
+5. A client requires daily visits for a period of 35 days. The Medium Term Package will be 
+used for the first 25 days/visits. In addition, 10 Extended Nursing consultations are 
+required for the remaining days. 
+ 
+Use of Extended Nursing outside of packages of care 
+Extended Nursing can also be used to provide Nursing Services that do not fit well within the 
+parameters of packages of care. This is either the case where: 
+a) two nurses are required at the same visit. In this case Extended Nursing can be 
+approved in addition to the appropriate package of care to fund the second nurse 
+or 
+b) the client requires one or less consultations per month. In these cases Extended 
+Nursing may be approved instead of a package of care. 
+
+--- PAGE 20 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 19 of 43 
+ 
+Interruption of services 
+If a client is admitted into hospital during their treatment, and requires ongoing treatment after 
+discharge, you will determine the appropriate service level based on the entire timeframe from 
+initial assessment (Day 1) to the last face to face consultation after discharge from hospital. 
+Bear in mind you must also meet the minimum number of consultations for the package. If you 
+do not meet the minimum threshold for visits, please charge a lesser package. 
+ 
+Examples for interruption of services: 
+1. On Day 10 of Nursing Services, after two face to face consultations, your client is 
+admitted to hospital. The client is discharged on Day 16 and you provide two further 
+visits over the following week, which completes the treatment on Day 23. Even though 
+the service duration falls within the Medium Term Package, you would only be able to 
+invoice for the Short Term Package as the minimum of six face to face consultations for 
+a Medium Term Package were not reached. 
+2. You are planning to deliver a Medium Term Package for a client for 12 treatments over a 
+course of six weeks. On Day 20, after six treatments have been delivered, the client is 
+admitted to hospital for an unrelated condition and is discharged on Day 27. 
+When you resume treatment your nurse reassess the client’s injury and estimates 
+treatment will need to continue for a further three weeks and seven treatments. As the 
+client will require a total of 13 treatments over 48 days, a Long Term Package is now 
+appropriate. 
+ 
+Re-entry into the service 
+In some cases a client may require further Nursing Services for injuries on the same claim after 
+treatment is completed and the client is discharged from your service. 
+This is dealt with as a new episode of care and you would go through the process for non-
+permanent treatment as if it were the first time the client received Nursing Services. 
+If a Short, Medium or Long Term Package has already been used for the previous episode of 
+care and require the same package of care for the new episode, complete the ACC179 form to 
+request a purchase order for the new package. This is because our payments system only 
+allows payment for one Package of care per claim without a purchase order number. 
+
+--- PAGE 21 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 20 of 43 
+ 
+ 
+Example for service re-entry 
+A client receiving a package of care temporarily moves to a different area, and their care is 
+transferred to a different Nursing Services supplier. The original package ends when the client 
+transfers to the new supplier. After four weeks, the client moves back to their home area and 
+the first supplier resumes treatment. This is treated as a new episode of care under a new 
+package of care. 
+ 
+Transfer of service 
+Sometimes a client may change supplier during the course of their treatment. This could 
+happen for the following reasons: 
+a) The client moves permanently or temporarily (e.g. vacation) into a TA that the first 
+supplier doesn’t cover. 
+b) The client chooses to change supplier. 
+ 
+The first supplier should give a copy of their clinical notes to the client and ask them to 
+share the notes with their new supplier. 
+The first supplier can invoice ACC for the services provided as soon as they have finished 
+seeing the client. They will determine the appropriate service level at that stage based on the 
+treatment timeframe and number of consultations they have provided for the client. 
+A Registered Nurse or Nurse Practitioner of the second supplier will complete an initial 
+assessment and treatment plan at the first visit with the client and estimate the required 
+service level using this first visit as Day 1.  
+The second supplier needs to submit an ACC179 Nursing Services Notification form to notify 
+ACC of the transfer of services and to advise what package of care they are planning to provide. 
+ACC will raise a purchase order for the appropriate package of care and advise the supplier of 
+the Purchase Order Number. 
+This process is necessary because ACC’s payment system only allows one Package per claim 
+without a Purchase Order Number, and this may have already be used by the first supplier. 
+
+--- PAGE 22 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 21 of 43 
+ 
+If the client requires Extended Nursing, the second supplier needs to submit their initial 
+assessment and treatment plan and any supporting clinical notes together with an ACC179 
+form requesting approval for the Extended Nursing, just like you would do with any other 
+request for approval.  
+ 
+Treatment for subsequent injuries 
+A subsequent injury is an injury that has cover under a separate claim to the original injury and 
+requires Nursing Services.  
+Treatment for Subsequent Injury (NS06) doesn’t require prior approval from ACC or a new 
+referral, but the Client’s GP team should be notified of the new injury. 
+Once a subsequent injury has been identified, your treating nurse should update the client’s 
+assessment and treatment plan to include the subsequent injury. The document should clearly 
+identify the “original” and the “subsequent” injury or injuries, as well as the estimated 
+treatment timeframes, and number of consultations required for all injuries. 
+Please submit the updated assessment and treatment plan together with an ACC179 Nursing 
+Services Notification form to notify ACC of the subsequent injury. 
+You can invoice for treatment of subsequent injuries after each consultation using the claim 
+number of the subsequent injury claim. 
+When the treatment for the “original” injury is completed, but treatment is still needed for 
+subsequent injury(ies), the oldest subsequent injury becomes the new “original” or “primary” 
+injury.  
+The treating nurse needs to reassess the client’s treatment needs to estimate the required 
+package of care for the new “original” injury. The date of this reassessment is the new ‘Day 1’ 
+for the purpose of determining the appropriate service level for the new “original” injury. 
+ 
+ 
+ 
+
+--- PAGE 23 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 22 of 43 
+ 
+Examples for Treatment of Subsequent Injuries 
+1) You are providing wound care to a client under a Long Term Package when your 
+organisation receives a referral for treatment of a new injury requiring additional wound 
+care. Your treating nurse visits the client and assesses the new injury, updates the 
+assessment and treatment plan for both injuries and provides wound care to both the 
+original and the subsequent injury. Following the consultation you submit the new 
+assessment and treatment plan together with an ACC179 from notifying ACC of the 
+subsequent injury. 
+ 
+You can invoice for this visit under Treatment of Subsequent Injury (NS06) straight after 
+the consultation and count the consultation towards the package of care for the original 
+injury. 
+ 
+2) You are providing supra pubic catheter cares to a client as Ongoing Nursing when you 
+identify the client has a new burn injury requiring wound care in addition to catheter 
+cares. You assess the client needs and lodge an ACC45 claim for the new burn injury, 
+and submit an ACC 179 to notify ACC of the subsequent injury. You can invoice ACC for 
+an appropriate Nursing package for treating the burn (billing under the new ACC45 claim 
+number) and Ongoing Nursing (NS05) for the catheter care (billing under the original 
+ACC45 claim number). 
+ 
+3) You have been providing treatment for a client for two wounds from two separate 
+injuries using a package of care for the original injury and Treatment for Subsequent 
+Injuries (NS06) for the second injury.  
+ 
+When treatment for the first injury is completed you invoice for the applicable package 
+of care. At the next consultation with the client, the treating nurse re-assesses the 
+remaining injury and estimates the duration of treatment and number of consultations 
+still required for this wound. The date of this reassessment is considered Day 1 of the 
+package of care for the new “primary” injury. Following this reassessment you provide a 
+further eight consultations over four weeks to the client before treatment is completed 
+and can invoice for a Medium Term Package for these consultations. 
+
+--- PAGE 24 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 23 of 43 
+ 
+Subsequent vs. consequential injuries 
+Subsequent injury 
+Consequential injury 
+There is a new accident / mechanism of 
+injury causing a new injury. 
+A consequential injury is a new injury that 
+has been caused as a direct consequence of 
+the original injury or as a consequence of 
+treatment for the original injury, such as a 
+pressure injury. 
+Please note: If your client has a new injury that has been caused as a direct consequence of 
+the original injury or as a consequence of treatment for the original injury, this injury is 
+considered a consequential injury.  
+Consequential injuries must have a new ACC45 claim lodged (noting that the injury is a 
+consequence of the already covered injuries) and be treated under this claim number. If the 
+client is currently receiving a Nursing package for another non-permanent injury need, 
+treatment for the consequential injury can commence under Treatment of Subsequent Injury 
+(NS06), or under a new package of care if the client is not currently receiving Nursing Services. 
+ 
+ 
+ACC179 Nursing Services Notification form 
+An ACC179 is a cover page for your assessment and treatment plan and clinical notes.  It 
+assists ACC staff to identify your request and react timely.     
+It is used when you:  
+1. request Extended Nursing 
+2. request renewal of Ongoing Nursing 
+3. notify ACC of a subsequent injury 
+4. notify ACC of a transfer of services 
+5. request a purchase order for a package where there has already been a package 
+invoiced under the same claim 
+ 
+Use the ACC179 form found on our website and follow the instructions below on how to 
+complete it. 
+
+--- PAGE 25 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 24 of 43 
+ 
+ 
+Section 1 – Kiritaki (Client) details  
+Please fill in client details or attach a Bradmar sticker here. 
+If the Bradmar sticker does not have the ACC45 number, please place the Bradmar sticker high 
+enough so you are able to fill in the ACC45 number on the form.  
+ 
+Section 1 – Primary claim or ACC45 number 
+Please advise the claim number of the primary injury and not the claim number of any 
+subsequent injury that you might be notifying ACC of with this form.  
+ 
+Section 2 – Vendor/Provider details 
+Please provide the name of the nurse, who made the decision that an ACC179 is required, and 
+the best contact details for ACC to use if we need to discuss the client’s injury. This may be a 
+general phone number for your team. 
+ 
+Section 3 – Date of initial consultation 
+Please advise the date of the first treatment the client received from your organisation for the 
+primary injury under Nursing Services contract (Day 1). 
+ 
+Section 4 – Request type 
+Please use this section to indicate whether you are: 
+• requesting approval for a Nursing service, 
+• requesting a purchase order for a Nursing Package (only required if there has already been a 
+package invoiced under the same claim number), 
+• advising of a transfer of services to you from another supplier, or 
+• notifying ACC of a subsequent injury for a client, who you are already treating under the 
+contract. 
+
+--- PAGE 26 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 25 of 43 
+ 
+The additional sections that you still need to complete are listed under the respective request 
+types. 
+ 
+Section 5 – Nursing prior approval request  
+Please indicate the type of service(s) you are requesting and provide a brief rationale why the 
+requested service(s) are required, e.g. delayed wound healing due to infection. 
+If you are requesting Extended Nursing, please indicate the number of consultations, start date 
+for this request, and expected end date of the Extended Nursing you are requesting. 
+The Renewal of Ongoing Nursing option is for you to prompt the Recovery Team member to 
+renew a client’s Ongoing Nursing. The Recovery Team member will determine the start date 
+and the approved hours.  
+ 
+Section 6 – Nursing Package purchase order / Transfer of service 
+This does not require prior written or verbal approval from a Recovery Team member. A 
+Recovery Team member will raise a purchase order for payment. 
+Please advise the name of the previous treating supplier, reason for the request, and the 
+package required to treat the client. 
+If you don’t know who the previous supplier was, please put “unknown”. 
+ 
+Section 7 – Subsequent Injury 
+Please indicate ACC45 number of the subsequent injury and the day you started treating the 
+subsequent injury under the Nursing Services contract. 
+ 
+Section 8 - Name and date 
+Please provide the name of the treating nurse and the date the ACC179 was completed. 
+ 
+ 
+
+--- PAGE 27 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 26 of 43 
+ 
+Treatment for permanent nursing needs / Ongoing Nursing 
+This service is for clients with permanent, often life long, nursing needs. This service is usually 
+accessed by clients with Serious Injuries such as spinal cord or moderate to severe traumatic 
+brain injuries. However the service is open to any client with ongoing Nursing Services needs. 
+Diagram Three outlines the process for permanent treatment and this is explained in detail in 
+the sections below. 
+Diagram Three: Overview permanent needs  
+ 
+ 
+Referral into Ongoing Nursing 
+Ongoing Nursing (NS05) can only be accessed via a referral from an ACC Recovery Team 
+member. However, if you have identified a client with ongoing nursing needs, please contact 
+the client’s Recovery Team to recommend a referral into this service. 
+Client is discharged home (e.g. from 
+Spinal Unit) 
+ACC Recovery Team approves and 
+refers for Ongoing Nursing 
+Nurse completes an Initial Assessment 
+and Treatment Plan 
+Client receives ongoing treatment 
+ACC Recovery Team reviews Initial 
+Assessment and Treatment Plan 
+Nursing needs are reviewed at least 
+annually 
+
+--- PAGE 28 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 27 of 43 
+ 
+The need for Ongoing Nursing for new Serious Injury clients is usually identified as part of their 
+discharge planning. The ACC Recovery Team member will work with the discharging hospital or 
+rehabilitation facility to determine the client’s Nursing Services needs, when they first return 
+home. 
+Recovery Team members are able to approve Ongoing Nursing for up to 12 months at a time. 
+However, the first approval may only cover the time until a Supports Needs Assessment is 
+completed with the client (usually around six months post discharge) as this may identify a 
+different level of service need than initially approved. 
+The client’s nursing needs should be reviewed regularly, and on an annual basis. A 
+Comprehensive Nursing Assessment may be requested for the annual review if the client 
+hasn’t had an independent assessment of their Nursing needs in the last 12 months. 
+ 
+Initial assessment and treatment plan 
+Once you have received a referral, you should arrange for a Registered Nurse to meet with the 
+client within two business days to complete an initial assessment and treatment plan. 
+For detail regarding the initial assessment and treatment plan please refer to the section under 
+non-permanent treatment above. 
+Once the Recovery Team member receives your initial assessment and treatment plan they will 
+review the approved level of Ongoing Nursing and amend the purchase order number if 
+appropriate. 
+ 
+Reassessment of Nursing Services 
+The Assessment and treatment plan for each client should be reviewed and updated whenever 
+there is a change in the client’s needs, but at least annually. 
+Recovery Team members will review their approval for Ongoing Nursing services on an annual 
+basis and may request a Comprehensive Nursing Assessment for this purpose. 
+You should receive a further approval before expiry of the current purchase order number. But 
+you can also use the ACC179 Nursing Services Notification form to request renewal of the 
+NS05 approval. You don’t have to specify the start date or number of hours as the Recovery 
+Team member will determine these as part of their review of the client’s needs. 
+
+--- PAGE 29 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 28 of 43 
+ 
+Invoicing for Ongoing Nursing 
+You can invoice for Ongoing Nursing after each visit with the client. 
+Ongoing Nursing (NS05) is an hourly rate, not a per consultation rate. Please ensure you only 
+invoice for the time your nurse actually spends treating the client and not one hour per visit. 
+ 
+Nursing Services for consequential injuries 
+A consequential injury is a new injury that has been caused as a direct consequence of the 
+original injury or as a consequence of treatment for the original injury, such as a pressure 
+injury. Consequential injuries must be lodged as a new claim and treated under this claim 
+number. 
+Your Registered Nurse or Nurse Practitioner should complete an updated assessment and 
+treatment plan including the consequential injury. An ACC45 claim lodgement form must be 
+submitted, noting that the injury is a consequence of the already covered injuries. See below 
+section Lodging claims for consequential injuries for more details on what information to 
+include on the ACC45 form. 
+Nursing Services treatment for consequential injuries is provided using the service items for 
+non-permanent needs. You therefore have to determine the appropriate service level to treat 
+the consequential injury. For more details on this process please refer to the section on 
+treatment for non-permanent nursing needs above. If the client is currently receiving a package 
+of care for a non-permanent injury, treatment for the consequential injury should commence 
+under Treatment of Subsequent Injury (NS06), otherwise a new package of care can be started 
+for the consequential injury. 
+Where possible, Ongoing Nursing and treatment for the consequential injury should be 
+delivered concurrently. Please ensure you only invoice under Ongoing Nursing for the time 
+spent addressing the client’s permanent nursing needs, and not the time spent treating the 
+consequential injury.  
+There are some situations where the client sustains an injury due to an accident that wouldn’t 
+have happened if it weren’t for the covered injury, e.g. client sustains a graze to their leg when 
+being transferred from their wheelchair into bed. The injury is not a consequential injury, but it 
+is caused by a new accident and is covered under a new claim. If a client requires Nursing 
+
+--- PAGE 30 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 29 of 43 
+ 
+Services for an injury like this, services are provided under Treatment for Subsequent Injuries 
+(NS06) as outlined above.  
+ 
+Lodging claims for consequential injuries 
+Including detailed information about the injury on the ACC45 will help us to assess the claim 
+and make a decision on cover quickly without needing to gather further information. The 
+information we need includes: 
+• 
+That this injury is a consequence of a covered injury 
+• 
+How the consequential injury has come about 
+• 
+In what context was the injury sustained (eg "recovering in own home", or "in hospital 
+level care") 
+• 
+The affected body site and side (if applicable) 
+• 
+Accident date is the date the injury was diagnosed or identified (if a pressure injury) 
+• 
+Use a read code that includes the stage of pressure injury or include in the injury 
+comments 
+• 
+What level of care the person is in e.g. hospital level care (if a treatment injury) 
+• 
+If the person has been in care since before the pressure injury was diagnosed (if a 
+treatment injury) 
+ 
+See below for examples of what a good quality claim lodgement might look like. 
+Example 1: Consequential pressure injury 
+Injury description – “Bed ridden from #NOF - claim XX12345, recovering at home, 
+consequential pressure injury of left buttock”  
+Injury diagnosis – 39C0. Pressure injury stage II – Left 
+Accident date - date the pressure injury was identified 
+ 
+ 
+
+--- PAGE 31 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 30 of 43 
+ 
+Example 2: Consequential treatment injury 
+Injury description – “Bed ridden from #NOF - claim xx12345, in hospital level care since 
+01/02/2025, consequential pressure injury of left buttock” 
+Injury diagnosis - 39C0. Pressure injury stage II - left 
+Accident date - date pressure injury identified 
+Is this a claim for an injury caused by treatment? – tick “Yes” on the form 
+ 
+Pressure injury guidelines 
+The Guiding Principles for Pressure Injury Prevention and Management in New Zealand (the 
+guide) provides New Zealand healthcare professionals and organisations with a high-level 
+framework for best-practice care in preventing and managing pressure injuries. 
+At its heart are six principles of best practice that are applicable to healthcare settings of all 
+types, including hospitals, hospices, residential care facilities, primary healthcare settings and 
+home-care situations. These principles are:  
+ 
+1. People first: People have access to care, and receive information and participate in 
+shared decision-making about the care needed to prevent and manage pressure 
+injuries. 
+ 
+2. Leadership: Healthcare organisations demonstrate leadership by ensuring that they 
+have systems and resources to prevent and manage pressure injuries. 
+ 
+3. Education and training: Healthcare workers at all levels have access to and support for 
+acquiring current knowledge and skills that enable them to prevent and manage 
+pressure injuries.  
+ 
+
+--- PAGE 32 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 31 of 43 
+ 
+4. Assessment: Pressure injury risk assessments are completed as part of admission, 
+referral and transfer processes, with reassessments when people’s health status 
+changes. At-risk areas are checked regularly and whenever the opportunity arises.  
+ 
+5. Care planning and implementation: Individualised, person-centred care plans 
+employing evidence-based care bundles are developed, documented and implemented 
+to reduce the risk of pressure injuries. 
+ 
+6. Collaboration and continuity of care: Care support, information and resources move 
+seamlessly with people transferring between healthcare settings. 
+ 
+Other useful pressure injury prevention resources can be found on our website Helping prevent 
+pressure injuries – acc.co.nz.  
+ 
+ 
+Consumables 
+Consumables are medical items (that are not pharmaceuticals), which are required for the 
+treatment of an injury. The cost of some consumables is built into the treatment service items 
+while others can be invoiced to ACC or ordered through ACC’s contracted consumables 
+supplier, OneLink. 
+ 
+Consumables for non-permanent treatment 
+The Nursing Services contract distinguishes between low cost and high cost consumables in 
+regards to non-permanent treatment. 
+High cost consumables are defined as items that have a total cost of at least $25 per 
+consultation (meaning all consumables used during a single consultation together cost $25 or 
+more) with a minimum cost per unit of $10 (excluding GST). 
+
+--- PAGE 33 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 32 of 43 
+ 
+All other consumables are considered low cost consumables and are included in the price of 
+the packages of care, Extended Nursing and Treatment of Subsequent Injury. Low cost 
+consumables can therefore not be invoiced for or ordered through OneLink.  
+ACC wants to ensure that clients receive appropriate, effective wound care, using 
+consumables that facilitate the healing of their wounds or injuries in a timely manner. To 
+encourage the use of high quality, healing promoting consumables, the contract gives you the 
+option to either invoice ACC directly for high cost consumables or order these consumables 
+through OneLink. 
+ 
+High cost consumables process 
+1. The treating nurse should identify any high-cost consumables and rationale for the use 
+of these consumables in their clinical notes. 
+ 
+2. The Designated Provider reviews the clinical records and the rationale and either agrees 
+or alters the selection. This needs to be documented in the clinical notes. Only high-
+cost consumables that have been signed off by a DP will be reimbursed or ordered 
+through OneLink. 
+ 
+3. Reimbursement: If you would like to use your own stock of consumables and be 
+reimbursed by ACC you need to submit invoices using the NS10 service item code. 
+Reimbursement doesn’t require approval from ACC. 
+The invoice needs to detail the date of consultation, product/s, units, actual cost and 
+Vendor ID number. 
+You need to invoice for the consumables on a per consultation basis rather than for all 
+consumables used throughout a package of care. ACC may request clinical notes to 
+verify the appropriate use of high cost consumables. 
+ 
+4. Order through OneLink: You can request delivery of consumables to the client’s home 
+via OneLink by submitting an order through the Community Client website or sending an 
+ACC178 Consumables Order Form to ACC.  
+
+--- PAGE 34 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 33 of 43 
+ 
+Consumables can be delivered for up to one month at a time. If the client requires 
+consumables for longer than one month, you can submit a recurring order (at a 
+frequency that suits the client best, e.g. weekly or monthly). 
+Consumables should generally be delivered directly to the client’s home, but ACC 
+Recovery Team members can approve delivery to a supplier clinic or base address on a 
+case by case basis if there are compelling reasons for this. 
+ 
+Consumables for Ongoing Nursing 
+All consumables, that are required as part of Ongoing Nursing treatments, must be ordered 
+through OneLink. For details of the ordering process please see section on the High-cost 
+consumables process above. 
+Consumables reimbursement using the NS10 service item code is not available for Ongoing 
+Nursing. 
+ 
+Negative Pressure Wound Therapy (NPWT) 
+A request to ACC for NPWT can only come from a Specialist, Surgeon, GP, Nurse Practitioner, 
+or Designated Provider. 
+A Nurse Practitioner is a nurse with a “Nurse Practitioner” scope of practice as per their annual 
+practicing certificate. It is not to be confused with Clinical Nurse Specialists, whose scope of 
+practice is “Registered Nurse”. For more information on the difference between these scopes 
+of practice, please contact the Nursing Council of New Zealand.    
+A Designated Provider is able approve the consumables required for Negative Pressure Wound 
+Therapy.  These consumables must come from OneLink, with the exception of extenuating 
+circumstances. 
+Please refer to ACC’s Operational Guidelines for Negative Pressure Wound Therapy for further 
+information. 
+ 
+
+--- PAGE 35 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 34 of 43 
+ 
+Assessment Services 
+Oversight Consultation (NS07) 
+An Oversight Consultation is a face to face consultation carried out by the treating supplier’s 
+Designated Provider to support the treating nurse in cases where the client’s recovery from 
+their injury lacks progress. The treating nurse should be present for the Oversight Consultation 
+and complete the scheduled treatment at the same time. This is invoiced as a consultation or 
+counted towards the visits under a package of care the same as any other treating nurse visit 
+for that client. 
+The first Oversight Consultation per claim doesn’t require prior approval from ACC. This 
+allows DPs to arrange a face to face with the client much quicker especially in cases where the 
+client doesn’t have a Recovery Team member assigned to their claim. 
+Subsequent Oversight consultations on the same claim require prior approval from ACC . 
+This can be requested informally, e.g. over the phone or via email, or via the ACC179. 
+Please send the Designated Provider’s clinical records to ACC within three working days of the 
+Oversight Consultation being completed by the DP. These notes should cover the following: 
+• Reason why the Oversight Consultation was required 
+• Current status of the client’s injury and recovery 
+• Change to the treatment plan following the Oversight Consultation and the rationale for 
+the change or rationale why the treatment plan was not changed. 
+ 
+Oversight Consultations initiated by ACC 
+Sometimes an ACC Recovery Team member may initiate an Oversight Consultation in order to 
+address their or the client’s specific concerns or questions around the client’s recovery. 
+Recovery Team members may ask you to answer specific questions around treatment, 
+progress and recovery timeframes.  
+This will usually be the case where the Recovery Team member deemed that a Comprehensive 
+Nursing Assessment (see section below for details on CNAs) is not required, but still has some 
+questions that warrant DP input. 
+Please answer any questions the Recovery Team member submitted with the referral as part of 
+the clinical notes you submit following the Oversight Consultation. 
+
+--- PAGE 36 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 35 of 43 
+ 
+Comprehensive Nursing Assessment (NS20 / NS20T) 
+A Comprehensive Nursing Assessment (CNA) is an independent and objective clinical 
+assessment completed by a Designated Provider from an independent supplier, who is not 
+currently providing treatment to the client (“secondary supplier”). 
+ACC Recovery Team members refer for CNAs when an independent review of the current state 
+of the client’s injury(ies) and of the treatment plan is required, because: 
+• the client’s recovery lacks progress, 
+• the injury doesn’t seem to be responding to the current treatment plan,  
+• there are concerns whether the client’s current condition is still caused by the covered 
+accident or not, or 
+• the client has been receiving Nursing Services for 12 months or more without an 
+independent assessment. 
+Often the referral for a CNA will be triggered by a request for approval of further treatment, but 
+a Recovery Team member may refer for a CNA at any point during Nursing Services. 
+You are not required to have the treating supplier present when you conduct the assessment. 
+However you shouldn’t disrupt a wound unnecessarily and therefore it will often be appropriate 
+to align your assessment with a scheduled treatment visit.  
+ 
+Referral for Comprehensive Nursing Assessments 
+The ACC Recovery Team member will provide the following information with the referral: 
+• history of the client’s injury, 
+• all relevant clinical notes, including the assessment and treatment plans of the treating 
+supplier, 
+• information on any health and safety issues in regards to the client, 
+• client consent form for the collection and release of clinical notes, and 
+• any specific questions the Recovery Team member would like the DP to answer in their 
+report. 
+Please follow up with the Recovery Team member if you have not received enough information 
+to proceed with the assessment. 
+
+--- PAGE 37 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 36 of 43 
+ 
+Before accepting the referral, please ensure you have an appropriate qualified and skilled 
+Designated Provider to complete the assessment. Please consider: 
+1. whether the DP requires a specific skill set (e.g.. stoma, continence, compression 
+bandaging), and 
+2. whether the DP has more experience and/or qualifications than the treating nurse in the 
+relevant area. 
+If you receive a referral for a CNA in a TA (or district) where you don’t have a local DP, please 
+contact the Recovery Team member to discuss travel costs before accepting the referral.  
+ 
+Comprehensive Nursing Assessment reports 
+There is currently no ACC template for CNA reports. You can use a report template that you 
+developed for your organisation or the report can be provided in form of a letter.  If the injury is a 
+wound, please attach a wound assessment. 
+The CNA report needs to include the following information: 
+• Details of the client’s accident and diagnosis. 
+• The progress made to date including the types and durations of assessments and 
+treatments carried out to date. 
+• Current health status. 
+• Co-morbidities and past history that may be relevant to the treatment of the covered 
+injury (e.g. history of slow healing wounds). 
+• Medications. 
+• Natural supports and strengths. 
+• Details of the ongoing causation of the presenting condition and relevance to the 
+covered injury. 
+• Recommendations for ongoing management/treatment and any further investigations 
+required. 
+• Comprehensive wound assessment for all wounds. 
+• Answers to specific questions listed in the referral 
+ 
+ 
+
+--- PAGE 38 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 37 of 43 
+ 
+The Recovery Team member may also wish to know:  
+• the expected timeframe for the injury to heal 
+• the expected number of consultations needed for the injury to heal 
+• Reason/s why an injury might be slow healing (e.g. co morbidities, age, treatment type, 
+non compliance, infection, delays in receiving treatment)   
+• anything further ACC can do to assist the client 
+• if the client has sufficient home support and nutrition 
+• if ACC should consider seeking a specialist opinion (e.g. vascular or plastics) 
+A Recovery Team member can request further information, clarification or answers to 
+questions within 10 working days of receipt of the report. The request for additional information 
+does not attract an additional fee. 
+A copy of the assessment report will be provided to the treating supplier and the client’s GPT. 
+ 
+Telehealth 
+Comprehensive Nursing Assessments may be completed via telehealth e.g. by telephone 
+conversation or videoconferencing, if it is clinically appropriate and the client has consented to 
+a telehealth consultation.  
+When providing Comprehensive Nursing Assessments via telehealth, Designated Providers 
+should ensure that they follow the requirements of the ACC Telehealth Guide and any 
+guidelines from their regulatory body.  
+Comprehensive Nursing Assessments completed via telehealth are invoiced under the NS20T 
+service code. 
+ 
+Travel 
+The prices for non-permanent treatment service items (NS01 to NS04 and NS06) include travel 
+costs and therefore you cannot invoice separately for travel in relation to delivering these 
+services. 
+Ongoing Nursing, Oversight Consultation and Comprehensive Nursing Assessment service 
+item codes do not include travel, and this can be invoiced separately when you deliver these 
+
+--- PAGE 39 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 38 of 43 
+ 
+service items. Please refer to the Service Schedule for details of the travel reimbursement 
+service item codes and requirements for travel reimbursement. 
+If your treating nurse delivers a package of care or Extended Nursing consultation concurrently 
+with Ongoing Nursing, you cannot invoice for travel under Ongoing Nursing, as this is already 
+paid for through the package of care or Extended Nursing. 
+If a Designated Provider shares travel with the treating nurse to complete an Oversight 
+Consultation, you cannot invoice for the Designated Provider’s travel distance as this is 
+included in the treating nurse’s travel. 
+ 
+Interaction with Cost of Treatment Regulations 
+A supplier cannot provide services under this contract and Cost of Treatment Regulations 
+(CoTR) for the same claim, except for in the two circumstances outlined below. 
+ 
+Treatment for other injuries on the same claim 
+Occasionally a client, who is receiving Nursing Services for an injury, may have other injuries 
+that were caused by the same accident and are therefore covered under the same claim. 
+If the client requires nurse-led treatment from your organisation outside of the Nursing 
+Services for one of their injuries, you can invoice for these nurse treatments under CoTR. 
+Example: A client receives home-based Nursing Services for a complex wound through a 
+Health NZ hospital’s Nursing Services. The client broke their leg in the same accident and has 
+an outpatient appointment at the Health NZ hospital’s  nurse-led fracture clinic for a cast 
+check. The Health NZ hospital can invoice for the cast check under CoTR and this visit doesn’t 
+count towards the package of care for the wound management. 
+Initial treatment for a new injury prior to referral into the Nursing Services 
+contract 
+In some instances one of your nurses may discover a new injury caused by an accident when 
+they are visiting a client to either treat a health related condition or a previous injury. 
+
+--- PAGE 40 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 39 of 43 
+ 
+If the following criteria are met the nurse can lodge a claim1 for the new injury and you can 
+invoice for the initial treatment of the injury under CoTR: 
+• The nurse has the practising scope of a Registered Nurse or Nurse Practitioner. 
+• The nurse is registered as a treatment provider for CoTR with ACC under your 
+organisation as a Vendor. Please refer to the section on provider registration below. 
+• The diagnosis for the new injury falls within the nurse’s scope of practice and ACC’s 
+claims lodgement framework for nurses. 
+• The injury requires nurse level treatment, not just first aid that a client would usually not 
+seek treatment for. 
+Following the initial treatment you need to advise the client’s GPT of the new injury. If the injury 
+meets eligibility criteria for Nursing Services you may start providing Nursing Services – a new 
+referral from the GPT is not required. Day 1 of the package of care for this client is the first 
+consultation, at which time a full assessment and treatment plan needs to be completed. 
+ 
+Invoicing 
+You must be billing ACC electronically.  If you are not sure of how to do this, please contact the 
+eBusiness Team on 0800 222 994 option 1. 
+All invoices must include the information detailed in the Standard Terms and Conditions of 
+your contract. A Provider ID number is required for invoicing under the Cost of Treatment 
+Regulations. 
+The service date for packages of care is Day 1 of the package. If possible, please provide the 
+end date of the package in the comments. 
+Invoices for High Cost consumables must include the date of consultation, details of the 
+product/s used, number of units/quantity used, and actual cost. 
+ 
+ 
+1 Please refer to section on claims lodgement below. 
+
+--- PAGE 41 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 40 of 43 
+ 
+Provider registration and claims lodgement 
+To be able to lodge claims and deliver some services under Cost of Treatment Regulations, 
+your nurses need to be individually registered as treatment providers with ACC. 
+Provider Registration 
+Only Registered Nurses and Nurse Practitioners can be registered as ACC treatment providers. 
+Enrolled Nurses are unable to lodge claims or invoice for treatment provided under CoTR. 
+If you would like to register your Registered Nurses/Nurse Practitioners as treatment providers 
+you need to supply the following to ACC: 
+• a completed ACC24 Application for ACC Health Provider Registration form 
+• a copy of the nurse’s current annual practising certificate 
+• a copy of your bank account, either on pre-printed bank deposit slip or via bank 
+verification. 
+ 
+You can complete the registration form online at Register with us as a health provider, or send 
+your paper form to us by email to registrations@acc.co.nz or by post to:  
+ACC Provider Registration PO Box 30823 Lower Hutt 5040. 
+ 
+How to fill out the ACC24 
+1. Please fill out a ACC24 for each individual nurse you would like to register and fill in your 
+vendor name as the “practice name”. 
+2. The profession is “Registered Nurse” or “Nurse Practitioner”. 
+3. The individual nurse needs to sign their ACC24 
+ 
+Need assistance? 
+For further information about the registration process please refer to our website Register with 
+us as a health provider. 
+If you have any questions or need assistance with completing applications please contact our 
+Provider Helpline on 0800 222 070 or email to providerhelp@acc.co.nz. 
+
+--- PAGE 42 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 41 of 43 
+ 
+Claims lodgement 
+Registered Nurses and Nurse Practitioners, who are registered as treatment providers with 
+ACC, can lodge ACC claims for injuries that fall within their scope of practice and the ACC’s 
+claims lodgement framework for nurses. Enrolled Nurses are not able to lodge claims. 
+If you don’t use a patient management system (PMS) with a claims lodgement function, you 
+can get set-up to lodge claims using our online tools. Please refer to our webpage for details.  
+ 
+ 
+Working with clients who may pose a health and safety risk 
+ACC clients who meet two or more of the following criteria are considered to pose a potential 
+risk to safety, and will have a Care Indicator activated by ACC: 
+• have continued to demonstrate intimidating and/or offensive behaviour (e.g. body 
+language and verbal dialogue has made employees feel unsafe) 
+• been abusive, verbally or in writing 
+• made racist or sexist comments  
+• the current actions being undertaken on their claim by ACC are known to have caused, 
+or are expected to cause a significantly negative response from the client. For example, 
+Prosecution, Fraud Investigation, cessation of Weekly Compensation. 
+ 
+Clients who meet any one of the following more serious criteria are also considered a risk 
+and will also have a Care Indicator activated:  
+• Have been or are physically violent (this unacceptable behaviour may not have 
+occurred directly towards ACC employees)  
+• Have a history of violence or aggressive behaviour, have known convictions for violence  
+• Made threats previously against ACC, ACC employees, or agents acting on ACC’s behalf  
+• Intimidated an employee through written abuse or verbal abuse (face-to-face or over the 
+telephone) to the extent they felt unsafe  
+• Exhibited homicidal ideation. 
+ 
+
+--- PAGE 43 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 42 of 43 
+ 
+ACC may not always have a Recovery Team member assigned to clients receiving Nursing 
+Services. However, if you identify a client / situation that may pose a risk, please call Provider 
+Helpline. They will be able to provide you with information relevant to your role in managing the 
+claim. This will help mitigate health and safety risks to service providers and others. 
+Communication regarding care indicated clients 
+The Recovery Team member of a care indicated client will advise you in writing, either: 
+• Prior to your initial contact with the client, or 
+• If you are already providing services to the client, as soon as possible when ACC 
+receives new information about client risk. 
+• If you make a decision that a security guard is required because of concern about your 
+own or your employees’ safety please contact the Recovery Team member to arrange 
+the security guard. Guards can be arranged at any initial or subsequent consultation. 
+• Please report any threatening behaviour to the police immediately if you feel that it is 
+warranted in the circumstances, and advise ACC and any other parties that are at risk 
+as soon as possible. 
+• All threats by ACC clients or their representatives must be reported to ACC in writing 
+using the online form on our website. We ask that you report these to us so that we can 
+do our part to protect the safety of our staff and other providers that are working with the 
+client. See our webpage for further information - Reporting health and safety incidents. 
+ 
+Stopping a treatment or assessment 
+Your safety is the highest priority and any treatment or assessment should be terminated if the 
+client or their representatives cause you to feel threatened or unsafe. 
+If you choose to continue with the assessment or treatment of a care indicated client, and wish 
+to employ a security guard then please contact ACC’s Provider Helpline or the client’s 
+Recovery Team member. 
+Notify the client’s Recovery Team member as soon as possible and fully document the reasons 
+for the termination of the assessment or treatment in your report or clinical notes. Please 
+report to ACC in writing using the online form on ACC’s website. 
+ 
+
+--- PAGE 44 ---
+ 
+Nursing Services Operational Guidelines 
+ 
+ 
+Page 43 of 43 
+ 
+Reporting health and safety risks and incidents 
+Health and safety risks and incidents including notifiable events (as defined by WorkSafe); 
+threats and other health and safety risks must be reported to ACC using the procedure and 
+online form on our website https://www.acc.co.nz/for-providers/third-party-health-and-safety-form. 
+ 
+ 

@@ -1,0 +1,3345 @@
+
+--- PAGE 1 ---
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Elective Surgery Services 
+Operational Guidelines 
+ 
+December 2025 
+This is a living document and will be updated as required 
+ 
+ 
+
+--- PAGE 2 ---
+ 
+ 
+Table of Contents 
+Useful Contact Information ........................................................................................... 1 
+Useful Links .................................................................................................................. 2 
+1. 
+Introduction ........................................................................................................... 4 
+2. 
+Who can hold this Contract? ................................................................................... 4 
+3. 
+What does the contract cover? ............................................................................... 5 
+4. 
+Seeking prior approval for surgery from ACC ............................................................ 7 
+4.1. 
+Surgical Assessment Report and Treatment Plan (ARTP) ................................................................... 7 
+4.2. 
+How to complete an ARTP ............................................................................................................... 7 
+4.3. 
+ARTP Assessment .......................................................................................................................... 9 
+5. 
+Non-Prior Approval (NPA) Procedures ...................................................................... 9 
+6. 
+Transfer of Lead Supplier ...................................................................................... 10 
+7. 
+Determining ARTP Priority ..................................................................................... 11 
+7.1. 
+Meeting priority timeframes ...........................................................................................................12 
+7.2. 
+Changing a client’s priority .............................................................................................................13 
+8. 
+Types of procedures ............................................................................................. 13 
+9. 
+Red List Providers................................................................................................. 15 
+9.1. 
+Application by orthopaedic surgeons .............................................................................................15 
+9.2. 
+Application by non-orthopaedic surgeons ......................................................................................16 
+10. 
+Further clarification of code usage and add-ons ................................................. 16 
+10.1. 
+Injections .....................................................................................................................................16 
+10.2. 
+Bone Grafts ..................................................................................................................................17 
+10.3. 
+Ophthalmology .............................................................................................................................17 
+10.4. 
+Spinal ...........................................................................................................................................18 
+10.5. 
+Ear, nose and throat ......................................................................................................................19 
+10.6. 
+ Imaging........................................................................................................................................19 
+10.7. 
+3D Imaging ...................................................................................................................................19 
+10.8. 
+Orthotics ......................................................................................................................................20 
+10.9.    Surgical Implants ............................................................................................................................20 
+10.10.    Unusually complex clients .............................................................................................................21 
+11. 
+Interpretation of specific non-core codes .......................................................... 21 
+11.1     ESRNC ............................................................................................................................................21 
+11.2. 
+  ESR01 and ESR02 – Theatre time ..................................................................................................21 
+11.3.      ESR03 – Anaesthetists set up RVU ..................................................................................................22 
+
+--- PAGE 3 ---
+ 
+ 
+11.4.    ESR04 – Requests for anaesthetic modifiers .....................................................................................22 
+11.5. 
+ESR05, ESR06 and ESR07 – Overnight Ward Stay .............................................................................24 
+11.6   ESR08 – Plain X-Ray ...........................................................................................................................24 
+11.7. 
+ESR09 – 2nd surgeon (consultant) ....................................................................................................24 
+11.8. 
+ESR10 – 2nd surgeon (assistant) ......................................................................................................25 
+11.9.    ESR11 – Splints/Orthotics ................................................................................................................25 
+11.10. 
+ESR12 – Unique Supplies ...........................................................................................................26 
+11.11.     ESR13 – Unusual and unspecified costs .........................................................................................26 
+11.12.    ESR14 - Laparoscopic/Endoscopic supplies ...................................................................................27 
+11.13    ESR16  - Day Stay ...........................................................................................................................27 
+11.14     ESR17 – Inpatient allied health .......................................................................................................27 
+11.15.   ESR18 – Follow up visits..................................................................................................................27 
+12. 
+Outpatient post-discharge/post-procedure care ................................................ 28 
+13. 
+Significant complication, transfer of care ........................................................... 28 
+13.1. 
+  Abandoned surgery/Significant complication transfer of care .........................................................28 
+13.2. 
+Return to theatre for approved elective surgery ...............................................................................29 
+14. 
+Invoicing ........................................................................................................... 29 
+14.1. 
+ What to include ............................................................................................................................29 
+15. 
+Requests and invoices for multiple procedures .................................................. 31 
+16. 
+Service monitoring and reporting ....................................................................... 32 
+16.1. 
+ACC collected data .......................................................................................................................32 
+16.2. 
+Supplier provided reporting............................................................................................................33 
+17. 
+Contracted and Regulation surgery .................................................................... 34 
+17.1. 
+Contracted Surgery .......................................................................................................................34 
+17.2. 
+Private Regulation Surgery (non-contracted surgery) .......................................................................34 
+17.3. 
+Public Regulation Surgery (non-contracted surgery) ........................................................................35 
+18. 
+Clauses relating to Health New Zealand – Te Whatu Ora ...................................... 36 
+18.1. 
+Consideration of funding without prior approval ..............................................................................36 
+19. 
+New and Emerging Treatment and Rehabilitation Interventions ........................... 36 
+Appendix 1  
+Guidelines for requesting anaesthetic modifiers ................................... 38 
+Appendix 2 
+Red List Procedures ............................................................................. 42 
+Foot and Ankle Procedures.........................................................................................................................42 
+Shoulder and Elbow Procedures .................................................................................................................42 
+Hip Procedures..........................................................................................................................................43 
+Knee Procedures .......................................................................................................................................43 
+Spine Procedures ......................................................................................................................................43 
+
+--- PAGE 4 ---
+ 
+ 
+Wrist and Hand Procedures ........................................................................................................................49 
+Non-orthopaedic Procedures .....................................................................................................................51 
+Pelvic floor reconstructive, urogynaecological and mesh revision and removal procedures ............................52 
+Appendix 3 
+Procedure Codes Eligible for H1 Priority Classification .......................... 53 
+Appendix 4  
+Non-prior Approval (NPA) Procedure List ............................................... 55 
+Appendix 5  
+Guide to PHAS vs ESS .......................................................................... 60 
+Scenarios ..................................................................................................................................................60 
+Further Information: ..............................................................................................................................61 
+Appendix 6  
+Summary of Changes Log ..................................................................... 63 
+Summary of changes 4 December 2025 ......................................................................................................63 
+Summary of changes 1 October 2025 .........................................................................................................63 
+Summary of changes 24 July 2025 ..............................................................................................................64 
+Summary of changes 1 July 2025 ................................................................................................................64 
+Summary of changes 1 May 2023 ................................................................................................................66 
+Summary of changes 1 July 2022 ................................................................................................................68 
+Summary of changes 11 March 2022 ..........................................................................................................68 
+Summary of changes 1 February 2022 ........................................................................................................69 
+ 
+Tables 
+Table 1. High Priority Classification and Criteria .................................................................. 11 
+Table 2. ACC procedure classifications and descriptions .................................................... 14 
+Table 3. Examples of information ACC requires to support anaesthetic modifiers ................. 23 
+Table 4. Examples of when ACC can pay costs, including anaesthetic modifiers ................... 29 
+Table 5. Examples of how to request and invoice for multiple procedures ............................. 31 
+Table 6. Performance measurement under the Elective Surgery Services contract ................ 32 
+
+--- PAGE 5 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+1 
+Useful Contact Information 
+ 
+Below are the contact details for various teams across ACC that can help you with questions 
+related to providing Elective Surgery Services to ACC Clients. 
+Provider Contact 
+Centre  
+0800 222 070 
+providerhelp@acc.co.nz  
+Client/Patient 
+Helpline 
+0800 101 996 
+ 
+ACC eBusiness  
+0800 222 776  
+ebusinessinfo@acc.co.nz  
+Provider Registration  registrations@acc.co.nz  
+Health Procurement 
+If you have a question about your contract or need to update your 
+details, please contact the ACC Health Procurement team: 
+health.procurement@acc.co.nz 
+Engagement and 
+Performance 
+Managers (EPMs) 
+EPMs can help you to provide the services outlined in your contract. 
+Contact the Provider Helpline or visit this page to submit a query to 
+our Provider Relationship team 
+Elective Surgery 
+Invoicing Team 
+For post-operative queries relating to invoicing:  
+electivesurgeryinvoices@acc.co.nz 
+ 
+Queries and/or requests pertaining to elective surgery retrospective 
+reimbursement or HNZ-TWO back-dated requests should be sent 
+to: purchaseorderteam@acc.co.nz    
+Elective Surgery 
+Documentation 
+For email submissions of 
+ARTPs   
+ARTPS4ESU@acc.co.nz 
+For all supporting 
+documentation such as 
+operation notes, discharge 
+summaries, supply cost and 
+implant invoices 
+disop@acc.co.nz 
+For general medical notes 
+related to ARTP submissions 
+ESCMednotes@acc.co.nz  
+
+--- PAGE 6 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+2 
+Surgery Assessment 
+Team 
+For urgent or unusual queries 
+that require 
+attention/escalation. 
+Requests for adding cover for 
+non-prior approval 
+procedures should also be 
+sent here. Do not use this 
+email for regular queries.  
+surgeryassessmentteam@acc.co.nz  
+Useful Links  
+Website 
+For more information about ACC, please visit: www.acc.co.nz 
+ 
+ACC’s website can provide you with a lot of information, especially 
+our Health Providers and Elective Surgery Services page. 
+Provider Updates 
+This monthly publication updates suppliers, providers and vendors 
+on what’s happening across ACC’s business. For more information 
+and to subscribe to email updates, please visit the Provider 
+Updates page on our website.  
+Provider Registration  
+For more information on how to register with ACC as a health 
+provider, please visit our website: Register with us as a health 
+provider 
+Provider Education 
+Our provider education webinars are for health providers looking 
+for an informal way to keep up to date and learn more about 
+working with us. These cover a range of topics across three 
+formats: Beginner’s guides, how-to guides, and special interest 
+topics.  
+ 
+• 
+The beginner's guide to ACC for medical specialists 
+• 
+How to write a successful surgical ARTP for medical 
+specialists 
+• 
+How to get surgical ARTPs right – those who support 
+medical specialists 
+• 
+How to Invoice for Elective Surgery 
+ 
+Other useful videos can be found on our Provider videos page.  
+
+--- PAGE 7 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+3 
+Enabling rapid 
+decisions on ACC 
+cover and entitlement 
+- Consideration 
+factors 
+The following consideration factors have been jointly developed 
+between ACC’s Clinical Services and respective medical 
+groups/associations (e.g. NZOA), to outline factors ACC staff 
+consider when making decisions on cover and entitlement 
+requests:   
+ 
+• General consideration factors for surgery funding requests  
+• Lumbar disc pathologies  
+• Facet joint injuries 
+• Foot and ankle injuries  
+• Hip labral tears 
+• Rotator cuff tears 
+• Wrist and hand injuries 
+• Shoulder surgery  
+• Traumatic internal derangement of the knee   
+• Osteochondral fractures of the knee 
+• Locked knee 
+• Acute separation of osteochondritis dissecans (OCD) lesion 
+• Temporomandibular joint internal derangements 
+• Endoscopic sinus surgery 
+• Traumatic cataract 
+Disc Replacement 
+Protocol forms 
+If you are submitting an ARTP request for disc replacement surgery, 
+you are required to complete and attach the following forms with 
+your submission:  
+• 
+Lumbar Disc Replacement Protocol 
+• 
+Cervical Disc Replacement Protocol 
+Non-core Self 
+Calculating Sheet 
+Self-calculating pricing spreadsheet used to determine the cost of 
+a non-core procedure.  
+ 
+Requests for New and 
+Emerging Treatment 
+and Rehabilitation 
+Interventions (NETRI)  
+As part of these requests, you may be asked to complete a  
+ACC8776 Request for Evidence form. Completed forms should be 
+sent to clinicalquality@acc.co.nz  
+ 
+ 
+ 
+
+--- PAGE 8 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+4 
+1. 
+Introduction   
+This is a guideline to assist the implementation of the Elective Surgery Services Service 
+Schedule (also referred to here as “the contract”). 
+Read this guide in conjunction with the contract and the ACC Standard Terms and Conditions. 
+Services must comply with the Elective Surgery Services Service Schedule. Where there are 
+any inconsistencies between this document and the contract, the contract takes precedence. 
+ACC will tell you when a new version of this guide is available on the ACC website. The 
+guidelines can also be found under “Contracts” in the Resources area of the ACC website. 
+ 
+2. 
+Who can hold this Contract?  
+The Elective Surgery Services contract is held by elective surgery suppliers (also referred to 
+as ‘lead suppliers’ or ‘suppliers’) who undertake surgical treatment at a facility that: 
+• holds current certification with the Ministry of Health under the Health and Disability 
+Services (Safety) Act 2001; and/or 
+• holds current accreditation under the NZS 8164:2005 Standard for Day-stay Surgery and 
+Procedures. 
+Please refer to clause 14 of the contract for further details around the service specific 
+requirements. 
+Elective surgery suppliers may only utilise the services of specialist medical practitioners who 
+are named providers under their contract. A named provider is either: 
+• a medical practitioner registered under the Medical Council of New Zealand, who holds 
+or is deemed to hold vocational registration that is relevant (including an appropriate 
+limited scope registration),  
+• an oral surgeon or maxillofacial surgeon vocationally registered with the Dental Council 
+of New Zealand. 
+Generally, a supplier is a hospital, and the named provider is a specialist who works within the 
+hospital. 
+ 
+
+--- PAGE 9 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+5 
+3. 
+What does the contract cover?  
+The following services are covered in the Elective Surgery Services contract: 
+• Surgical procedure, inpatient stay and specialist follow-up prior to discharge. 
+• Post-discharge care by a specialist for a period of six weeks, including the clinically 
+necessary replacement of dressings or casts. 
+• Radiology during inpatient stay. 
+• Inpatient nursing and allied health treatment.  
+• Equipment for up to six weeks after discharge. This includes manufactured items likely 
+to help a client restore their independence and remain safe in daily living.  
+o Examples include shower stools, crutches, walking frames, wheelchairs. 
+• Orthotics for up to six weeks’ post-discharge. This covers the fitting and fabrication of 
+orthoses, and related technical aids used to support or correct the function of the trunk, 
+and upper and lower extremities.  
+o Examples include splints, shoulder braces. 
+• Surgical implants and implant specific equipment (as defined within Appendix Two of 
+the contract). More detailed information of what ACC considers as inclusions and 
+exclusions for implant costs may be provided in future. In the meantime, if you have any 
+surgical implants and implant specific equipment queries, please email 
+electivesurgeryinvoices@acc.co.nz.  
+Note:  
+• Some services covered by the Elective Surgery Services contract require prior approval 
+from ACC.  
+• ACC pays for implants separately from the cost of treatment, paying the supply cost to 
+the supplier. The supplier gives proof of cost to the Treatment and Support team (via 
+disop@acc.co.nz) in the form of an invoice or similar evidence. Please note that prior 
+approval must be requested for custom implants, including a pricing estimate.  
+• Inpatient support (such as attendant care and nursing services) is included in the 
+contracted price.  Prior approval for funding of additional inpatient supports must be 
+sought before admission and will be considered on a case-by-case basis. 
+• The price for each service is the total amount chargeable and no additional amount may 
+be charged to ACC, or the client (i.e. no co-payments can be invoiced). 
+ 
+
+--- PAGE 10 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+6 
+The following services are not covered in the Elective Surgery Services contract: 
+• Public Health Acute Services (PHAS), as defined in ‘Injury Prevention, Rehabilitation, 
+and Compensation (Public Health Acute Services) Regulations 2002 (SR 2002/71)’. Note 
+that the service agreement for purchase of PHAS encompasses any other services 
+agreed by Health New Zealand and ACC (including pharmaceuticals and laboratory 
+services). Please see appendix 5 for further information about ESS vs PHAS funding. 
+• In-rooms wrist and hand procedures. These procedures are to be performed using the 
+WALANT (wide-awake, local anaesthetic, no torniquet) surgical technique. These 
+services are covered by the Clinical Services contract and should be applied for via a 
+Clinical Services ARTP (CSARTP).  
+• Prosthetics. These are provided as aids and appliances.  
+• Outpatient allied health follow-up after discharge. These are covered by the Specified 
+Treatment Provider Cost of Treatment Regulations or appropriate contracts (e.g. Allied 
+Health Services contract). 
+• Diagnostic imaging services required after the date of discharge. These are covered by 
+the High-Tech Imaging Services contract, and the Radiologist Cost of Treatment 
+Regulations.  
+• Inpatient rehabilitation following discharge from the treatment facility. These services 
+are covered by the Residential Support Services contract.  
+• Home help, attendant care and childcare. 
+• Transport and accommodation costs that are additional to the treatment for a client or 
+an escort.  
+• Orthotics or long-term equipment for independence required beyond six weeks’ post-
+discharge. 
+• Interpreters and/or translation services. These are considered a part of the package of 
+hospital-based care.  
+ 
+Note: Some services that are not covered by the Elective Surgery Services contract may be 
+provided under a separate ACC contract. 
+ 
+
+--- PAGE 11 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+7 
+4. 
+Seeking prior approval for surgery from ACC 
+Written approval is required from ACC before elective surgery and/or certain other procedures 
+are accepted as funded by ACC, unless is it a procedure listed in the Non-Prior Approval (NPA) 
+Procedures List found in Appendix 4 of this document.  
+If prior approval is not obtained, the surgery invoice will be declined. Surgeries requiring prior 
+approval cannot be retrospectively funded. 
+If the surgery request is a prerequisite to access medical insurance AND the specialist does 
+not believe that the condition requiring surgery is accident related, please do not submit an 
+ARTP to ACC. These cases should be discussed directly with the client’s insurer.  
+ 
+4.1. Surgical Assessment Report and Treatment Plan (ARTP)  
+The Surgical Assessment Report and Treatment Plan (ARTP) is used to request approval of 
+surgical treatment. Named providers are required to submit an ARTP, via the elective surgery 
+supplier for all surgery requests. The ARTP should be submitted within seven business days of 
+assessing the client.   
+The specialist conducting diagnostic and assessment procedures under the Clinical Services 
+contract is likely to be the party who initially drafts the ARTP.  The specialist must send this 
+draft to the elective surgery supplier, not to ACC directly. 
+The elective surgery supplier is responsible for ensuring the ARTP meets ACC standards and 
+requirements for submission, before submitting the ARTP to ACC. 
+The supplier must send the ARTP to the Treatment and Support Team via 
+ARTPS4ESU@acc.co.nz or via HealthLink mailbox (ACCEARTP).  
+The surgical Assessment Report and Treatment Plan (ARTP) template found on our website is 
+the only version of the ARTP that will be accepted.  
+ 
+4.2. How to complete an ARTP  
+The ARTP should provide ACC with the information needed to make a decision on the surgery 
+request. All mandatory fields (*) must be completed. It is better to send in as much information 
+as possible for a quicker decision to be made (e.g. initial medical notes, imaging reports, clinic 
+letters, referral notes). If any information is missing or is unclear, ACC may have to request 
+
+--- PAGE 12 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+8 
+further information which can lead to delays for your patient. If the information cannot be 
+understood or requires clarification, ACC will contact the named provider.   
+Here are some tips to assist with quicker decision-making once ACC receives the ARTP: 
+• Complete all mandatory fields (*) and ensure that you have selected an option in all 
+drop down/check-box fields.   
+• Ensure you have provided a clear causal medical link between the accident event and 
+condition requiring surgical treatment.   
+• State the specific diagnosis that is to be treated in the proposed surgery/procedure. If 
+you know the READ/SNOMED/ICD code that matches the specific diagnosis, please 
+also include this.  
+• There are now two questions around causation. The first asks for a ‘yes’ or ‘unsure’ 
+response, while the second seeks a detailed rationale to support the specialist’s 
+opinion. We’ve included bulleted factors to guide this rationale, so that our Treatment 
+and Support team can better understand the reasons behind the specialist’s causal link 
+opinion.  
+o We do not require that you repeat information already provided in the following 
+fields regarding history, examination and diagnostic tests.  
+o We ask that the specialist considers those factors (and therefore, the 
+information answered in the following fields) when providing rationale to support 
+their causal link opinion.  
+• Co-morbid or other relevant diagnoses should only be included in the ‘Pre-existing 
+factors’ field.   
+• Be specific about prognosis, rehabilitation timeframes and expected journey (including 
+return to work); as well as any additional reasonable follow-up care that may be 
+required.  
+• Provide a clear description of the proposed treatment and specify the procedure code. 
+o If there is no applicable procedure code, then the request needs to be submitted 
+as non-core with a completed non-core pricing sheet (including estimate of 
+implant costs, if applicable). Further information on the difference between core 
+and non-core procedures can be found in section 8 of this document and clause 
+31 of the contract. 
+Note: 
+• Medicare Benefits Schedule-Extended (MBSE) codes and ‘Type of Assessment’ are no 
+longer required to be provided on the ARTP form. 
+
+--- PAGE 13 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+9 
+4.3. ARTP Assessment   
+Our Treatment and Support team will assess the surgery request and advise the supplier and 
+the client of ACC’s decision. The supplier will be notified of the decision via email and the 
+client will be notified by a letter either via email or post. If the surgery request is declined, the 
+Treatment and Support team will also advise the client by phone unless otherwise specified.   
+Once the proposed surgical procedures are approved, the supplier is responsible for arranging 
+the earliest possible mutually appropriate date for treatment with the client.  
+Note: Some procedures may have additional requirements during the assessment process. 
+These may include, but are not limited to: bariatric surgery, limb amputation to treat pain and 
+organ removal. 
+ 
+5. 
+Non-Prior Approval (NPA) Procedures 
+These are procedure codes that represent clinically low risk elective surgeries which we rarely 
+decline. The list of NPA procedure codes is included in the Appendix 4 of this document.  
+Procedures that meet the corresponding conditions in the NPA Procedures List are exempt 
+from the funding approval process. This means they can be provided to the client without 
+obtaining prior approval (i.e. submission of an ARTP is not required). You may complete the 
+treatment and follow the standard invoicing process from section 14 of this document.   
+However, cover criteria must be met before proceeding with the NPA procedure as this can 
+impact future entitlements for the client. If cover is not added to the claim prior to surgery 
+proceeding, the invoice will be declined. 
+You can easily request additional cover by emailing surgeryassessmentteam@acc.co.nz with 
+the following information, you will receive a response within 1 business day: 
+Subject: Add Cover: [Client Name - Claim Number]  
+Body:  
+Can the following injury(s) be added to this client’s claim for NPA procedure eligibility:  
+[Insert Read Code(s) and/or diagnoses you wish to add]  
+Please note we will only accept cover requests via this avenue for the purposes of NPA 
+eligibility.  
+
+--- PAGE 14 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+10 
+Notes:  
+• The specialist must submit their clinical services consultation records to ACC detailing 
+the proposed surgery. This allows for ACC to set up supports for the client e.g. weekly 
+compensation if requested. 
+• Where a specialist proceeds with a NPA procedure, and in-theatre it becomes apparent 
+that another procedure needs to be performed, which requires prior approval – the 
+Retrospective funding approval for alternative unanticipated treatment or 
+alternative treatment process must be followed (see clause 20 of the contract). 
+• When NPA cover criteria is met and urgent/acute surgery is indicated within a week of 
+the date of injury, these cases should be managed under the Public Health Acute 
+Services (PHAS) pathway and invoices will be declined if submitted to ACC for such 
+cases. Please see appendix 5 for further information.  
+• NPA procedures are included in the process for requesting and invoicing multiple 
+procedures (see section 15 of this document).  
+• ACC may amend this list as required and will provide you with reasonable notice of any 
+changes. 
+• ACC reserves the right to exclude specific suppliers from using the NPA Procedures List. 
+ACC will contact these suppliers directly to advise they cannot use the list. This means 
+they must complete the funding approval process and complete an ARTP to obtain ACC 
+approval prior to providing treatment to the client. 
+ 
+6. 
+Transfer of Lead Supplier  
+The contract states the expectation that, where a client agrees to be transferred from one lead 
+supplier to another, the receiving lead supplier will make reasonable demands of the sending 
+supplier relevant medical notes and so on.  This transfer should include any approval letter and 
+purchase orders.  Where such transfers happen frequently between two suppliers, we 
+recommend that standard protocols be agreed between them, in order that neither party and 
+especially ACC’s client is inconvenienced.   
+If transfer is to occur from a contracted supplier to a non-contracted supplier, you must 
+contact ACC in the first instance. 
+
+--- PAGE 15 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+11 
+7. 
+Determining ARTP Priority  
+ The ARTP priority reflects the urgency by which surgery is required and determines how the 
+Treatment and Support team should assess the ARTP in comparison with others. The ARTP 
+priority should be clearly stated on the ARTP. 
+ACC utilises a two-tier system to classify the priority of an ARTP. The classifications are either 
+‘High’ or ‘Routine’.  
+High priority applies if the client meets one (or more) of the criteria at the time of their surgical 
+consultation, as specified in Table 1. If the client does not meet any of these criteria, the ARTP 
+should be classified as ‘Routine’.  
+The priority classification does not override the clinical determination. When completing the 
+ARTP please ensure that priority codes are indicated (noting that there is no order of 
+importance).  
+Table 1. High Priority Classification and Criteria  
+Priority Code  
+Classification 
+Criteria  
+H1  
+Clinically urgent  
+The client’s current condition is considered 
+clinically urgent, meaning the condition meets 
+clinical criteria AND will be treated under specific 
+surgery codes as set out in Appendix 3. 
+H2  
+Home help required 
+The client will require paid assistance (home help 
+or attendant care) to assist with activities of daily 
+living if the proposed treatment is not carried out 
+within 30 days. 
+H3 
+Receiving weekly 
+compensation 
+The client was employed at the time of the 
+accident and is receiving weekly compensation 
+from ACC. 
+H4  
+Risk of losing paid 
+employment  
+The client is at risk of losing their job because 
+they are unable to continue in paid employment 
+while waiting on the requested treatment and the 
+proposed treatment is likely to reverse/improve 
+the relevant loss of function. 
+These criteria will be reviewed periodically to ensure they are fit for purpose for all parties. 
+ 
+
+--- PAGE 16 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+12 
+Notes: 
+• It is expected that acute fractures requiring urgent surgical fixation are managed under 
+PHAS.  
+• We note some acute fractures that do not require fixation within 1 week through the 
+PHAS pathways are not listed individually.  However, all acute fractures would be H1.  
+• Although codes have been included, not all requests within these codes constitute H1 
+conditions.  Multi-tendon rotator cuff tears (SHU92, SHU90) for example may be H1 if 
+acute with pseudo paralysis, but not if chronic.  
+• We are working on non-orthopaedic H1 codes and will communicate once these have 
+been added. 
+ 
+ 
+7.1. Meeting priority timeframes  
+Surgery approved through a high priority ARTP is expected to be undertaken within one month 
+of the surgery being approved. It is the responsibility of the elective surgery supplier to ensure 
+priority timeframes are met.  If a supplier is unable to meet this requirement for high priority 
+surgery, ACC needs to be notified immediately. ACC may, at its sole discretion, either 
+endeavour to agree with the supplier and the client an extension of the timeframe, or work with 
+other suppliers to make alternative arrangements for the provision of the surgery. 
+ACC provides feedback to suppliers regarding performance against the one-month 
+requirement. Meeting priority timeframes is a key performance indicator under the contract 
+(see section 16 of this document).   
+Suppliers will receive data about their named providers’ achievement of these priority 
+timeframes.  It is the responsibility of the supplier to initiate discussions with their named 
+providers to understand and improve performance in this regard, which is subject to continual 
+monitoring and discussion with Engagement and Performance Managers (EPM).  
+Note: During times of reduced capacity e.g. Covid-19 Protection Framework Traffic Light Level 
+Red, we ask that procedures are prioritised in the following order: 
+• H1 
+• H2, H3, H4 
+• Routine 
+
+--- PAGE 17 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+13 
+This doesn’t replace the clinical decision-making required in each individual case. We expect 
+that appropriate clinical risk assessments continue to inform your decisions. 
+ 
+7.2. Changing a client’s priority  
+If a named provider or supplier becomes aware of change in the client’s condition or 
+circumstances that warrant a change of surgery priority classification, they should contact 
+ACC to discuss this. 
+ACC may request a change to the client’s priority classification if the client’s circumstances 
+have changed and they then meet any one of the above criteria for ‘High’ priority (or no longer 
+meet any of the criteria and their surgery can be prioritised as ‘Routine’). ACC will confirm the 
+priority classification on the surgery approval letter. The supplier is responsible for ensuring 
+they are aware of ACC’s surgery priority classification following approval. 
+8. 
+Types of procedures  
+The Elective Surgery Services contract covers core and non-core procedures. 
+A core procedure is a package of care surrounding a particular surgical intervention.   
+A non-core procedure is a package of care surrounding an unusual surgical intervention or 
+unusual condition relating to the client.  Non-core procedures will be priced and approved on a 
+case-by-case basis, using the non-core codes described on the non-core price calculation 
+spreadsheet.  
+Red List procedures are those which have been assessed by the relevant professional body 
+(most commonly a sub-committee or Society associated with the New Zealand Orthopaedic 
+Association) as requiring a specially trained surgeon. The application process for surgeons who 
+seek to perform such procedures is outlined in section 9 of these operational guidelines.   
+Appendix 2 contains the list of NZOA recommended ACC Red List procedures. This list will be 
+updated on an annual basis after all relevant Subspecialty Societies have met.  
+The list of Red Listed surgeons will be updated quarterly to ensure both ACC and NZOA have 
+the most up to date information. 
+ 
+
+--- PAGE 18 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+14 
+Note: until confirmation of approval has been issued in writing from ACC on the advice of the 
+professional body, providers can not undertake any of the Red List procedures for ACC. 
+ 
+Table 2. ACC procedure classifications and descriptions 
+Type of Procedure 
+Description 
+Core (non-red list) 
+Core procedures are listed in the contract under ‘Service Items 
+and Prices’ (Part A, Table 1: Core Service Items and Prices)  
+ 
+All contracted specialists who are named under an Elective 
+Surgery Services contract can request core procedures that are 
+not classified as Red List procedures as required. 
+ 
+Suppliers can also access associated items such as ward stay or 
+(under specific approved circumstances) specialist in-ward follow 
+up visits. 
+Non-core  
+Non-core procedures are not included within the list of ‘Service 
+Items and Prices’ (Part A, Table 1: Core Service Items and Prices).  
+Non-core procedures are usually either: 
+• a less common treatment procedure, or  
+• a combination of a core treatment procedure and a procedure 
+that is not listed or an additional service item that is required 
+due to the client’s condition (including co-morbidities).  
+ 
+Non-core codes are listed in the contract under ‘Service Items and 
+Prices’ (Part A, Table 2: Non-core Service Items and Prices). 
+ 
+Further information around multiple procedure requests is 
+outlined under section 15. 
+ 
+Non-core procedures are not: 
+• Core procedures that the provider has not agreed to a 
+Contracted price for; and/or  
+• Core procedures undertaken by a non-contracted provider. 
+This would be a Cost of Treatment Regulations (Regulations) 
+procedure. 
+ 
+
+--- PAGE 19 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+15 
+All contracted specialists who are named under an Elective 
+Surgery Services contract can request non-core procedures as 
+required. 
+Red List core  
+Some of the core procedures are classified as being ‘Red List’ 
+procedures.  
+ 
+Red List procedures are relatively complex, high cost and low 
+volume procedures (see above).  
+ 
+Suppliers can also access associated items such as ward stay or 
+(under specific approved circumstances) specialist in-ward follow 
+up visits. 
+   
+9. 
+Red List Providers 
+Named Red List Providers that are listed in Part A Clause 3.2 of the contract can perform their 
+approved red list procedures as well as all non-red core procedures and non-core procedures. 
+It is important to note that named providers cannot perform red list procedures until they 
+receive confirmation of red list approval from ACC. This is to ensure that ACC systems have 
+been updated so invoices will not be rejected. 
+In addition, we ask that ARTP requests are not submitted for Red List procedures until 
+confirmation of red list approval from ACC has been received.  
+ACC reserves the right to decline to accept new named red list providers. 
+ 
+9.1. Application by orthopaedic surgeons  
+Application by orthopaedic providers to be a named Red List provider should be done directly 
+through New Zealand Orthopaedic Association (NZOA), who will advise ACC and the applicant 
+of the outcome – see clause 17.6.2 of the contract.  Due to the required external evaluation 
+from the relevant sub-speciality group the decision-making process can take time.  If you have 
+any queries about the application, you should contact NZOA. 
+
+--- PAGE 20 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+16 
+Once the decision is made NZOA will advise the provider and ACC that they have been listed 
+on the red list. ACC will then confirm with the Red List-approved provider that they are now 
+able to perform Red List procedures for ACC under this Contract. 
+ 
+9.2. Application by non-orthopaedic surgeons 
+In cases where Red List procedures are identified in other scopes of practice, application to be 
+a named Red List provider should be done through ACC. Due to the required external 
+evaluation from the relevant specialty or sub-speciality group the decision-making process can 
+take time. If you have any queries about the application, please contact our Health 
+Procurement team (health.procurement@acc.co.nz). 
+ 
+10. Further clarification of code usage and add-ons  
+10.1. Injections  
+Botulinum toxin 
+Codes have been developed for botulinum toxin (Botox) injections for spasms or contractures 
+only.  These codes can be used for all body sites.  These codes must be included on the ARTP 
+for prior approval.  
+AFT300 
+Botox for release of spasm/Contractures 1 body site. May be used as an 
+equivalent for other body sites. Does not include costs for Botox ampoules. 
+These are billed separately using the add-on block AFTABOTOX (see below) 
+AFT301 
+Botox for release of spasm/Contractures 2 body sites. May be used as an 
+equivalent for other body sites. Does not include costs for Botox ampoules. 
+These are billed separately using the add-on block AFTABOTOX (see below) 
+AFT302 
+Botox for release of spasm/Contractures 3 body sites. May be used as an 
+equivalent for other body sites. Does not include costs for Botox ampoules. 
+These are billed separately using the add-on block AFTABOTOX (see below) 
+AFT303 
+Botox for release of spasm/Contractures 4 body sites. May be used as an 
+equivalent for other body sites. Does not include costs for Botox ampoules. 
+These are billed separately using the add-on block AFTABOTOX (see below) 
+
+--- PAGE 21 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+17 
+AFTABOTX 
+Orthopaedic Botox.  For costs of Botox ampoules used with the codes AFT300 
+- AFT303 
+ 
+Plasma-rich Protein (PRP) Injections 
+Funding for PRP injections is generally not supported; however, exceptions may apply.  
+ 
+10.2. Bone Grafts  
+The following two add-on codes can be used for procedures where bone grafts are not 
+included, excluding foot and ankle procedures.  These codes must be included on the ARTP. 
+GOP01 
+Bone Graft - any area, minor or small *from a site other  
+than the initial surgical site 
+GOP02 
+Bone Graft - any area, major *from a site other than the  
+initial surgical site. 
+ 
+There are two add-on codes for foot and ankle procedures that require minor or major bone 
+grafts (below). These can only be used in conjunction with foot and ankle procedures where 
+bone grafts are not included. These codes must be included on the ARTP. 
+ORAMINB 
+Minor bone graft (add on) for use with procedure codes that don't 
+already include bone graft 
+For bone harvested from a site other than the operation site or the iliac 
+crest. 
+ORAMAJB 
+Major bone graft (add on) for use with procedure codes that don't 
+already include bone graft 
+For bone harvested from the iliac crest. 
+ 
+10.3. Ophthalmology  
+The following two add-on codes have been developed for eye procedures only.  
+
+--- PAGE 22 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+18 
+OPTAFRAG 
+Fragmatome Use. Add on to be used in conjunction with OPT101-
+OPT133 
+OPTAEYEB 
+National Eye Bank fee. Add on to be used in conjunction with OPT106 
+ 
+10.4. Spinal  
+New spinal codes (300 series) were added to the contract 1 May 2023. As these codes have 
+been developed using up-to-date inputs, the expectation is that ESR non-core codes will not 
+be invoiced to ACC unless there are exceptional circumstances. Exceptional circumstances 
+must be supported in the documentation supplied to ACC at invoicing. 
+Notes: 
+• Biogels and haemostatic agents (such as Floseal, Tisseel and Duraseal) cannot be 
+invoiced in addition to the SPN300 series spinal codes. During the previous revision of 
+the spinal codes, it was apparent that these products had consistent use in lumbar 
+spinal procedures and were incorporated into the service item pricing for all spinal code 
+sets to allow for exceptions or occasions of use. 
+• These remain billable for code sets outside of spinal, which have not yet been updated 
+to include these costs (such as OTY). 
+Anaesthetic costs have been applied in the new codes based on the NZSA Relative Value 
+Guide 2021: 
+Time Costs 
+Based on time units of 1 unit per 15 mins for the first 2 hours and every 
+10 mins from the start of the 3rd hour 
+Base Units 
+For each procedure as per the Guide. The units for spine include loading 
+for positioning 
+ 
+Disc Replacements  
+ARTP submissions for cervical or lumbar disc replacement (arthroplasty) must include a 
+completed and signed copy of the relevant protocol form: 
+• Cervical Disc Replacement Protocol 
+• Lumbar Disc Replacement Protocol 
+
+--- PAGE 23 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+19 
+10.5. Ear, nose and throat 
+An add-on code is available to be used when a turbinoplasty is performed in conjunction with 
+OTY103 – OTY109 as there is no code for turbinoplasty alone.  
+This code covers the material costs for a powered turbinoplasty. 
+OTYATURB 
+Endoscopic Powered Inferior Turbinoplasties. Add on to be used in 
+conjunction with OTY103 - OTY109. 
+ 
+Endoscopic sinus surgery (ESS)  
+For ACC to fund endoscopic sinus surgery (ESS), certain criteria must be met. Please refer to 
+Enabling rapid decisions on endoscopic sinus surgery (ESS) for further information.  
+ 
+10.6.  Imaging 
+ 
+These codes (IMAGE1-5) are to be used for invoicing the use of image intensifiers in theatre. 
+‘Time in theatre’ is the total time that the machine is under the control of the radiographer and 
+is equivalent to the number of time blocks that radiographer is required. 
+The pricing for these codes becomes cumulative once the image intensifier is required for 
+more than 150 minutes, for example: 
+• if required for 180 minutes the provider can bill IMAGE5 in combination with IMAGE1.  
+• if required for 240 minutes the provider can bill IMAGE5 in combination with IMAGE3.  
+IMAGE1-5 are the only codes ACC will fund image intensifier in theatre use under. No ESR 
+codes should be used for this. 
+Note: The radiographer’s costs are included in imaging codes. These costs must not be billed 
+separately using the ESR13 code. 
+ 
+10.7. 3D Imaging  
+These codes (3DIMAGE1-4) are to be used for invoicing the use of 3D Intraoperative imaging for 
+spinal and skull surgeries. If 3D Intraoperative imaging is required for another body site, prior 
+approval should be sought. 
+
+--- PAGE 24 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+20 
+Time in theatre is the total time that the machine is under the control of the radiographer and is 
+equivalent to the number of time blocks that radiographer is required. 
+Note: The radiographer’s costs are included in 3D imaging codes. These costs must not be 
+billed separately using the ESR13 code. 
+ 
+10.8. Orthotics   
+The hire of knee scooters does not require prior approval and can be billed using the ESR11 
+code with the core code with evidence of actual and reasonable cost. 
+Prior approval with clinical justification must be sought for high cost (over $500) orthotics with 
+core and non-core surgeries. 
+ 
+10.9.    Surgical Implants 
+Implants must be invoiced separately to the procedure cost.  
+The supplier invoices ACC separately for implants and ACC pays the supplier’s actual cost.  
+The supplier is expected to charge ACC the best price the supplier has been able to achieve 
+from the implant vendor, and to make their best efforts to obtain the lowest price possible.   
+ACC requires suppliers to provide invoices for all implants over $10,000 (excluding GST).  It 
+also requires suppliers to retain Supplier Implant Invoices so that ACC may review these upon 
+request. 
+Examples of implants can be found in clause 43 of the contract. 
+ 
+Customised implants, high-cost allografts and bio models 
+All specialised customised implants, high-cost allografts, and bio models require prior 
+approval via the original ARTP. Please ensure that an estimate of costs and clinical indication 
+for the use of customised implants and/or bio models are included with the ARTP submission. 
+Once approved ACC will pay the actual cost of these after the procedure has been completed. 
+Professional body endorsement is recommended for all specialised customised implants, 
+high-cost allografts and bio models.  
+ 
+
+--- PAGE 25 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+21 
+10.10.    Unusually complex clients  
+Where a client is admitted for an elective surgery and has cover for an injury that requires 
+additional nursing support due to a significant functional disability e.g. Spinal cord injury, 
+dense hemiplegia, ACC will consider additional payment for this support. 
+Note: This request should be supplied to ACC on the ARTP and will require supporting 
+documentation of the additional supports at invoicing. 
+11. Interpretation of specific non-core codes  
+11.1     ESRNC  
+This code covers the base costs for a non-core procedure and is a combination of 3 fixed rate 
+resource costs that are common to almost all non-core procedures. These have been 
+combined into one fee for ease of data entry.  
+Theatre set up rate:  
+• This is for the costs for items such as trays, trolley covers (linen or disposable), 
+diathermy pads and suction units. 
+ 
+Base Supply rate: 
+• This is for the basic costs for the procedure including gowns, gloves, initial swabs, 
+blades diathermy pencil, suction components, surgical drapes. 
+ 
+Recovery suite: 
+• This is a fixed fee for up to 60 minutes of recovery time  
+• Any requests for Recovery fees more than 60 minutes are reviewed and if appropriate, 
+allowing for "swings and roundabouts", negotiated with the provider for either one 
+additional recovery fee for up to 120 minutes or apply an HDU per minute rate for stays 
+in excess of 120 minutes (uses current HDU 24 hour rate/1440 minutes) 
+ 
+11.2.   ESR01 and ESR02 – Theatre time  
+These codes are made up of three benchmark rates which have been combined into one fee for 
+ease of data entry. 
+
+--- PAGE 26 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+22 
+1. Surgeon fee (treatment provider rate) per minute: This is the contracted rate ACC 
+pays for the primary specialist and is based on a cost adjusted variation of the fee in 
+previous contracts 
+2. Nursing costs and theatre costs: such as technician costs, other than set up and base 
+supplies (and unique supplies) (Treatment Room Rate) per minute. This rate is based on 
+a cost adjusted variation of the fee in previous contracts and includes Nursing Meca 
+contract rates. 
+3. Anaesthetist’s fee (sedation provider rate) per minute: This rate is based on the New 
+Zealand Society of Anaesthetists Relative Value guide of 1 RVU each 15 minutes up to 
+120 minutes, and 1 RVU each 10 minutes after 120 minutes.  
+ACC is unable to provide average theatre times for procedures as there are public-private 
+commercial negotiations that are often undertaken which such data may compromise.  Each 
+supplier should be able to define their own average theatre time (patient in/patient out) and 
+therefore explain any variance they want ACC to pay for. 
+Please note that units of theatre time should be exact and are not able to be rounded (i.e. if the 
+procedure took 58 minutes, ESR01 should not be rounded to 60 minutes).  
+ 
+11.3.      ESR03 – Anaesthetists set up RVU  
+This code is used for the base anaesthetic costs determined by the type of procedure and body 
+site. Relative Value Units (RVU) are used for anaesthetic set up costs and is based on the “New 
+Zealand Society of Anaesthetists Relative Value Guide 2021”.  
+Anaesthetic Relative Value Units are used for the set-up costs and modifying units only as the 
+Anaesthetist’s fee is paid as part of the theatre time cost (ESR01, ESR02).  
+ 
+11.4.    ESR04 – Requests for anaesthetic modifiers 
+This code relates to anaesthetic modifiers that can be claimed for things such as: 
+• ASA3 or above 
+• Nerve Blocks 
+• High BMI, and more. 
+
+--- PAGE 27 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+23 
+ACC currently uses the NZSA Relative Value Guide 2021 Edition to guide our decision making 
+and pricing; thus, ACC does not guarantee that the pricing will exactly match that of the RVU 
+guide.  
+To support anaesthetic modifiers, ACC requires a copy of the anaesthetist invoice which 
+clearly notes: 
+1. how many units were used 
+2. what the units were used for 
+ACC do not typically require the anaesthetic notes to support anaesthetic modifiers if the 
+reasoning is clear on the invoice provided. However, ACC’s Elective Surgery Suppliers may 
+require copies of anaesthetic clinic notes for their own purposes.  
+On occasion, ACC will request further notes (e.g. anaesthetic record) if the above information 
+is unclear on the invoice or if cases are complex.  
+Please see the ACC’s guidelines for requesting Anaesthetic modifiers in Appendix 1. 
+ 
+Table 3. Examples of information ACC requires to support anaesthetic modifiers 
+Anaesthetic modifier 
+Information required on the anaesthetic 
+invoice 
+BMI  
+The value is required  
+American Society of 
+Anaesthesiologists Physical Status 
+Classification (ASA) 
+Confirm the ASA rating. Invoice does not need to 
+outline how the patient meets the relevant 
+criteria. 
+Nerve plexus catheter 
+Invoice should note that this was used. Invoice 
+does not need include explanation as to why this 
+was required.  
+Non-Complex Ward/PACU Review 
+Use the Terms as per the RVU Guide e.g. “nerve 
+catheter (type/location)”; “Epidural”; “IV Fluids”; 
+“Analgesia”. 
+Complex Ward/PACU Review 
+Note the rationale with a brief description e.g. 
+“Significant complication (brief description) as 
+per the patient notes” 
+  
+
+--- PAGE 28 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+24 
+11.5. ESR05, ESR06 and ESR07 – Overnight Ward Stay 
+The following codes are available to cover the costs of an overnight ward stay: 
+ESR05 
+Per overnight stay in a regular ward 
+ESR06 
+Per overnight ward stay in a high-dependency unit (HDU) 
+ 
+ESR07 
+Per overnight ward stay in an intensive care unit (ICU) 
+ 
+Notes:  
+• Ward notes must be provided if invoicing for ESR07. 
+• If surgery is approved for a core code that includes a day stay, and there becomes a 
+requirement for an overnight ward stay, a ward stay top up should be requested. This 
+should be billed under ESR13 using the following formula: ESR05 – ESR16 = ESR13 
+(ward stay top up rate).  
+ 
+11.6   ESR08 – Plain X-Ray  
+This code is available for use of plain X-Ray imaging in theatre and is paid at a rate per X-Ray 
+image. Note that this is separate from the IMAGE codes, which are for the use of image 
+intensifiers in theatre. 
+ 
+11.7. ESR09 – 2nd surgeon (consultant)   
+This code is available for a 2nd consultant surgeon when appropriate to the surgery.  
+ACC's expectation is that core code procedures are to be performed by a single qualified 
+specialist who is experienced in the techniques required for the surgery. Where the assistance 
+of a second specialist is clinically indicated to ensure the success of a procedure, prior 
+approval for the 2nd surgeon must be sought from ACC before surgery has taken place. All 
+ESR09 requests must include clear rationale as to why the 2nd surgeon is required. 
+If approved, the 2nd surgeon’s presence and role should be clearly noted in the operation notes. 
+If this is not clearly documented in operation note at invoicing, ESR09 may be declined 
+requiring invoice resubmission as ESR10.  
+
+--- PAGE 29 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+25 
+ACC uses a variety of data to calculate the ‘per minute’ price for a 2nd surgeon.  We 
+acknowledge however that there is a commercial relationship between the supplier and 
+surgeon, and they are able to come to their own arrangements within the funding available. 
+The time for the 2nd surgeon starts from when they enter theatre until they exit theatre, where 
+their entrance and exit reflect a clinical necessity for their presence.  ACC will not pay for an 
+observing surgeon who is not actively contributing to the procedure. 
+While the 2nd surgeon doesn’t have to be a named provider on the supplier’s contract, they 
+must be a surgeon who is fully registered with the NZ Medical Council in a vocational scope of 
+practice for surgically related specialities (the same requirements as becoming a named 
+provider). ACC will not pay for a trainee or qualified medical practitioner who is not a 
+vocationally registered specialist. 
+ 
+11.8. ESR10 – 2nd surgeon (assistant)  
+This code is available for an assistant surgeon when appropriate to the surgery. It is used for 
+funding assistant surgeons who are qualified medical practitioners.  
+Only one 2nd surgeon (assistant) can be invoiced per procedure.  
+Note: Nurse assistants cannot invoice under this code as their costs are included in the core 
+code costs, or for non-core under the ESR01 and ESR02 theatre time prices. 
+ 
+11.9.    ESR11 – Splints/Orthotics  
+This code is available for any required orthotics/splints and other post-surgery equipment and 
+is paid based on actual costs. This includes short term equipment for independence if required 
+by clients prior to, or on, discharge and for up to six weeks post-discharge to achieve a suitable 
+rehabilitation outcome from the treatment.  
+Examples of splints/orthotics we can fund under ESR11 include: 
+• shower stool 
+• walking frames 
+• crutches 
+• wheelchair 
+ 
+
+--- PAGE 30 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+26 
+11.10. 
+ESR12 – Unique Supplies  
+This code is available to cover supplies additional to the base calculations. The non-core self-
+calculating sheet has the breakdown of base supplies under ESRNC.  
+The process for calculating and invoicing of non-core itemised and priced supplies lists 
+(ESR12) is as follows: 
+• Total supplies used minus the Base Rate (which may be adjusted from time to time by a 
+variation of the contract).  
+This code is for supply costs only. An itemised list must be provided in support of these costs 
+and is not to include any other charges. 
+For suppliers who are unable to calculate their itemised supply costs, the sliding scale is 
+available to use. The sliding scale is based on theatre time to assist recovering some costs and 
+has already factored in the subtraction of the Base Rate for the base supplies under ESRNC: 
+• $500 = 0-60 mins  
+• $1000 = 61-120 mins 
+• $1500 = 120-240 mins 
+• $2000 = 240-360 mins 
+• $3000 = >360 mins 
+ 
+11.11.     ESR13 – Unusual and unspecified costs  
+This is not to be used for items already included in other contract fees. A written explanation 
+must be provided to ACC detailing why the charge is an exception to the normal fees and costs. 
+ACC will not pay any additional costs for: 
+• equipment charges 
+• standard equipment hire 
+• sterilising and handling fees.  
+These costs are included in the flat rate fee for ESRNC. 
+The following examples may be funded under ESR13 with evidence:  
+• specialised equipment hire, which must include the hiring company’s invoice 
+• ambulance transfer, which must include St John’s invoice 
+
+--- PAGE 31 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+27 
+Costs cannot be claimed for routine pre-operative assessments on the day of admission. This 
+includes medical assessments and ECGs. 
+ 
+11.12.    ESR14 - Laparoscopic/Endoscopic supplies 
+This code is available to cover disposable high-cost items and instruments specific to 
+laparoscopic and/or endoscopic procedures and is paid based on actual costs.  
+Examples of high-cost disposables may include (but are not limited to): 
+• Scopes 
+• Robotic accessories 
+• Spinal instruments (e.g. Kerrisons) 
+An itemised list must be provided in support of these costs and is not to include any other 
+charges. Supplier invoices may be requested.  
+ 
+11.13    ESR16  - Day Stay  
+This code is available to cover day stay bed costs and only one unit of ESR16 can be claimed 
+per surgery. This code cannot be invoiced alongside ESR05.  
+ 
+11.14     ESR17 – Inpatient allied health  
+This code is available for the costs of inpatient allied health for non-core procedures. ESR17 
+cannot be requested or invoiced alongside a core code procedure, as inpatient allied health 
+costs are included in the package of care for these procedure codes.  
+11.15.   ESR18 – Follow up visits  
+This code is for follow-up specialist consultations only during the 6-week post discharge 
+period, not for specialist follow-up visits in ward prior to discharge.   
+However, we allow one exception. Specialists with prior approval via an ARTP can conduct in-
+hospital post-operative consultations for complex surgical cases, like neurosurgery or 
+maxillofacial surgery, if such consultations are clinically necessary before discharge. 
+In this instance, there must be: 
+
+--- PAGE 32 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+28 
+• an invoice with the date of the in-hospital consultation,  
+• clinical notes (combined across all ward consultations rather than for each visit. Ward 
+notes or a footnote in the patient’s progress notes would not be sufficient), and original 
+purchase order number. 
+ 
+12. Outpatient post-discharge/post-procedure care  
+Post discharge/post procedure care begins following discharge from the treatment facility and 
+ends six weeks after discharge. 
+Post discharge care includes the replacement and/or removal of casts and dressings, as well 
+as the removal of stitches/sutures/staples. There are a couple of exceptions listed in the 
+Clinical Services contract for reapplication of plaster casts/thermoplastic splints able to be 
+invoiced within 6 weeks of discharge.  If it is anticipated that the casting will be complex and 
+may need multiple changes, this should be noted on the ARTP so prior approval can be given. 
+Where a replacement cast, stitch removal or dressing change can reasonably be conducted at 
+the supplier’s facility it should be.  Where that is not possible (for example the travel time for a 
+client would be onerous) the provider or primary care provider may use the appropriate Cost of 
+Treatment Regulation code. 
+Clause 11.3 of the contract sets out what the post discharge/post procedure care includes.  If 
+further specialist care is needed at the end of six weeks, this is provided under the Clinical 
+Services contract or under appropriate Regulations. 
+ 
+13. Significant complication, transfer of care 
+13.1.   Abandoned surgery/Significant complication transfer of care 
+Where surgery is abandoned in theatre or pre-operatively, clause 31.7 of the Elective Surgery 
+Services contract applies.  
+The suppliers may invoice for non-core costs up to and including the time the client is 
+transferred or discharged. 
+
+--- PAGE 33 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+29 
+This below table provides examples of when ACC can pay anaesthetic modifier costs if there is 
+a cancellation of case on the day of surgery after assessment and management of the relevant 
+issue(s). 
+ 
+Table 4. Examples of when ACC can pay costs, including anaesthetic modifiers 
+ACC can pay 
+ACC can’t pay 
+Patient found to be not fit for surgery after 
+admission 
+Patient failed to turn up on the day  
+Patient found to have not fasted after 
+admission 
+Surgeon not fit or available on the day 
+Patient changed their mind after admission 
+Unexpected lack of staff 
+ 
+Unexpected overrun of surgical lists 
+ 
+13.2.    Return to theatre for approved elective surgery 
+When a return to theatre has been required during an admission for ACC approved elective 
+surgery, provision has been made to consider such costs retrospectively. 
+Theatre charges for the additional procedure may be sent as a separate retrospective non-core 
+invoice, noting ‘RTT’ (return to theatre).  A new purchase order approval will be issued on 
+receipt of invoice, subject to ACC approving the retrospective costs. 
+ 
+14. Invoicing  
+Invoices should be submitted to the ACC Treatment and Support Team in accordance with 
+clause 31 of the contract. All invoices must be submitted to ACC by the elective surgery 
+supplier within 12 months of the treatment provided or they will not be paid. 
+ 
+14.1.  What to include  
+One schedule per client is to be submitted for all surgeries.  Make sure you include on the 
+invoice the:   
+
+--- PAGE 34 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+30 
+• purchase order number in the comments field of the e-schedule.  
+• admission and discharge dates in the comments field of e-schedule. 
+ 
+Supporting Documentation 
+• Supporting documentation for supplier’s invoices (including implants) are required prior 
+to, or same date as the electronic schedule. 
+• Operation Notes/Discharge Summaries and Suppliers Invoices for Implants to be 
+emailed to disop@acc.co.nz 
+• Payment will be declined if required supporting documentation have not been received 
+within 5 business days. 
+• When supporting documentation is requested after a schedule has been submitted, the 
+payment will be declined, and the schedule will need to be resubmitted. 
+ 
+ 
+Notes: 
+• Service dates should be the actual date of surgery; payment rates are based on 
+discharge date. 
+• Actual number of units are to be entered in unit field for non-core surgery. Please do not 
+use the time field. 
+• Please ensure you have included the client’s claim number and purchase order on the 
+notes. The subject line of your email must have the client’s name and purchase order 
+number (unless the procedure is listed on the NPA procedure list). 
+• Core and non-core procedure prices do not include the cost of surgical implants. 
+• If requesting payment for exceptional costs, please ensure you provide the rationale 
+behind these costs and any supporting documentation. 
+• Invoice queries to be emailed to electivesurgeryinvoices@acc.co.nz and not individual 
+ACC staff or the Provider Helpline. 
+• Payment will be based on the procedure that was performed. At times, this may differ 
+from the procedure (and therefore pricing) that was originally approved by ACC.   
+ 
+
+--- PAGE 35 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+31 
+15. Requests and invoices for multiple procedures 
+Suppliers cannot request a combination of core and non-core procedures, or request more 
+than two core code procedures to be performed at the same time. 
+Table 5. Examples of how to request and invoice for multiple procedures  
+If 
+Then  
+Treatment for a claim involves two core 
+procedures from the contract that will 
+be carried out during the same theatre 
+session. 
+Suppliers should submit one ARTP detailing both 
+core procedures. 
+ 
+For invoicing, the total price will be: 
+• the price of the most expensive of the 
+procedures plus; 
+• 40% of the price of the second procedure. 
+Treatment for a claim involves three or 
+more core procedures from the contract 
+that will be carried out during the same 
+theatre session. 
+Suppliers should submit a request for a non-core 
+procedure. This request is done on an ARTP and 
+any additional information to support the request 
+should also be sent at the same time.  
+ 
+The price for the surgery will be determined in 
+accordance with the process set out in clause 31 
+to 33 of the contract. 
+The procedure is expected to involve a 
+combination of core and non-core 
+elements or, due to unforeseen 
+circumstances, a combination of core 
+and non-core elements was required at 
+the time of treatment provision. 
+Where the main component of a procedure is a 
+core procedure, but additional service items are 
+required, the supplier must apply for the approval 
+of the procedure. Where the additional service 
+items were unplanned, invoice the procedure as a 
+core procedure with the additional service items 
+listed as non-core units (ESR service codes) and 
+submit the clinical information to support the 
+additional units.  
+ 
+Additional services may include but are not 
+limited to additional ward stay, additional theatre 
+time, High Dependency Unit care. 
+ 
+ACC may decline an application for approval as a 
+non-core procedure and approve the procedure 
+
+--- PAGE 36 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+32 
+as a core procedure with additional service items. 
+Conversely, ACC may decline an application for 
+approval as a core procedure (or combination of 
+core procedures) and request the procedure is 
+resubmitted as non-core.  
+Note: The above table also applies to non-prior approval (NPA) procedure codes. For example: 
+• If two NPA procedure codes are requested, prior approval is not required. However, ACC 
+will only fund 40% of the second procedure at invoicing.  
+• If three or more NPA codes are requested, suppliers will need to seek prior approval 
+from ACC via an ARTP request for a non-core procedure.   
+ 
+16. Service monitoring and reporting 
+16.1. ACC collected data 
+ACC introduced performance measures to the Elective Surgery Services contract effective 1 
+May 2017. Under clause 29 of the contract the following measures are monitored. 
+Table 6. Performance measurement under the Elective Surgery Services contract 
+Performance 
+measurement  
+Description 
+Frequency 
+Volume of ACC surgeries 
+performed by supplier 
+1. 75% of high priority surgery is 
+provided within 30 days of the 
+date of ACC’s decision to approve 
+surgery or the decision to 
+proceed with surgery if Part B 
+clause 18.7 applies, and 
+2. 80% of routine priority surgery is 
+provided within 6 months of the 
+date of ACC’s decision to approve 
+surgery or the decision to 
+proceed with surgery if Part B 
+clause 18.7 applies. 
+ACC – Quarterly Reports 
+on previous quarter 
+
+--- PAGE 37 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+33 
+Measure of surgeries 
+performed by body site 
+1. Average days by facility and 
+surgeon for High priority surgery 
+to be undertaken. 
+2. Average days by facility and 
+surgeon for Routine priority 
+surgery to be undertaken. 
+ACC – Quarterly Reports 
+on previous quarter 
+ 
+The performance measures will be monitored by ACC. Suppliers are not required to submit 
+data on these measures to ACC. Feedback on the performance measures will be provided to 
+Suppliers through their Engagement and Performance Manager (EPM). 
+ 
+16.2.   Supplier provided reporting  
+Under Clause 30, suppliers are to report on the following quality improvement and quality 
+indicator reporting requirements: 
+1. their participation in quality improvement activities,  
+2. the results of such initiatives,  
+3. the benefits to be expected for ACC Clients from these activities, and  
+4. the results of Patient Reported Experience Measure (PREM) using a tool generally 
+accepted in the sector as being robust – noting changes over time. 
+There is no formal reporting required for points 1 – 3, the EPMs will have a discussion with each 
+of their suppliers about any new or ongoing quality improvement activities.  
+With the exception of Public Hospitals, suppliers must provide their EPM with a copy of their 
+most recent PREM survey results. 
+Health New Zealand - Te Whatu Ora PREM reporting is publicly available and ACC will obtain 
+these reports. 
+Please note we are not asking that you change your surveys; if you have an existing survey this 
+can be provided to your EPM. The essence of PREMs is to drive continuous quality 
+improvement from the patient’s perspective, therefore, we are interested to know how facilities 
+use the survey information to improve patient services on an ongoing basis and how it helps 
+them drive improvements. We also like to see a copy of the survey questions, so we can 
+understand what you monitor to improve your patients experience. 
+ 
+
+--- PAGE 38 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+34 
+17. Contracted and Regulation surgery  
+17.1.   Contracted Surgery  
+This is the funding route that can be used by suppliers who hold a current Elective Surgery 
+Services contract. This is the most common funding route used. 
+Contract holders are paid the contracted price specified in the Elective Surgery Services 
+contract. This price covers the surgical treatment and the six weeks’ post-discharge from 
+hospital care.  
+Implants are not included in the contracted price. ACC will pay the supplier’s cost price for 
+implants used and these should be invoiced separately, at the lowest price the supplier can 
+obtain. 
+The supplier cannot charge the client with any additional co-payment for the services. 
+ 
+17.2.    Private Regulation Surgery (non-contracted surgery)  
+This is the funding route that can be used for private hospital suppliers who do not hold a 
+current Elective Surgery Services contract. ACC is liable to pay or contribute to the cost of 
+surgery under regulation 18 of the Accident Compensation (Liability to Pay or Contribute to 
+Cost of Treatment) Regulations 2003 (‘non-contracted surgery’). This includes all procedures 
+listed on the contract procedure list. 
+• Non-contracted suppliers are paid at 60% of the contracted core price. 
+• If the procedure is non-core, private hospitals are paid 60% of the non-core price. 
+• All implants are paid at 100%. 
+• Non-contracted suppliers may charge the client a co-payment. 
+The surgeon requesting approval for Regulation surgery is responsible for ensuring that 
+payment is made to the hospital, anaesthetist and others from the ACC contribution amount. 
+The surgeon can request that a hospital takes on this role. If the hospital agrees, then the 
+hospital is responsible for distributing payments to all parties concerned. 
+Suppliers should note that ACC is only required to pay for ‘the generally accepted means of 
+treatment for such an injury in New Zealand….’ (see Schedule 1, clause 2 (2) (b) of the AC Act 
+2001). 
+
+--- PAGE 39 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+35 
+Under ACC’s Standard Terms and Conditions (Clause 8.12), a supplier under the Elective 
+Surgery Services contract may choose to invoice ACC under Regulations for a procedure 
+covered by the contract. 
+It is important that clients are made aware of the option to have their surgery fully funded 
+through a contracted supplier. ACC has a legal requirement to inform the client that surgery 
+can be performed by a contracted provider at no cost to the client, even though this may mean 
+the client receives treatment from an alternative, contracted provider other than the clinician 
+whom they have originally consulted.  
+This information is provided directly to the client in a decision letter. The client must sign the 
+letter and return it to ACC to demonstrate their understanding and consideration of all the 
+options available.  Failure to complete this process can result in delays to treatment, so 
+suppliers and providers are expected to assist clients in this process.  
+A discussion regarding options will need to occur after the approval decision for surgery, when 
+all information is available. This will result in a second consultation regarding surgical options, 
+which can be invoiced using the Clinical Services contract.   
+ACC requires the completed documentation before any payments can be made for the 
+provision of surgery. 
+ 
+17.3.   Public Regulation Surgery (non-contracted surgery)  
+Health New Zealand – Te Whatu Ora hospitals may choose to invoice actual costs of treatment 
+under Regulations, noting that ACC may decline to pay if the injury is not a covered injury.  In 
+addition, suppliers should note that ACC is only required to pay for ‘the generally accepted 
+means of treatment for such an injury in New Zealand….’ (see Schedule 1, clause 2 (2) (b) of the 
+AC Act 2001). 
+Note that, if a Health New Zealand – Te Whatu Ora hospital holds the Elective Surgery Services 
+contract, it cannot invoice under Regulations instead (see Standard Terms and Conditions 
+Clause 8.12). 
+Health New Zealand – Te Whatu Ora hospitals taking this route are advised to continue to seek 
+ARTP approval, and to invoice using the Elective Surgery Services contract code structure, to 
+avoid payment being declined or evidence of actual cost being required. 
+ 
+
+--- PAGE 40 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+36 
+18. Clauses relating to Health New Zealand – Te Whatu Ora   
+18.1. Consideration of funding without prior approval  
+The ARTP should always be submitted prior to surgery with the priority identified (high 1-4 or 
+routine).   
+ACC will consider retrospective payments under the contract from the Health New Zealand – 
+Te Whatu Ora hospitals only, as per Clause 39.2 of the contract. There are strict criteria for 
+these to be considered. 
+• Only urgent, non-acute surgeries that are completed within 7 days of the expiry of the 
+PHAS period will be considered. (Patients that remain an inpatient at the time of the 
+surgery are acute and will not be considered under this option) and; 
+• Consideration will only apply to these requests which are received within one calendar 
+month from the date of surgery. Requests outside of this timeframe will not be 
+considered. 
+The Health New Zealand – Te Whatu Ora hospital must email purchaseorderteam@acc.co.nz  
+(subject: HNZ – Te Whatu Ora Retrospective Consideration) for Treatment & Support Manager 
+consideration. The email must contain the claim details, PHAS end date and the reason prior 
+approval has not been gained before the surgery has been completed. 
+If the application is denied for cover or not meeting these criteria, Health New Zealand – Te 
+Whatu Ora is responsible for funding these surgeries from other sources. 
+ACC reserves the right to remove this flexibility if, in our view, the process is being misused. 
+This process is not intended to substitute process failings. The intent is to recognise those rare 
+scenarios where time and/or exceptional circumstances have prohibited Health New Zealand – 
+Te Whatu Ora in seeking prior approval. 
+ 
+19. New and Emerging Treatment and Rehabilitation Interventions  
+ACC define new, novel, and emerging treatment and rehabilitation interventions (NETRI) as 
+“non-established, new or experimental treatment and services, including equipment, 
+procedures, prostheses, surgery or treatment” that: 
+• is still undergoing clinical trials 
+
+--- PAGE 41 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+37 
+• are medical devices that ACC is unsure are regulated somewhere in the world (e.g., CE 
+mark or FDA) 
+• have limited research published to evidence their safety, use or value 
+• may not have the support of the majority of health practitioners in the relevant field 
+• are not covered by an existing ACC policy or process 
+In the first instance, we expect all new and emerging treatments, implants, orthotics, 
+equipment, interventions and/or techniques to be submitted to ACC for prior approval.  
+Details of new procedures, surgical techniques, equipment and/or prostheses must be clearly 
+stated on the ARTP.  
+These requests may be subject to additional requirements during the assessment process, 
+regardless of endorsement from governing bodies. Consideration will be made to Schedule 1, 
+clause 1 and 2 of the AC Act.   
+ACC reserves the right to refusal and to ask for further information in support of your 
+application, which may include asking you to complete a Request for Evidence form.  
+Note: Decisions on NETRI may take time. When a supplier’s request for NETRI is linked to an 
+ARTP request, the client’s clinical presentation and need for surgery should take preference.  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+--- PAGE 42 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+38 
+Appendix 1  
+Guidelines for requesting anaesthetic modifiers  
+Requested modifier 
+Acceptable? Units 
+Notes 
+Pre-op telephone 
+conversations 
+No 
+ 
+0 
+ 
+These activities are completed 
+prior to admission – must be 
+provider under the Clinical 
+Services Contract. 
+Face to face visits with 
+patients prior to the day 
+of surgery 
+Face to face visits on the 
+day of surgery 
+No 
+0  
+ 
+Cancellation of case on 
+day of surgery after 
+assessment and 
+management of the 
+relevant issues. 
+Yes 
+2 
+Abandoned surgery. See section 
+13.1 for examples of when ACC 
+can accept costs.  
+Time Units: 
+ 
+These are already built 
+into the theatre rate. 
+Please see the guidelines 
+for the non-core ESR01 & 
+ESR02 Codes. 
+ 
+Note there is no special 
+rate for out of hours 
+service 
+No 
+0 
+Anaesthetic time starts when the 
+anaesthetist commences 
+exclusive and continuous care of 
+the patient and ceases when the 
+anaesthetist is no longer in 
+professional attendance, that is, 
+when the patient is safely placed 
+under the supervision of other 
+personnel.  
+ 
+This will include time spent before 
+and after surgery e.g. time relating 
+to the insertion of blocks and time 
+spent involved in PACU care post-
+surgery 
+Age if >1, and/but <2, 70-
+80 year old 
+Yes 
+1 
+ 
+Age if <1 or >80 
+Yes 
+2 
+ 
+ASA 1 
+No 
+0 
+ 
+ASA 2 
+No 
+0 
+ 
+
+--- PAGE 43 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+39 
+ASA 3 
+Yes 
+2 
+ 
+ASA 4 
+Yes 
+4 
+ 
+Emergency Case 
+Yes 
+2 
+ 
+Awake Intubation 
+Yes 
+2 
+However accomplished. 
+Positioning non-core 
+Yes 
+2 
+Any position which is not supine, 
+lithotomy or lateral or spinal 
+procedures. 
+Body Mass Index (BMI) 
+<35 
+No 
+0 
+ 
+BMI 35-40  
+Yes 
+1 
+ 
+BMI >40 
+Yes 
+2 
+ 
+BMI >50 
+Yes 
+3 
+ 
+Arterial Line, CVL, PA 
+Catheters expected of the 
+anaesthetic and surgery 
+No 
+0 
+ 
+Arterial line, CVL, PA 
+Catheter insertion as 
+separate procedures not 
+expected of the 
+anaesthetic or surgery 
+Yes 
+2 
+ 
+High Dependency Unit 
+(HDU) care with the 
+anaesthetist at home 
+providing cover: 
+ 
+ 
+ 
+Maximum 18 units per HDU day 
+(including phone calls and face to 
+face visits) 
+Base pricing recognising 
+availability 
+ 
+Yes 
+4-6 
+Telephone Calls which 
+require significant 
+management change 
+Yes 
+1 unit per 
+call 
+
+--- PAGE 44 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+40 
+Any face to face visit that 
+results in significant 
+management change 
+Yes 
+4 units per 
+visit plus 
+time 
+ICU Care where 
+anaesthetist lives in 
+hospital and provides 
+cover 
+No 
+0 
+This cost is included in the ESR07 
+cost (ICU). 
+Ward Care*:  
+ 
+ 
+ 
+Any initial face-to-face 
+visit less than 15 minutes 
+ 
+No 
+0 
+The base units take into account a 
+brief (<15 minutes) pre- and post-
+operative visit and are included in 
+the package of care 
+Non-complex face-to-
+face visits involving 
+review of epidurals, IV 
+fluids or simple pain 
+management 
+Yes 
+Up to 2 
+units per 
+visit, with a 
+maximum 
+of 2 visits 
+per day 
+ 
+Complex face-to-face 
+visits involving significant 
+documented 
+management issues, 
+longer than 15 minutes 
+Yes 
+Up to 2 
+units (plus 
+up to 2 
+more units 
+with 
+justification) 
+ 
+Continuous Regional 
+Block 
+Plexus/Nerve Catheter 
+Care 
+ 
+(which stays in the patient 
+overnight or for several 
+days) 
+Yes 
+Up to 3  
+Anaesthetic notes need to be 
+provided to ACC. 
+Prolonged PACU care 
+Yes 
+Time units 
+or refer to 
+On occasion PACU care will be 
+prolonged. The time units should 
+reflect the PACU care, but 
+
+--- PAGE 45 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+41 
+‘Ward Care’ 
+section 
+additional documentation should 
+be provided if a PACU time greater 
+than 15 minutes is being claimed 
+for. 
+*Note the NZSA review group recognises the very first post-operative visit on the day after 
+surgery can range from a simpler brief meeting to a more complex problem solving and 
+explanation visit. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+--- PAGE 46 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+42 
+Appendix 2 
+Red List Procedures 
+Foot and Ankle Procedures 
+Red List Code 
+Procedure Description  
+AFT215 
+Total Ankle Replacement – Simple 
+AFT216 
+Total Ankle Replacement – Complex.  Includes debridement Tendo 
+Achilles (TA) lengthening/gastric slide, removal metalware 
+ 
+Shoulder and Elbow Procedures 
+Red List Code 
+Procedure Description  
+ELF10  
+Total Elbow Replacement  
+ELF60  
+Elbow Arthroscopic Surgery - Complex  
+ELF61  
+Elbow Arthroscopy proceed to open - Complex  
+SHU96A  
+Shoulder Instability Repair – Complex 2: Latarjet Procedure.  Includes: 
+Osteotomy, transfer and fixation of the coracoid process and 
+attachments and/or other bone graft to glenoid.  
+Not to be used in combination with other codes. 
+Not to be used in combination with other codes. 
+SHU14  
+Total Shoulder Replacement  
+SHU17A  
+Reverse Shoulder Replacement  
+SHU15  
+Arthrodesis Shoulder  
+Non-core  
+Revision Shoulder Replacement 
+Shoulder tendon transfers (Latissimus dorsi, Pectoralis major, Lower 
+Trapezius) 
+Superior Capsular Reconstruction 
+ 
+
+--- PAGE 47 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+43 
+Hip Procedures 
+Red List Code 
+Procedure Description  
+HIT50A  
+Hip Arthroscopy Simple  
+HIT60A 
+Hip Arthroscopy Complex 1  
+HIT70A 
+Hip Arthroscopic Surgery – Complex 2  
+ 
+Knee Procedures 
+Red List Code 
+Procedure Description  
+KNE95A  
+Primary Knee PCL (Posterior Cruciate Ligament) Reconstruction – 
+Arthroscopic and/or Open – Complex (includes a KNE85A with 
+Meniscal Repair and/or Outerbridge III – IV drilling or microfracture)  
+ 
+Spine Procedures  
+Red List Code 
+Procedure Description  
+SPN300 
+Occipito -cervical fusion with instrumentation, any levels. +/- 
+decompression. Includes bone graft 
+SPN301 
+Posterior Fusion - C1/2 with instrumentation. Includes bone graft 
+SPN302 
+Posterior C1/2 to cervical fusion with instrumentation, any levels. +/- 
+decompression. Includes bone graft 
+SPN303 
+Posterior Cervical Fusion - Simple – Single Level with instrumentation 
+(excludes C1/2 with instrumentation). Includes bone graft 
+SPN304 
+Posterior Cervical Fusion Complex – Single Level with instrumentation. 
+Includes: Discectomy and/or Decompression and Posterior 
+Laminectomy or Foraminotomy. Includes bone graft 
+SPN305 
+Posterior Cervical Fusion - Simple – Two Levels with instrumentation. 
+Includes bone graft 
+
+--- PAGE 48 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+44 
+SPN306 
+Posterior Cervical Fusion Complex – Two Levels with instrumentation. 
+Includes: Discectomy and/or Decompression and Posterior 
+Laminectomy or Foraminotomy. Includes bone graft 
+SPN307 
+Posterior Cervical Fusion - Simple – Three or more Levels with 
+instrumentation. Includes bone graft 
+SPN308 
+Posterior Cervical Fusion Complex – Three or more Levels with 
+instrumentation. Includes: Discectomy and/or Decompression and 
+Posterior Laminectomy or Foraminotomy. Includes bone graft 
+SPN309 
+Cervical Laminoplasty 1-2 Levels 
+SPN310 
+Cervical Laminoplasty Complex 1-2 Levels. Includes Decompression 
+(Foraminotomies) 
+SPN311 
+Cervical Laminoplasty 3 or more Levels 
+SPN312 
+Cervical Laminoplasty Complex 3 or more Levels. Includes 
+Decompression (Foraminotomies) 
+SPN313 
+Posterior Cervical Decompression Simple 1 Level  
+SPN314 
+Posterior Cervical Decompression Complex 1 Level. Includes Posterior 
+Discectomy 
+SPN315 
+Posterior Cervical Decompression Simple 2 Levels bilateral 
+SPN316 
+Posterior Cervical Decompression Complex 2 Levels bilateral. 
+Includes Posterior Discectomy 
+SPN317 
+Posterior Cervical Decompression Simple 3 Levels or more bilateral 
+SPN318 
+Posterior Cervical Decompression Complex 3 Levels or more bilateral. 
+Includes Posterior Discectomy 
+SPN327 
+Cervical Disc Replacement (Arthroplasty) – Single Level. Includes: 
+Discectomy and/or Decompression 
+SPN328 
+Cervical Disc Replacement (Arthroplasty) - Two or more Levels. 
+Includes: Discectomy and/or Decompression  
+SPN329 
+Cervical Hybrid Disc Replacement (Arthroplasty) - Two or more Levels. 
+A single level anterior cervical intervertebral fusion in combination 
+with a single level disc replacement. Includes: Discectomy and/or 
+Decompression. Includes bone graft 
+
+--- PAGE 49 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+45 
+SPN346 
+Revision Posterolateral Lumbar Fusion with Instrumentation – Single 
+Level. Includes removal implants same level. Includes bone graft 
+SPN347 
+Revision Posterolateral Lumbar Fusion with Instrumentation – Single 
+Level. Includes removal implants at another level. Includes bone graft 
+SPN348 
+Revision Posterolateral Lumbar Fusion with Instrumentation - Single 
+Level. Includes removal implants same level. Includes Discectomy 
+and/or decompression. Includes bone graft 
+SPN351 
+Revision Posterolateral Lumbar Fusion with instrumentation Simple - 
+Two or more levels. Includes removal implants same level. Includes 
+bone graft. If the procedure involves more than two levels and the 
+procedure is more complex, non-core pricing can be used. 
+SPN352 
+Revision Posterolateral Lumbar Fusion with instrumentation Simple - 
+Two or more levels. Includes removal implants another level. Includes 
+bone graft. If the procedure involves more than two levels and the 
+procedure is more complex, non-core pricing can be used. 
+SPN353 
+Revision Posterolateral Lumbar Fusion with Instrumentation Complex 
+- Two or More Levels. Includes removal implants same level. Includes 
+Discectomy and/or decompression. Includes bone graft. If the 
+procedure involves more than two levels or the procedure is more 
+complex, non-core pricing can be used. 
+SPN354 
+Revision Posterolateral Lumbar Fusion with Instrumentation Complex 
+- Two or More Levels. Includes removal implants another level. 
+Includes Discectomy and/or decompression. Includes bone graft. If 
+the procedure involves more than two levels or the procedure is more 
+complex, non-core pricing can be used. 
+SPN360 
+Anterior Lumbar Fusion Simple – Single Level. Anterior Lumbar 
+Interbody Fusion (ALIF), or Lateral lumbar interbody fusion (LLIF) or. 
+Direct lateral interbody fusion (DLIF). Includes: Discectomy and/or 
+Decompression. Includes Access Surgeon. Includes bone graft. Not to 
+be used for laparoscopic/endoscopic techniques. These should be 
+done non-core. 
+SPN361 
+Anterior Lumbar Fusion Simple – Single Level. Anterior Lumbar 
+Interbody Fusion (ALIF), or Lateral lumbar interbody fusion (LLIF) or. 
+Direct lateral interbody fusion (DLIF). Includes: Discectomy and/or 
+Decompression. No Access Surgeon. Includes bone graft. Not to be 
+
+--- PAGE 50 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+46 
+used for laparoscopic/endoscopic techniques. These should be done 
+non-core. 
+SPN362 
+Anterior and Posterior Lumbar Fusion Complex - Single Level. Anterior 
+Lumbar Interbody Fusion (ALIF), or Lateral lumbar interbody fusion 
+(LLIF) or Direct lateral interbody fusion (DLIF). And Posterolateral 
+Lumbar Fusion with or without instrumentation. Includes Access 
+Surgeon. Includes: Discectomy and/or Decompression. Includes bone 
+graft. Not to be used in combination. Not to be used for 
+laparoscopic/endoscopic techniques. These should be done non-
+core. 
+SPN363 
+Anterior and Posterior Lumbar Fusion Complex - Single Level. Anterior 
+Lumbar Interbody Fusion (ALIF), or Lateral lumbar interbody fusion 
+(LLIF) or Direct lateral interbody fusion (DLIF). And Posterolateral 
+Lumbar Fusion with or without instrumentation. Includes bone graft. 
+No Access Surgeon. Includes: Discectomy and/or Decompression. 
+Not to be used in combination. Not to be used for 
+laparoscopic/endoscopic techniques. These should be done non-
+core. 
+SPN364 
+Revision Anterior Lumbar Fusion - Single Level. Anterior Lumbar 
+Interbody Fusion (ALIF), or Lateral lumbar interbody fusion (LLIF) or 
+Direct lateral interbody fusion (DLIF). Includes removal implants same 
+level. Includes Access Surgeon. Includes: Discectomy and/or 
+Decompression. Includes bone graft. Not to be used for 
+laparoscopic/endoscopic techniques. These should be done non-
+core. 
+SPN365 
+Revision Anterior Lumbar Fusion - Single Level. Anterior Lumbar 
+Interbody Fusion (ALIF), or Lateral lumbar interbody fusion (LLIF) or 
+Direct lateral interbody fusion (DLIF). Includes removal implants same 
+level. No Access Surgeon. Includes: Discectomy and/or 
+Decompression. Includes bone graft. Not to be used for 
+laparoscopic/endoscopic techniques. These should be done non-
+core. 
+SPN366 
+Anterior Lumbar Fusion Simple - Two or more levels. Anterior Lumbar 
+Interbody Fusion (ALIF), or Lateral lumbar interbody fusion (LLIF) or 
+Direct lateral interbody fusion (DLIF). Includes Access Surgeon. 
+Includes: Discectomy and/or Decompression. Includes bone graft. If 
+the procedure involves more than two levels and the procedure is 
+
+--- PAGE 51 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+47 
+more complex, non-core pricing can be used. Not to be used for 
+laparoscopic/endoscopic techniques. These should be done non-core 
+SPN367 
+Anterior Lumbar Fusion Simple - Two or more levels. Anterior Lumbar 
+Interbody Fusion (ALIF), or Lateral lumbar interbody fusion (LLIF) or 
+Direct lateral interbody fusion (DLIF). No Access Surgeon. Includes: 
+Discectomy and/or Decompression. Includes bone graft. Not to be 
+used for laparoscopic/endoscopic techniques. These should be done 
+non-core. If the procedure involves more than two levels and the 
+procedure is more complex, non-core pricing can be used.  
+SPN368 
+Anterior and Posterior Lumbar Fusion Complex - Two or More Levels. 
+Anterior Lumbar Interbody Fusion (ALIF), or Lateral lumbar interbody 
+fusion (LLIF) or Direct lateral interbody fusion (DLIF). And 
+Posterolateral Lumbar Fusion with or without instrumentation. 
+Includes Access Surgeon. Includes: Discectomy and/or 
+Decompression Not to be used in combination. Includes bone graft. If 
+the procedure involves more than two levels and the procedure is 
+more complex, non-core pricing can be used.  
+SPN369 
+Anterior and Posterior Lumbar Fusion Complex - Two or More Levels. 
+Anterior Lumbar Interbody Fusion (ALIF), or Lateral lumbar interbody 
+fusion (LLIF) or Direct lateral interbody fusion (DLIF). And 
+Posterolateral Lumbar Fusion with or without instrumentation. No 
+Access Surgeon. Includes: Discectomy and/or Decompression Not to 
+be used in combination. Includes bone graft. If the procedure involves 
+more than two levels and the procedure is more complex, non-core 
+pricing can be used.  
+SPN370 
+Revision Anterior Lumbar Fusion -Two or more Levels. Anterior Lumbar 
+Interbody Fusion (ALIF), or Lateral lumbar interbody fusion (LLIF) or 
+Direct lateral interbody fusion (DLIF). Includes removal implants same 
+level. Includes Access Surgeon. Includes bone graft. If the procedure 
+involves more than two levels and the procedure is more complex, 
+non-core pricing can be used. 
+SPN371 
+Revision Anterior Lumbar Fusion -Two or more Levels. Anterior Lumbar 
+Interbody Fusion (ALIF), or Lateral lumbar interbody fusion (LLIF) or 
+Direct lateral interbody fusion (DLIF). Includes removal implants same 
+level. No Access Surgeon. Includes bone graft. If the procedure 
+involves more than two levels and the procedure is more complex, 
+non-core pricing can be used. 
+
+--- PAGE 52 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+48 
+SPN372 
+Lumbar Disc Replacement (Arthroplasty) – Single Level. Includes 
+Access Surgeon. Includes: Discectomy and/or Decompression 
+SPN373 
+Lumbar Disc Replacement (Arthroplasty) – Single Level. No Access 
+Surgeon. Includes: Discectomy and/or Decompression 
+SPN374 
+Lumbar Disc Replacement (Arthroplasty) Two or more levels. Includes 
+Access Surgeon. Includes: Discectomy and/or Decompression; If the 
+procedure involves more than two levels and the procedure is more 
+complex, non-core pricing can be used.  
+SPN375 
+Lumbar Hybrid Disc Replacement (Arthroplasty) Two or more levels. 
+Includes a single level anterior lumbar intervertebral fusion in 
+combination with a single level disc replacement. Includes Access 
+Surgeon. Includes: Discectomy and/or Decompression; Includes bone 
+graft. If the procedure involves more than two levels and the procedure 
+is more complex, non-core pricing can be used.  
+SPN376 
+Lumbar Disc Replacement (Arthroplasty) Two or more levels. No 
+Access Surgeon. Includes: Discectomy and/or Decompression; 
+Includes Hybrid operation (a single level anterior lumbar intervertebral 
+fusion in combination with a single level disc replacement). Includes 
+bone graft. If the procedure involves more than two levels and the 
+procedure is more complex, non-core pricing can be used.  
+SPN388 
+Revision Spinal Stenosis Decompression - Single Level. Includes: 
+Discectomy, Revision discectomy  
+SPN389 
+Revision Spinal Stenosis Decompression - Two or more levels. 
+Includes: Discectomy, Revision discectomy. If the procedure involves 
+more than two levels and the procedure is more complex, non-core 
+pricing can be used.  
+SPN355 
+Single Level Transforaminal Lumbar Interbody Fusion (TLIF) single 
+interbody cage. Includes posterior lateral fusion (PLF). Includes bone 
+graft 
+SPN356 
+Single Level Transforaminal Lumbar Interbody Fusion (TLIF) double 
+cage. Includes posterior lateral fusion (PLF).  
+Includes bone graft 
+SPN357 
+Double Level Transforaminal Lumbar Interbody Fusion (TLIF) single 
+cage. Includes posterior lateral fusion (PLF).  
+
+--- PAGE 53 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+49 
+Includes bone graft 
+SPN358 
+Double Level Transforaminal Lumbar Interbody Fusion (TLIF) with 
+double cages. Includes posterior lateral fusion (PLF). Includes bone 
+graft 
+ 
+Wrist and Hand Procedures  
+Red List Code 
+Procedure Description  
+WAH 103  
+Hemi-hamate reconstruction of pilon fracture  
+WAH112  
+Carpometacarpal (CMC) joint arthroplasty – Complex 
+Includes: trapeziumectomy, debridement of joints, excision of avulsion 
+fragments. 
+WAH 114  
+Metacarpophalangeal (MCP) joint arthroplasty – Complex. 
+Includes: - cemented and uncemented 2 component implant 
+• If 2 digits, each attract a separate code 
+• If > 2 digits then this becomes a non-core procedure 
+WAH120  
+Tenolysis flexor tendon – Complex  
+Includes: 
+• excision of slip of FDS (flexor digitorum superficialis tendon), 
+tenolysis plus arthrolysis of MCPJ/IPJ (Metacarpophalangeal 
+joint/Interphalangeal joint)  
+• If 2 digits, each attract a separate code 
+• If > 2 digits then this becomes a non-core procedure 
+WAH126  
+Reconstruction flexor tendon using primary tendon graft  
+Includes:  
+• harvest of tendon graft  
+• if two tendons, each attract a separate code,  
+• if > 2 then this becomes a non-core procedure  
+Excludes: tendon transfer 
+ 
+WAH127  
+Reconstruction flexor tendon - 1st Stage tendon reconstruction  
+Includes: - insertion of spacer/rod  
+• if two tendons, each attract a separate code,  
+• if > 2 then this becomes a non-core procedure  
+Excludes: tendon transfer 
+
+--- PAGE 54 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+50 
+WAH128  
+Reconstruction flexor tendon – 2nd Stage tendon reconstruction  
+Includes: - insertion of spacer/rod  
+• if two tendons, each attract a separate code,  
+• if > 2 then this becomes a non-core procedure  
+Excludes: tendon transfer 
+WAH130  
+Pulley reconstruction -  
+Includes: required tenolysis, use of local tendon or free tendon graft, 
+extensor retinacular reconstruction i.e. ECU (extensor carpi ulnaris ) 
+stabilization  
+• if two tendons, each attract a separate code,  
+• if > 2 then this becomes a non-core procedure 
+WAH134  
+Carpal tunnel release – endoscopic 
+WAH137  
+Scaphoid or other carpal bone reconstruction – Complex  
+Using structural bone grafting from iliac crest and fixation.  
+Includes:  
+• bone graft from iliac crest and fixation  
+• if a vascularised bone graft is required, this becomes a noncore 
+procedure 
+WAH138  
+Wrist arthroscopic surgery – Simple  
+Includes: diagnostic arthroscopy and/or removal of loose bodies, 
+simple debridement of synovitis 
+WAH139  
+Wrist arthroscopy proceed to open surgery – Simple  
+Includes: diagnostic arthroscopy and/or removal of loose bodies, 
+simple debridement of synovitis 
+WAH141  
+Wrist arthroscopy - Complex 1 - (Intercarpal ligament injury)  
+Includes: Percutaneous K wiring of joints for intercarpal ligament injury 
+WAH142  
+Wrist arthroscopy and proceed to open - Complex 1  
+Includes: Repair of intercarpal ligament and K-wiring of joints 
+WAH143  
+Wrist arthroscopy and proceed to open – Complex 1 – Includes: 
+Reconstruction of intercarpal ligament and K-wiring of joints 
+WAH146  
+Wrist arthroscopy and proceed to open - Complex 2 - Arthroscopic and 
+proceed to open Proximal Row Carpectomy (PRC) 
+WAH147  
+Wrist arthroscopy and proceed to open - Complex 2 - Partial wrist 
+fusion and Sauve- Kapandji procedure 
+
+--- PAGE 55 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+51 
+WAH148  
+Wrist arthroscopy and proceed to open - Complex 2 – Total Wrist 
+Fusion 
+WAH152  
+Wrist arthroscopy - Complex 3 TFCC injury (triangular fibrocartilage 
+complex). 
+Includes: diagnosis, debridement & open repair of TFCC (triangular 
+fibrocartilage complex) debridement. 
+WAH153  
+Wrist arthroscopy - Complex 3. 
+Includes: diagnosis, debridement & open repair of TFCC (triangular 
+fibrocartilage complex) tear. 
+WAH154  
+Wrist arthroscopy and proceed to open - Complex 3. 
+Includes: diagnosis, debridement & open repair of TFCC (triangular 
+fibrocartilage complex) tear. 
+WAH155  
+Wrist arthroscopy and proceed to open - Complex 3 - Open TFCC 
+(triangular fibrocartilage complex) reconstruction with tendon graft  
+WAH157  
+Wrist open surgery - Complex 3 - Open TFCC (triangular fibrocartilage 
+complex) reconstruction with tendon graft  
+ 
+Non-orthopaedic Procedures 
+Red List Code 
+Procedure Description  
+NRV04 
+Reconstruction Digital Nerve with Nerve Graft 
+NRV05 
+Reconstruction Single Major Nerve with Nerve Grafts 
+NRV06 
+Neurolysis  
+SKP12 
+Insertion of tissue expander 
+SKP13 
+Removal of tissue expander(s) and reconstruction 
+ 
+ 
+
+--- PAGE 56 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+52 
+Pelvic floor reconstructive, urogynaecological and mesh revision and removal 
+procedures 
+Red List Code 
+Procedure Description  
+Non-core 
+ 
+Some instances of 
+URL31 and URL32 
+Tier 3 procedures as per the national credentialing framework.  
+ 
+For further information, including regular updates regarding Tier 3 
+procedures and the national credentialing framework, please refer to 
+the Te Whatu Ora website: Female Pelvic Mesh Service – Health New 
+Zealand | Te Whatu Ora. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+--- PAGE 57 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+53 
+Appendix 3 
+Procedure Codes Eligible for H1 Priority 
+Classification  
+Body Site 
+Code(s) 
+Clinical Criteria for H1 Priority 
+Classification 
+Upper Cervical Spine SPN300-SPN302 
+Documented cervical instability (abnormal 
+motion on dynamic radiographs) in 
+association with a SAC (Space available for 
+the cord) of <10mm AND/OR Cord 
+Compression (cord deformity), with clinical 
+evidence of cervical myelopathy 
+Lower Cervical Spine SPN303-SPN329 or 
+non-core 
+Documented cervical instability (abnormal 
+motion on dynamic radiographs) AND/OR 
+Cord Compression (cord deformity) with 
+clinical evidence of cervical myelopathy 
+AND/OR Nerve Root Compression with 
+Clinically Relevant Motor Weakness 
+Thoracic Spine 
+SPN330-SPN335 
+Documented thoracic instability (abnormal 
+motion on dynamic radiographs) AND/OR 
+Cord Compression (cord deformity) with 
+clinical evidence of thoracic myelopathy. 
+Lumbar Spine 
+SPN340-SPN392 or 
+non-core 
+Clinically relevant motor weakness due to 
+cauda equina or nerve root compression 
+Shoulder & Elbow 
+Non-Core  
+Acute Pectoralis major rupture 
+Shoulder & Elbow 
+ELF25 
+Acute Biceps rupture at the elbow  
+Shoulder & Elbow 
+Non-Core 
+Acute Triceps rupture at the elbow  
+Shoulder & Elbow 
+SHU08 or non-core 
+Acute Grade 3 or greater AC joint dislocation  
+Shoulder & Elbow 
+SHU90, SHU92 
+Acute Multiple tendon rotator cuff rupture 
+with pseudo paralysis 
+Shoulder & Elbow 
+SHU07 
+Acute clavicle fracture 
+Wrist & Hand 
+WAH 123-WAH125 
+Tendon lacerations for repair: extensor 
+tendon, flexor tendon: 
+
+--- PAGE 58 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+54 
+Wrist & Hand 
+WAH115, WAH168 
+Soft tissue injuries: UCL ligament rupture, 
+Nail bed laceration 
+Wrist & Hand 
+WAH132 
+Acute nerve compression: Carpal tunnel  
+Wrist & Hand 
+WAH100-WAH103 
+Phalangeal bone fracture where acute 
+fixation is indicated 
+Wrist & Hand 
+WAH104, WAH105 
+Metacarpal fracture 
+Wrist & Hand 
+WAH135 
+Carpal Bones/Scaphoid fracture 
+Wrist & Hand 
+WAH158, WAH161 
+Distal Radius/Ulna fracture 
+Hip 
+Non-core 
+Hamstring Avulsion 
+Hip 
+HIT01, HIT02, HIT03, 
+HIT05  
+Severe AVN and femoral neck stress fracture 
+that require urgent arthroplasty or fixation 
+Knee  
+KNE50, KNE60 
+A locked knee requiring management of the 
+bucket handle meniscal tear 
+Knee 
+KNE50, KNE51 or 
+KNE61 
+An acute osteochondral fracture 
+Foot & Ankle 
+AFT179 
+Tendo Achilles rupture 
+Foot & Ankle 
+AFT186 
+Complete plantar plate rupture of the great 
+toe with sesamoid retraction 
+Foot & Ankle 
+AFT209 
+Syndesmosis stabilisation for definite 
+widening on weightbearing x-rays.   
+Foot & Ankle 
+AFT205 
+Complete rupture ankle spring ligament 
+Foot & Ankle 
+AFT202 
+Complete rupture ankle medial ligament 
+ 
+ 
+ 
+
+--- PAGE 59 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+55 
+Appendix 4  
+Non-prior Approval (NPA) Procedure List  
+Full procedure descriptions for the following codes can be found in Part A, ‘Table 1: Core 
+Service Items and Prices’ in the contract.  
+For the purposes of this list, ‘assessment’ is defined as the initial clinical consultation between 
+the Client and the treating specialist. 
+Procedure 
+Code 
+Procedure Description 
+Conditions that must be met to be eligible for 
+exemption from the Funding Approval Process 
+(Part B Clause 18.7 of the Service Schedule) 
+AFT220 
+ORIF Calcaneus - Simple 
+The client has cover for a calcaneal fracture 
+which has occurred within 6 weeks of 
+assessment 
+AFT226 
+ORIF uni-malleolar 
+fracture 
+The client has cover for a uni-malleolar fracture 
+which has occurred within 6 weeks of 
+assessment 
+AFT231 
+ORIF of Lisfranc 
+fracture/dislocation - 
+Simple 
+The client has cover for fracture and ligament 
+disruption, which has occurred within 12 weeks 
+of assessment 
+AFT233 
+ORIF phalanx fracture -
+Single 
+The client has cover for a phalangeal fracture 
+which has occurred within 6 weeks of 
+assessment 
+ELF09 
+ORIF Fracture Radius or 
+Ulna 
+The client has cover for a radial or ulna fracture 
+which has occurred within 6 weeks of 
+assessment 
+ELF21 
+Removal of plate and 
+screws - Radius 
+The client has cover for the original injury 
+requiring surgery and ACC paid for original surgery 
+or it occurred at a Health New Zealand – Te Whatu 
+Ora hospital 
+ELF22 
+Removal of plate and 
+screws - Ulna 
+The client has cover for the original injury 
+requiring surgery and ACC paid for original surgery 
+or it occurred at a Health New Zealand – Te Whatu 
+Ora hospital 
+
+--- PAGE 60 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+56 
+ELF23 
+Removal Flex 
+Intramedullary Nail-
+Radius/Ulna incl. TEN 
+The client has cover for the original injury 
+requiring surgery and ACC paid for original surgery 
+or it occurred at a Health New Zealand – Te Whatu 
+Ora hospital 
+ELF24 
+Removal of Tension Band 
+Wiring Elbow 
+The client has cover for the original injury 
+requiring surgery and ACC paid for original surgery 
+or it occurred at a Health New Zealand – Te Whatu 
+Ora hospital 
+GOP20 
+Removal of plate & 
+screws not elsewhere 
+specified 
+The client has cover for the original injury 
+requiring surgery and ACC paid for original surgery 
+or it occurred at a Health New Zealand – Te Whatu 
+Ora hospital 
+GOP21 
+Removal screws not 
+elsewhere specified x1-
+3, incl. removal of 
+diastasis screws 
+The client has cover for the original injury 
+requiring surgery and ACC paid for original surgery 
+or it occurred at a Health New Zealand – Te Whatu 
+Ora hospital 
+GOP22 
+Removal wires/pins not 
+elsewhere specified 1 -3 
+The client has cover for the original injury 
+requiring surgery and ACC paid for original surgery 
+or it occurred at a Health New Zealand – Te Whatu 
+Ora hospital 
+GOP23 
+Removal wires/pins not 
+elsewhere specified >3 
+The client has cover for the original injury 
+requiring surgery and ACC paid for original surgery 
+or it occurred at a Health New Zealand – Te Whatu 
+Ora hospital 
+GOP24 
+Removal screws not 
+elsewhere specified >3, 
+incl. removal of diastasis 
+screws 
+The client has cover for the original injury 
+requiring surgery and ACC paid for original surgery 
+or it occurred at a Health New Zealand – Te Whatu 
+Ora hospital 
+HIT20 
+Primary removal of plate 
+and screws Femur 
+The client has cover for the original injury 
+requiring surgery and ACC paid for original surgery 
+or sit occurred at a Health New Zealand – Te 
+Whatu Ora hospital 
+HIT21 
+Removal of 
+Intramedullary Femoral 
+Rod 
+The client has cover for the original injury 
+requiring surgery and ACC paid for original surgery 
+
+--- PAGE 61 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+57 
+or it occurred at a Health New Zealand – Te Whatu 
+Ora hospital 
+HIT22 
+Removal Intramedullary 
+Femoral Rod Locking 
+Screws x1-3 only 
+The client has cover for the original injury 
+requiring surgery and ACC paid for original surgery 
+or it occurred at a Health New Zealand – Te Whatu 
+Ora hospital 
+KNE13 
+ORIF # Tibia or Fibula 
+The client has cover for a tibia or fibula fracture 
+which has occurred within 6 weeks 
+KNE20 
+Removal of plate and 
+screws Tibia 
+The client has cover for the original injury 
+requiring surgery and ACC paid for original surgery 
+or it occurred at a Health New Zealand – Te Whatu 
+Ora hospital 
+KNE21 
+Removal of 
+Intramedullary Tibial Rod 
+The client has cover for the original injury 
+requiring surgery and ACC paid for original surgery 
+or it occurred at a Health New Zealand – Te Whatu 
+Ora hospital 
+KNE22 
+Removal Intramedullary 
+Tibial Rod Locking 
+Screws 
+The client has cover for the original injury 
+requiring surgery and ACC paid for original surgery 
+or it occurred at a Health New Zealand – Te Whatu 
+Ora hospital 
+KNE23 
+Removal of Tension 
+Wiring Patella 
+The client has cover for the original injury 
+requiring surgery and ACC paid for original surgery 
+or it occurred at a Health New Zealand – Te Whatu 
+Ora hospital 
+KNE81 
+Knee ACL Single Bundle 
+Reconstruction, 
+arthroscopic/open 
+The client has cover for an ACL rupture 
+KNE91 
+KNE81 w Meniscal 
+Repair &/or Outerbridge 
+drilling 
+The client has cover for an ACL rupture and 
+meniscal tear 
+OTY100 
+Closed reduction of 
+Fractured Nose - Simple 
+The client has cover for a nasal fracture which has 
+occurred within 6 weeks of assessment 
+NRV02 
+Delayed repair of digital 
+nerve 
+The client has cover for the original injury 
+requiring surgery 
+
+--- PAGE 62 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+58 
+SHU07 
+ORIF Clavicle 
+The client has cover for a fractured clavicle which 
+has occurred within 6 weeks of assessment 
+SHU08 
+Open Reduction of AC 
+Dislocation 
+The client has cover for an AC joint dislocation 
+(grade 3) which has occurred within 6 weeks of 
+assessment 
+SHU16 
+ORIF Humeral Fracture 
+The client has cover for a humeral fracture which 
+has occurred within 6 weeks of assessment 
+SHU20 
+Removal of plate and 
+screws Humerus 
+The client has cover for the original injury 
+requiring surgery and ACC paid for original surgery 
+or it occurred at a Health New Zealand – Te Whatu 
+Ora hospital 
+SHU21 
+Removal of 
+Intramedullary Humeral 
+Rod 
+The client has cover for the original injury 
+requiring surgery and ACC paid for original surgery 
+or it occurred at a Health New Zealand – Te Whatu 
+Ora hospital 
+SHU23 
+Removal of plate and 
+screws Clavicle 
+The client has cover for the original injury 
+requiring surgery and ACC paid for original surgery 
+or it occurred at a Health New Zealand – Te Whatu 
+Ora hospital 
+SKP01 
+Removal of foreign body 
+The client has cover for the original injury 
+requiring surgery 
+WAH101 
+ORIF phalangeal fracture 
+– Simple 
+The client has cover for a phalangeal fracture 
+which has occurred within 6 weeks of 
+assessment 
+WAH104 
+ORIF metacarpal fracture 
+– Simple 
+The client has cover for a metacarpal fracture 
+which has occurred within 6 weeks of 
+assessment 
+WAH106 
+Corrective osteotomy of 
+phalanx 
+The client has cover for a phalangeal fracture 
+which has occurred within 12 weeks of 
+assessment 
+WAH117 
+Single amputation - digit 
+The client has cover for the original injury 
+requiring surgery. 
+
+--- PAGE 63 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+59 
+WAH123 
+Repair flexor tendon digit 
+or palm 
+The client has cover for the original injury 
+requiring surgery 
+WAH124 
+Repair flexor tendon 
+wrist or forearm – 
+proximal to the carpal 
+tunnel 
+The client has cover for the original injury 
+requiring surgery 
+WAH125 
+Repair extensor tendon – 
+digit or hand/wrist or 
+forearm 
+The client has cover for the original injury 
+requiring surgery 
+WAH135 
+ORIF scaphoid or other 
+carpal bone (Hook of 
+Hamate) 
+The client has cover for a carpal fracture which 
+has occurred within 12 weeks of assessment 
+WAH158 
+ORIF distal radius 
+The client has cover for a radius fracture which 
+has occurred within 6 weeks of assessment 
+WAH168 
+Repair Nail Bed 
+The client has cover for a nail injury which has 
+occurred within 12 weeks of assessment 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+--- PAGE 64 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+60 
+Appendix 5  
+Guide to PHAS vs ESS   
+Guide to PHAS vs ESS  
+Scenarios and examples 
+Whether a surgery is covered by the Public Health Acute Service Agreement (PHAS), or the 
+Elective Surgery Services (ESS) contract is a clinical determination, regardless of the setting.  
+The question to answer is: Does my patient require acute and urgent surgery which should 
+be performed within seven days?  
+Yes 
+The surgery should be performed in a public hospital and be covered under PHAS 
+No 
+The surgery can be performed in the public or private setting under the Elective 
+Surgery Services contract. 
+ 
+Scenarios 
+Please read these examples in conjunction with the further information section.  
+Example 
+Covered by 
+A client presents to the Emergency Department (ED), and the surgeon 
+determines they need acute and urgent surgery within seven days. 
+PHAS 
+See points 1 and 3 
+below 
+A client presents to ED and the surgeon determines they need acute 
+and urgent surgery within seven days. The public hospital does not 
+have capacity to undertake the surgery within this period; however, the 
+surgeon has a free spot on their private hospital surgical list due to a 
+cancellation. 
+PHAS 
+See points 1 and 3 
+below 
+A client presents to ED and the surgeon determines they need surgery 
+but not within seven days (ie the need for surgery is not acute and 
+urgent). The surgeon has a free spot on their private surgical list within 
+seven days’ time due to a cancellation. 
+Elective Surgery 
+See points 2 and 4 
+below 
+A client presents to a non-ED clinic (eg Urgent Care clinic, GP clinic, 
+physiotherapy clinic) and is referred to a surgeon or seen by a surgeon 
+PHAS 
+
+--- PAGE 65 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+61 
+in the clinic. The surgeon determines acute and urgent surgery is 
+required.  
+See points 1 and 3 
+below 
+A client presents to a non-ED clinic (eg Urgent Care clinic, GP clinic, 
+physiotherapy clinic) and is referred to a surgeon or seen by a surgeon 
+in the clinic. The surgeon determines they need surgery but it’s not 
+required within seven days. The surgeon has a free spot on their private 
+surgical list within 7 days’ time due to a cancellation. 
+Elective Surgery 
+See points 2 and 4 
+below 
+A client is referred to a specialist for a clinical services consultation. 
+The specialist sees the client in their private clinic and determines in-
+room surgery needs to be performed. The surgery is not considered 
+acute and urgent. The surgeon has a free in-room surgical procedure 
+slot within seven days and books the client in. 
+Clinical Services 
+office or rooms-
+based procedure 
+See point 4 below 
+A client is referred to a specialist for a clinical services consultation. 
+The specialist sees the client in their private clinic and determines that 
+acute and urgent surgery is required. 
+PHAS 
+See points 1 and 3 
+below 
+Further Information: 
+1. When calculating the PHAS period for treatment, day zero is: 
+o  the day of initial presentation to an ED for an acute and urgent injury 
+o  the day when a medical practitioner refers the client for services by another 
+medical practitioner (eg the day it is determined that the client requires acute 
+and urgent surgery and therefore, admission to a public hospital), or  
+o the day the treating surgeon determines acute and urgent surgery is required. 
+The following one to seven days (up to midnight on the seventh day) are included in the 
+provision of subsequent services under PHAS.  
+ 
+2. Consider, in consultation with Elective Surgery suppliers, other clients who have high 
+priority needs and have been waiting longer. Health NZ-ACC patients can be transferred 
+to private surgical facilities if they meet the following criteria. 
+• Patients whose treatment is not acute or urgent (ie does not require surgery within 7 
+days) may still be scheduled within that timeframe if the surgeon has capacity. This 
+is acceptable only if the surgeon has: 
+o first attempted to schedule other high priority patients 
+o considered patients with higher clinical needs, and 
+
+--- PAGE 66 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+62 
+o considered patients with similar clinical need who have been waiting longer, 
+especially where return to work impacts are relevant. 
+o If these conditions are met, the patient may be scheduled for surgery and the 
+procedure may be eligible for payment under the ESS contract. 
+• Upon receipt of invoicing, our Elective Surgery invoicing team will review the clinical 
+notes to confirm that the above criteria have been met. 
+• If there is any uncertainty regarding the appropriateness of the case under ESS, 
+payment will be declined until further supporting evidence is provided. This may 
+include requests for contemporaneous medical notes and/or clarification from the 
+treating surgeon. 
+ 
+3. In situations where there is an acute and urgent need for surgery, the treating provider 
+must arrange for an acute admission at the public hospital. If capacity issues exist 
+which mean the patient cannot access surgery in a timely manner at the public 
+hospital, then an outsourcing arrangement should be discussed between the ESS 
+supplier and Health NZ. These cases cannot be funded under the ESS contract. Any 
+hospital outsourcing arrangement should be paid by the hospital as it is ordinarily 
+covered under PHAS. It is the responsibility of the supplier to ensure funding has been 
+agreed prior to surgery being undertaken.  
+ 
+4.   Depending on the requested procedure, prior approval may be required. 
+ 
+Definitions 
+The definitions of ‘acute’ and ‘high priority’ are set out in the AC Act 2001 and Section 7 of the 
+Elective Surgery Services operational guidelines, respectively. 
+ 
+ 
+ 
+ 
+ 
+ 
+
+--- PAGE 67 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+63 
+Appendix 6  
+Summary of Changes Log  
+Summary of changes 4 December 2025 
+Section 
+Overview of Change 
+3. 
+What does the contract cover? 
+Updated section around what is not covered:  
+• PHAS note updated  
+• Added sentence regarding inpatient 
+rehabilitation following treatment 
+5. Non-prior Approval (NPA) Procedures 
+Minor wording update around cover 
+requests.  
+9.   Red List Providers 
+Updated to clarify that ARTPs must not be 
+submitted for red list procedures prior to 
+receiving red list approval confirmation.  
+10. Further clarification of code usage and 
+add-ons 
+Update to wording in section 10.1.  
+11. Interpretation of specific non-core codes 
+Section and various sub-sections updated, 
+to include further information around all non-
+core codes and their specific requirements.  
+14.Invoicing  
+Notes section updated to specify that the 
+client claim number and purchase order 
+number must be included in notes submitted 
+alongside the invoice.  
+Appendix 5  
+ ‘Guide to PHAS vs ESS’ added as an 
+appendix to the operational guidelines. This 
+document aims to provide clarity around the 
+situations that fall under ESS funding vs 
+Public Health Acute Services (PHAS).  
+ 
+Summary of changes 1 October 2025 
+Section 
+Overview of Change 
+Useful Links  
+Updated to include link to 'Request for 
+Evidence' for NETRI requests 
+
+--- PAGE 68 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+64 
+4.2  How to complete an ARTP 
+Update to useful tips paragraph to provide 
+clarity.  
+11. Interpretation of specific non-core codes 
+Section 11.2 'ESR04 -  Requests for 
+anaesthetic modifiers' updated with further 
+guidance around the type of supporting 
+information ACC requires. 
+19. New and Emerging Treatment and 
+Rehabilitation Interventions 
+Updated to include link to 'Request for 
+Evidence' form. 
+ 
+Summary of changes 24 July 2025 
+Section 
+Overview of Change 
+Appendix 1  
+Amended ‘Ward Care’ section.  
+ 
+Summary of changes 1 July 2025 
+Section 
+Overview of Change 
+Useful Contact Information 
+Updated with current contact phone 
+numbers and email details for respective 
+teams. Additional information provided 
+around email contacts for Elective Surgery 
+Invoicing team. 
+Useful Links 
+New section that provides links to useful 
+information and resources on our ACC 
+website.  
+2. Who can hold this contract? 
+Amended named provider definition to 
+improve clarity and consistency with the 
+contract. 
+3. What does the Elective Surgery Contract 
+cover 
+Updated to provide clarity on what is and 
+what isn’t covered in the Elective Surgery 
+Contract. 
+
+--- PAGE 69 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+65 
+4. Seeking prior approval for surgery from 
+ACC 
+Added paragraphs to provide clarity on: 
+• The circumstances by which an ARTP 
+should not be submitted to ACC 
+• Procedures which may require additional 
+requirements during the assessment 
+process 
+ 
+• Re-formatted into sub-sections for easier 
+reading.    
+5. Non-prior Approval (NPA) Procedures 
+Updated to provide clarity on cover 
+requirements. Update of notes section. 
+6. Transfer of Lead Supplier  
+Added sentence to clarify process if 
+transferring from a contracted supplier to a 
+non-contracted supplier. 
+7. Determining ARTP Priority 
+Clarified definition of ARTP priority. Addition 
+of table for High Priority classification and 
+criteria 
+9.   Red List Providers 
+Red-List Provider section moved further up 
+the document (to section 9).   
+10. Further clarification of code usage and 
+add-ons  
+Updates to various sub-sections. 
+• Botox injections section (now ‘10.1 
+Botulinum Injections’) 
+• Merger of Wrist and Hand + Foot and 
+Ankle sections to ’10.2 Bone Grafts’ 
+• Ophthalmology section (now states these 
+add on codes are for eye procedures only) 
+• Spinal section (added note and disc 
+replacement section) 
+• Addition of Endoscopic sinus surgery 
+(ESS) to Ear, nose and throat section 
+• 3D imaging section – now specifies that 
+prior approval is required for body sites 
+other than spinal and skull surgeries 
+
+--- PAGE 70 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+66 
+Orthotics and Surgical implants sections – 
+further details re: prior approval  
+11. Interpretation of specific non-core codes 
+Updates to various sub-sections: 
+• Sentence added to section 11.1. 
+regarding theatre time reporting 
+• New section added – ‘11.3. ESR05 -Ward 
+Stay’ 
+ESR09 – 2nd Surgeon (consultant) section: 
+updated to provide clarity on requirements 
+for 2nd surgeon requests. 
+13. Significant complication, transfer of care 
+Examples of when ACC can pay costs moved 
+into table format  
+14. Invoicing  
+Addition of note sub-section 
+15. Requests and invoices for multiple 
+procedures 
+Addition of note sub-section 
+17. Contracted and Regulation surgery 
+Removed table and moved into sub-sections  
+18. Clauses relating to District Health Boards 
+Updated to Health New Zealand – Te Whatu 
+Ora  
+19. New and Emerging Treatment and 
+Rehabilitation Interventions 
+New section added to provide clarity on the 
+requirements for requests where the surgery 
+or treatment is new, experimental and/or 
+emerging. 
+Appendix 2  
+Updated description under 19.8 Pelvic floor 
+reconstructive, urogynaecological and mesh 
+revision and removal procedures 
+Appendix 4  
+Addition of note to provide clarity on 
+definition of ‘assessment’ under this NPA list 
+ 
+Summary of changes 1 May 2023 
+Section 
+Overview of Change 
+
+--- PAGE 71 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+67 
+Useful Contact Information 
+Updated with current contact phone and 
+email details 
+5. Non-prior approval (NPA) procedures 
+Section added to describe what NPAs are 
+and important notes on how to use them 
+• 9. Further clarification code usage and 
+add-ons 
+• Addition of ‘Spinal’ section 
+• Updates of wording in ‘Imaging’ and ‘3D 
+Imaging’ sections 
+• Addition of ‘Unusually Complex Clients’ 
+section 
+10. Interpretation of specific non-core cores 
+• Update of ESR09 section 
+• Addition of ESR10 section 
+• Update of ESR12 section 
+• Addition of ESR13 section 
+12. Significant complication, transfer of care 
+Section added to provide clarity on: 
+• Surgeries abandoned in 
+theatre/Significant complication transfer 
+of care 
+• Return to theatre for approved elective 
+surgery 
+14. Invoicing 
+Updated to provide clarity on what should be 
+included at invoicing and where queries 
+should be sent. 
+19. FAQ’s 
+Section removed, questions addressed in 
+relevant section of the guidelines. 
+Appendix 2 – Red List Procedures 
+• Spinal procedures updated to the new 
+SPN300 series codes 
+• Section added for ‘Pelvic floor 
+reconstructive, urogynaecological and 
+mesh revision and removal procedures’ 
+Appendix 4 – Non-prior approval (NPA) 
+procedures 
+Opening paragraph removed (moved further 
+up the document to clause 5) 
+
+--- PAGE 72 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+68 
+ 
+Summary of changes 1 July 2022 
+Section 
+Overview of Change 
+Appendix 4 – Non-Prior Approval Procedures 
+Addition of six new codes eligible for 
+proceeding without prior approval: 
+• NRV02 – Delayed repair of digital nerve 
+• SKP01 - Removal of foreign body 
+• WAH117 - Single amputation - digit 
+• WAH123 -Repair flexor tendon digit or 
+palm 
+• WAH124 - Repair flexor tendon wrist or 
+forearm – proximal to the carpal tunnel 
+• WAH125 - Repair extensor tendon – digit 
+or hand/wrist or forearm 
+ 
+Minor changes to the criteria for the following 
+codes: 
+• KNE81 – removal of reference to injury 
+occurring in NZ 
+• KNE91 – removal of reference to injury 
+occurring in NZ 
+• WAH135 – from 6 weeks to 12 weeks 
+ 
+Summary of changes 11 March 2022 
+Section 
+Overview of Change 
+7.1 Meeting priority timeframes 
+Updated to include prioritisation approach 
+for times of reduced capacity e.g. Covid-19 
+Protection Framework 
+Appendix 3 – H1 Priority Classification 
+Insertion of ‘non-core’ within the cervical, 
+lumbar spine and shoulder & elbow codes 
+eligible for H1 priority. 
+Correction of AC joint dislocation code 
+(SHU08) 
+
+--- PAGE 73 ---
+ 
+Elective Surgery Services Operational Guidelines  
+December 2025 
+69 
+Summary of changes 1 February 2022 
+Section 
+Overview of Change 
+5. Seeking prior approval for surgery from 
+ACC 
+Updated to reflect change in Contract clause 
+18.7 – removal of prior approval for 
+procedures listed in the ‘Non-Prior Approval 
+Procedures List’ 
+7. Determining ARTP priority 
+Updated to reflect change in H1 priority 
+classification 
+7.3 Review 
+Insertion to provide assurance criteria will be 
+reviewed 
+13. Invoicing 
+Updated to reflect change in Contract clause 
+18.7 – purchase orders no longer required for 
+procedures listed in the ‘Non-Prior Approval 
+Procedures List’ 
+15. Service Monitoring and Reporting 
+Updated to reflect change in Contract clause 
+18.7 
+Appendix 1 – Guidelines for requesting 
+Anaesthetic modifiers 
+Updated to include table of examples where 
+ACC can contribute anaesthetic modifier 
+costs to abandoned surgery 
+Appendix 4 – Non-Prior Approval Procedures 
+Insertion to reflect change in Contract clause 
+18.7 – description of non-prior approval 
+procedures and table of procedure codes 
+and conditions to be met 
+ 

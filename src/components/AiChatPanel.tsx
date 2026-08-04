@@ -120,7 +120,7 @@ export function AiChatPanel() {
     setSending(true);
     setStreamingText('');
 
-    const { messages: chatMessages, contextBlock } = buildChatMessages({
+    const { messages: chatMessages, contextBlock, retrievedSources } = await buildChatMessages({
       history,
       chips: attachedChips,
       data,
@@ -163,6 +163,7 @@ export function AiChatPanel() {
         createdAt: Date.now(),
         reasoning: reasoning || undefined,
         contextUsed: contextBlock || undefined,
+        retrievedSources: retrievedSources.length ? retrievedSources : undefined,
       });
     } else {
       addMessage({
@@ -172,6 +173,7 @@ export function AiChatPanel() {
         createdAt: Date.now(),
         error: result.error,
         contextUsed: contextBlock || undefined,
+        retrievedSources: retrievedSources.length ? retrievedSources : undefined,
       });
     }
     setStreamingText('');
@@ -295,6 +297,29 @@ export function AiChatPanel() {
                 >
                   {m.reasoning}
                 </pre>
+              </details>
+            )}
+            {m.role === 'assistant' && m.retrievedSources && m.retrievedSources.length > 0 && (
+              <details className="mt-1" style={{ marginRight: '2rem' }}>
+                <summary className="text-[11px] cursor-pointer" style={{ color: 'var(--accent)' }}>
+                  Sources ({m.retrievedSources.length})
+                </summary>
+                <div className="text-[10px] mt-1 p-2 rounded space-y-2" style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}>
+                  {m.retrievedSources.map((s, idx) => (
+                    <div key={`${s.sourceDocId}-${idx}`}>
+                      <div className="font-medium">
+                        {s.url ? (
+                          <a href={s.url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>
+                            {s.title}
+                          </a>
+                        ) : (
+                          s.title
+                        )}
+                      </div>
+                      <p className="whitespace-pre-wrap mt-0.5">{s.excerpt}</p>
+                    </div>
+                  ))}
+                </div>
               </details>
             )}
             {m.role === 'assistant' && m.contextUsed && (

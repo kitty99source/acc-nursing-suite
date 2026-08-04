@@ -1,0 +1,1809 @@
+
+--- PAGE 1 ---
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Contract HW#### 
+ 
+Contract for services between Accident Compensation 
+Corporation and Supplier Name 
+
+--- PAGE 2 ---
+Table of Contents 
+ 
+The Parties ................................................................................................................................. 1 
+The Contract ............................................................................................................................... 1 
+Standard Terms and Conditions ................................................................................................. 2 
+1. 
+Definitions of terms used in this Contract ...................................................................... 2 
+2. 
+How to interpret this Contract ....................................................................................... 7 
+3. 
+Start and end date for the Contract ............................................................................... 8 
+4. 
+Changes to this Contract ................................................................................................ 8 
+5. 
+Scope of these standard terms and conditions .............................................................. 8 
+6. 
+How each party will behave ........................................................................................... 9 
+7. 
+ACC’s obligations .......................................................................................................... 10 
+8. 
+Supplier’s obligations.................................................................................................... 10 
+9. 
+Personal and confidential information will be kept private and secure ...................... 13 
+10. 
+Charges and payment ................................................................................................... 17 
+11. 
+Responsibilities of Relationship managers ................................................................... 19 
+12. 
+How information will be managed and monitored ...................................................... 19 
+13. 
+Evaluation of services ................................................................................................... 20 
+14. 
+Improving services ........................................................................................................ 21 
+15. 
+Limits on the contractual relationship.......................................................................... 22 
+16. 
+How you deal with subcontractors ............................................................................... 22 
+17. 
+How to cover risks ........................................................................................................ 23 
+18. 
+Conflicts of interest ...................................................................................................... 23 
+19 
+Process for resolving disputes ...................................................................................... 24 
+20. 
+Ending this Contract ..................................................................................................... 25 
+21. 
+Rights after cancellation or expiry ................................................................................ 27 
+22. 
+Suspension of Services.................................................................................................. 27 
+23. 
+Notices and communication ......................................................................................... 28 
+24. 
+Business continuity ....................................................................................................... 29 
+25. 
+Extraordinary events .................................................................................................... 29 
+26. 
+ACC property ................................................................................................................ 30 
+27. 
+Organisational quality standards .................................................................................. 30 
+28. 
+General ......................................................................................................................... 32 
+29. 
+Multiple suppliers ......................................................................................................... 33 
+30. 
+Services for injured employees of accredited employers ............................................ 33 
+
+--- PAGE 3 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 1 
+ 
+The Parties 
+ 
+ 
+ACCIDENT COMPENSATION CORPORATION, a statutory corporation continued by the 
+Accident Compensation Act 2001 (called ACC and we) 
+SUPPLIER NAME CAPS (called Supplier and you) 
+Address 
+The Contract 
+ 
+ 
+We appoint you to deliver the Services described in each Service Schedule that forms part 
+of this Contract, and you accept that appointment. You will provide each Service described 
+in a Service Schedule for the Term described in that Service Schedule. This Contract sets 
+out the Parties' rights and obligations. 
+The documents forming this Contract are: 
+1. 
+This Cover Page 
+2. 
+Standard Terms and Conditions 
+3. 
+Service Schedules entered into under this Contract 
+4. 
+Any variations made according to this Contract. 
+ 
+How to read this Contract 
+1. 
+Together the above documents form the whole Contract. 
+2. 
+Clause numbers refer to clauses in the Standard Terms and Conditions. 
+3. 
+Words defined in the Definitions section at clause 1 have the stated meaning 
+throughout the Contract. 
+Acceptance 
+In signing this Contract, each Party acknowledges that it has read and agrees to be bound 
+by this Contract. 
+ 
+For and on behalf of 
+Accident Compensation Corporation: 
+ 
+For and on behalf of 
+Supplier name: 
+(signature)  
+ 
+(signature) 
+Name 
+ 
+ 
+Name 
+Position 
+Manager, Health Sector 
+Commissioning 
+ 
+ 
+Position 
+Date 
+ 
+ 
+ 
+Date 
+
+--- PAGE 4 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 2 
+ 
+Standard Terms and Conditions 
+ 
+ 
+ 
+1. 
+Definitions of terms used in this Contract 
+ 
+In this Contract, when we use the terms listed in this section, they have the meaning given 
+immediately below: 
+AC Act 
+The Accident Compensation Act 2001. 
+ 
+ACC 
+The purchaser of the Services. ACC is named as purchaser of the Services under the 
+Contract on the cover page of this Contract. Where the context requires, the term ‘ACC’ 
+includes ACC’s employees, agents, consultants and contractors, and its successors and 
+assigns. ‘Accident Compensation Corporation’ has the same meaning. 
+Accredited Employer 
+An employer accredited by ACC under the Accredited Employer Programme. ‘Accredited’ 
+means the employer and ACC have an agreement under which the employer provides 
+entitlements for work-related personal injuries suffered by the employer’s employees. 
+‘Employees’ includes any subcontractor who meets the terms of the accreditation 
+agreement. The Accredited Employer Programme is subject to a framework established 
+under section 183 of the AC Act 2001. 
+Business day 
+A day when most businesses in New Zealand are open for business. Saturday, Sunday and 
+public holidays are not business days. A business day starts at 8.30am and ends at 5pm. 
+‘Working Day’ in any Service Schedule means the same as ‘Business day’. 
+Business continuity 
+The Supplier’s capability to continue delivery of Services at acceptable levels following a 
+disruptive event. 
+Charges 
+The total amount payable by ACC to you, as stated in each Service Schedule. Charges are 
+payable when the Services under this Contract have been delivered, provided you have 
+submitted a valid tax invoice. 
+
+--- PAGE 5 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 3 
+ 
+Client 
+Any person who ACC has accepted as eligible for cover for personal injury under the AC Act 
+and any other person or class of persons ACC regards as a client for the purposes of this 
+Contract. ‘Claimant’ in any Service Schedule means the same as ‘Client’. 
+Commencement date 
+See Start date. 
+ 
+Confidential information 
+Information that has one or more of the following characteristics: 
+ 
+(a) 
+It is, by its nature, confidential 
+ 
+(b) 
+It is marked by either Party as 'confidential', 'in confidence', 'restricted' or 'commercial 
+in confidence’. 
+ 
+(c) 
+It is provided by either Party or a third party 'in confidence'. 
+ 
+(d) 
+Either Party knows, or ought to know, it is confidential. 
+ 
+(e) 
+It is of a sensitive nature or commercially sensitive to either Party 
+and includes Personal Information. 
+ 
+Conflict of interest 
+When personal or business interests or obligations conflict with obligations under this 
+Contract. A conflict of interest may apply to either of the Parties or to its service providers. It 
+may be: 
+(a) 
+actual: where the conflict currently exists 
+ 
+(b) 
+potential: where the conflict is about to happen or could happen 
+ 
+(c) 
+perceived: where other people may reasonably think that a person is compromised. 
+A conflict of interest means the independence, objectivity or impartiality of a Party or 
+service provider can be questioned. 
+Contract 
+The legal Contract between ACC and you comprising the Cover Page, these Standard 
+Terms and Conditions, any Service Schedule, and any Variations made according to this 
+Contract. 
+Date of expiry 
+See End date. 
+ 
+
+--- PAGE 6 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 4 
+ 
+End date 
+For any Service Schedule, the earlier of: 
+ 
+(a) 
+the date the Service Schedule is due to end, as stated in that Service Schedule, or 
+ 
+(b) 
+any other date agreed between the Parties as the date for Services to end. 
+‘Date of expiry’ in any Service Schedule means the same as ‘End date’. 
+Evaluation 
+Evaluations can be at a service provider, supplier, and/or Service-wide level, and methods of 
+evaluation may include but are not limited to: 
+(a) 
+issues based review or audit, where risks and or concerns have been identified 
+ 
+(b) 
+post-implementation review, to evaluate the effectiveness of a new Service 
+ 
+(c) 
+service development review, to inform potential service redesign 
+ 
+(d) 
+routine programmes of service-wide audits by ACC, and 
+ 
+(e) 
+post-audit follow up to support ACC’s audit function and monitor progress towards 
+recommended actions. 
+ 
+Extraordinary event 
+An event beyond the reasonable control of the Party immediately affected by the event. If the 
+Party claiming could have prevented or overcome any risk or event by taking reasonable 
+care, it is not an extraordinary event. Examples of extraordinary events include: 
+(a) 
+‘acts of God’ such as lightning strikes, earthquakes, tsunamis, volcanic eruptions, 
+floods, storms, explosions, fires, pandemics and any natural disaster 
+ 
+(b) 
+acts of war (whether declared or not) such as invasion, actions of foreign enemies, 
+military mobilisation, requisition or embargo 
+ 
+(c) 
+acts of public enemies such as terrorism, riots, civil commotion, malicious damage, 
+sabotage, rebellion, insurrection, revolution or military usurped power or civil war 
+ 
+(d) 
+contamination by radioactivity from nuclear substances or germ warfare or any other 
+such hazardous properties. 
+ 
+GST 
+The goods and services tax payable under the New Zealand Goods and Services Tax Act 
+1985. 
+Health Information 
+As defined in the Health Information Privacy Code 2020. 
+
+--- PAGE 7 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 5 
+ 
+Injured employee 
+A person who has suffered a work related personal injury while employed by an accredited 
+employer. 
+Insolvency event 
+The point at which an individual or entity becomes insolvent or unable to pay debts as they 
+fall due. An insolvency event may be any of the following: 
+(a) 
+the appointment of a receiver, or receiver and manager, or statutory manager for the 
+whole or part of the activity or your property 
+ 
+(b) 
+you entering into, or resolving to enter into, a voluntary agreement with creditors or 
+any class of creditors for partial payment to fully satisfy their claims 
+ 
+(c) 
+you suspending or stopping payment to your creditors generally, or ceasing to carry 
+on business as normal, or threatening or stating that you will do any of those things. 
+ 
+Notice 
+A formal or legal communication from one Party to the other that meets the requirements of 
+clause 23. 
+Notifiable Privacy Breach 
+As defined in the Privacy Act 2020. 
+Party 
+ACC and you are each a Party to this Contract, and together are the Parties. 
+Personal Information 
+Information about an identifiable individual, in the form of either: 
+(a) 
+information that by itself identifies an individual (such as a person’s name); or  
+(b) 
+information that can identify an individual when combined with other reasonably 
+available information,  
+and, where relevant, includes Health Information. 
+Privacy Breach 
+As defined in the Privacy Act 2020. 
+Records 
+All information and data necessary to manage this Contract and deliver the Services. 
+Records include, but are not limited to, reports, invoices, letters, emails, notes of meetings, 
+photographs and other media recordings. Records can be hard copies or soft copies stored 
+electronically. 
+
+--- PAGE 8 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 6 
+ 
+Registered health professional 
+As defined in the AC Act. 
+ 
+Relationship manager 
+The person named in each Service Schedule as the Relationship manager for that Service. 
+Relationship managers’ responsibilities are listed in clause 11. The relationship manager 
+position may be known by a number of different titles, including supplier manager and 
+contract manager. 
+Services 
+All work, tasks and deliverables that you must perform and deliver under this Contract. 
+Services are stated in a Service Schedule.  
+Service provider 
+A person engaged by you to provide any of the Services. You may also be a service provider 
+if you are an individual. Examples include: the owner of the Supplier, its directors, 
+employees, subcontractors, agents, external consultants, specialists, technical support and 
+co-opted or seconded staff. 
+Service Schedule 
+An attachment to this Contract with the title ‘Service Schedule’. Service Schedules are 
+added to this Contract by agreement in writing by the Parties. 
+Start date 
+The date when the term of any Service Schedule starts, as set out in that Service Schedule. 
+‘Commencement date’ in any Service Schedule means the same as ‘Start date’. 
+Subcontractor 
+A person, business, company or organisation contracted by you to deliver or perform part of 
+your obligations under this Contract. A person engaged on a contract for Services who 
+performs the tasks of an employee is not considered a Subcontractor. 
+Supplier 
+The person, business, company or organisation named as the Supplier on the cover page, 
+also referred to as ‘you’. ‘Supplier’ includes your service providers, successors, and 
+permitted assignees. 
+Term 
+The period described in a Service Schedule during which you will provide the Services 
+described in that Service Schedule. 
+
+--- PAGE 9 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 7 
+ 
+Termination date 
+The date you will stop providing any or all Services. 
+Treatment provider 
+As defined in the AC Act. 
+ 
+Variation 
+A change to any aspect of this Contract that complies with clause 4. 
+ 
+We, us, our, and ours 
+Accident Compensation Corporation, also known as ACC, as named on the Cover Page. 
+ 
+You, your and yours 
+The Supplier named on the Cover Page. 
+ 
+2. 
+How to interpret this Contract 
+ 
+2.1. 
+The rules in this clause apply when interpreting this Contract, unless the context 
+otherwise requires. 
+2.2. 
+Terms defined in this document bear that defined meaning in the whole of this 
+Contract. 
+2.3. 
+A reference to one gender includes the other. 
+ 
+2.4. 
+References to schedules, sections, clauses and subclauses are references to 
+schedules, sections, clauses and subclauses of this Contract. 
+2.5. 
+The singular includes the plural and vice versa. 
+ 
+2.6. 
+Clause and other headings are ignored in interpreting this Contract. 
+ 
+2.7. 
+Any obligation to not do anything includes an obligation not to let, allow or cause that 
+thing to be done. 
+2.8. 
+References to statutes, regulations, ordinances, bylaws or other instruments include 
+any amendment, substitution or re-enactment. 
+2.9. 
+A person includes a company or other entity. Any reference to a person applies to its 
+personal representatives or to its legal successor. 
+ 
+
+--- PAGE 10 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 8 
+ 
+3. 
+Start and end date for the Contract 
+ 
+3.1. 
+This Contract starts on the date the second Party to sign has signed the cover page. 
+ 
+3.2. 
+Each Service Schedule has a start date and end date for the relevant Service. 
+ 
+3.3. 
+This Contract continues while there is a Service Schedule that has not been 
+terminated or has not reached its end date. 
+ 
+4. 
+Changes to this Contract 
+ 
+4.1. 
+Any change to this Contract is called a Variation. Unless clause 4.2 or 4.3 or 4.4 
+apply, a Variation must be agreed by both Parties and recorded: 
+(a) 
+in writing and signed by both Parties, or 
+ 
+(b) 
+through an exchange of emails where the authors have delegated authority to 
+approve the Variation. 
+ 
+ACC may amend the Contract 
+4.2. 
+At any time, after consulting with you, we may give you notice that this Contract 
+(excluding prices) is varied with effect from a date stated in the notice. The notice will 
+take effect from that date, and the Contract will be varied. We may not, under this 
+clause, give a notice that reduces the prices payable under this Contract. 
+4.3. 
+If you can show that you will suffer additional costs as a result of the variation made 
+under clause 4.2, you can claim these additional costs from us. If we agree that the 
+variation has caused additional costs, we will be liable to pay such costs to you. If we 
+do not agree, either Party may require the matter to be resolved under clause 19 
+(Process for resolving disputes). 
+Variations to give effect to government policy changes 
+4.4. 
+Despite clause 4.2, we may give you a notice varying this Contract if a change in 
+legislation or regulations or a ministerial directive under the AC Act requires this 
+Contract to be varied in any respect. This Contract will be varied from the date stated 
+in the notice. We will not be liable for any loss or additional costs incurred by you as a 
+result, unless we agree otherwise. 
+ 
+5. 
+Scope of these standard terms and conditions 
+ 
+5.1. 
+These Standard Terms and Conditions apply to each Service described in a Service 
+Schedule. Any changes to these Standard Terms and Conditions will be set out in the 
+relevant Service Schedule. 
+
+--- PAGE 11 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 9 
+ 
+5.2. 
+To avoid doubt, ACC and you agree that these Standard Terms and Conditions do 
+not apply to any services you provide which are not described in a Service Schedule 
+(e.g. treatment for a non-ACC covered condition funded by another agency or by the 
+person). 
+ 
+6. 
+How each party will behave 
+ 
+6.1. 
+Both Parties agree: 
+ 
+(a) 
+to act in good faith and demonstrate honesty, integrity, openness and 
+accountability in their dealings with each other 
+ 
+(b) 
+to discuss matters affecting this Contract or the delivery of the Services 
+ 
+(c) 
+to notify each other immediately of any actual or anticipated issues that could 
+significantly impact on the Services or the charges 
+ 
+(d) 
+Subject to sub clause 6.2(a) and clause 9, not to make or issue to the media 
+or any member of the public any oral or written statement or comment 
+concerning a client, the client’s treatment, ACC or the operation of this 
+Contract, without consulting the other Party beforehand 
+ 
+(e) 
+to promptly advise the other if: 
+(i) 
+required to provide information to a client, professional disciplinary 
+body or other person under the Official Information Act 1982, the 
+current Code of Health and Disability Services Consumers’ Rights or 
+other legislation about a Client or Services provided under this 
+Contract, or 
+(ii) 
+it is the subject of a complaint concerning a Client, the Client’s 
+treatment in relation to the Services or the operation of this Contract. 
+No adverse comments 
+ 
+6.2. 
+Each Party undertakes: 
+ 
+(a) 
+not to make any oral or written statement or comment to the media, a Client, 
+or member of the public about the operation of the Contract that criticises the 
+other Party or public opinion of the other Party, or that brings the other Party 
+into disrepute (an adverse comment) 
+ 
+(b) 
+if responsible for such a statement or comment, at the request and with the 
+prior agreement of the other Party, to promptly make an appropriate retraction 
+or take such other remedial steps as are appropriate and reasonable in the 
+circumstances, which will be without prejudice to any other rights, remedies or 
+actions available to the other Party 
+ 
+
+--- PAGE 12 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 10 
+ 
+(c) 
+not to publicly display (for example, on websites or social networking sites) 
+objectionable or derogatory comments about the Services, this Contract, each 
+other or any of its service providers, and to ensure that its service providers 
+do not do so. 
+ 
+7. 
+ACC’s obligations 
+ 
+7.1. 
+ACC is a Crown entity and is therefore required to act consistently with the Treaty of 
+Waitangi. We will take Treaty principles into account when designing, delivering, and 
+monitoring Services that impact on economic opportunities and social outcomes for 
+Māori. 
+7.2. 
+We must make decisions and give approvals that you reasonably require to deliver 
+the Services. 
+7.3. 
+We must give all decisions and approvals within the timeframes in a Service 
+Schedule or within reasonable timeframes if a timeframe is not specified. 
+7.4. 
+We must provide you with copies of any policies or procedures we expect you to 
+comply with. 
+7.5. 
+We must pay you the Charges for the Services, as long as you have delivered 
+the Services and invoiced ACC according to this Contract. 
+7.6. 
+We must comply with all applicable laws and regulations. 
+ 
+Security 
+7.7. 
+Subject to all applicable law including the Privacy Act 2020, we will tell you if we are 
+aware of significant security and safety issues with a Client. 
+ 
+8. 
+Supplier’s obligations 
+Meet all regulatory and professional standards 
+8.1. 
+Your service delivery must 
+ 
+(a) 
+comply with all applicable laws and regulations, including the: 
+(i) 
+Health and Disability Services (Safety) Act 2001 
+(ii) 
+Privacy Act 2020 and Health Information Privacy Code 2020 
+(iii) 
+Health Practitioners Competence Assurance Act 2003 
+(iv) 
+Accident Compensation Act 2001 
+(v) 
+Health and Safety at Work Act 2015 
+(vi) 
+Children’s Act 2014 
+ 
+
+--- PAGE 13 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 11 
+ 
+(b) 
+use the degree of professional skill, care and diligence expected of an 
+appropriately qualified person experienced in providing the same or similar 
+services 
+ 
+(c) 
+meet all current clinical, ethical and professional standards and guidelines 
+ 
+(d) 
+follow good practice at the level expected from a leading supplier in the 
+relevant profession or industry. 
+ 
+Meet the terms of the contract 
+8.2. 
+You must deliver the Services: 
+ 
+(a) 
+on time and to the required performance standards and quality, as: 
+(i) 
+set out in these Standard Terms and Conditions and the relevant 
+Service Schedule 
+(ii) 
+reasonably notified by ACC to you from time to time, provided such 
+notified standards are accepted by you 
+(b) 
+for the amounts agreed as Charges. 
+ 
+Comply with ACC’s policies 
+8.3. 
+Services must comply with the Code of ACC Claimants’ Rights and any reasonable 
+ACC policy on that Code that we provide to you (if that Code applies to the Services). 
+If we contact you about a complaint under that Code, you will co-operate fully with us. 
+8.4. 
+Services must comply with all ACC’s policies on Service delivery. We must provide 
+you with a copy of these policies. 
+8.5. 
+If you are at ACC's premises, you must comply with our policies and procedures, 
+including those relating to health and safety, and security requirements. We will tell 
+you what the relevant policies and procedures are, and give you a copy of them. 
+Make sure your personnel and equipment meet the required standard 
+8.6. 
+You must make sure that your service providers have the necessary skills, 
+experience, training and resources to successfully deliver the Services. This includes 
+any specific qualifications, skills, experience, training and resources specified in a 
+Service Schedule and the standards in clause 8.1. You will make sure that your 
+service providers are aware of your obligations under this Contract, and meet all your 
+obligations in this Contract. 
+
+--- PAGE 14 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 12 
+ 
+8.7. 
+You must make sure that all service providers who are registered health 
+professionals or treatment providers meet the requirements of their registration body 
+under the Health Practitioners Competence Assurance Act 2003, including meeting 
+all clinical competence, cultural competence, and ethical conduct standards set by 
+the registration body. You must advise us promptly if a service provider is subject to 
+any practising restrictions imposed by their registration professional body, and keep 
+us informed of any changes to those restrictions. 
+8.8. 
+You must provide all equipment and resources necessary to deliver the Services. 
+ 
+Services must comply with the Treaty and meet cultural needs 
+8.9. 
+You must recognise the Treaty of Waitangi in the way you provide Services, including 
+taking account of the social, economic and political values of Māori. 
+8.10. If the nature of the Services requires it, you will deliver Services in a manner that is 
+culturally appropriate including meeting the unique needs of the Māori client and that 
+these Services comply with any reasonable ACC policy provided to you. You will 
+contact the Relationship manager to discuss any issues about this clause. 
+8.11. If the nature of the Services requires it, you will deliver Services in a manner that is 
+culturally appropriate including meeting the unique needs of Pacific, Asian and other 
+ethnic or indigenous groups and that these Services comply with any reasonable 
+ACC policy provided to you. You will contact the Relationship manager to discuss 
+any issues about this clause.   
+Contract excludes regulations 
+8.12. If a Service to a Client is included in a Service Schedule to this Contract, you must 
+charge under this Contract. You cannot charge for that Service under any 
+regulations. 
+Insolvency events 
+8.13. You agree to advise ACC of an insolvency event as soon as it happens. 
+ 
+High profile issues 
+8.14. Subject to all applicable law including the Privacy Act 2020, you will notify ACC 
+immediately by telling the Relationship Manager for the relevant Service Schedule if 
+you become aware of any issue about a Client or this Contract which may attract 
+interest from the media or the public. 
+Security issues 
+8.15. Subject to all applicable law including the Privacy Act 2020, you will tell us if you are 
+aware of significant security and safety issues with a Client. 
+
+--- PAGE 15 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 13 
+ 
+Health and Safety 
+8.16. Ensuring health and safety: In performing its obligations under this Contract, the 
+Supplier must: 
+(a) 
+comply with all relevant health and safety legislation including the Health and 
+Safety at Work Act 2015 ("HSAWA"); 
+ 
+(b) 
+so far as reasonably practicable, ensure the health and safety of: 
+ 
+(i) 
+ACC's and the Supplier's personnel; and 
+ 
+(ii) 
+ACC Clients; 
+ 
+(c) 
+take all practical steps to ensure that no act or omission gives rise to, or is 
+likely to give rise to, the issue of an improvement or prohibition notice, 
+enforcement action or a prosecution under any health and safety legislation 
+(including the HSAWA) against ACC or the Supplier; 
+ 
+(d) 
+advise ACC in writing as soon as possible of: 
+ 
+(i) 
+any hazards, risks, accidents, incidents or near misses to the 
+Supplier's or a subcontractor's staff arising from any ACC Client's 
+behaviour or condition; 
+(ii) 
+all notifiable events (as defined in the HSAWA) relating to the 
+Services;  
+(iii) 
+any contact by any regulatory agency in relation to any health, safety 
+or environmental matter relating to the Services (unless the Supplier is 
+prohibited by law from so advising ACC); 
+ 
+(e) 
+comply with ACC's reasonable instructions in relation to any matter referred 
+to  in sub clause (d). 
+9. 
+Personal and confidential information will be kept private and 
+secure 
+Protection of Personal Information 
+9.1. 
+You will comply with the Privacy Act 2020 and the Health Information Privacy Code 
+2020 in connection with all Personal Information relating to Clients, accredited 
+employers, levy payers, ACC personnel or any other individual that you obtain 
+under or connection with this Contract. This includes: 
+(a) 
+collecting, using and disclosing Personal Information only where the 
+collection, use or disclosure is permitted or authorised by the Privacy Act 
+2020 or the Health Information Privacy Code 2020 
+
+--- PAGE 16 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 14 
+ 
+(b) 
+having a plain English privacy notice or privacy statement for Clients that 
+complies with the Privacy Act 2020 and the Health Information Privacy 
+Code 2020   
+(c) 
+ensuring that any Personal Information that you have in your possession or 
+control:  
+(i) 
+is protected by reasonable security safeguards against loss or 
+unauthorised or unlawful access, use, modification or disclosure 
+(ii) 
+is not unlawfully transmitted, transferred, exported, processed or 
+stored by you or a third party service provider, and 
+(iii) 
+is only accessed by authorised personnel who need to see it in 
+connection with the Services 
+(d) 
+appointing a Privacy Officer 
+(e) 
+having a privacy policy which complies with the Privacy Act 2020 and the 
+Health Information Privacy Code 2020 that includes: 
+(i) 
+measures to mitigate the occurrence of a Privacy Breach that follow 
+good practice at the level expected from a leading supplier in the 
+relevant profession or industry, and  
+(ii) 
+what to do if there is an actual or suspected Privacy Breach or near 
+miss including procedures to notify ACC in accordance with clause 
+9.4 and, when required, the Privacy Commissioner and any affected 
+individual(s) 
+(f) 
+acting in a manner that facilitates ACC’s compliance with the Privacy Act 
+2020 and the Health Information Privacy Code 2020, and 
+(g) 
+complying with any reasonable policies or directions from ACC relating to 
+your collection, use or disclosure of Personal Information you obtain under 
+or in connection with this Contract. 
+Assessment 
+9.2. 
+You agree that we may assess your compliance with this clause 9 at any time 
+on reasonable notice. You will cooperate with any privacy assessment, 
+including completing self-assessments on request. You will provide ACC with 
+a draft of any such privacy assessment and give ACC a reasonable 
+opportunity to provide feedback on the drafts before being finalised. 
+
+--- PAGE 17 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 15 
+ 
+Protection of confidential non-personal information 
+9.3. 
+Each party confirms that it will not use or disclose the other Party's 
+Confidential   Information to any person or organisation other than if: 
+(a) 
+use or disclosure is necessary to provide or use the Services 
+(b) 
+the other Party gives prior written approval for the use or disclosure 
+(c) 
+the use or disclosure is required by law (including under the Official Information 
+Act 1982), Ministers or parliamentary convention 
+(d) 
+information disclosed has already become public, other than through a breach of 
+the obligation of confidentiality by one of the Parties. 
+ 
+What happens if there is a Privacy Breach 
+9.4. 
+If you become aware of an actual or suspected Privacy Breach or near miss involving 
+any Personal Information that you obtain under or connection with this Contract: 
+(a) 
+you must notify ACC’s Relationship Manager by email (copying in ACC’s 
+Privacy Officer: privacy.officer@acc.co.nz) and phone as soon as possible and 
+within 24 hours 
+(b) 
+we will then work together to manage the implications and consequences, 
+including by: 
+(i) 
+ensuring all relevant personnel are available to understand and manage 
+the implications for any Clients and ACC 
+(ii) 
+providing all reasonable and legally permissible information about the 
+actual or suspected Privacy Breach or near miss  
+(iii) 
+using reasonable endeavours to have prior discussions before making 
+any public comments, including to media 
+(iv) 
+complying with ACC’s reasonable issues management procedures, and 
+(v) 
+identifying and implementing reasonable procedures to prevent such 
+Privacy Breaches or near misses in the future 
+(c) 
+ACC may take any steps we believe in good faith are necessary to protect the 
+security of any affected Personal Information, which may include suspending the 
+Services or requiring you to suspend the access that personnel have to the 
+Personal Information 
+(d) 
+if it is a Notifiable Privacy Breach and ACC has notification obligations under the 
+Privacy Act 2020 because the Personal Information is deemed under the 
+Privacy Act 2020 to be held by ACC alone, then: 
+(i) 
+ACC will be responsible for notifying the Privacy Commissioner and, if 
+required, the affected individuals, and  
+(ii) 
+you will not make such notification on ACC's behalf without our prior 
+written consent 
+
+--- PAGE 18 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 16 
+ 
+(e) 
+if it is a Notifiable Privacy Breach and you have notification obligations under the 
+Privacy Act (either because you are the party that holds the Personal 
+Information or because both parties are deemed to hold it), you will use all 
+reasonable endeavours to discuss your proposed notification with ACC before 
+notifying the Privacy Commissioner and, if required, the affected individuals. 
+ 
+Obligations for your personnel 
+9.5. 
+You will ensure that your personnel, service providers and subcontractors: 
+(a) 
+are aware of and comply with the obligations to protect Personal 
+Information and Confidential Information in this Contract,  
+(b) 
+are aware of the character and sensitivity of Personal Information about 
+Clients, 
+(c) 
+only access Personal Information if they need to see it in connection with 
+the Services,  
+(d) 
+do not collect, use or disclose any Confidential Information or any  
+Personal Information, except as allowed by this Contract, and 
+(e) 
+know when and how to report a Privacy Breach, security incident or 
+conflict of interest that could affect the security, integrity or availability of 
+Personal Information that you obtain under or in connection with this 
+Contract. 
+ 
+Recording of meetings by clients 
+9.6. 
+If a Client records (audio or video) a meeting with a service provider, and the service  
+provider is aware of the recording, you will ensure that the service provider tells the 
+Client that the service provider may also record or document the  meeting to ensure a 
+complete and accurate record. You will also ensure that: 
+(a) 
+the service provider only collects, uses, stores and discloses such records or 
+documents in accordance with this clause 9, and 
+(b) 
+tells the Client that the service provider or you may supply a copy of the 
+record or document to ACC. 
+ 
+Information about service providers  
+9.7. 
+You understand that ACC may disclose (for example on the internet) details of 
+suppliers and service providers (including names, qualifications, experience and contact 
+details). You will ensure that: 
+(a) 
+your service providers know that ACC can disclose this information; and 
+(b) 
+the details provided to ACC are accurate, and tell ACC if any details change. 
+
+--- PAGE 19 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 17 
+ 
+Privacy declaration 
+9.8. 
+ACC may from time to time request a declaration from you to confirm your compliance 
+with this clause 9. If requested to do so, you must provide ACC with a signed 
+declaration promptly and within the period reasonably requested by ACC. 
+ 
+10. Charges and payment 
+You charge us on a valid tax invoice 
+10.1. The Charges are the total amount payable by ACC to you for delivery of the Services. 
+Charges include all service item codes in a Service Schedule. If service items codes 
+for travel are included in a Service Schedule, you can claim for travel under ACC’s 
+travel policy. We will provide you with a copy of this policy. 
+10.2. You must provide valid tax invoices for all Charges on the dates or at the times 
+specified in the relevant Service Schedule. If the invoice you provide to us is not a 
+valid tax invoice, we have no obligation to pay the Charges set out on it. A valid tax 
+invoice must: 
+(a) 
+be clearly marked 'Tax invoice’ 
+ 
+(b) 
+contain correct information about you, us, and the Contract, including: 
+(i) 
+your name, address and GST number, if you are registered for GST 
+(ii) 
+ACC’s name and address, and be marked for the attention of the 
+person or ACC office specified by ACC for that Service 
+(iii) 
+the date the invoice was issued 
+(iv) 
+the name of the relevant Service Schedule and a description of the 
+Services supplied, including the amount of time spent in the delivery of 
+the Services if payment is based on an hourly rate 
+(v) 
+the date the Services were provided 
+(vi) 
+contain ACC’s Contract reference or purchase order number, if there is 
+one 
+(vii) 
+your Supplier ID (also called “Vendor ID”) 
+ 
+(c) 
+contain correct financial information, including: 
+(i) 
+all GST due 
+(ii) 
+the Charges due, calculated correctly in New Zealand currency or 
+another currency agreed in writing by ACC and you 
+(d) 
+be supported by GST receipts, if expenses are claimed, and any other 
+verifying documentation reasonably requested by ACC 
+ 
+
+--- PAGE 20 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 18 
+ 
+(e) 
+be submitted electronically using one of ACC’s prescribed electronic methods 
+(available on ACC’s website) unless the Service Schedule allows manual 
+invoicing. 
+ 
+10.3. Unless otherwise specified in each Service Schedule, the price for each Service is 
+the entire amount you can charge for that Service. You must not charge any 
+additional amount to ACC, any Client or any other person (as co-payment or part- 
+charge or otherwise) for that Service. 
+ 
+We will pay on invoice 
+10.4. ACC will pay all complying invoices for Services provided according to this Contract. 
+Payment will be in one lodgement to the bank account you specified in the relevant 
+Service Schedule. If a complying invoice is received by ACC by the 10th day of the 
+month following the period being billed, payment will be made on or before the 20th 
+of the month following the period being billed. If the 20th of the month is not a 
+business day, payment will be made on or before the first business day following the 
+20th. If ACC pays an invoice and later determines that all or part of the invoice was 
+for Services which were not provided according to this Contract, ACC can, at its 
+discretion, and after consulting with you, recover the amount from you or deduct the 
+amount from any payments due to you. 
+10.5. If we cannot approve any invoice or part of an invoice for payment, we will advise 
+you. We will detail on the remittance advice the reasons why we cannot approve 
+payment, and what steps you need to take to obtain approval. After you take these 
+steps, we will then make payment on or before the 20th of the month following the 
+month that approval is given. If the 20th of the month is not a Business day, payment 
+will be made on or before the first business day following the 20th. 
+10.6. If you do not receive payment of all or part of a complying invoice, and we do not give 
+a reason for not making payment, you will contact ACC’s provider helpline by phone 
+or email and ask them to investigate and resolve the non-payment. 
+10.7. We will not pay for a Service where the invoice for that Service is not received within 
+12 months of the later date of: 
+(a) 
+the date the Service was provided 
+ 
+(b) 
+the date cover was granted by ACC. 
+ 
+We do not guarantee to refer clients 
+10.8. Despite anything stated or implied in this Contract, ACC does not have an obligation 
+to make sure that Clients are referred to you. We do not guarantee you any minimum 
+volume of Services or any minimum amount payable. 
+ 
+
+--- PAGE 21 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 19 
+ 
+11. Responsibilities of Relationship managers 
+ 
+11.1. Relationship managers are named in each Service Schedule. Relationship 
+managers are responsible for managing that Service Schedule, including: 
+(a) 
+managing the relationship between the Parties 
+ 
+(b) 
+managing your overall performance 
+ 
+(c) 
+overseeing the effective implementation of the Service Schedule 
+ 
+(d) 
+acting as a first point of contact for any issues that arise 
+ 
+(e) 
+identifying potential savings and improvements 
+ 
+(f) 
+co-ordinating all reporting and review meetings. 
+ 
+11.2. If either Party changes its Relationship manager for any Service, it must, within a 
+reasonable period, tell the other Party in writing the name and contact details of the 
+replacement. ACC can advise you by publishing the new details on its provider 
+website. 
+ 
+12. How information will be managed and monitored 
+ 
+12.1. You must: 
+ 
+(a) 
+keep and maintain records using prudent business practice and according to 
+all applicable laws 
+ 
+(b) 
+make sure the records are easy to access, and 
+ 
+(c) 
+keep the records safe. 
+ 
+12.2. When we make a reasonable request for information about the Services, you must 
+give us that information. You must provide all information in a format we can use, and 
+within a reasonable time. 
+12.3. If we need information to comply with an enquiry or our statutory, parliamentary, or 
+other reporting obligations, you must co-operate with us to provide information 
+immediately. 
+12.4. You must make your Records available to us during the term of the Contract and for 
+10 years after the end date (unless you have already provided them to us). 
+12.5. You must make sure that records provided by ACC or created for ACC, are securely 
+managed. When records are disposed of, you must make sure they are securely 
+destroyed. 
+ 
+
+--- PAGE 22 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 20 
+ 
+Keeping clinical records 
+12.6. You must ensure that, where clinical records are required, you maintain clinical 
+records that are clear and accurate. Your clinical records must: 
+(a) 
+meet the relevant professional standards for clinical record keeping regarding: 
+(i) 
+assessment 
+(ii) 
+Client discussion 
+(iii) 
+care, treatment and medications provided 
+(iv) 
+effectiveness of care or treatment 
+(v) 
+evidence of informed consent 
+ 
+(b) 
+be dated and signed and clearly attributable to the Service provider 
+ 
+(c) 
+contain the ACC45 number and the National Health Index (NHI) number (if 
+relevant). 
+ 
+13. Evaluation of services 
+ 
+13.1. ACC has the right to evaluate any Service under this Contract, so that we can check 
+compliance with organisational and Service quality requirements. 
+13.2. Such evaluations can consider any and all aspects of this Contract. 
+ 
+13.3. ACC will use any method of evaluation that we determine is appropriate based on the 
+perceived level of risk. 
+13.4. ACC can perform such evaluations itself or by using an appropriate subcontractor or 
+other government agency. 
+13.5. ACC will give you at least 10 business days’ notice of our intention to conduct an 
+evaluation. If we believe that delay will unnecessarily prejudice the interests of any 
+person, we may give you notice of our intention to carry out an evaluation within such 
+other time ACC considers appropriate, but on no less than 24 hours’ notice. 
+13.6. If ACC considers an evaluation is necessary, then subject to the requirements of 
+relevant law, you will allow ACC access to the information necessary for that process. 
+This includes your records and premises and the records and premises of any 
+relevant subcontractor. You, and any relevant subcontractors will provide ACC with 
+every reasonable facility for and assistance in obtaining access to undertake the 
+evaluation. The person conducting the evaluation may (subject to the rights of Clients 
+or other people receiving the Services) attend Services being provided, and talk with 
+Clients and other providers or users of Services. 
+ 
+
+--- PAGE 23 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 21 
+ 
+Who pays for an evaluation 
+13.7. We will not charge you and you will not charge us for any initial evaluation process. 
+You will pay for any further evaluations about the same performance issues if you 
+have not improved your Service standards to the level required by ACC within an 
+agreed length of time. 
+ 
+14. Improving services 
+Process for changes to Service performance 
+14.1. Reports and communications provided by you in relation to Service delivery, ACC 
+monitoring of data and Service delivery, and findings from evaluations (including 
+audits) may be used by ACC, in addition to other lawful uses, to improve Service 
+performance. 
+14.2. ACC and you will discuss reports to identify any issues and decide: 
+ 
+(a) 
+if performance could be expected to change, or 
+ 
+(b) 
+if there are other factors that provide a reasonable basis for the identified 
+performance. 
+ 
+14.3. If a change in performance is required, then we will work with you to develop required 
+action(s) by each Party and the timeframes for progress review. 
+14.4. If we have observed a change in performance to bring it within appropriate 
+parameters, we will provide feedback to you and end the performance improvement 
+process. 
+14.5. If improvements have been evidenced, but further change in performance is required, 
+both Parties will agree to an extension of the performance improvement plan. This 
+plan will include any changes to the required action(s) by each Party and the agreed 
+timeframes for those actions. 
+14.6. If we do not observe sufficient improvement, at the end of either the initial or any 
+subsequent performance improvement period, or if you do not agree to a 
+performance improvement plan, we may issue a notice of breach of contract under 
+clause 20.8. 
+14.7. The powers or processes in this clause 14 do not limit ACC’s powers under clause 
+20.8 to 20.10 
+ 
+
+--- PAGE 24 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 22 
+ 
+15. Limits on the contractual relationship 
+ 
+15.1. You are an independent contractor. Nothing in this Contract constitutes a legal 
+relationship between the Parties of partnership, joint venture, agency, or 
+employment. You are responsible for your own and your service providers’ liabilities. 
+Such liabilities include salaries, wages, holiday or redundancy payments, and any 
+GST, corporate, personal and withholding taxes, ACC levies or other levies 
+attributable to your business or to engaging your service providers. 
+15.2. Neither Party has authority to bind or represent the other Party in any way or for any 
+purpose. 
+Transfer of rights or obligations 
+15.3. Each Party may only transfer any of its rights or obligations under this Contract if it 
+has the other Party’s written approval. ACC may, in its sole discretion, decide 
+whether to give its approval. You must ask ACC for approval for any such transfer at 
+least 30 business days before the date of the proposed transfer. 
+15.4. If you transfer your rights or obligations without obtaining ACC’s written approval to 
+the change, then we may give you a notice of breach under clause 20.8. An example 
+of transferring your rights and obligations is a change in your shareholding or 
+ownership that alters the effective control (unless you are a company whose shares 
+are listed on any recognised stock exchange). 
+The Contract does not affect statutory obligations 
+15.5. Nothing in this Contract affects the statutory obligations of either Party to Clients. Nor 
+does the Contract bind either Party to do or refrain from doing anything in a manner 
+that is not consistent with the law. 
+ 
+16. How you deal with subcontractors 
+ 
+16.1. You must not enter into a contract with someone else to deliver any part of the 
+Services without ACC's written approval. If subcontracting is allowed for a Service, 
+that will be stated in the Service Schedule. 
+16.2. If you assign, transfer, subcontract or otherwise dispose of any of your liabilities or 
+obligations under this Contract, you continue to be responsible for those liabilities or 
+obligations. 
+16.3. You are responsible for making sure that any subcontractor is suitable and has the 
+capability and capacity to deliver that aspect of the Services being subcontracted. 
+
+--- PAGE 25 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 23 
+ 
+16.4. You must make sure that: 
+ 
+(a) 
+every Contract you sign with a subcontractor contains provisions that enable 
+you to comply with your obligations under this Contract 
+ 
+(b) 
+the terms in any subcontract you sign are consistent with this Contract 
+ 
+(c) 
+each subcontractor is fully aware of your obligations under this Contract. 
+ 
+16.5. You must advise ACC immediately if a subcontractor experiences an insolvency 
+event or a bankruptcy or liquidation. 
+ 
+17. How to cover risks 
+Insurance and professional indemnity 
+17.1. It is your responsibility to make sure your risks of doing business are adequately 
+covered, whether by insurance or otherwise. If a Service Schedule specifies 
+insurance, you must: 
+(a) 
+take out the specified insurance, with a reputable insurer, and maintain that 
+insurance cover for the term of this Contract and for a period of three years 
+after the end date, and 
+ 
+(b) 
+within 10 business days of a request from ACC, provide a certificate 
+confirming the nature of the insurance cover and proving that each policy is 
+current. 
+ 
+17.2. You will ensure that you and your Service providers: 
+ 
+(a) 
+have or retain membership with a recognised medical defence organisation (if 
+you or your service providers are eligible to be members), or 
+ 
+(b) 
+have professional indemnity insurance to cover the period of the relevant 
+Service Schedule. 
+ 
+17.3. You will, within 10 business days of a request from ACC, provide evidence confirming 
+the membership or insurance referred to in clause 17.2. 
+ 
+18. Conflicts of interest 
+Avoiding conflicts of interest 
+18.1. You confirm that, as at the start date, you have no conflict of interest in providing the 
+Services or entering into this Contract. You must do your best to avoid situations that 
+may lead to a conflict of interest. 
+
+--- PAGE 26 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 24 
+ 
+18.2. If a conflict of interest arises, you must tell us immediately in writing. You and ACC 
+must discuss, agree and record in writing whether the conflict of interest can be 
+managed and, if so, how it will be managed. Each Party must pay its own costs for 
+managing a conflict of interest. 
+Refusing financial incentives 
+18.3. If you have a financial interest in an entity that supplies, procures or manufactures 
+products or services, you must obtain ACC’s written approval before using those 
+products or services to provide the Services described in the Service Schedules. 
+18.4. If you procure products or services to provide the Services, you must not accept or 
+receive (or permit any service providers to accept or receive) any incentive, rebate or 
+reward for the procurement. You may not receive any gift, voucher, cash, trip or 
+travel, merchandise or equipment or any discount, rebate or credit towards such 
+items or an incentive or reward in any other form. 
+18.5. You must also not accept or receive (or permit any service providers to accept or 
+receive) any incentive or reward for recommending any products or services. 
+No Collusion 
+18.6. You will not consult or communicate with any other supplier or potential supplier to 
+ACC, or enter into any arrangement or understanding with any other supplier or 
+potential supplier to ACC about any matter which is likely to or may have the effect of 
+reducing competition for the Services including: 
+(a) 
+Prices for the Services; or 
+(b) 
+Methods, factors or formulas used to calculate prices for the Services. 
+ 
+ 
+19. Process for resolving disputes 
+ 
+19.1. The Parties agree to use their best endeavours to resolve any dispute or difference 
+that may arise under this Contract. The following process will apply to disputes: 
+(a) 
+The Party must notify the other if it considers a matter is in dispute. 
+ 
+(b) 
+The Relationship managers will attempt to resolve the dispute through direct 
+negotiation. 
+ 
+(c) 
+If the Relationship managers have not resolved the dispute within 10 business 
+days of notification or any later agreed date, they will refer it to the Parties’ 
+senior managers for resolution. 
+ 
+(d) 
+If the senior managers have not resolved the dispute within 10 business days 
+of it being referred to them, the Parties will refer the dispute to mediation or 
+some other form of alternative dispute resolution agreed by the Parties. 
+
+--- PAGE 27 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 25 
+ 
+19.2. If a dispute is referred to mediation, the mediation will be conducted: 
+ 
+(a) 
+by a single mediator agreed by the Parties or, if they cannot agree, appointed 
+by the Chair of Resolution Institute 
+ 
+(b) 
+on the terms of the Resolution Institute standard mediation contract, and 
+ 
+(c) 
+at a fee to be agreed by the Parties or, if they cannot agree, at a fee 
+determined by the Chair of Resolution Institute. 
+ 
+19.3. Each Party will pay its own costs of mediation or alternative dispute resolution under 
+this clause 19 and half the mediator’s fee. 
+19.4. If there is a dispute, each Party will continue to perform its obligations under this 
+Contract as far as practical given the nature of the dispute. 
+19.5. Each party agrees not to start any court action over a dispute until it has complied 
+with the process described in clause 19, unless court action is necessary to preserve 
+a Party's rights. 
+ 
+20. Ending this Contract 
+By notice as of right 
+20.1. Either party may, without incurring any liability to the other for damages or other 
+compensation, at any time give to the other no less than: 
+(a) 
+three calendar months’ notice of termination of this Contract and all the 
+Services, or 
+ 
+(b) 
+three calendar months’ notice of the cancellation (or any lesser notice period 
+for cancellation permitted under the applicable Service Schedule) from this 
+Contract of a particular Service Schedule and the Service(s) described in that 
+Service Schedule. 
+ 
+20.2. The date (‘termination date’) on which this Contract and all the Services must come 
+to an end is the later of: 
+(a) 
+three calendar months after the date on which notice under clause 20.1 is 
+received by you 
+ 
+(b) 
+any date specified in the notice as the date on which this Contract will come to 
+an end. 
+ 
+20.3. The date (‘cancellation date’) when the Service Schedule and the Service(s) 
+described in that Service Schedule are removed from this Contract is the later of: 
+(a) 
+three calendar months (or any lesser notice period for cancellation permitted 
+under the applicable Service Schedule) after the date on which notice under 
+clause 20.1 is received by you 
+
+--- PAGE 28 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 26 
+ 
+(b) 
+any date specified in the notice as the date at which the Service Schedule is 
+to be cancelled. 
+ 
+Termination without notice on insolvency 
+20.4. The Supplier’s insolvency or liquidation is a deemed breach of Contract. This 
+Contract and all the Services will end immediately (without any requirement for prior 
+notice). This will not apply, however, if the liquidation is for the purpose of 
+reconstruction or amalgamation, the terms of which have been approved by ACC. 
+20.5. The date you are judged bankrupt or the date of appointment of a liquidator is the 
+‘termination date’; that is, the date on which this Contract and all the Services will 
+end. 
+Termination with notice on insolvency 
+20.6. An insolvency event may be deemed to be a breach of Contract. If an insolvency 
+event has occurred and if, at any time after that event, ACC gives notice to you of 
+termination of this Contract and all of the Services, this Contract and all the Services 
+will end immediately. 
+20.7. The date a notice given by ACC under clause 20.6 is received by you is the 
+‘termination date’; that is, the date on which this Contract and all the Services will 
+end. 
+Termination for breach 
+20.8. If either Party considers that the other has breached any provision of this Contract, 
+that Party may give notice to the other specifying the breach. The notice must give 
+the other Party 10 business days to stop or to remedy the breach (if it is capable of 
+remedy). ACC will consider you have breached this Contract if we consider on 
+reasonable grounds that you have defrauded ACC (whether or not you are 
+prosecuted for that fraud). 
+20.9. If the breach has not stopped or been remedied within 10 business days, the Party 
+that gave the notice may forward to the other Party a notice of termination of: 
+(a) 
+this Contract and all of the Services, or 
+ 
+(b) 
+any particular Service Schedule(s). 
+ 
+20.10. The date on which the Contract and all the Services or the relevant Service 
+Schedule(s) will terminate (that is, the ‘termination date’) is: 
+(a) 
+the date of receipt by the other Party of the notice of termination given under 
+clause 20.9, or 
+ 
+(b) 
+any later date specified for that purpose in the notice. 
+
+--- PAGE 29 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 27 
+ 
+21. Rights after cancellation or expiry 
+Release from cancellation date or end date 
+21.1. You are released from the obligation to further provide the Service(s) described in a 
+Service Schedule from the earlier of: 
+(a) 
+the cancellation date for a particular Service Schedule, 
+ 
+(b) 
+the end date of a particular Service Schedule. 
+ 
+21.2. ACC is released from the obligation to pay for such Service(s) provided after that 
+date. 
+Rights after termination, cancellation, or expiry 
+21.3. Termination, cancellation or expiry does not affect any rights, other remedies or 
+obligations of either Party under this Contract or under legislation that arose before or 
+on the date of termination, cancellation or expiry. These rights, other remedies and 
+obligations continue to have effect and may be enforced after the relevant date. 
+21.4. Termination or cancellation does not affect any other rights or remedies of the Party 
+who gave the notice of termination or cancellation. If you have received money for 
+services that ACC did not need to pay you for because you breached this Contract, 
+we may deduct any amount we are entitled to from any money we owe you. 
+Handing over the Services 
+21.5. You will, within 10 business days of the end date or termination date or cancellation 
+date of any Service Schedule, provide all reasonable assistance and co-operation 
+needed for a smooth handover of the Services to ACC or any person appointed by 
+ACC. 
+ 
+22. Suspension of Services 
+ 
+22.1. ACC can give you written notice that all or any of the Services are suspended if ACC 
+considers on reasonable grounds: 
+(a) 
+that you may have breached this Contract, and 
+ 
+(b) 
+for any reason it is not appropriate for you to continue to provide the Services 
+or any of the Services (for example while the issue is investigated). 
+
+--- PAGE 30 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 28 
+ 
+22.2. If you receive a suspension notice under clause 22.1, you will stop providing 
+Services: 
+(a) 
+until the earlier of: 
+(i) 
+the date specified in the notice, or 
+(ii) 
+the date ACC and you agree the Services can begin again 
+ 
+(b) 
+permanently, if the Contract or the Service Schedule for those Services is 
+terminated or cancelled while the suspension is in force. 
+ 
+22.3. ACC can give you written notice that any service provider is suspended from 
+providing all or any of the Services if ACC believes, on reasonable grounds that, for 
+any reason, it is not appropriate for the Service provider to continue (for example, 
+while the issue is investigated). 
+22.4. If you receive a suspension notice under clause 22.3, you will stop the service 
+provider from providing Services: 
+(a) 
+until the earlier of: 
+(i) 
+the date specified in the notice, or 
+(ii) 
+the date ACC and you agree the service provider can start providing 
+Services again 
+(b) 
+permanently, if you and ACC agree that the service provider will no longer 
+provide Services under this Contract or the Service Schedule, or the service 
+provider is removed in accordance with the relevant Service Schedule. 
+ 
+22.5. The powers in this clause 22 do not limit ACC’s powers under clause 20.8 to 20.10. 
+ 
+ 
+23. Notices and communication 
+Notices 
+23.1. All notices to a Party must be delivered by hand or sent by post, courier or email. The 
+address to be used for notices is the address for that Party stated in the relevant 
+Service Schedule. 
+23.2. Notices must be signed or, in the case of email, sent by the appropriate manager or 
+person having authority to do so. 
+
+--- PAGE 31 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 29 
+ 
+23.3. A notice will be considered to be received: 
+ 
+(a) 
+if delivered by hand, on the date it is delivered 
+ 
+(b) 
+if sent by post within New Zealand, on the 3rd business day after the date it 
+was sent 
+ 
+(c) 
+if sent by post internationally, on the 7th business day after the date it was 
+sent 
+ 
+(d) 
+if sent by courier, on the date it is delivered 
+ 
+(e) 
+if sent by email, at the time the email enters the recipient's information system 
+as evidenced by a delivery receipt requested by the sender provided that it is 
+not returned undelivered or as an error. 
+ 
+23.4. A notice received after 5pm on a business day or on a day that is not a business day 
+will be considered to be received on the next business day. 
+How we will provide policies 
+23.5. When this Contract requires us to provide a copy of policies or procedures, we may 
+meet the requirement by providing a paper copy, an electronic copy or a link to an 
+internet page. 
+ 
+24. Business continuity 
+ 
+24.1. You will maintain at all times adequate business continuity arrangements, taking into 
+account good practice. You will use all reasonable endeavours to implement such 
+business continuity arrangements whenever necessary. Your business continuity 
+arrangements will include plans for responding to incidents and business disruptions 
+so that you can continue to provide Services. 
+24.2. You will provide us with details of your after-hours contact points when we ask you to 
+do so. 
+24.3. You will provide a business continuity plan to us where one is required in a Service 
+Schedule. 
+ 
+25. Extraordinary events 
+ 
+25.1. Neither Party will be liable to the other for any failure to perform its obligations under 
+this Contract where the failure is caused by an extraordinary event. 
+
+--- PAGE 32 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 30 
+ 
+25.2. A Party who wishes to claim suspension of its obligations because of an 
+extraordinary event must notify the other Party as soon as reasonably possible. The 
+notice must state: 
+(a) 
+the nature of the circumstances giving rise to the extraordinary event 
+ 
+(b) 
+the extent of that Party's inability to perform under this Contract 
+ 
+(c) 
+the likely duration of that non-performance, and what steps are being taken to 
+minimise the impact of the extraordinary event on the delivery of Services. 
+ 
+25.3. If ACC, acting reasonably, requires the Services to be supplied during the period 
+affected by an extraordinary event then, despite clause 25.1 we may terminate this 
+Contract immediately by giving notice. 
+25.4. If a Party is unable to perform any obligations under this Contract for 20 business 
+days or more because of an extraordinary event, the other Party may terminate this 
+Contract immediately by giving notice. 
+ 
+26. ACC property 
+ 
+26.1. If we ask, you will deliver to us all correspondence, documents, papers, digital library 
+and other property of any nature that may be in your possession or power belonging 
+to ACC. This clause applies both during and after the term of a Service Schedule or 
+this Contract. We will not exercise this power if it will hinder your performance of this 
+Contract. 
+26.2. Clause 26.1 extends equally to any copy of all or part of the correspondence, 
+documents, paper, digital library or other property referred to in that clause. 
+26.3. All information, methods and techniques supplied by you and communicated to ACC 
+will remain your property. 
+ 
+27. Organisational quality standards 
+ 
+27.1. Where a standard refers to the requirement for a written policy, procedure, 
+programme, information or plan, you will provide us with a copy on request. 
+
+--- PAGE 33 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 31 
+ 
+27.2. You are required to: 
+ 
+(a) 
+have written and applied protocols and policies that outline the standards for 
+the Services 
+ 
+(b) 
+have in place, and follow, written protocols, procedures and policies for 
+managing the Services. This document needs to be kept up to date and made 
+readily available for staff to read. The document will include written 
+procedures on the following: 
+(i) 
+receiving and responding to complaints 
+(ii) 
+systems to measure customer satisfaction with the Services 
+(iii) 
+collecting and storing information, and keeping it private 
+(iv) 
+roles and responsibilities of those providing the Services 
+(v) 
+culturally appropriate practices 
+(vi) 
+rights and responsibilities of Clients 
+(vii) 
+complying with relevant legislation, regulations, ethical standards and 
+clinical protocols. 
+(c) 
+have a documented policy about dealing with vulnerable Clients which will at 
+a minimum be consistent with ACC’s policy which we will provide to you. 
+ 
+27.3. You will make sure that: 
+ 
+(a) 
+all facilities used to provide Services are accessible to people with disabilities. 
+If a Client is unable to access your facility, you will tell ACC and negotiate with 
+ACC (including about any additional travel costs) to arrange an alternative 
+location at no additional cost to the Client. 
+ 
+(b) 
+Service providers provide the Services from safe, well-maintained, hygienic 
+facilities that are suitably designed and equipped for the Services 
+ 
+(c) 
+all equipment used in the Services is safe and maintained to comply with 
+safety and use standards. 
+ 
+Interpreting services 
+27.4. Where Clients require interpreting or translating services to communicate adequately 
+with service providers, you will ensure that such services are supplied without 
+additional cost to the Client. 
+
+--- PAGE 34 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 32 
+ 
+28. General 
+This is the entire Contract 
+28.1. This Contract, including any variation and any Service Schedule, records everything 
+agreed between the parties about the Services. It replaces any previous verbal or 
+written communications, negotiations, arrangements or Contracts for the Services 
+that the Parties had with each other before this Contract was signed. 
+Delaying does not waive rights 
+28.2. If a Party breaches this Contract and the other Party does not immediately enforce its 
+rights resulting from the breach that: 
+(a) 
+does not mean that the Party in breach is released or excused from 
+performing the obligation at the time or in the future, and 
+ 
+(b) 
+does not prevent the other Party from exercising its rights resulting from the 
+breach at a later time. 
+ 
+New Zealand law, currency and time 
+28.3. This Contract will be governed and interpreted under the laws of New Zealand. 
+ 
+28.4. All money is in New Zealand dollars, unless a Service Schedule specifies a different 
+currency. 
+28.5. Dates and times are New Zealand time. 
+ 
+Publication of information about this Contract 
+28.6. You may disclose the existence of this Contract. You must obtain our written 
+approval before making reference to ACC or this Contract, or using our logo, in your 
+publications, public statements, promotional material or promotional activities. 
+Signing the Contract 
+28.7. The date of execution is the date this Contract is signed. This Contract is properly 
+signed if each Party signs the same copy, or separate identical copies, of the cover 
+page. If this Contract is signed on two separate dates or separate copies are signed, 
+the date of execution is the later of the two dates. Where separate copies are signed, 
+the signed copy can be the original document, or an emailed copy. 
+
+--- PAGE 35 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 33 
+ 
+Clauses that remain in force 
+28.8. The clauses that, by their nature, should remain in force on expiry or ending of this 
+Contract do so, including: 
+(a) 
+clause 1 (definitions) 
+ 
+(b) 
+clause 9 (personal and confidential information will be kept private and 
+secure) 
+ 
+(c) 
+clause 12 (how information will be managed and monitored) 
+ 
+(d) 
+clause 17 (how to cover risk) 
+ 
+(e) 
+clause 19 (process for resolving disputes) 
+ 
+(f) 
+clause 20 (ending this Contract) 
+ 
+(g) 
+clause 26 (ACC property), and 
+ 
+(h) 
+clause 28 (general). 
+ 
+Precedence 
+28.9. If there is any conflict or difference between the documents forming this Contract (as 
+stated on the cover page) then the order of precedence is: 
+(a) 
+variation made in accordance with clause 4 
+ 
+(b) 
+Service Schedule 
+ 
+(c) 
+Standard Terms and Conditions. 
+ 
+29. Multiple suppliers 
+ 
+29.1. If this Contract is signed by more than one Supplier, the liability of all Suppliers under 
+this Contract will be joint and several. 
+ 
+30. Services for injured employees of accredited employers 
+Purchase of Services by accredited employers 
+30.1. You agree that accredited employers are permitted to purchase the Services for their 
+injured employees and that you will provide Services to those injured employees, 
+subject to the provisions of clauses 30.2 to 30.4 below. 
+
+--- PAGE 36 ---
+CONTRACT FOR SERVICES—STANDARD TERMS AND CONDITIONS MARCH 2023 
+P A  G  E 34 
+ 
+Information to accredited employers 
+30.2. We may release information about this Contract (including prices) to accredited 
+employers if the accredited employer has first agreed in writing with ACC to keep that 
+information confidential and to use it only for the purpose of purchasing Services. 
+Access 
+30.3. During the term of any Service Schedule, you will provide Services to injured 
+employees of such accredited employers: 
+(a) 
+on the same terms and prices as specified in this Contract (subject to any 
+minor adjustments to this Contract that may be necessary to give effect to this 
+clause 30, and to any changes in those terms and prices subsequently agreed 
+between you and accredited employer) 
+ 
+(b) 
+as if ‘ACC’ in this Contract was a reference to the particular accredited 
+employer except that an accredited employer cannot exercise or enforce 
+rights which by their nature are intended to be exclusive to ACC including the 
+following clauses of these Standard Terms and Conditions: 
+(i) 
+clauses 4.2 to 4.4 
+(ii) 
+clauses 8.3 and 8.4 
+(iii) 
+clause 9.6 
+(iv) 
+clause 13 
+(v) 
+clause 14 
+(vi) 
+clauses 15.3 and 15.4 
+(vii) 
+clause 22. 
+For the purposes of this clause, any injured employee of an accredited 
+employer is deemed to be a ‘Client’. 
+ACC not liable for purchasing by accredited employers 
+30.4. ACC’s role is to bring you and accredited employers together. You agree that ACC 
+and each accredited employer is only liable for the individual purchases made by us 
+or that employer, and neither of them has any joint liability (except as provided in 
+section 187(3) of the AC Act). All communications, invoicing and reporting about 
+injured employees will go to the accredited employer of the injured employee or 
+injured employees who receive the Services. 

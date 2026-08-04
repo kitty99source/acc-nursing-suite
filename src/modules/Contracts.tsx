@@ -6,9 +6,11 @@ import { DataTable, customColumns, type Column } from '../components/DataTable';
 import { Modal } from '../components/Modal';
 import { useConfirm } from '../components/useConfirm';
 import { SectionTitle, Field, DateInput, TextInput, NumberInput, TextArea, EmptyState, Badge } from '../components/ui';
-import { IconPlus, IconEdit, IconTrash, IconContract, IconChat, IconClose } from '../components/icons';
+import { IconPlus, IconEdit, IconTrash, IconContract, IconChat, IconClose, IconExport } from '../components/icons';
 import { formatDate, todayISO } from '../lib/format';
 import type { Contract, ContractRateEntry } from '../types';
+import { loadAccScheduleData } from '../lib/acc/scheduleData';
+import { buildContractsFromParsedSchedules, hasNationalScheduleContract, NATIONAL_SCHEDULE_MARKER_KEY } from '../lib/acc/nationalContracts';
 
 // ============================================================================
 // Contract CRUD — a real, first-class record type (2026-08-04 owner ask:
@@ -66,6 +68,36 @@ export function Contracts() {
   const [form, setForm] = useState<Omit<Contract, 'id'>>(emptyContract());
   const [codesText, setCodesText] = useState('');
   const [rateDraft, setRateDraft] = useState<ContractRateEntry>({ serviceCode: '', description: '', rate: 0 });
+  const [seeding, setSeeding] = useState(false);
+  const [seedError, setSeedError] = useState<string | null>(null);
+
+  // ACC national published Service Schedule seed data (2026-08-04 owner ask: "ingest all the
+  // documents found... make sure nothing's missing") — see docs/research/
+  // acc-public-contract-sources-2026-08.md and src/lib/acc/nationalContracts.ts. Idempotent: only
+  // adds a schedule that isn't already present (matched by the real source-doc id stashed in
+  // customFields), so clicking it again after editing/deleting one doesn't silently re-add it.
+  const alreadySeededDocIds = ['nursing-service-schedule', 'allied-health-services-service-schedule', 'elective-surgery-service-schedule', 'ACC1523-Specified-treatment-provider-costs'].filter(
+    (id) => hasNationalScheduleContract(contracts, id),
+  );
+  const allSeeded = alreadySeededDocIds.length === 4;
+
+  async function seedNationalSchedules() {
+    setSeeding(true);
+    setSeedError(null);
+    try {
+      const schedules = await loadAccScheduleData();
+      if (schedules.length === 0) {
+        setSeedError('Could not load the ACC national schedule data asset (public/data/acc/schedules.json) — check it was shipped with this build.');
+        return;
+      }
+      const toAdd = buildContractsFromParsedSchedules(schedules).filter(
+        (c) => !hasNationalScheduleContract(contracts, c.customFields?.[NATIONAL_SCHEDULE_MARKER_KEY] ?? ''),
+      );
+      for (const c of toAdd) addContract(c);
+    } finally {
+      setSeeding(false);
+    }
+  }
 
   function openCreate() {
     setForm(emptyContract());
@@ -182,11 +214,28 @@ export function Contracts() {
         title="Contracts"
         subtitle="Provider/employer contracts and price agreements — rate tables, effective dates, service codes covered."
         actions={
-          <button className="btn btn-primary" onClick={openCreate}>
-            <IconPlus /> New contract
-          </button>
+          <>
+            <button className="btn" onClick={() => void seedNationalSchedules()} disabled={seeding || allSeeded} title="Ingested from real, public ACC Service Schedule PDFs — see docs/research/acc-public-contract-sources-2026-08.md">
+              <IconExport /> {allSeeded ? 'ACC national schedules added' : seeding ? 'Adding…' : 'Add ACC national schedules'}
+            </button>
+            <button className="btn btn-primary" onClick={openCreate}>
+              <IconPlus /> New contract
+            </button>
+          </>
         }
       />
+      {seedError && (
+        <p className="text-xs mb-3" style={{ color: 'var(--danger-fg)' }}>
+          {seedError}
+        </p>
+      )}
+      {!allSeeded && !seeding && (
+        <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>
+          "Add ACC national schedules" imports the real, public ACC-published Nursing / Allied Health / Elective
+          Surgery (imaging + ankle-foot subset) / Cost of Treatment Regulations price tables — clearly labelled as
+          ACC's national template, never this organisation's own specific negotiated contract.
+        </p>
+      )}
 
       <DataTable
         columns={columns}

@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { emptyData } from './sampleData';
+import { _resetKnowledgeCorpusCacheForTests } from './ai/knowledgeCorpus';
 import type { AppData, Claim, Contract, Patient } from '../types';
 import {
   AI_ASSISTANT_SYSTEM_PROMPT,
@@ -169,10 +170,23 @@ describe('grounding system prompt', () => {
 });
 
 describe('buildChatMessages', () => {
-  it('assembles a structured messages array: one leading system message (with context folded in), then real history turns, then the new user message', () => {
+  // Knowledge-corpus retrieval (see knowledgeCorpus.ts) is an async `fetch` of a static local
+  // asset — stub it to "unavailable" for these chip/history-focused tests so they stay focused on
+  // that behaviour rather than depending on real corpus content; see the dedicated
+  // "real ACC document retrieval" describe block below for citation-specific tests.
+  beforeEach(() => {
+    _resetKnowledgeCorpusCacheForTests();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    _resetKnowledgeCorpusCacheForTests();
+  });
+
+  it('assembles a structured messages array: one leading system message (with context folded in), then real history turns, then the new user message', async () => {
     const p = patient();
     const data = dataWith([p]);
-    const { messages, contextBlock } = buildChatMessages({
+    const { messages, contextBlock } = await buildChatMessages({
       history: [
         { role: 'user', content: 'Hi' },
         { role: 'assistant', content: 'Hello, how can I help?' },
@@ -198,14 +212,15 @@ describe('buildChatMessages', () => {
     }
   });
 
-  it('omits the "Context used" text entirely when there are no chips', () => {
-    const { messages, contextBlock } = buildChatMessages({
+  it('omits the "Context used" text entirely when there are no chips', async () => {
+    const { messages, contextBlock, retrievedSources } = await buildChatMessages({
       history: [],
       chips: [],
       data: dataWith([]),
       userMessage: 'What is NS04?',
     });
     expect(contextBlock).toBe('');
+    expect(retrievedSources).toEqual([]);
     expect(messages[0].content).not.toContain('Context used');
     expect(messages).toEqual([
       { role: 'system', content: AI_ASSISTANT_SYSTEM_PROMPT },
@@ -213,16 +228,81 @@ describe('buildChatMessages', () => {
     ]);
   });
 
-  it('caps history to the most recent turns so the messages array stays bounded', () => {
+  it('caps history to the most recent turns so the messages array stays bounded', async () => {
     const longHistory = Array.from({ length: 20 }, (_, i) => ({
       role: (i % 2 === 0 ? 'user' : 'assistant') as const,
       content: `turn-${i}`,
     }));
-    const { messages } = buildChatMessages({ history: longHistory, chips: [], data: dataWith([]), userMessage: 'latest' });
+    const { messages } = await buildChatMessages({ history: longHistory, chips: [], data: dataWith([]), userMessage: 'latest' });
     const contents = messages.map((m) => m.content);
     expect(contents).not.toContain('turn-0');
     expect(contents).toContain('turn-19');
     // system + 8 history turns + new user message
     expect(messages).toHaveLength(1 + 8 + 1);
+  });
+});
+
+describe('buildChatMessages — real ACC document retrieval (RAG-lite)', () => {
+  const SAMPLE_CORPUS = {
+    generatedAt: '2026-08-04T00:00:00.000Z',
+    chunks: [
+      {
+        id: 'nurse-og#0',
+        sourceDocId: 'nurse-og',
+        chunkIndex: 0,
+        text: 'Extended Nursing (NS04) requires ACC prior approval once 25 in-person consultations have been completed or 105 days have passed.',
+      },
+      {
+        id: 'elective-surgery-og#0',
+        sourceDocId: 'elective-surgery-og',
+        chunkIndex: 0,
+        text: 'The Assessment Report and Treatment Plan (ARTP) process is required before most contracted elective surgery procedures proceed.',
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    _resetKnowledgeCorpusCacheForTests();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => SAMPLE_CORPUS }));
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    _resetKnowledgeCorpusCacheForTests();
+  });
+
+  it('injects the relevant real document excerpt into the system message and returns it as a citation', async () => {
+    const { messages, retrievedSources } = await buildChatMessages({
+      history: [],
+      chips: [],
+      data: dataWith([]),
+      userMessage: 'When does Extended Nursing NS04 need prior approval?',
+    });
+    expect(retrievedSources.length).toBeGreaterThan(0);
+    expect(retrievedSources[0].sourceDocId).toBe('nurse-og');
+    expect(retrievedSources[0].title).toContain('Nursing');
+    expect(retrievedSources[0].url).toContain('acc.co.nz');
+    expect(messages[0].content).toContain('Real ACC document excerpts');
+    expect(messages[0].content).toContain('105 days');
+  });
+
+  it('does not inject the elective-surgery excerpt for a nursing-specific question', async () => {
+    const { retrievedSources } = await buildChatMessages({
+      history: [],
+      chips: [],
+      data: dataWith([]),
+      userMessage: 'When does Extended Nursing NS04 need prior approval?',
+    });
+    expect(retrievedSources.map((s) => s.sourceDocId)).not.toContain('elective-surgery-og');
+  });
+
+  it('retrieves nothing for an unrelated question — never forces irrelevant content into the prompt', async () => {
+    const { retrievedSources, messages } = await buildChatMessages({
+      history: [],
+      chips: [],
+      data: dataWith([]),
+      userMessage: 'what is the weather like today',
+    });
+    expect(retrievedSources).toEqual([]);
+    expect(messages[0].content).not.toContain('Real ACC document excerpts');
   });
 });

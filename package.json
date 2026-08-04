@@ -21,6 +21,7 @@
     "stress:medium": "node scripts/stress/run-stress.mjs --scale=medium",
     "stress:large": "node scripts/stress/run-stress.mjs --scale=large",
     "verify-build": "node scripts/verify-build.mjs",
+    "check-knowledge-coverage": "node scripts/check-knowledge-coverage.mjs",
     "wfh:folder-watch": "node scripts/wfh/folder-watch.mjs",
     "wfh:portal-discover": "node scripts/wfh/portal-discover.mjs"
   },

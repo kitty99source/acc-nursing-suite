@@ -321,3 +321,134 @@ policy (e.g. any published criteria for ACC-funded ambulance transport,
 inter-hospital transfer, or air ambulance eligibility), confirmed as a real,
 currently-fetchable public document (not assumed) before ingestion, per this
 doc's own "nothing here is fabricated or guessed" standard.
+
+## 8. Proactive coverage audit (2026-08-04) — what else is missing, found *before* a bad answer this time
+
+§6 and §7 above were both found *reactively* — an owner asked the assistant a
+real question, got a fabricated answer, and only then did an investigation
+find the corpus never covered that topic. This section is the proactive
+follow-up the owner asked for: systematically checking a broad list of
+topics a real case worker/nursing biller in this app would plausibly ask
+about, against the actually-ingested corpus, **before** anyone hits another
+bad answer.
+
+### 8.0 Method
+
+1. Read this app's own domain model (`src/types/index.ts`) to ground the
+   topic list in what this app's real entities/workflows actually are —
+   **not** a generic guess, and notably **not** an equipment-loan domain: this
+   is the ACC District Nursing Admin Suite (`Patient`, `Claim`, `ServiceLine`,
+   `Approval`, `InvoiceLine`, `Decline`, `Contract`, `Memo`, case-workflow
+   stages) — nursing/elective-surgery/allied-health claims and billing, with
+   no equipment-loan/return entity or workflow anywhere in the schema. (The
+   task that requested this audit assumed an "equipment/loan tracker"
+   adjacency that does not actually apply to this specific app; noted here so
+   the topic list below is grounded in the real schema instead.)
+2. Built a candidate topic list (below) combining: (a) topics named in the
+   task brief, (b) topics implied directly by real fields/entities in
+   `types/index.ts` — e.g. `Decline`/`DeclineStatus` implies "what happens
+   after a decline" is a real, recurring workflow; `ClaimType: 'original' |
+   'subsequent'` implies eligibility-for-a-new-vs-linked-claim questions;
+   `Contract`/GST/invoicing fields imply billing-mechanics questions.
+3. For each topic, searched the actual ingested
+   `public/data/acc/knowledge-chunks.json` corpus (415 chunks, the same 8
+   source documents as §6/§7 — no ingestion has happened since) for
+   topic-specific terms, the same technique used by hand in the §6/§7
+   investigations, now also captured as a reusable script (§8.3).
+4. Spot-checked every non-zero hit's actual surrounding text (not just the
+   count) — several keyword hits turned out to be false positives from an
+   unrelated clinical/legal meaning of the same word (see "minor" and
+   "vocational" in the table below), which a naive automated count alone
+   would have wrongly marked as "covered."
+
+### 8.1 Findings — prioritized gap list
+
+**(c) Zero coverage — same category as the §6/§7 gaps:**
+
+| Topic | Why a user would plausibly ask this | Evidence | Priority |
+|---|---|---|---|
+| **Client review & appeal rights after a decline** | The app has a first-class `Decline` record with `DeclineStatus` values (`Awaiting response from ACC`, `Declined again`, etc.) — a case worker handling a repeat decline will plausibly ask "what are the client's/our review or appeal options" | 0 chunks for `appeal`, `review right`, `reconsideration`, `district court`, `section 135` across all 415 chunks. The 5 `dispute` / 3 `complaint` hits that do exist are all about the **provider-vs-ACC contract dispute clause** (health-contract-terms-conditions §19) — a completely different thing (supplier billing disagreement, not a client's statutory right to challenge an ACC cover/entitlement decision under the Accident Compensation Act 2001) | **High** — this is a real, recurring case-worker workflow (the app already models it via `Decline`), not an edge case |
+| **Client complaints process** (Code of Health and Disability Services Consumers' Rights) | Distinct from the review/appeal path above — "how does a client raise a service-quality complaint" | Only 1 passing mention of "Code of Health and Disability Services Consumers' Rights" (`health-contract-terms-conditions#14`), framed as a *supplier's* contractual obligation to cooperate with an ACC-received complaint — no client-facing "how to complain" guidance ingested | **Medium** |
+| **Non-resident / historical-claim eligibility (beyond the one incidental mention found)** | `Claim.type` distinguishes `original`/`subsequent`; a case worker will eventually hit an overseas-injury, returning-resident, or years-old-claim scenario | Only 1 real, useful chunk exists at all (`acc7909-working-together-cotr-providers#7`: NZ residents injured overseas within 6 months, temporary visitors covered) — a real fact, but a single sentence, not a policy document; "historical claim" itself: 0 chunks | **Medium** |
+| **Sensitive claims** | Real, separate ACC service line (ISSC/Sensitive Claims Service schedules identified as real public documents in §2.4, deliberately not ingested as out-of-scope for a nursing/surgery/allied-health team) | 0 chunks for `sensitive claim` | **Low** — genuinely out of this app's core service-line scope per §2.4's own recommendation; only relevant if the org's caseload ever includes sensitive claims |
+| **Independence allowance / whole-person impairment** | A real, distinct ACC entitlement a client's claim can also involve | 0 chunks | **Low** — not a nursing/surgery/allied-health billing concern; adjacent ACC entitlement, not this team's workflow |
+| **Home modifications** | Real ACC-funded support, adjacent to the equipment/orthotics content that *is* well covered for the 6-week post-surgery window | 0 chunks (distinct from the well-covered short-term post-surgery equipment/orthotics content — see §8.1's "well covered" list below) | **Low-Medium** |
+
+**(b) Partially covered / thin — real content exists but is narrow, tangential, or a single sentence:**
+
+| Topic | Why a user would plausibly ask this | Evidence | Priority |
+|---|---|---|---|
+| **Weekly compensation interactions with treatment** | Weekly compensation is a common concurrent entitlement for the same client whose nursing/surgery claim this app tracks | 5 chunks, but every one is either (a) surgery-priority-classification criteria ("H3 Receiving weekly compensation" as an *urgency factor* for elective surgery ARTP scoring) or (b) a passing example of a "negative response" trigger (`nurse-og#64`) — no chunk actually explains weekly compensation's own eligibility/rate/interaction rules | **Medium** |
+| **Vocational rehabilitation / return-to-work support** | Same client population; case workers coordinate around return-to-work timelines | Naive keyword count looks reasonable (41 hits for `rehabilitation`, 9 for `vocational`), but manual inspection found most `vocational` hits are actually about **surgeon vocational registration/scope of practice** (an unrelated legal meaning) — genuine vocational-rehab-as-a-client-service content is really only 1 real passage (`acc7909-working-together-cotr-providers#10`, on medical certification enabling weekly compensation + vocational rehab access) plus a handful of incidental `return to work` mentions | **Medium** |
+| **Cultural / whānau support provisions** | App's own nursing schedule text explicitly commits to "reduce disruption to the Client and their whānau/family" (`nursing-service-schedule#25`) and Treaty-of-Waitangi obligations (`health-contract-terms-conditions#20`) — real content exists, but it's contractual-obligation boilerplate, not practical guidance a case worker could act on (e.g. what whānau-support services/hours are actually available) | 12 chunks total across `cultural`/`whānau`/`Māori`, all either Treaty-obligation clauses or a single "reduce disruption" sentence — no operational whānau-support service description (compare to the real, but not-ingested, ISSC/Sensitive Claims Whānau Support service line identified in §2.4) | **Low-Medium** |
+| **Accredited Employer claims** | `Contract.providerName`/`claimsEmail` fields were explicitly modeled "after the sibling ACC-RemittanceTracker suite's `AccreditedEmployer` shape" per this codebase's own type comment — a case worker could plausibly ask how an Accredited Employer claim differs from a standard ACC claim | 6 chunks, but every one is the **glossary definition** of "Accredited Employer" from the Standard Terms and Conditions (`health-contract-terms-conditions#3/#7/#23`) — real, but zero operational/process guidance on billing or handling an actual Accredited Employer claim | **Medium** |
+| **Provider accreditation / named-provider requirements** | Case workers may field "is this provider accredited/named for this service" questions | 31 hits, mostly real and substantive (registration-board requirements, named-surgeon requirements for elective surgery) — genuinely reasonably well covered, listed here only because the *general* "how does a provider become accredited/named" process (vs. the specific competence/registration requirements) isn't separately covered | **Low** |
+| **Telehealth eligibility (allied health, beyond nursing)** | Physiotherapy/OT/podiatry telehealth codes (`PT1T`/`PT2T` per §2.3's table) are real and priced, but ingested telehealth *guidance* content (19 hits) is almost entirely about **nursing** `NS20T` telehealth assessments — allied-health telehealth eligibility criteria specifically aren't covered by any narrative chunk | **Low-Medium** |
+
+**Well covered (spot-checked, no action needed):** GST/invoicing mechanics (62
+chunks, real and substantive), privacy/consent (49 chunks, real — Privacy Act,
+Health Information Privacy Code, informed consent for telehealth
+assessments), short-term post-surgery equipment/orthotics/aids (27 chunks,
+real and detailed — six-week funding window, specific item examples), prior
+approval processes (49 chunks), case-stage discharge/handoff narrative (44
+chunks, real nursing-discharge-summary content — note this is about
+discharging a *client from a supplier's nursing service*, not the app's
+`ClaimStatus: 'discharged'` concept at the whole-claim level, which is a
+narrower but related idea worth keeping distinct if the assistant is ever
+asked directly "when is a claim closed").
+
+### 8.2 Why didn't we catch these before — grounded in what was actually found
+
+Not just "coverage was built by which documents we happened to find" in the
+abstract — concretely, in this corpus:
+
+1. **The original Aug 2026 research pass (§1–§5) was scoped by *service
+   type* (nursing/elective-surgery/physio/allied-health), not by *client-
+   facing process*.** Every one of today's zero-coverage findings — review/
+   appeal, complaints, sensitive claims, independence allowance, home
+   modifications — is a **cross-cutting client-rights or client-entitlement**
+   topic that doesn't live inside any nursing/surgery/allied-health Service
+   Schedule at all; it lives in the Accident Compensation Act itself or in
+   separate, un-ingested schedules (ISSC/Sensitive Claims). A service-type-
+   scoped research pass structurally cannot surface a topic that isn't
+   *inside* any of the documents it was scoped to look at — this is the same
+   root cause §6 and §7 already identified for travel/ambulance, just now
+   confirmed to also apply to several *other* topics, not a one-off.
+2. **Keyword-count coverage checks (including this audit's own first pass,
+   and the sketch script in §8.3) can look "covered" when they aren't**,
+   because a term can be real and present for a completely different sense
+   than the one a user means — confirmed twice in this pass alone (`minor`
+   matching surgical bone-graft codes not "minor" as in child; `vocational`
+   matching surgeon registration scope, not vocational rehabilitation).
+   Anyone relying on a fast automated count (including future runs of
+   §8.3's script) needs to spot-check the actual matching text, not just
+   trust a non-zero count, exactly as this audit had to do by hand.
+3. **The 8 ingested documents are themselves supplier/provider contract
+   documents (Service Schedules, Operational Guidelines, Standard Terms and
+   Conditions) — they describe what ACC pays a *provider* for, not a
+   client's statutory rights.** Review/appeal rights, the Code of Health and
+   Disability Services Consumers' Rights, and similar client-protection
+   topics are legally a different document family (legislation/consumer-
+   rights guidance, not provider Service Schedules) that was never going to
+   appear in this corpus regardless of how many more nursing/surgery/allied-
+   health documents got added — this is a *document-family* gap, not just a
+   missing individual PDF.
+
+### 8.3 Recommended lightweight ongoing practice
+
+A new script, `scripts/check-knowledge-coverage.mjs`
+(`npm run check-knowledge-coverage`), sketches a repeatable version of the
+manual keyword-search technique used in §6, §7, and this section: it holds a
+small, growable list of topic names + search terms, counts matching chunks
+in the real ingested corpus, and reports `[ZERO]` / `[THIN]` / `[OK]` per
+topic. It currently seeds the exact topics found zero/thin in §8.1 above (so
+re-running it after a future ingestion pass shows whether a gap was actually
+closed) plus the two already-known §6/§7 gaps.
+
+This is intentionally a small report script, not a new system: run it by hand
+(a) before pointing users at the assistant for a genuinely new use case, or
+(b) periodically (e.g. before a release) — not on every commit, and its exit
+code is always 0 (informational, not a CI gate). Per §8.2's finding #2 above,
+always spot-check a topic's actual matching chunk text before trusting a
+non-zero count as real coverage — the script deliberately does not attempt
+that judgment call itself.

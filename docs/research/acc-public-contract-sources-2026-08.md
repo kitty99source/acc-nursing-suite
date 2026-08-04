@@ -452,3 +452,108 @@ code is always 0 (informational, not a CI gate). Per §8.2's finding #2 above,
 always spot-check a topic's actual matching chunk text before trusting a
 non-zero count as real coverage — the script deliberately does not attempt
 that judgment call itself.
+
+## 9. Gap closure (2026-08-04) — ingested 9 new real documents, closed all High/Medium/Low-Medium §8.1 gaps
+
+Following §8's audit, found and ingested 9 additional real, public ACC/
+statutory documents (same standard as §4's original 8: real, fetched,
+verified on this date — nothing fabricated) using the exact same pipeline
+(`docs/research/raw-text/*.txt` → `scripts/ingest-acc-schedules.mjs` →
+`public/data/acc/knowledge-chunks.json`, chunked/TOC-filtered by
+`knowledgeChunking.ts`/`tocDetection.ts`):
+
+| §8.1 gap | Priority | New source document | Real URL |
+|---|---|---|---|
+| Client review & appeal rights after a decline | High | Code of ACC Claimants' Rights Notice 2002 (statutory Code under s44 ACC Act 2001) + acc.co.nz "Request an independent review" public guidance | legislation.govt.nz/notice/2002/gs0072.html |
+| Client complaints process | Medium | Code of Health and Disability Services Consumers' Rights (HDC Act 1994 regulations) | hdc.org.nz/your-rights/about-the-code/code-of-health-and-disability-services-consumers-rights/ |
+| Non-resident / historical-claim eligibility | Medium | "Supporting injured international visitors" + NZ-resident-injured-overseas guidance (acc.co.nz, for-providers) | acc.co.nz/for-providers/knowledge-base/supporting-injured-international-visitors/ |
+| Weekly compensation policy | Medium | "Weekly compensation and other financial support" Provider Quick Guide | acc.co.nz/for-providers/knowledge-base/weekly-compensation-and-other-financial-support/ |
+| Vocational rehabilitation | Medium | Vocational Rehabilitation Services Operational Guidelines, May 2026 | acc.co.nz/assets/contracts/vrs-og.pdf |
+| Accredited Employer claims process | Medium | Allied Health Services Operational Guidelines §20 "Interactions with Accredited Employers" (1 Nov 2024) | acc.co.nz/assets/provider/allied-health-services-operational-guidelines.pdf |
+| Cultural / whānau support provisions | Low-Medium | Te Whānau Māori me ō mahi — cultural safety/competency guidance for providers | acc.co.nz/assets/provider/acc-te-whanau-maori-me-o-mahi-guidance.pdf |
+| Allied-health telehealth eligibility | Low-Medium | ACC8331 Telehealth Guide for health practitioners | acc.co.nz/assets/provider/acc8331-telehealth-guide.pdf |
+| Home modifications (bonus — trivially found while checking the Low-priority items) | Low | Housing Modification (HMOD) and Housing Assessment (HMA) Services Operational Guidelines, Sept 2025 | acc.co.nz/assets/provider/Housing-Modification-and-Housing-Assessment-Services-Operational-Guidelines.pdf |
+
+**Left open, honestly (no real public source found that's worth ingesting
+for this app's actual scope):**
+
+- **Sensitive claims** — real public documents exist (ISSC service schedule,
+  counsellor quick guide) but they describe a materially different, separate
+  contract/service line (mental-injury counselling, not nursing/surgery/
+  allied-health billing) — ingesting them would add corpus size for a topic
+  this team's caseload doesn't actually include, per §8.1's own "genuinely
+  out of scope" note. Left un-ingested; the assistant's existing "not in
+  knowledge base, I don't know" behavior (§8.2 point 3, `MIN_RELEVANT_SCORE`
+  in `knowledgeRetrieval.ts`) already handles a stray question about this
+  gracefully rather than fabricating an answer.
+- **Independence allowance / whole-person impairment** — no standalone
+  public provider guide found (it's assessed via the Whole Person Impairment
+  process embedded across multiple ACC clinical/legislative documents, not
+  one clean operational-guideline PDF); left open for the same reason.
+
+Re-running `npm run check-knowledge-coverage` after ingestion (and correcting
+a few keyword-search terms in the script itself to match the new documents'
+actual phrasing, e.g. "right to complain" instead of a guessed "complaint
+about") shows every High/Medium/Low-Medium gap topic now `[OK]`, with real,
+spot-checked, on-topic matching text (not keyword coincidences) — see
+`scripts/check-knowledge-coverage.mjs` topic list and its inline history
+comments for the exact before/after counts. `Sensitive claims` and
+`Independence allowance / impairment` remain `[ZERO]` by design (see above).
+
+### 9.1 Storage / performance impact — concrete numbers, plain-English verdict
+
+The owner specifically asked whether this ingestion could cause storage or
+performance/computer issues. Investigated directly against the code and the
+real generated files (not assumed):
+
+- **Corpus size:** 415 → 499 narrative chunks (+84), `knowledge-chunks.json`
+  600 KB → 689 KB (+~89 KB) after adding 9 real documents. `schedules.json`
+  (structured price tables) is unchanged at ~154 KB since none of the new
+  documents added structured price rows. Total real-document text ingested
+  this pass: ~732 KB of raw `.txt` source across the 9 new fixtures.
+- **Where it's stored — confirmed all-local, no cloud:** both JSON files live
+  under `public/data/acc/` and are fetched once per app session via a plain
+  `fetch()` (`knowledgeCorpus.ts`) — this is a static build asset served
+  from the same local `launch.ps1`/dev server as the rest of the app, held
+  only in an in-memory module-level cache (`let cached`), and **never
+  written to IndexedDB** (confirmed in `knowledgeCorpus.ts`'s own doc
+  comment: "never persisted to IndexedDB — it's static, versioned
+  application content ... not user data"). It ships as part of the
+  committed `dist/` build the same way the app itself does — no network
+  calls to any external server, no cloud storage of any kind. Relative to
+  a typical browser storage quota (usually hundreds of MB to several GB,
+  and IndexedDB-based per this app's own real user data footprint), a
+  689 KB static asset fetched from the app's own local server is trivial —
+  effectively noise next to a single scanned PDF attachment.
+- **Retrieval latency — confirmed no scaling cliff:** `retrieveTopChunks`
+  (`knowledgeRetrieval.ts`) always does one linear pass over every chunk
+  (`O(chunks)` — score + filter + sort), then returns only the top `k`
+  (default 3, `knowledgeCorpus.ts`). At 499 chunks this is a few hundred
+  cheap string/map operations — microseconds on any CPU, not a bottleneck
+  even on a low-spec laptop; there is no early-exit/candidate-limiting logic
+  because none is needed at this scale, and nothing here changes with corpus
+  size in a way that would become noticeable before many, many times this
+  many chunks.
+- **Prompt/context budget — confirmed unaffected by corpus size:**
+  `checkContextBudget` (`contextBudget.ts`) estimates tokens only from the
+  messages actually assembled for a given turn — which only ever include
+  the top-`k` *retrieved* chunks (`retrieveKnowledgeForQuery(query, k=3)`),
+  never the full corpus. Verified by reading the call chain end-to-end
+  (`aiChatContext.ts` → `retrieveKnowledgeForQuery` → `retrieveTopChunks`):
+  a bigger corpus can only ever change *which* 3 chunks get selected, never
+  how many, so per-question prompt size — and therefore Ollama compute
+  time — is unaffected by this ingestion.
+- **App load/boot time — confirmed unaffected, lazy-loaded:** the knowledge
+  corpus is fetched only inside `getKnowledgeCorpus()`, called only from
+  `retrieveKnowledgeForQuery()`, called only from the AI chat message-
+  assembly path (`aiChatContext.ts`) — i.e. only once a user actually sends
+  a message in the AI chat panel, not on every app boot. A user who never
+  opens AI chat in a session never fetches this file at all.
+- **Bottom line for a CPU-only, low-RAM, no-admin-rights Windows laptop:**
+  **yes, this is safe.** The ingested corpus grew by well under 100 KB of
+  real text, is never stored in IndexedDB (zero impact on the app's actual
+  browser storage quota), never loaded until AI chat is actually used, and
+  retrieval/prompt-size behavior is structurally independent of total corpus
+  size (only the top-3 matches are ever used). The only thing that changed
+  for a user is that more real, on-topic questions now get grounded answers
+  instead of "I don't know" or (worse) a fabricated one.

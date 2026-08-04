@@ -1,0 +1,89 @@
+Allied Health Services
+
+Operational Guidelines
+
+1 November 2024. This is a living document and will be updated as required.
+
+1. How to read this guide
+
+These Operational Guidelines should be read in conjunction with the Standard Terms and Conditions document and the Allied Health Services Service Schedule ('your contract'). The services delivered must reflect the expectations outlined in the Allied Health Services Service Schedule (contract). Where there are any inconsistencies between this operational guideline and the contract, your contract will take precedence.
+
+2. Introduction
+
+ACC purchases Allied Health services from Suppliers and providers via two mechanisms: the Cost of Treatment Regulations, and the Allied Health Services Contract. This document outlines expectations for suppliers and providers working under the Allied Health Services Contract.
+
+3. Service objectives
+
+Under the Allied Health Services Contract, the objective of physiotherapy, hand therapy and podiatry services is to provide clients with timely access to quality treatment, and facilitate a prompt and cost-effective return to independence, work, and/or education.
+
+8. Client eligibility
+
+Clients can self-refer to Allied Health Services after injury. Clients must have sustained a personal injury caused by an accident to be eligible for support from ACC. Physiotherapists, podiatrists, and hand therapists, can register a claim on behalf of a client.
+
+9. Claim registration
+
+To register a claim a client must be able to identify an accident event. The provider must be able to diagnose a personal injury and must be able to establish that the accident was the most likely cause of the personal injury. Claims must be registered with ACC via the ACC45 process, either via the ACC eBusiness Gateway/ProviderHub or through a supported Practice Management Software programme with electronic lodgement capabilities.
+
+11. Allied Health Services initial assessments
+
+Requirements of an initial assessment include: development and documentation of a treatment plan; recording baseline measurements using an evidence-based outcome measure; referring the client to other services where clinically necessary; providing education to clients on self-management; documentation of clinical records. It is expected that only one initial consultation is invoiced per claim per Supplier, unless a significant change in function has occurred (e.g. post-surgery) or the client has re-presented after a prolonged period (greater than 1 year).
+
+12. Allied Health Services follow up treatments
+
+Requirements for telehealth consultations: Telehealth consultations can be provided to clients where it is determined by the provider as a clinically appropriate consultation method to meet the treatment and rehabilitation needs of their client. A Telehealth consultation replaces an in-person consultation - providers should not hold a Telehealth consultation and then require an in-person consultation to undertake a physical examination as part of the initial consultation. Clinical appropriateness (including the potential need for a physical examination) needs to be determined to ensure that a Telehealth consultation is appropriate. A telehealth consultation does not include a quick triage or check-in phone call. Telehealth must only be provided to clients who would ordinarily attend the Supplier's physical service location. Telehealth consultations are to be provided in line with the standards and requirements outlined by the ACC8331 - ACC Telehealth Guide and the New Zealand Telehealth Resource Centre. Providers and clients utilising telehealth must both be present in New Zealand at the time of the consultation. Documentation should evidence that the treatment directly relates to the covered personal injury, and outcomes should be recorded using an evidence-based outcome measure. When lodging an ACC45 for a client via telehealth, consent for the lodgement of the claim must be clearly discussed and recorded in the clinical records, including confirming the patient authorises the health professional to lodge their claim and authorises their records to be disclosed to ACC.
+
+Requirements for pelvic physiotherapy for Maternal Birth Injuries: physiotherapists who want to provide maternal birth injury services under the Allied Health contract need to show they have an ongoing interest in pelvic health, and must register with ACC (Vendor ID, ACC Provider ID number, confirmation of appropriate training/knowledge/competencies).
+
+13. Requirements for equipment provision
+
+Covers crutches hire, moonboots, knee braces, splinting and wound dressing (Hand Therapy codes HT03/HT04/HT13), and lower limb orthotics/footwear supports for Podiatrists, each up to a value specified in the Service Schedule, with prior approval (ACC7428) required for amounts over the contract cap.
+
+14. ACC32 request
+
+All ACC32 requests must be sent to ACC electronically, either via the ACC32 Application Form Online or through the Practice Management System. Approval to treat clients more than 50 times over the lifetime of the claim requires a non-standard request providing information from clinical records on the client's injury and treatment provided to date. Prior approval is not required at the 52-week post injury milestone.
+
+15. Progress report requirements
+
+A client's treatment needs to be reviewed periodically to ensure it remains appropriate and directly related to a covered Personal Injury. The Supplier can determine how and by whom this review is completed (the Clinical Director written report requirement was removed from the contract effective 1 November 2024).
+
+16. Goal setting and outcome measures
+
+All clients are required to have individual client centred goals and treatment goals, written in SMART format. Outcome measures should be collected at the initial assessment, regularly during treatment, and on discharge (e.g. Lower extremity functional scale, Oswestry disability index, Neck disability index, Roland-Morris disability questionnaire, Global Pain Scale; DASH or quick DASH for hand therapists).
+
+17. Discharge requirements
+
+At completion of the service a discharge summary needs to be recorded, including whether the client was discharged/self-discharged/lost to follow up, whether goals were met, pain rating scale at baseline and discharge, and the Global Rating of Change Scale. Where ACC clients have been referred to Allied Health Services by other health providers (e.g. GPs), providers are required to provide a discharge summary back to the referring provider.
+
+18. Responsibilities of the Supplier
+
+The Supplier is primarily responsible for the performance of the services, their clinic, providers and employees: ensuring clinical record keeping requirements are met, providing oversight where required, inducting new staff and ensuring the ACC partnership agreement is signed, and ensuring scope-specific ACC learning modules have been completed.
+
+19. Invoicing for services
+
+All providers are required to invoice ACC electronically for services, via the ACC eBusiness Gateway/ProviderHub or a Practice Management System (PMS), through one Vendor ID per contract. Providers usually receive payment after six working days. ACC regularly monitors and reviews individual vendor practice profiles (treatment, splinting, and invoicing patterns) and will contact vendors identified as having different patterns from the norm. ACC's Standard Terms and Conditions (Clause 8.12) states that if a service to a client is included in a Service Schedule to a Contract, the provider must charge under that Contract and cannot charge for that service under any Regulations.
+
+20. Interactions with Accredited Employers
+
+Accredited Employers (AEs) are employers who have a contract with ACC that allows them to manage their work injury claims. If an employee of an AE needs treatment for a covered work injury, the AE can arrange for this or they may use a Third-Party Administrator (TPA) who assists with the claims management for that AE. However, they must abide by the ACC Allied Health Services contract unless they have a separate contract or agreement with the provider.
+
+Regardless of the contract an AE holds with a provider, the employee of an AE is entitled to the same service quality, and terms and conditions that are given to an ACC client using the allied health service.
+
+AEs and TPAs may have their own processes regarding treatment limits and prior approval of additional treatment. Providers should liaise with the relevant AE or TPA with regards to their processes. AEs and TPAs may request reports regarding their clients, but their decisions about further treatment must follow the conditions of the Allied Health Services contract.
+
+21. Same Day Allied Health Treatment
+
+In the rare circumstances where clients require multiple treatments on the same day from the same or separate allied health providers, refer to ACC's Position Statement on Same Day Allied Health Treatment.
+
+22. Students
+
+Students studying towards a relevant Bachelor of Health Sciences degree can provide treatment when supervised in person under the Allied Health Services contract, with client consent documented in the clinical records and a registered treatment provider present throughout.
+
+23. Providing treatment to friends, family, and those close to you (including colleagues)
+
+Providers should carefully consider ACC's position as well as their relevant professional body's position regarding treatment of friends, family and those close to them.
+
+24. Providing Treatment in a Sports Setting
+
+Where treatment is provided outside of an accredited clinic, the client's home or workplace, treatment must be billed at the offsite rate that is available for physiotherapists only.
+
+Source: Allied Health Services Operational Guidelines, 1 November 2024, www.acc.co.nz/assets/provider/allied-health-services-operational-guidelines.pdf.

@@ -1,0 +1,83 @@
+ACC Telehealth Guide (ACC8331)
+
+Who is this guide for?
+
+This document is for health practitioners who provide health services to ACC claimants either under contract or regulations. It sets out ACC's expectations for the safe and ethical clinical use of telehealth as a mode of service delivery, and is designed to guide staff, clinicians and others in providing assessment, treatment and other clinical services via communication technologies.
+
+This document is intended as a helpful guide and should be used in conjunction with ACC's operational guidelines, contracts and specific requirements for the service offered. It should be used in conjunction with the guidelines produced by your regulatory and/or professional body, and is not a replacement for the documents produced by these organisations.
+
+Note - not all ACC services are telehealth enabled. You can find a full list of telehealth enabled services on the "Providing services via Telehealth" page of acc.co.nz.
+
+Terms used in this document
+
+Telehealth: refers to the real-time (synchronous) delivery of health care services through the medium of communication technologies where client and provider are in separate locations. Telehealth refers specifically to health care interactions that replace in-person consultations, and excludes brief communications (eg brief check-in either via video, phone or text messaging; or information sharing), communications not for the purpose of delivering health care services, asynchronous interactions (eg email), or administrative purposes (eg making an appointment).
+
+Telehealth consultation: real-time, synchronous health care consultations done via videolink, audiolink, or text messaging (live chat) services facilities on a tablet, computer, phone or live camera feed.
+
+Introduction
+
+Telehealth has become increasingly widespread as a form of health care provision. The chief advantage of telehealth is its contribution to facilitating access to safe and appropriate health care where this might otherwise be difficult. However, it is still a new way of working for many and has a particular treatment format that comes with its own requirements, risks, and limitations that providers must be aware of and act to mitigate.
+
+Clinical safety and quality
+
+Telehealth should be chosen deliberately to achieve the objective of providing accessible, flexible, and efficient health care services to clients who experience barriers to accessing appropriate in-person care. It should not be a default option or chosen because of clinician preference. Telehealth should be considered as a replacement for in-person care where this would result in:
+- timely access to health care (eg to overcome local workforce shortages)
+- access to an appropriate provider when this would otherwise not be possible (eg remote or rural location)
+- continuity of care and/or shared care
+- removal of barriers to accessing health care due to other constraints (eg risk of infection, medical or physical conditions that make it difficult to travel, transport difficulties, time constraints, caregiver responsibilities).
+
+Any telehealth service should meet the equivalent standard of care as would be provided in an in-person consultation. Privacy and confidentiality requirements are also amplified using telehealth and require additional attention to meet the same standard of care as an in-person consultation. This includes recording informed consent, as well as contacts such as phone calls and text messages.
+
+Informed consent
+
+Client consent for the use of telehealth should include a pre-engagement phone or video call which covers:
+- plain language information about what telehealth is, how it works, expectations, limitations, length of consult, privacy requirements, recordings
+- information about other options for receiving health services, including the client's right to change their mind about receiving a telehealth service
+- technological requirements such as basic literacy with technology, stable internet, access to device with a camera, any other equipment, privacy and confidentiality issues
+- costs to client (eg data)
+- the client's own assessment of their ability to manage the process and any supports they may require
+- broad discussion of risk factors and a mitigation plan.
+
+Consent is ongoing, meaning that you should check in regularly with your clients to ensure that this mode of service delivery remains appropriate and desirable.
+
+What is "clinically appropriate" telehealth care?
+
+The usual standards of care apply to service delivery via telehealth, although additional steps may be needed to apply these standards during a telehealth consultation. These standards apply to: client selection, identification, cultural competence, informed consent, assessment, diagnosis, maintaining the client's privacy and confidentiality, updating the client's clinical records, liaison and communication with other providers, and follow-up.
+
+Factors to consider
+
+Client safety cannot be compromised by the decision to use or continue using telehealth. Clients at high risk of harm to self or others, who experience difficulties such as emotional dysregulation or dissociation, or who are mentally severely unwell, may not be suitable for telehealth, or may require a provider present in the same location during consultations.
+
+Engagement and communication: telehealth consultations may impact the therapeutic relationship or provider-patient alliance in different ways for different people. Physical changes, paralinguistic and nonverbal cues, emotions and emotional response are harder to detect and assess on a screen.
+
+The client's cultural, spiritual and psychosocial needs and preferences: for clients from specific ethnic or cultural backgrounds, it may be important where possible to meet in person prior to continuing the relationship using telehealth (eg for some Māori, in-person or kanohi ki te kanohi meetings are strongly preferred to support whakawhanaungatanga, to establish physical and spiritual connections, and to lend mana to one's kōrero). It is important not to make assumptions, but to check with clients (and sometimes their supporters and/or other health providers).
+
+Technology: provider and client must have access to suitable equipment (hardware and software), as well as adequate and stable Internet access.
+
+Privacy and confidentiality: both clients and providers must be able to access a private space where they can safely share confidential information.
+
+Client capacity, including age, stage and developmental needs: the client must be able to operate the technology themselves (or have a facilitator present), and must have sufficient cognitive, mental and physical capacity to participate.
+
+Distance between provider and client location: telehealth is seldom the only medium of service delivery between a client and provider. Providers should be as closely co-located with the client as possible.
+
+Assessment requirements: consideration should be given to whether a physical examination or in-person consultation would add critical information, or whether this may be necessary to obtain reliable and accurate information, especially in the case of a diagnostic assessment.
+
+Professional and regulatory guidelines: providers should adhere to both their professional body guidelines for the use of telehealth as well as ACC's contractual obligations.
+
+Risk assessment and mitigation
+
+Using telehealth may compromise a provider's ability to recognise and respond promptly to any emerging safety issues, including a client's risk of harm towards themselves or others. Some risks associated with the use of telehealth can be mitigated with a good informed consent process. Where the risks of using telehealth cannot be mitigated, this should not be attempted, and an in-person consultation should be arranged instead. Examples where in-person consultations would be preferred include psychological trauma processing or exposure work, standardised pen-and-paper psychometric testing, examinations that include a physical assessment, or where a facilitator is required but unavailable.
+
+Risk categories to consider, with mitigation steps: clinical risks (safety plans, discussing limitations, clarifying availability, arranging a support person); boundary issues (clear expectations about billable time and response times); unstable living circumstances (access to a stable, secure Internet connection and a private, safe place to speak); technology failures (an agreed alternative form of contact); change in circumstances (continuity-of-care options); threats to privacy/confidentiality (correct client identification, safe private space, care about public locations).
+
+Technology requirements, data storage and privacy
+
+ACC does not provide funding for equipment or Internet access/data. The chosen electronic platform should be reliable and work well on the locally available network and bandwidth. Recordings and clinical notes or reports must be stored and transmitted securely. Video recordings are also clinical data and must be stored as such (eg for seven years).
+
+Other considerations
+
+Legal authority: the legislation governing ACC makes provision only for services where both provider and client are based in New Zealand. If exceptional circumstances make it necessary for a consultation between a client and provider to take place where one party is based overseas, contact ACC to discuss this.
+
+Work certification: ACC allows for ACC45 and ACC18 forms to be completed via telehealth, with the requirement that you follow the guidance of your professional and regulatory bodies in determining the clinical appropriateness of completing work certificates via telehealth. If you lodge claims electronically and your patient is unable to work for more than 14 days following the initial consultation, an ACC18 Medical Certificate can be submitted to reflect this.
+
+Source: ACC8331 ACC Telehealth Guide, www.acc.co.nz/assets/provider/acc8331-telehealth-guide.pdf.

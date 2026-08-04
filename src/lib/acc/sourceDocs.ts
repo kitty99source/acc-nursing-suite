@@ -111,6 +111,94 @@ export const ACC_SOURCE_DOCS: AccSourceDoc[] = [
     serviceTypes: ['nursing', 'physiotherapy', 'occupational-therapy', 'podiatry', 'acupuncture', 'chiropractic', 'osteopathy', 'speech-therapy'],
     rawTextFile: 'acc7909-working-together-cotr-providers.txt',
   },
+  // --------------------------------------------------------------------------
+  // Added 4 Aug 2026 per docs/research/acc-public-contract-sources-2026-08.md
+  // §8 gap audit — closing the HIGH/MEDIUM/LOW-MEDIUM knowledge-base gaps
+  // (review & appeal rights, complaints, non-resident eligibility, weekly
+  // compensation, vocational rehabilitation, Accredited Employer claims
+  // process, cultural/whānau support, allied-health telehealth). Every URL
+  // was fetched and verified live on that date; none are invented.
+  // --------------------------------------------------------------------------
+  {
+    id: 'acc-claimants-rights-notice',
+    title: "Code of ACC Claimants' Rights (incl. review & appeal rights guidance)",
+    url: 'https://www.legislation.govt.nz/notice/2002/gs0072.html',
+    docType: 'info-sheet',
+    serviceTypes: ['claims-management', 'review-and-appeals'],
+    versionNote: 'Statutory Code under s44 ACC Act 2001, plus public "How review works" guidance from acc.co.nz',
+    rawTextFile: 'acc-claimants-rights-notice.txt',
+  },
+  {
+    id: 'code-of-health-disability-consumers-rights',
+    title: "Code of Health and Disability Services Consumers' Rights",
+    url: 'https://www.hdc.org.nz/your-rights/about-the-code/code-of-health-and-disability-services-consumers-rights/',
+    docType: 'info-sheet',
+    serviceTypes: ['complaints', 'health-services'],
+    versionNote: 'Health and Disability Commissioner Act 1994, Code of Rights regulations — published by the Health and Disability Commissioner',
+    rawTextFile: 'code-of-health-disability-consumers-rights.txt',
+  },
+  {
+    id: 'supporting-injured-international-visitors',
+    title: 'Supporting injured visitors to New Zealand, and NZ residents injured overseas',
+    url: 'https://www.acc.co.nz/for-providers/knowledge-base/supporting-injured-international-visitors/',
+    docType: 'info-sheet',
+    serviceTypes: ['claims-management', 'eligibility'],
+    versionNote: 'Public acc.co.nz guidance pages, consolidated',
+    rawTextFile: 'supporting-injured-international-visitors.txt',
+  },
+  {
+    id: 'weekly-compensation-quick-guide',
+    title: 'Weekly compensation and other financial support — Provider Quick Guide',
+    url: 'https://www.acc.co.nz/for-providers/knowledge-base/weekly-compensation-and-other-financial-support/',
+    docType: 'info-sheet',
+    serviceTypes: ['weekly-compensation', 'claims-management'],
+    versionNote: 'Public acc.co.nz guidance page',
+    rawTextFile: 'weekly-compensation-quick-guide.txt',
+  },
+  {
+    id: 'vrs-og',
+    title: 'Vocational Rehabilitation Services Operational Guidelines',
+    url: 'https://www.acc.co.nz/assets/contracts/vrs-og.pdf',
+    docType: 'operational-guidelines',
+    serviceTypes: ['vocational-rehabilitation'],
+    versionNote: 'May 2026 edition',
+    rawTextFile: 'vrs-og.txt',
+  },
+  {
+    id: 'allied-health-services-operational-guidelines',
+    title: 'Allied Health Services Operational Guidelines (incl. Accredited Employer interactions, telehealth)',
+    url: 'https://www.acc.co.nz/assets/provider/allied-health-services-operational-guidelines.pdf',
+    docType: 'operational-guidelines',
+    serviceTypes: ['physiotherapy', 'occupational-therapy', 'hand-therapy', 'podiatry', 'accredited-employer'],
+    effectiveFrom: '2024-11-01',
+    rawTextFile: 'allied-health-services-operational-guidelines.txt',
+  },
+  {
+    id: 'acc8331-telehealth-guide',
+    title: 'ACC8331 — Telehealth Guide for health practitioners',
+    url: 'https://www.acc.co.nz/assets/provider/acc8331-telehealth-guide.pdf',
+    docType: 'info-sheet',
+    serviceTypes: ['physiotherapy', 'occupational-therapy', 'hand-therapy', 'podiatry', 'nursing', 'telehealth'],
+    rawTextFile: 'acc8331-telehealth-guide.txt',
+  },
+  {
+    id: 'acc-te-whanau-maori-guidance',
+    title: 'Te Whānau Māori me ō mahi — cultural safety and competency guidance for providers',
+    url: 'https://www.acc.co.nz/assets/provider/acc-te-whanau-maori-me-o-mahi-guidance.pdf',
+    docType: 'info-sheet',
+    serviceTypes: ['cultural-safety', 'nursing', 'physiotherapy', 'occupational-therapy', 'hand-therapy', 'podiatry', 'vocational-rehabilitation'],
+    rawTextFile: 'acc-te-whanau-maori-guidance.txt',
+  },
+  {
+    id: 'housing-modification-services-og',
+    title: 'Housing Modification (HMOD) and Housing Assessment (HMA) Services Operational Guidelines',
+    url: 'https://www.acc.co.nz/assets/provider/Housing-Modification-and-Housing-Assessment-Services-Operational-Guidelines.pdf',
+    docType: 'operational-guidelines',
+    serviceTypes: ['home-modifications', 'social-rehabilitation'],
+    effectiveFrom: '2025-09-01',
+    versionNote: 'Trivially-found real source for the LOW-priority "home modifications" gap noted in docs/research/acc-public-contract-sources-2026-08.md §8',
+    rawTextFile: 'housing-modification-services-og.txt',
+  },
 ];
 
 export function sourceDocById(id: string): AccSourceDoc | undefined {

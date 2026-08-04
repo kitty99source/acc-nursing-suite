@@ -108,6 +108,19 @@ const NARRATIVE_DOC_IDS = [
   'allied-health-services-service-schedule',
   'elective-surgery-service-schedule',
   'ACC1523-Specified-treatment-provider-costs',
+  // Added 4 Aug 2026 — closing the §8 gap audit (review & appeal rights,
+  // complaints, non-resident eligibility, weekly compensation, vocational
+  // rehabilitation, Accredited Employer claims process, cultural/whānau
+  // support, allied-health telehealth). See sourceDocs.ts for provenance.
+  'acc-claimants-rights-notice',
+  'code-of-health-disability-consumers-rights',
+  'supporting-injured-international-visitors',
+  'weekly-compensation-quick-guide',
+  'vrs-og',
+  'allied-health-services-operational-guidelines',
+  'acc8331-telehealth-guide',
+  'acc-te-whanau-maori-guidance',
+  'housing-modification-services-og',
 ];
 
 let allChunks = [];

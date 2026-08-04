@@ -71,6 +71,13 @@ export interface AiChatMessage {
    * stopped response's partial text visible rather than vanishing it.
    */
   stopped?: boolean;
+  /**
+   * Set on an assistant reply when one or more OLDER turns had to be dropped from history to fit
+   * this request's context budget (see `trimToBudget` in this file) — rendered as a small, honest
+   * note so it's clear why the model may no longer "remember" something from several messages
+   * back, rather than that looking like an unexplained lapse.
+   */
+  historyTrimmed?: boolean;
 }
 
 export type ContextChipType = 'patient' | 'contract';
@@ -307,6 +314,59 @@ export interface ChatMessage {
 
 const MAX_HISTORY_TURNS = 8;
 
+// ----------------------------------------------------------------------------
+// 2026-08-04 multi-turn timeout fix (owner report: chat works fine for the
+// first ~2-3 exchanges, then "Couldn't reach the local AI model" starts
+// happening again in the SAME conversation). Root cause, confirmed by
+// re-reading this file's own `trimToBudget` before this fix: `MAX_HISTORY_TURNS`
+// above caps history by MESSAGE COUNT (8 messages = 4 user/assistant pairs),
+// not by size — and the PRIOR fix in this same file (the 15-minute total
+// timeout raise in aiService.ts) deliberately let real assistant replies run
+// much longer (up to `DEFAULT_CHAT_NUM_PREDICT` = 2048 tokens each) instead of
+// being cut off early. Those two changes combined are exactly the gap: by
+// turn 3-4, the last 8 raw messages can include 3-4 of those now-much-longer
+// assistant replies, which alone can approach or exceed `DEFAULT_NUM_CTX`
+// (8192) even before the system prompt, any attached chip, and any retrieved
+// knowledge chunk are added — and the old `trimToBudget` (see below) only
+// ever dropped retrieved knowledge chunks to make room, NEVER history itself,
+// so a prompt that the char-based budget estimate judged "just barely fits"
+// could still exceed the model's REAL tokenizer count (this estimate is
+// explicitly documented in contextBudget.ts as a rough ~4-chars/token
+// approximation, not the model's actual vocabulary) and get sent to Ollama
+// anyway — which is the raw "stuck/crashed" timeout the owner saw, not the
+// honest, pre-flight `contextTooLargeMessage` refusal this app already has
+// for the single-turn case.
+//
+// Investigated and RULED OUT as contributing causes (see aiChatContext.test.ts
+// for the regression tests backing these):
+//   - Context-chip re-injection: `assembleMessages` below DOES re-serialize
+//     and re-send a chip's full content in the system message on every turn.
+//     This looks redundant at first glance, but it is NOT a bug: unlike a real
+//     multi-turn transcript, the system message itself (where chip content
+//     lives) is NEVER persisted into `history` — only the user/assistant TEXT
+//     of each turn is. If chip content were only sent once, the model would
+//     genuinely forget the attached patient/contract's details after turn 1.
+//     This is a constant, bounded cost per request (proportional to the
+//     number of attached chips, which does not grow with conversation
+//     length), not a per-turn-compounding one — real, but not THE bug.
+//   - Retrieved knowledge chunks: `retrieveKnowledgeForQuery` (called fresh
+//     in `buildChatMessages` below) runs once per NEW user message and
+//     replaces the previous turn's chunks entirely — it does not
+//     accumulate/append across turns. Confirmed correct, no fix needed.
+//
+// Fix: `trimToBudget` now has a second trimming pass. After exhausting every
+// retrievable knowledge chunk (unchanged priority — those are the cheapest,
+// least-relevant-by-construction thing to lose), if the assembled prompt
+// STILL doesn't fit the budget, drop the OLDEST history turns one at a time
+// (oldest-first, since a several-turns-back exchange is the least likely to
+// still matter to the CURRENT question) until it fits or history is empty.
+// The new user message and the system prompt are never touched — dropping
+// either would defeat the whole point of the request. This turns "silently
+// send an oversized prompt and let Ollama choke" into the same graceful,
+// honest degradation this app already does for chunks, extended to cover the
+// one thing that can genuinely grow per-turn: history itself.
+// ----------------------------------------------------------------------------
+
 export interface BuildChatMessagesOptions {
   history: ChatTurn[];
   chips: ContextChip[];
@@ -343,6 +403,14 @@ export interface BuildChatMessagesResult {
   contextTooLarge?: boolean;
   /** Present alongside `contextTooLarge: true` — the honest, specific user-facing message (see contextBudget.ts `contextTooLargeMessage`). */
   contextTooLargeMessage?: string;
+  /**
+   * True when one or more OLDER history turns had to be dropped (oldest-first, after every
+   * retrieved knowledge chunk was already dropped) to fit this turn's prompt inside the model's
+   * context budget — see the multi-turn timeout fix above `trimToBudget`. The caller (AiChatPanel)
+   * can surface this so the user understands why an earlier reply is no longer "remembered" this
+   * turn, rather than it looking like the model silently forgot something.
+   */
+  historyTrimmed?: boolean;
 }
 
 function buildRetrievedKnowledgeBlock(chunks: RetrievedChunk[]): { text: string; citations: RetrievedSourceCitation[] } {
@@ -422,14 +490,17 @@ function trimToBudget(
   retrievedChunks: RetrievedChunk[],
   contextBlock: string,
   numCtx: number,
-): { messages: ChatMessage[]; keptChunks: RetrievedChunk[]; tooLarge: boolean } {
+): { messages: ChatMessage[]; keptChunks: RetrievedChunk[]; historyTrimmed: boolean; tooLarge: boolean } {
   // Already sorted best-first by retrieveTopChunks — pop from the end to drop the LOWEST-scoring
   // chunk first, keeping the most relevant ones as long as possible.
-  const remaining = [...retrievedChunks];
+  const remainingChunks = [...retrievedChunks];
+  // Oldest-first drop order once chunks are exhausted (see multi-turn fix comment above) — slice
+  // from the FRONT so the most recent exchanges are the last thing lost.
+  let remainingHistory = recentHistory;
 
   function build(): ChatMessage[] {
-    const { text: knowledgeBlock } = buildRetrievedKnowledgeBlock(remaining);
-    return assembleMessages(recentHistory, userMessage, knowledgeBlock, contextBlock);
+    const { text: knowledgeBlock } = buildRetrievedKnowledgeBlock(remainingChunks);
+    return assembleMessages(remainingHistory, userMessage, knowledgeBlock, contextBlock);
   }
 
   // Reserve a fraction of `numCtx` for the model's own reply rather than a fixed token count —
@@ -444,13 +515,30 @@ function trimToBudget(
   let messages = build();
   let budget = checkContextBudget(messages, { numCtx, reservedForResponseTokens });
 
-  while (remaining.length > 0 && !budget.ok) {
-    remaining.pop();
+  // Priority 1: drop the lowest-relevance retrieved knowledge chunk(s) — unchanged from the
+  // single-turn fix, still the cheapest/least-relevant-by-construction thing to lose.
+  while (remainingChunks.length > 0 && !budget.ok) {
+    remainingChunks.pop();
     messages = build();
     budget = checkContextBudget(messages, { numCtx, reservedForResponseTokens });
   }
 
-  return { messages: budget.ok ? messages : [], keptChunks: remaining, tooLarge: !budget.ok };
+  // Priority 2 (multi-turn fix): every chunk is already gone and the prompt STILL doesn't fit —
+  // the only thing left that can grow per-turn is history itself. Drop the oldest turn first.
+  // The new user message (`userMessage`, appended separately in `assembleMessages`) is never
+  // touched here.
+  while (remainingHistory.length > 0 && !budget.ok) {
+    remainingHistory = remainingHistory.slice(1);
+    messages = build();
+    budget = checkContextBudget(messages, { numCtx, reservedForResponseTokens });
+  }
+
+  return {
+    messages: budget.ok ? messages : [],
+    keptChunks: remainingChunks,
+    historyTrimmed: remainingHistory.length < recentHistory.length,
+    tooLarge: !budget.ok,
+  };
 }
 
 export async function buildChatMessages(opts: BuildChatMessagesOptions): Promise<BuildChatMessagesResult> {
@@ -460,7 +548,7 @@ export async function buildChatMessages(opts: BuildChatMessagesOptions): Promise
 
   const retrievedChunks = await retrieveKnowledgeForQuery(opts.userMessage);
 
-  const { messages, keptChunks, tooLarge } = trimToBudget(
+  const { messages, keptChunks, historyTrimmed, tooLarge } = trimToBudget(
     recentHistory,
     opts.userMessage,
     retrievedChunks,
@@ -480,5 +568,23 @@ export async function buildChatMessages(opts: BuildChatMessagesOptions): Promise
   }
 
   const { citations: retrievedSources } = buildRetrievedKnowledgeBlock(keptChunks);
-  return { messages, contextBlock, retrievedSources };
+  return { messages, contextBlock, retrievedSources, historyTrimmed: historyTrimmed || undefined };
+}
+
+// ----------------------------------------------------------------------------
+// "This conversation is getting long" nudge (2026-08-04, part of the
+// multi-turn timeout fix above) — a lightweight UX nicety, not a functional
+// fix on its own: once a conversation has racked up enough turns that history
+// trimming (or an outright refusal) becomes realistically likely on the NEXT
+// message, tell the user proactively rather than letting them discover it via
+// a timeout or a "some earlier context was dropped" note after the fact.
+// Threshold is deliberately generous (higher than `MAX_HISTORY_TURNS`, which
+// already only ever sends the last 8 messages) — this is about the OWNER's
+// own sense of "this thread has gone on a while", not a hard technical limit.
+// ----------------------------------------------------------------------------
+export const LONG_CONVERSATION_MESSAGE_THRESHOLD = 10;
+
+/** True once a conversation has enough turns that starting fresh would likely help (see above). */
+export function isConversationGettingLong(messageCount: number): boolean {
+  return messageCount >= LONG_CONVERSATION_MESSAGE_THRESHOLD;
 }

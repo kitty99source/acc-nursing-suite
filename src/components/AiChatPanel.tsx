@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { useAiChatStore, makeMessageId, CHIP_DND_MIME, type AiChatMessage } from '../state/aiChatStore';
-import { buildChatMessages, type ChatTurn, type ContextChip } from '../lib/aiChatContext';
+import { buildChatMessages, isConversationGettingLong, type ChatTurn, type ContextChip } from '../lib/aiChatContext';
 import { checkAiServiceStatus, generateLocalAiChatResponseStream, isChatTimeoutError } from '../lib/aiService';
 import { parseThinkResponse } from '../lib/ai/thinkParser';
 import { shouldAutoScroll } from '../lib/chatScroll';
@@ -197,6 +197,7 @@ export function AiChatPanel() {
       retrievedSources,
       contextTooLarge,
       contextTooLargeMessage: tooLargeMessage,
+      historyTrimmed,
     } = await buildChatMessages({
       history,
       chips: attachedChips,
@@ -260,6 +261,7 @@ export function AiChatPanel() {
         reasoning: reasoning || undefined,
         contextUsed: contextBlock || undefined,
         retrievedSources: retrievedSources.length ? retrievedSources : undefined,
+        historyTrimmed: historyTrimmed || undefined,
       });
     } else {
       let diagnosticNote: string | undefined;
@@ -348,6 +350,18 @@ export function AiChatPanel() {
         trash icon above to clear it.
       </p>
 
+      {isConversationGettingLong(messages.length) && (
+        <p
+          className="px-3 py-1.5 text-[11px] shrink-0 border-b"
+          style={{ color: 'var(--muted)', borderColor: 'var(--border)', background: 'var(--surface-2)' }}
+        >
+          This conversation is getting long — starting a{' '}
+          <button type="button" className="underline" style={{ color: 'var(--accent)' }} onClick={newChat}>
+            new chat
+          </button>{' '}
+          for a new topic can help keep replies fast.
+        </p>
+      )}
       <div className="relative flex-1 min-h-0">
       <div ref={scrollRef} onScroll={handleTranscriptScroll} className="h-full overflow-y-auto px-3 py-2 space-y-3">
         {messages.length === 0 && (
@@ -425,6 +439,12 @@ export function AiChatPanel() {
                   ))}
                 </div>
               </details>
+            )}
+            {m.role === 'assistant' && m.historyTrimmed && (
+              <p className="text-[10px] mt-1" style={{ color: 'var(--muted)', marginRight: '2rem' }}>
+                This conversation is long, so some of the earliest messages were left out of context for this
+                reply to keep it fast — start a new chat if you need the model to recall the very start.
+              </p>
             )}
             {m.role === 'assistant' && m.contextUsed && (
               <details className="mt-1" style={{ marginRight: '2rem' }}>

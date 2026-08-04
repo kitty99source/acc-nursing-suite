@@ -498,3 +498,137 @@ whatever the actual source is), or hand over 2-3 real examples, and the next bui
 actual text-extraction + chunking + embedding + local-vector-search pipeline described in "Future
 RAG build plan" above — genuinely blocked on having real source material to build and test against,
 not a coding limitation.
+
+## 2026-08-04 4th-timeout fix: unbounded-by-tokens history + fresh speed research
+
+Owner report: the chat now works well within a conversation (long replies no longer get cut off —
+confirms the prior 15-minute-ceiling fix), but a NEW timeout starts recurring after roughly 3
+back-and-forth exchanges in the SAME conversation. Owner's own hypothesis: "is this because we
+can't handle long conversations yet, or truncate?" — correct instinct.
+
+### Root cause, confirmed
+
+`aiChatContext.ts`'s `MAX_HISTORY_TURNS` (= 8) already caps history by **message count**, not by
+size — this existed before this pass and was never the "send the entire unbounded transcript"
+problem the report speculated might exist. But that count-based cap has a real gap once combined
+with the PRIOR fix in this same feature (raising `DEFAULT_CHAT_TOTAL_TIMEOUT_MS` from 5 to 15
+minutes specifically so genuinely long, healthy replies are no longer cut short): a real assistant
+reply can now legitimately run up to `DEFAULT_CHAT_NUM_PREDICT` (2048 tokens). By turn 3-4, the
+last 8 raw messages can include 3-4 of those now-much-longer replies — which alone can approach or
+exceed `DEFAULT_NUM_CTX` (8192), even before the system prompt (~1.4K tokens on its own, per this
+doc's earlier measurements), any attached chip, or any retrieved knowledge chunk are added.
+
+The existing context-budget preflight (`contextBudget.ts` / `trimToBudget` in `aiChatContext.ts`)
+already re-evaluates the FULL assembled request on every single turn (not just once) — that part
+was already correct. The actual gap: `trimToBudget` only ever dropped retrieved knowledge chunks
+to make room, **never history itself** — confirmed by its own pre-existing test
+(`aiChatContext.test.ts`, "never trims conversation history..."), which was a deliberate design
+choice at the time (history was assumed small enough to never need it) that stopped being safe
+once replies got much longer. Once every chunk was already gone, a prompt whose char-based
+estimate looked "close but might fit" would get sent to Ollama anyway — and since that estimate is
+explicitly a rough ~4-chars/token approximation (not the model's real tokenizer), a request that
+passed the estimate could still exceed the model's REAL context window, which is exactly the class
+of failure that produces "Ollama crashed or got stuck" rather than an honest refusal.
+
+**Two hypotheses from the bug report investigated and ruled out** (regression tests added for both
+in `aiChatContext.test.ts`, "context-chip re-injection" describe block):
+
+- **Chip re-injection**: confirmed chips DO get fully re-serialized into the system message on
+  every turn — but this is required, not a bug. The system message (where chip content lives) is
+  never persisted into `history`; only the user/assistant TEXT of each turn is. If a chip's content
+  were sent only once, the model would genuinely forget the attached patient/contract after turn 1.
+  This is a constant cost per request (proportional to chips attached, not to conversation length)
+  — real but not the compounding-growth cause.
+- **Retrieved knowledge chunks**: `retrieveKnowledgeForQuery` runs fresh per new user message and
+  fully replaces (never appends to) the previous turn's chunks. Already correct, no fix needed.
+
+### Fix applied
+
+`trimToBudget` now has a second trimming pass: once every retrievable knowledge chunk is already
+dropped and the prompt still doesn't fit, it drops the OLDEST history turns one at a time (the
+turns least likely to still matter to the current question) until the prompt fits or history is
+exhausted — never touching the system prompt or the new user message. `buildChatMessages` /
+`AiChatMessage` now carry a `historyTrimmed` flag so the chat panel can show a small, honest note
+("some of the earliest messages were left out of context...") instead of a silent, unexplained gap
+in what the model "remembers." Also added `isConversationGettingLong` (message-count threshold,
+10) + a dismissed-by-default banner in `AiChatPanel.tsx` suggesting "New chat" once a conversation
+has gone on a while — a UX nicety, not a functional fix, per the report's own ask #4.
+
+New/updated tests: `aiChatContext.test.ts` — history-trimming-as-last-resort (with a realistic
+"several long prior replies" fixture matching the incident shape), confirmation the outright-refusal
+safety net still fires when even dropping all history isn't enough, chip-re-injection-is-required
+regression coverage, and `isConversationGettingLong` threshold tests. Full suite green
+(88 files / 846 tests, up from the 839-test baseline) + `tsc --noEmit` clean before this was
+committed.
+
+### Fresh speed research (owner: "still quite slow" after the two already-applied optimizations)
+
+Explicitly re-researched rather than re-stating the prior round's conclusions — looked specifically
+for anything NOT yet checked:
+
+- **AVX-512 / instruction-set utilization**: found Ollama's own maintainers' direct statement (GitHub
+  issue #2205, `ollama/ollama`) that AVX2 already captures the vast majority of the CPU speed win over
+  no vector extensions at all (~400% from none→AVX, another ~10% AVX→AVX2), and their own internal
+  testing showed **AVX-512 gave no measurable further improvement** on real test systems — which is
+  exactly why Ollama deliberately ships no AVX-512 CPU runner by default (would need a from-source
+  build to even try). This is a NEW, more specific confirmation of the earlier round's "no CPU benefit
+  found" conclusion (which was reasoned from Flash Attention's own gating logic, not this direct AVX
+  benchmark data) — same bottom line, stronger evidence, nothing new to apply.
+- **`OLLAMA_NUM_THREAD` / `num_thread` revisited**: confirmed real and settable per-request
+  (`options.num_thread`) or via a custom Modelfile — NOT actually an env var read at the request
+  level as the name suggests (a real, currently-undocumented-in-this-app footgun if anyone tries
+  `OLLAMA_NUM_THREAD=N` expecting it to do anything). Ollama auto-detects a default thread count from
+  the OS, but multiple current (2026) GitHub reports show that auto-detection can under-count on
+  laptop-class CPUs with SMT/hyperthreading or hybrid P-core/E-core layouts (one report showed only 2
+  threads detected on a 4-thread machine). **Not applied as a code change** (this app still has no way
+  to know the owner's real physical core count from inside the codebase — guessing one would repeat
+  the exact "apply something unconfirmed" mistake the owner already warned against), but this is a
+  genuinely new, concrete, owner-actionable one-time experiment: run `ollama run phi4-mini-reasoning`,
+  check the startup log line `system_info | ... total_threads=N` against the laptop's actual physical
+  core count (Task Manager → Performance → CPU → "Cores"), and if Ollama detected fewer threads than
+  physical cores exist, try `/set parameter num_thread <physical core count>` in that same `ollama run`
+  session as a quick before/after timing comparison. Documented here, not applied blindly.
+- **Disk I/O / antivirus contribution to PERCEIVED slowness — genuinely new finding, real and worth
+  acting on**: confirmed via current Ollama troubleshooting guidance that Windows Defender (or any
+  real-time AV) scanning the `.ollama\models` folder on every file read is a documented, real
+  contributor to "Ollama feels slow to start/respond" reports — not just a download-time issue. Also
+  confirmed a separate, real mechanism (multiple open `ollama/ollama` GitHub issues on memory-pressure
+  eviction) by which a model can effectively get evicted from RAM for reasons OTHER than the
+  `keep_alive` idle timer: Ollama's own free-memory check can be fooled by page-cache/buffer accounting
+  or by genuine memory pressure from other running apps, triggering a reload even inside the 30-minute
+  `keep_alive` window. **Recommended, not yet applied** (a Windows-local config change, not app code):
+  add `%USERPROFILE%\.ollama\models` (and the Ollama installation folder) to Windows Defender's
+  exclusion list — a standard, low-risk mitigation — and keep an eye on how many other apps/browser
+  tabs are open during a chat session on a <16GB machine, since that's genuinely tight headroom for a
+  ~3.2GB resident model plus a browser plus this app plus the OS.
+- **Realistic tokens/sec calibration — the most consequential finding this round**: cross-referenced
+  several current (2026) practitioner benchmarks/model-card pages for Phi-4-mini-reasoning Q4_K_M
+  CPU-only. Consistent theme: "~10-20 tok/s on a modern 8-core CPU" is the commonly-cited figure — but
+  that figure is anchored on **desktop-class** CPUs (the sources citing it explicitly reference 8-core
+  desktop/server chips). The one figure found for an actual **mobile laptop CPU** (Intel Core Ultra 7
+  165H, a genuinely modern 2024-25 laptop chip) measured only **~4.86 tok/s** at int4/Q4-equivalent
+  quantization via ONNX Runtime — well below the oft-cited "10-20" range, and that's on a chip newer
+  and generally more capable than many still-in-service Windows business laptops. Laptop CPUs run at
+  meaningfully lower sustained clocks than desktop parts under the same nominal core count (thermal/
+  power budget), so anchoring expectations on desktop benchmark numbers likely OVERSTATES what a real
+  laptop should be expected to deliver.
+
+### Honest bottom line on speed (owner-facing)
+
+No further CPU-side code lever was found this round, on top of the two rounds already investigated
+(Flash Attention / KV-cache quantization / parallelism / quantization tradeoffs already ruled out;
+`num_ctx`/`keep_alive`/`num_predict` already tuned). The two genuinely new, real, and actionable items
+are both **local Windows configuration**, not code: an antivirus exclusion for the Ollama models
+folder, and a one-time `num_thread`-detection sanity check. Neither is likely to be a dramatic (2x+)
+speedup — they're real but modest mitigations for slowness ON TOP OF the honest hardware ceiling, not
+a fix for the ceiling itself.
+
+That ceiling is real: a CPU-only laptop with well under 16GB RAM, running a genuine reasoning model
+(one that always emits a hidden chain-of-thought before its visible answer — itself hundreds to low
+thousands of tokens per reply, per Microsoft's own Phi-4-reasoning technical report) at somewhere
+between ~5 and ~15 tokens/second depending on exactly how "laptop-class" the CPU is, will feel
+noticeably slower than a cloud AI product (ChatGPT/Claude/Copilot) that runs on datacenter GPUs with
+no such reasoning-token tax on the user's own hardware. This is an inherent, physical tradeoff for
+choosing 100%-local/private inference over a cloud API — not a bug still hiding somewhere in this
+codebase. At this point, the responsible recommendation is to set that expectation plainly rather
+than keep hunting for a code fix that the evidence does not support existing.

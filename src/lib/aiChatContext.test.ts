@@ -361,7 +361,7 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
     expect(result.messages).toEqual([]);
   });
 
-  it('never trims conversation history or the user message, even once knowledge chunks are being dropped for budget', async () => {
+  it('never trims conversation history while dropping knowledge chunks is enough on its own to fit budget', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => SAMPLE_CORPUS }));
     const { messages, contextTooLarge, retrievedSources } = await buildChatMessages({
       history: [{ role: 'user', content: 'earlier question' }, { role: 'assistant', content: 'earlier answer' }],
@@ -402,6 +402,143 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
     });
     expect(result.contextTooLarge).toBeFalsy();
     expect(result.messages.length).toBeGreaterThan(0);
+  });
+
+  // 2026-08-04 multi-turn timeout fix: the owner reported the chat working fine for the first
+  // ~2-3 exchanges, then hitting "Couldn't reach the local AI model" again in the SAME
+  // conversation. Root cause: history was capped by MESSAGE COUNT (`MAX_HISTORY_TURNS` = 8) but
+  // NOT by size, and the earlier fix that let real replies run much longer (up to 2048 tokens
+  // each) meant 3-4 of those long replies in the last 8 messages could alone approach/exceed
+  // `numCtx` — but `trimToBudget` only ever dropped retrieved knowledge chunks, never history, so
+  // an oversized prompt could still get sent to Ollama once every chunk was already gone.
+  describe('multi-turn history growth (2026-08-04 fix)', () => {
+    it('drops the OLDEST history turns (after every knowledge chunk is already gone) rather than refusing outright, once several long prior replies would otherwise exceed the budget', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+      // Simulate exactly the incident shape: several realistically-long prior assistant replies
+      // (a "detailed contract summary"-sized reply, per the owner's own hypothesis) accumulated
+      // across turns.
+      const longReply = 'x'.repeat(4000); // ~1000 estimated tokens each
+      const history = [
+        { role: 'user' as const, content: 'question one' },
+        { role: 'assistant' as const, content: longReply },
+        { role: 'user' as const, content: 'question two' },
+        { role: 'assistant' as const, content: longReply },
+        { role: 'user' as const, content: 'question three' },
+        { role: 'assistant' as const, content: longReply },
+      ];
+      const result = await buildChatMessages({
+        history,
+        chips: [],
+        data: dataWith([]),
+        userMessage: 'question four',
+        // Small enough that 3 long replies + system prompt don't all fit, but NOT so small that
+        // dropping history can't rescue it (unlike the numCtx:50 "refuse outright" case above) —
+        // empirically leaves room for exactly the newest (turn-3) pair once the older two are gone.
+        numCtx: 3400,
+      });
+      expect(result.contextTooLarge).toBeFalsy();
+      expect(result.historyTrimmed).toBe(true);
+      const contents = result.messages.map((m) => m.content);
+      // The newest turn and the new user message must survive.
+      expect(contents).toContain('question three');
+      expect(contents).toContain('question four');
+      // At least the oldest turn must have been dropped to make room.
+      expect(contents).not.toContain('question one');
+    });
+
+    it('still refuses outright (contextTooLarge) if dropping every chunk AND every history turn is not enough', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+      const result = await buildChatMessages({
+        history: [
+          { role: 'user', content: 'x'.repeat(400) },
+          { role: 'assistant', content: 'x'.repeat(400) },
+        ],
+        chips: [],
+        data: dataWith([]),
+        userMessage: 'x'.repeat(400),
+        numCtx: 50,
+      });
+      expect(result.contextTooLarge).toBe(true);
+      expect(result.messages).toEqual([]);
+    });
+
+    it('does not report historyTrimmed when the conversation already fits without dropping anything', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+      const result = await buildChatMessages({
+        history: [{ role: 'user', content: 'hi' }, { role: 'assistant', content: 'hello' }],
+        chips: [],
+        data: dataWith([]),
+        userMessage: 'how are you',
+      });
+      expect(result.historyTrimmed).toBeUndefined();
+    });
+  });
+});
+
+describe('context-chip re-injection (2026-08-04 investigation)', () => {
+  beforeEach(() => {
+    _resetKnowledgeCorpusCacheForTests();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    _resetKnowledgeCorpusCacheForTests();
+  });
+
+  // Confirms the investigated (and ruled out as a growth bug) behaviour: a chip's full content IS
+  // re-sent in the system message on every turn — this is REQUIRED, not redundant, because the
+  // system message itself is never persisted into `history` (only user/assistant text is), so
+  // dropping it after turn 1 would make the model forget the attached record. This cost is
+  // constant per request (one copy of each attached chip), not something that compounds as the
+  // conversation grows — unlike history, it is not the source of the multi-turn timeout.
+  it('re-sends the full chip content in the system message on every subsequent turn of the same conversation', async () => {
+    const p = patient({ notes: 'Allergic to penicillin' });
+    const data = dataWith([p]);
+    const chip = makePatientChip(p);
+
+    const turn1 = await buildChatMessages({ history: [], chips: [chip], data, userMessage: 'first question' });
+    const turn2 = await buildChatMessages({
+      history: [
+        { role: 'user', content: 'first question' },
+        { role: 'assistant', content: 'first answer' },
+      ],
+      chips: [chip],
+      data,
+      userMessage: 'second question',
+    });
+
+    expect(turn1.messages[0].content).toContain('Allergic to penicillin');
+    expect(turn2.messages[0].content).toContain('Allergic to penicillin');
+  });
+
+  it("does not accumulate multiple copies of the same chip's content within one turn's system message", async () => {
+    const p = patient({ notes: 'Allergic to penicillin' });
+    const data = dataWith([p]);
+    const chip = makePatientChip(p);
+    const result = await buildChatMessages({
+      history: [
+        { role: 'user', content: 'first question' },
+        { role: 'assistant', content: 'first answer' },
+      ],
+      chips: [chip],
+      data,
+      userMessage: 'second question',
+    });
+    const occurrences = result.messages[0].content.split('Allergic to penicillin').length - 1;
+    expect(occurrences).toBe(1);
+  });
+});
+
+describe('isConversationGettingLong (2026-08-04 "new chat" nudge)', () => {
+  it('is false for a short conversation', async () => {
+    const { isConversationGettingLong } = await import('./aiChatContext');
+    expect(isConversationGettingLong(2)).toBe(false);
+  });
+
+  it('is true once the message count reaches the threshold', async () => {
+    const { isConversationGettingLong, LONG_CONVERSATION_MESSAGE_THRESHOLD } = await import('./aiChatContext');
+    expect(isConversationGettingLong(LONG_CONVERSATION_MESSAGE_THRESHOLD)).toBe(true);
+    expect(isConversationGettingLong(LONG_CONVERSATION_MESSAGE_THRESHOLD - 1)).toBe(false);
   });
 });
 

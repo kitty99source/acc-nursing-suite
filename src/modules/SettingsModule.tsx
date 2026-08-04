@@ -21,7 +21,16 @@ import type { CompanionCharacter, CursorStyle, DensityMode, ServiceCode, ThemeNa
 import { CURSOR_OPTIONS } from '../lib/easter/cursors';
 import { SPRITE_SVGS, svgToDataUrl } from '../assets/easter/sprites';
 import { HelperTip } from '../components/HelperTip';
-import { checkAiServiceStatus, DEFAULT_AI_MODEL, type AiServiceStatus } from '../lib/aiService';
+import {
+  checkAiServiceStatus,
+  detectLogicalProcessors,
+  estimatePhysicalCores,
+  FAST_AI_MODEL,
+  REASONING_AI_MODEL,
+  resolveAiModel,
+  type AiServiceStatus,
+} from '../lib/aiService';
+import type { AiChatModelProfile } from '../types';
 
 const COMPANION_CHARACTERS: { value: CompanionCharacter; label: string }[] = [
   { value: 'cat', label: 'Cat' },
@@ -65,14 +74,29 @@ function AiFeaturesCard({
   const [checking, setChecking] = useState(false);
   const [checkResult, setCheckResult] = useState<AiServiceStatus | null>(null);
 
+  const activeModel = resolveAiModel(settings.aiChatModelProfile);
+  const logical = detectLogicalProcessors();
+  const physicalEstimate = logical != null ? estimatePhysicalCores(logical) : null;
+
   async function runStatusCheck() {
     setChecking(true);
     try {
-      const result = await checkAiServiceStatus(settings.aiServiceBaseUrl);
+      const result = await checkAiServiceStatus(settings.aiServiceBaseUrl, {
+        requiredModel: activeModel,
+      });
       setCheckResult(result);
     } finally {
       setChecking(false);
     }
+  }
+
+  function setModelProfile(profile: AiChatModelProfile) {
+    updateSettings({ aiChatModelProfile: profile });
+    setCheckResult(null);
+  }
+
+  function setNumThread(n: number) {
+    updateSettings({ aiNumThread: n >= 0 ? Math.floor(n) : 0 });
   }
 
   return (
@@ -90,9 +114,9 @@ function AiFeaturesCard({
         <span>
           <span className="font-medium">Enable AI features</span>
           <span className="block text-xs" style={{ color: 'var(--muted)' }}>
-            Turns on the AI-assisted duplicate-patient check in Patients. Requires the one-time
-            local AI helper setup below — safe to turn on before that's done, it will just say
-            &quot;unavailable&quot; until the helper is installed.
+            Turns on the AI chat panel and the AI-assisted duplicate-patient check. Requires the
+            one-time local AI helper setup below — safe to turn on before that&apos;s done, it will
+            just say &quot;unavailable&quot; until the helper is installed.
           </span>
         </span>
         <input
@@ -103,6 +127,151 @@ function AiFeaturesCard({
           aria-label="Enable AI features"
         />
       </label>
+
+      <div className="mb-3 p-3 rounded" style={{ background: 'var(--surface-2)' }}>
+        <h4 className="text-sm font-medium mb-1">Push this laptop harder (CPU / RAM)</h4>
+        <p className="text-xs mb-2" style={{ color: 'var(--muted)' }}>
+          CPU inference is usually limited by <strong>tokens/sec on CPU cores</strong>, not by
+          &quot;not using enough RAM.&quot; More memory helps when the model was unloading between
+          messages; it does not magically speed decode if cores are already busy. Check utilization
+          while a reply is streaming:
+        </p>
+        <ol className="text-xs mb-3 ml-4 list-decimal space-y-1" style={{ color: 'var(--muted)' }}>
+          <li>
+            Open <strong>Task Manager</strong> → <strong>Performance</strong> → <strong>CPU</strong>{' '}
+            (overall %), and <strong>Details</strong> → find <code>ollama.exe</code> /{' '}
+            <code>ollama app.exe</code> CPU column.
+          </li>
+          <li>
+            If overall CPU stays low (~20–40%) while the chat is generating, try raising threads
+            below. If it already pegs near 100%, more threads won&apos;t help — you&apos;re
+            CPU-bound (reasoning models also spend a long time writing a hidden{' '}
+            <code>&lt;think&gt;</code> trace).
+          </li>
+          <li>
+            While chatting, use Windows <strong>Best performance / High performance</strong> power
+            mode (Settings → System → Power). Optionally raise <code>ollama.exe</code> priority to
+            Above normal in Task Manager (session-only).
+          </li>
+        </ol>
+
+        <fieldset className="mb-2" style={{ border: 'none', padding: 0, margin: 0 }}>
+          <legend className="text-sm font-medium mb-1">CPU threads for Ollama</legend>
+          <p className="text-xs mb-2" style={{ color: 'var(--muted)' }}>
+            Sent as <code>options.num_thread</code> on each request (no admin rights). Auto =
+            Ollama&apos;s default (usually physical performance cores). Using every logical/
+            hyperthread can be slower — measure after each change.
+            {logical != null
+              ? ` This browser reports ${logical} logical processor${logical === 1 ? '' : 's'}${
+                  physicalEstimate != null ? ` (~${physicalEstimate} physical estimated)` : ''
+                }.`
+              : ''}
+          </p>
+          <div className="flex flex-wrap gap-2 mb-2">
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => setNumThread(0)}
+              aria-pressed={settings.aiNumThread === 0}
+            >
+              Auto (default)
+            </button>
+            {physicalEstimate != null && (
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => setNumThread(physicalEstimate)}
+                aria-pressed={settings.aiNumThread === physicalEstimate}
+              >
+                ~Physical ({physicalEstimate})
+              </button>
+            )}
+            {logical != null && (
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => setNumThread(logical)}
+                aria-pressed={settings.aiNumThread === logical}
+              >
+                All logical ({logical})
+              </button>
+            )}
+          </div>
+          <Field label="Custom thread count (0 = auto)" hint="Try physical-core count first; only raise further if Task Manager still shows idle cores during generation.">
+            <NumberInput
+              value={settings.aiNumThread}
+              min={0}
+              max={128}
+              onChange={(e) => setNumThread(Number(e.target.value))}
+              aria-label="Custom Ollama CPU thread count"
+            />
+          </Field>
+        </fieldset>
+
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={settings.aiKeepModelLoaded}
+            onChange={(e) => updateSettings({ aiKeepModelLoaded: e.target.checked })}
+            className="mt-1 w-4 h-4"
+            aria-label="Keep model loaded in RAM"
+          />
+          <span>
+            <span className="font-medium">Keep model loaded in RAM</span>
+            <span className="block text-xs" style={{ color: 'var(--muted)' }}>
+              Uses <code>keep_alive: -1</code> so Phi stays resident (~3&nbsp;GB) between messages —
+              avoids slow cold-reloads. Does not speed tokens/sec once the model is already warm.
+            </span>
+          </span>
+        </label>
+      </div>
+
+      <details className="mb-3">
+        <summary className="text-sm font-medium cursor-pointer" style={{ color: 'var(--accent)' }}>
+          Optional: faster model tag (secondary — skips chain-of-thought)
+        </summary>
+        <fieldset className="mt-2" style={{ border: 'none', padding: 0, margin: 0 }}>
+          <p className="text-xs mb-2" style={{ color: 'var(--muted)' }}>
+            If cores are already pegged and replies are still slow, the reasoning model&apos;s
+            hidden <code>&lt;think&gt;</code> is usually the remaining cost. Grounding gate is
+            unchanged either way. Full writeup:{' '}
+            <code>docs/research/local-ai-speed-2026-08.md</code>.
+          </p>
+          <label className="flex items-start gap-2 text-sm mb-2">
+            <input
+              type="radio"
+              name="aiChatModelProfile"
+              checked={settings.aiChatModelProfile !== 'fast'}
+              onChange={() => setModelProfile('reasoning')}
+              className="mt-1"
+              aria-label="Reasoning model"
+            />
+            <span>
+              <span className="font-medium">Reasoning model (default)</span>
+              <span className="block text-xs" style={{ color: 'var(--muted)' }}>
+                <code>{REASONING_AI_MODEL}</code> (~2.5&nbsp;GB)
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="radio"
+              name="aiChatModelProfile"
+              checked={settings.aiChatModelProfile === 'fast'}
+              onChange={() => setModelProfile('fast')}
+              className="mt-1"
+              aria-label="Fast instruct model"
+            />
+            <span>
+              <span className="font-medium">Instruct model (no forced thinking)</span>
+              <span className="block text-xs" style={{ color: 'var(--muted)' }}>
+                <code>{FAST_AI_MODEL}</code> (~2.5&nbsp;GB) —{' '}
+                <code>ollama pull {FAST_AI_MODEL}</code>
+              </span>
+            </span>
+          </label>
+        </fieldset>
+      </details>
 
       <details className="mb-3">
         <summary className="text-sm font-medium cursor-pointer" style={{ color: 'var(--accent)' }}>
@@ -125,20 +294,20 @@ function AiFeaturesCard({
             </li>
             <li>Double-click the downloaded <code>OllamaSetup.exe</code> and click through the install (about a minute). It starts itself quietly in the background from then on, including after every restart.</li>
             <li>
-              Open a Command Prompt (Start → type <code>cmd</code>) and paste this one command, then
-              press Enter — it downloads the AI model itself (about 2.5&nbsp;GB, once):
+              Open a Command Prompt (Start → type <code>cmd</code>) and paste:
               <pre
                 className="text-xs mt-1 p-2 rounded"
                 style={{ background: 'var(--surface-2)', overflowX: 'auto' }}
               >
-                ollama pull {DEFAULT_AI_MODEL}
+                ollama pull {activeModel}
               </pre>
             </li>
             <li>Come back here and click &quot;Check status&quot; below to confirm AdminSuite can see it.</li>
           </ol>
           <p style={{ color: 'var(--muted)' }}>
-            That's it — nothing to repeat later unless you want to update the model. Roughly 3–4&nbsp;GB
-            total disk space; runs fine on an ordinary laptop with under 16&nbsp;GB RAM, no GPU needed.
+            That&apos;s it — nothing to repeat later unless you want to update the model. Roughly
+            3–5&nbsp;GB total disk space; runs fine on an ordinary laptop with under 16&nbsp;GB RAM,
+            no GPU needed.
           </p>
         </div>
       </details>

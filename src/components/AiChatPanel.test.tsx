@@ -31,6 +31,11 @@ const aiServiceMocks = vi.hoisted(() => ({
   // Defaults to "Ollama is reachable" so existing non-timeout-diagnostic tests aren't affected —
   // individual timeout-diagnostic tests below override this per-case.
   checkAiServiceStatus: vi.fn(async () => ({ available: true, modelAvailable: true, models: [] })),
+  // Settings → model/compute helpers — keep behaviour aligned with production defaults.
+  resolveAiModel: (profile: 'reasoning' | 'fast' = 'reasoning') =>
+    profile === 'fast' ? 'phi4-mini' : 'phi4-mini-reasoning',
+  resolveChatNumPredict: (profile: 'reasoning' | 'fast' = 'reasoning') => (profile === 'fast' ? 768 : 2048),
+  resolveKeepAlive: (keepLoaded?: boolean) => (keepLoaded ? -1 : '30m'),
 }));
 vi.mock('../lib/aiService', () => aiServiceMocks);
 

@@ -30,6 +30,7 @@ import { formatDate, todayISO } from '../lib/format';
 import { validateNhi } from '../lib/validation';
 import { findMatchingPatient, findDuplicatePatientGroups, suggestKeepPatient } from '../lib/patients';
 import { runAiDuplicatePatientCheck, type AiDuplicateSuggestion } from '../lib/patientDuplicateAi';
+import { resolveAiModel, resolveKeepAlive } from '../lib/aiService';
 import { appendAudit } from '../lib/auditLog';
 import { downloadBlob } from '../lib/storage';
 import {
@@ -339,6 +340,9 @@ export function Patients() {
     const result = await runAiDuplicatePatientCheck(data.patients, {
       enabled: true,
       baseUrl: data.settings.aiServiceBaseUrl,
+      model: resolveAiModel(data.settings.aiChatModelProfile),
+      keepAlive: resolveKeepAlive(data.settings.aiKeepModelLoaded),
+      numThread: data.settings.aiNumThread,
     });
     if (result.status === 'ok') {
       setAiCheckState({

@@ -88,10 +88,11 @@ default."* — it installs under `%LOCALAPPDATA%`, never `C:\Program Files`.
    ```
    ollama pull phi4-mini-reasoning
    ```
-   This downloads the actual AI model (~2.5 GB, one-time). Combined with the Ollama program
-   itself, total disk use is roughly 3–4 GB.
+   This downloads the default AI model (~2.5 GB, one-time). Optionally also pull
+   `phi4-mini` later if you want the secondary instruct tag (no forced chain-of-thought).
 4. In AdminSuite, go to **Settings → AI features (local, on-device)**, turn on **"Enable AI
-   features"**, and click **"Check status"** to confirm it can see the model.
+   features"**, click **"Check status"**, then use **Push this laptop harder** (CPU threads /
+   keep model loaded) while watching Task Manager — see below.
 
 **Is it a one-time install? Yes.** After step 3, nothing needs to be repeated — Ollama runs
 itself in the background from every Windows login, and AdminSuite auto-detects it every time the
@@ -200,46 +201,42 @@ Ollama) even with the 15-minute ceiling and oldest-turn trim. The chat panel now
 
 See `src/lib/ai/conversationSummary.ts` and `src/lib/aiChatContext.ts` (`buildChatMessages`).
 
+## Push this laptop harder (2026-08-04 — primary speed path)
+
+Owner ask: make Ollama use more of the machine (cores / RAM / priority), not primarily switch
+models. Honest answer: **partial** — we can push CPU threads and keep the model resident; “use
+more memory” alone does not speed token decode once the model is warm and cores are busy.
+
+**In Settings → AI features → “Push this laptop harder”:**
+
+1. **CPU threads** — Auto (Ollama default ≈ physical cores), ~Physical, All logical, or custom.
+   Sent as `options.num_thread` on each request (no admin). Measure after each change.
+2. **Keep model loaded in RAM** — `keep_alive: -1` so ~3GB stays resident (avoids cold-reload).
+3. **Check Task Manager while a reply streams** — Performance → CPU, and Details → `ollama.exe`.
+   Low % → try more threads / power plan. Near 100% → already compute-bound; remaining slowness is
+   tok/s × tokens (reasoning `<think>` can dominate).
+
+**Windows (manual):** Best/High performance power mode; optional Above-normal priority for
+`ollama.exe`; AV exclusions only if IT policy allows.
+
+**Secondary (Settings details):** optional `phi4-mini` instruct tag if cores are already pegged
+and CoT is the remaining cost. Full research: `docs/research/local-ai-speed-2026-08.md`.
+
 ## Speed optimization research (2026-08-04)
 
-Beyond the settings already applied earlier this session (`keep_alive`, right-sized `num_ctx`,
-Q4_K_M quantization, `num_predict` cap — see the code comments in `src/lib/aiService.ts` above
-`DEFAULT_KEEP_ALIVE`), six further Ollama/local-inference speed levers were researched. Two are
-genuinely inapplicable to this deployment, two carry a real tradeoff not worth taking here, and
-two are Windows OS-level tips (not app code) worth doing manually:
+Beyond `keep_alive`, right-sized `num_ctx`, `num_predict`, and (now) optional `num_thread` /
+pin-in-RAM — see `src/lib/aiService.ts` and the research note.
 
 | Lever | Verdict | Why |
 | --- | --- | --- |
-| Flash Attention (`OLLAMA_FLASH_ATTENTION=1`) | **Not applicable** | GPU-only optimization in Ollama's own code (gated on `GpuInfoList.FlashAttentionSupported()` — NVIDIA Ampere+/AMD RDNA3+ only). No CPU code path exists at all; setting this on a CPU-only laptop is a silent no-op. |
-| KV cache quantization (`OLLAMA_KV_CACHE_TYPE=q8_0`) | **Not applicable** | Real and worthwhile in general (roughly halves KV-cache memory, negligible quality loss per published benchmarks), but Ollama requires Flash Attention to be active for it to take effect — unavailable on this CPU-only hardware for the same reason as above, so it would silently fall back to `f16` and do nothing. |
-| `OLLAMA_NUM_PARALLEL` / `num_batch` | **Not applied** | Tunes concurrent multi-request throughput — a lever for a shared multi-user server. This app issues one request at a time from one local chat panel; there is nothing to parallelize, and raising it on an already CPU-core-constrained laptop risks worse latency for the one real request, not better. |
-| Smaller model quant (Q4_0 instead of Q4_K_M) | **Not applied** | Checked current (2026) GGUF listings for this exact model: Q4_0 is documented upstream as "legacy... very high quality loss - prefer using Q4_K_M" for Phi-4-mini-reasoning specifically — barely smaller (2.33GB vs 2.49GB) with a real quality cost and no documented CPU speed win. Not worth the tradeoff. |
-| Fewer/smaller retrieved knowledge chunks (top-2 vs top-3, smaller char cap) | **Not applied** | See the code comment above `retrieveKnowledgeForQuery` in `src/lib/ai/knowledgeCorpus.ts` — on a typical turn the prompt is already comfortably under the context budget, so the real bottleneck for a slow reply is decode (generation) throughput, not prefill (prompt processing); trimming one small chunk off an already-small prompt saves a negligible fraction of a second while permanently losing a third of the retrieved evidence on every question. Not a good trade for the actual problem. |
-| Windows-specific OS tips (below) | **Documented, owner-actionable, no code change** | See below. |
-
-### Windows-specific tips (owner-actionable, not code changes)
-
-These are standard Windows performance practices that can help any CPU-bound background process,
-including Ollama — none of them are AdminSuite code changes, and none are required, but they may
-help if replies still feel slower than expected on battery or under load:
-
-- **Power plan:** on a laptop, Windows' default "Balanced" power plan (and especially "Battery
-  saver") throttles CPU clock speed to save power — this directly slows down CPU-only model
-  inference. While actively using the AI chat (especially plugged into mains power), switching to
-  Windows' "Best performance"/"High performance" power plan (Settings → System → Power & battery →
-  Power mode) can measurably help.
-- **Process priority:** Ollama runs as a normal-priority background process by default. Raising
-  `ollama.exe`'s priority via Task Manager (right-click the process → "Go to details" → right-click
-  `ollama.exe` → Set priority → "Above normal") can help it get more consistent CPU time on a
-  laptop running other apps at the same time — this only lasts until the process restarts, so it
-  is a manual per-session tweak, not a permanent setting.
-- **Antivirus real-time scanning:** some antivirus products re-scan large files on every read,
-  including a ~2.5GB model weights file every time Ollama loads it (cold-load) or memory-maps it.
-  If your IT-approved antivirus supports folder exclusions, and IT policy allows it, excluding
-  `%LOCALAPPDATA%\Ollama` and `~\.ollama\models` from real-time scanning can reduce cold-load
-  stalls. **Only do this if your organisation's security policy explicitly allows antivirus
-  exclusions** — this is a suggestion to investigate with IT, not an instruction to bypass
-  security controls.
+| Explicit `num_thread` (API) | **Shipped (opt-in)** | Push more cores when Task Manager shows under-use. Overshooting to all hyperthreads can thrash. `OLLAMA_NUM_THREAD` env is **not** reliable. |
+| Keep model loaded (`keep_alive: -1`) | **Shipped (opt-in)** | Uses more RAM continuously; removes reload stalls, not decode tok/s. |
+| Flash Attention / `OLLAMA_KV_CACHE_TYPE` | **Not applicable** | GPU / FA-gated — silent no-op on CPU-only ([Ollama FAQ](https://docs.ollama.com/faq)). |
+| `OLLAMA_NUM_PARALLEL` | **Not applied** | Multi-request server knob; can hurt single-user latency. |
+| Larger `num_ctx` “to use more RAM” | **Anti-pattern** | Bigger KV → usually *slower*; we already cap at 8192. |
+| Speculative decoding | **Not claimed** | No clean CPU Windows Ollama path for Phi-4-mini. |
+| Instruct model / smaller tags | **Secondary** | Optional after compute is maximized. |
+| Windows power plan / priority / AV | **Documented** | Owner-actionable; see Settings copy + research note. |
 
 ## What's actually been verified vs. not
 

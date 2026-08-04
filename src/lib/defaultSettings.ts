@@ -61,4 +61,7 @@ export const DEFAULT_SETTINGS: Settings = {
   serviceRates: { ...DEFAULT_RATES },
   aiFeaturesEnabled: false,
   aiServiceBaseUrl: 'http://127.0.0.1:11434',
+  aiChatModelProfile: 'reasoning',
+  aiNumThread: 0,
+  aiKeepModelLoaded: false,
 };

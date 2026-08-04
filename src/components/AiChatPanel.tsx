@@ -12,6 +12,9 @@ import {
   checkAiServiceStatus,
   generateLocalAiChatResponse,
   generateLocalAiChatResponseStream,
+  resolveAiModel,
+  resolveChatNumPredict,
+  resolveKeepAlive,
   isChatTimeoutError,
 } from '../lib/aiService';
 import { ensureConversationSummary, RECENT_VERBATIM_MESSAGES } from '../lib/ai/conversationSummary';
@@ -239,12 +242,19 @@ export function AiChatPanel() {
     }
 
     setSendPhase('summarizing');
+    const model = resolveAiModel(settings.aiChatModelProfile);
+    const numPredict = resolveChatNumPredict(settings.aiChatModelProfile);
+    const keepAlive = resolveKeepAlive(settings.aiKeepModelLoaded);
+    const numThread = settings.aiNumThread;
     const existingSummary = useAiChatStore.getState().conversationSummary;
     const ensured = await ensureConversationSummary({
       history,
       historyMessageIds,
       existing: existingSummary,
       baseUrl: settings.aiServiceBaseUrl,
+      model,
+      numThread,
+      keepAlive,
       signal,
       summarizeFn: generateLocalAiChatResponse,
     });
@@ -339,6 +349,10 @@ export function AiChatPanel() {
     // and why this uses the structured-messages `/api/chat` endpoint rather than a flattened
     // prompt string (2026-08-04 "hallucinated fake conversation" bug fix).
     const result = await generateLocalAiChatResponseStream(settings.aiServiceBaseUrl, chatMessages, {
+      model,
+      numPredict,
+      numThread,
+      keepAlive,
       signal,
       onChunk: (accumulated) => {
         if (isGenerationCurrent(generationId)) setStreamingText(accumulated);

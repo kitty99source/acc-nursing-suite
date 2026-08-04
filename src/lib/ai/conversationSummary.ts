@@ -202,6 +202,9 @@ export type SummarizeFn = (
     timeoutMs?: number;
     numPredict?: number;
     numCtx?: number;
+    model?: string;
+    numThread?: number | null;
+    keepAlive?: string | number;
     signal?: AbortSignal;
   },
 ) => Promise<AiGenerateResult>;
@@ -217,10 +220,15 @@ export async function ensureConversationSummary(opts: {
   historyMessageIds: string[];
   existing: ConversationSummaryState | null | undefined;
   baseUrl: string;
+  /** Ollama model tag — should match the Settings profile used for the main reply. */
+  model?: string;
+  numThread?: number | null;
+  keepAlive?: string | number;
   signal?: AbortSignal;
   summarizeFn: SummarizeFn;
 }): Promise<EnsureSummaryResult> {
-  const { history, historyMessageIds, existing, baseUrl, signal, summarizeFn } = opts;
+  const { history, historyMessageIds, existing, baseUrl, model, numThread, keepAlive, signal, summarizeFn } =
+    opts;
   const { older, recent } = splitHistoryForSummary(history);
 
   if (older.length === 0) {
@@ -293,6 +301,9 @@ export async function ensureConversationSummary(opts: {
     numPredict: SUMMARY_NUM_PREDICT,
     // Summarization prompts are compact — a smaller ctx saves KV-cache work on CPU laptops.
     numCtx: 4096,
+    model,
+    numThread,
+    keepAlive,
     signal,
   });
 

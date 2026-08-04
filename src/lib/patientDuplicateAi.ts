@@ -248,6 +248,8 @@ export async function runAiDuplicatePatientCheck(
     model?: string;
     timeoutMs?: number;
     maxPairs?: number;
+    numThread?: number | null;
+    keepAlive?: string | number;
   },
 ): Promise<AiDuplicateCheckResult> {
   if (!opts.enabled) {
@@ -266,6 +268,8 @@ export async function runAiDuplicatePatientCheck(
     fetchImpl: opts.fetchImpl,
     model: opts.model ?? DEFAULT_AI_MODEL,
     timeoutMs: opts.timeoutMs,
+    numThread: opts.numThread,
+    keepAlive: opts.keepAlive,
   });
 
   if (!result.ok) {

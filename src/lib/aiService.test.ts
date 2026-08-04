@@ -6,9 +6,21 @@ import {
   generateLocalAiChatResponse,
   generateLocalAiChatResponseStream,
   modelListIncludes,
+  resolveAiModel,
+  resolveChatNumPredict,
+  resolveKeepAlive,
+  buildOllamaOptions,
+  normalizeNumThread,
+  detectLogicalProcessors,
+  estimatePhysicalCores,
   DEFAULT_CHAT_INACTIVITY_TIMEOUT_MS,
   DEFAULT_CHAT_TOTAL_TIMEOUT_MS,
+  DEFAULT_CHAT_NUM_PREDICT,
   DEFAULT_CHAT_TEMPERATURE,
+  DEFAULT_KEEP_ALIVE,
+  FAST_AI_MODEL,
+  FAST_CHAT_NUM_PREDICT,
+  REASONING_AI_MODEL,
   type ChatApiMessage,
   type FetchLike,
 } from './aiService';
@@ -169,6 +181,20 @@ describe('generateLocalAiResponse', () => {
     const body = JSON.parse(init.body);
     expect(body.keep_alive).toBe('30m');
     expect(body.options?.num_ctx).toBe(8192);
+    expect(body.options?.num_thread).toBeUndefined();
+  });
+
+  it('passes options.num_thread and keep_alive when requested (push-compute path)', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ response: 'ok' }));
+    await generateLocalAiResponse('http://127.0.0.1:11434', 'a prompt', {
+      fetchImpl: fetchImpl as unknown as FetchLike,
+      numThread: 8,
+      keepAlive: -1,
+    });
+    const [, init] = fetchImpl.mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.keep_alive).toBe(-1);
+    expect(body.options?.num_thread).toBe(8);
   });
 
   it('lets a caller override keep_alive and num_ctx', async () => {
@@ -537,6 +563,50 @@ describe('generateLocalAiChatResponseStream', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('resolveAiModel / resolveChatNumPredict / resolveKeepAlive', () => {
+  it('maps reasoning vs fast profiles to model tags and num_predict', () => {
+    expect(resolveAiModel('reasoning')).toBe(REASONING_AI_MODEL);
+    expect(resolveAiModel('fast')).toBe(FAST_AI_MODEL);
+    expect(resolveChatNumPredict('reasoning')).toBe(DEFAULT_CHAT_NUM_PREDICT);
+    expect(resolveChatNumPredict('fast')).toBe(FAST_CHAT_NUM_PREDICT);
+  });
+
+  it('pins keep_alive to -1 when keep-model-loaded is on', () => {
+    expect(resolveKeepAlive(false)).toBe(DEFAULT_KEEP_ALIVE);
+    expect(resolveKeepAlive(true)).toBe(-1);
+  });
+});
+
+describe('num_thread helpers / buildOllamaOptions', () => {
+  it('normalizes only positive integers as num_thread', () => {
+    expect(normalizeNumThread(0)).toBeUndefined();
+    expect(normalizeNumThread(-1)).toBeUndefined();
+    expect(normalizeNumThread(8.9)).toBe(8);
+    expect(normalizeNumThread(4)).toBe(4);
+  });
+
+  it('estimates physical cores as half of logical (SMT heuristic)', () => {
+    expect(estimatePhysicalCores(16)).toBe(8);
+    expect(estimatePhysicalCores(1)).toBe(1);
+    expect(detectLogicalProcessors(12)).toBe(12);
+    expect(detectLogicalProcessors(0)).toBeNull();
+    // No-arg form reads navigator.hardwareConcurrency when present in the test env.
+    const auto = detectLogicalProcessors();
+    expect(auto === null || (typeof auto === 'number' && auto >= 1)).toBe(true);
+  });
+
+  it('omits num_thread from options when unset, includes it when set', () => {
+    expect(buildOllamaOptions({}).num_thread).toBeUndefined();
+    expect(buildOllamaOptions({ numThread: 0 }).num_thread).toBeUndefined();
+    expect(buildOllamaOptions({ numThread: 6, numPredict: 100, temperature: 0.3 })).toEqual({
+      num_ctx: 8192,
+      num_predict: 100,
+      temperature: 0.3,
+      num_thread: 6,
+    });
   });
 });
 

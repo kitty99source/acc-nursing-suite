@@ -503,7 +503,31 @@ export interface Settings {
   aiFeaturesEnabled: boolean;
   /** Base URL of the local AI model server (Ollama's default, editable for advanced setups). */
   aiServiceBaseUrl: string;
+  /**
+   * Optional secondary model profile (not the primary speed lever — see aiNumThread /
+   * aiKeepModelLoaded and docs/research/local-ai-speed-2026-08.md).
+   * - `reasoning` — `phi4-mini-reasoning` (default; emits chain-of-thought)
+   * - `fast` — `phi4-mini` instruct (no forced CoT)
+   */
+  aiChatModelProfile: AiChatModelProfile;
+  /**
+   * CPU threads to request from Ollama (`options.num_thread`).
+   * `0` = leave unset so Ollama auto-detects (usually ≈ physical performance cores).
+   * Set explicitly when Task Manager shows ollama under-using the CPU during generation.
+   * Using *all* logical/hyperthreads can be slower (cache thrashing) — try physical-core
+   * count first. No admin rights required; sent per request.
+   */
+  aiNumThread: number;
+  /**
+   * When true, each Ollama request uses `keep_alive: -1` so the model stays resident in
+   * RAM (~3GB for Phi-4-mini) until unloaded — avoids cold-reload stalls. Uses more memory
+   * continuously; does **not** by itself make token decode faster if already CPU-bound.
+   */
+  aiKeepModelLoaded: boolean;
 }
+
+/** Local AI model speed/quality profile — see Settings → AI features. */
+export type AiChatModelProfile = 'reasoning' | 'fast';
 
 /** Local-only log of recent ACC letter imports (not exported separately). */
 export interface ImportHistoryEntry {

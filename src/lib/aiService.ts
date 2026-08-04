@@ -15,6 +15,8 @@
 // object instead of throwing.
 // ============================================================================
 
+import type { AiChatModelProfile } from '../types';
+
 export type FetchLike = typeof fetch;
 
 export interface AiServiceStatus {
@@ -205,20 +207,13 @@ export const DEFAULT_CHAT_TEMPERATURE = 0.3;
 //    of silently sending, so there is no real content this app generates
 //    today that 8192 can't already fit with room to spare. Overridable
 //    per-call (`numCtx` option) if a future caller genuinely needs more.
-// NOT applied, and why (per the owner's own "don't apply blindly" instruction):
-//   - `num_thread`: Ollama's own runtime already defaults this to the
-//     detected physical CPU core count (`runtime.NumCPU()` server-side) and
-//     current (2026) Ollama guidance/community consensus is that manually
-//     pinning `num_thread` on a single-user desktop workload rarely beats
-//     that auto-detection and can make things WORSE if set too high (thread
-//     oversubscription/context-switching overhead) or too low (leaving cores
-//     idle) — there is no way to know the real core count of "the owner's
-//     laptop" from this codebase, and guessing a fixed number here would be
-//     exactly the kind of "apply something without confirming it's real and
-//     safe" the ask explicitly warned against. Left unset (Ollama's own
-//     default) deliberately; documented here as a real, known, tunable
-//     option if the owner ever wants to hand-tune it for their specific CPU
-//     (Settings could expose it later as an advanced/optional field).
+// `num_thread` (2026-08-04 compute-push follow-up): left UNSET by default so
+// Ollama keeps its auto-detect (usually ≈ physical performance cores — see
+// github.com/ollama/ollama/issues/2929). Settings → AI can now pass an explicit
+// `aiNumThread` via `options.num_thread` when Task Manager shows under-use;
+// blindly defaulting to `navigator.hardwareConcurrency` (logical/SMT count)
+// can thrash and *slow* decode. `OLLAMA_NUM_THREAD` is NOT a reliable server
+// env var — use the API option or a Modelfile PARAMETER instead.
 //   - Quantization: already Q4_K_M (see docs/research doc's own table) — a
 //     good speed/quality balance already. A Q4_0 or Q3 variant would trade
 //     a further real but modest speed/memory win for a real, non-trivial
@@ -411,9 +406,101 @@ export interface AiGenerateOptions {
   keepAlive?: string | number;
   /** Ollama `options.num_ctx` — context window size in tokens. Default DEFAULT_NUM_CTX (8192); see comment above. */
   numCtx?: number;
+  /** Ollama `options.num_thread` — omit / 0 for server auto-detect. */
+  numThread?: number | null;
 }
 
-export const DEFAULT_AI_MODEL = 'phi4-mini-reasoning';
+/**
+ * Reasoning profile (default): Phi-4-mini-reasoning. Stronger on multi-step logic, but on
+ * CPU-only laptops the hidden `<think>` trace often dominates wall-clock time (hundreds to
+ * thousands of tokens before a short grounded answer). See
+ * docs/research/local-ai-speed-2026-08.md.
+ */
+export const REASONING_AI_MODEL = 'phi4-mini-reasoning';
+
+/**
+ * Fast profile: Phi-4-mini instruct (same ~2.5GB Q4 class, no forced chain-of-thought).
+ * Preferred for grounded ACC RAG Q&A where the app already supplies excerpts + a hard
+ * grounding gate — CoT adds latency without a proven quality win on that path.
+ * Owner must `ollama pull phi4-mini` once (in addition to, or instead of, the reasoning tag).
+ */
+export const FAST_AI_MODEL = 'phi4-mini';
+
+/** @deprecated Prefer REASONING_AI_MODEL / resolveAiModel(profile) — kept as the reasoning default. */
+export const DEFAULT_AI_MODEL = REASONING_AI_MODEL;
+
+/**
+ * Chat `num_predict` when using the fast (non-reasoning) profile. No `<think>` budget needed;
+ * 768 is enough for a detailed grounded answer while capping runaway generation on CPU.
+ */
+export const FAST_CHAT_NUM_PREDICT = 768;
+
+/** Resolve the Ollama model tag for a Settings profile. */
+export function resolveAiModel(profile: AiChatModelProfile = 'reasoning'): string {
+  return profile === 'fast' ? FAST_AI_MODEL : REASONING_AI_MODEL;
+}
+
+/** Resolve chat `num_predict` for a Settings profile. */
+export function resolveChatNumPredict(profile: AiChatModelProfile = 'reasoning'): number {
+  return profile === 'fast' ? FAST_CHAT_NUM_PREDICT : DEFAULT_CHAT_NUM_PREDICT;
+}
+
+/** Keep-alive value: pin in RAM forever (`-1`) or the default warm window. */
+export function resolveKeepAlive(keepModelLoaded: boolean | undefined): string | number {
+  return keepModelLoaded ? -1 : DEFAULT_KEEP_ALIVE;
+}
+
+/**
+ * Browser-reported logical processor count (`navigator.hardwareConcurrency`), or null
+ * when unavailable. On SMT/hyperthreaded CPUs this is usually ~2× physical cores —
+ * Ollama's own default prefers physical performance cores; setting num_thread to the
+ * full logical count can help *or* hurt — measure in Task Manager.
+ */
+export function detectLogicalProcessors(
+  hardwareConcurrency: number | undefined = typeof navigator !== 'undefined'
+    ? navigator.hardwareConcurrency
+    : undefined,
+): number | null {
+  if (typeof hardwareConcurrency !== 'number' || !Number.isFinite(hardwareConcurrency)) return null;
+  const n = Math.floor(hardwareConcurrency);
+  return n >= 1 ? n : null;
+}
+
+/** Rough physical-core estimate for SMT laptops (logical ÷ 2, floored at 1). */
+export function estimatePhysicalCores(logical: number): number {
+  return Math.max(1, Math.floor(logical / 2));
+}
+
+/**
+ * Normalize Settings `aiNumThread`: only positive integers are sent to Ollama.
+ * `0` / NaN / negative → omit (Ollama auto-detect).
+ */
+export function normalizeNumThread(value: number | undefined | null): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+  const n = Math.floor(value);
+  return n >= 1 ? n : undefined;
+}
+
+/**
+ * Build the Ollama `options` object for generate/chat requests. Omits `num_thread` when
+ * unset so the server keeps its auto-detected default (usually physical cores — see
+ * https://github.com/ollama/ollama/issues/2929).
+ */
+export function buildOllamaOptions(opts?: {
+  numCtx?: number;
+  numPredict?: number;
+  temperature?: number;
+  numThread?: number | null;
+}): Record<string, number> {
+  const options: Record<string, number> = {
+    num_ctx: opts?.numCtx ?? DEFAULT_NUM_CTX,
+  };
+  if (opts?.numPredict !== undefined) options.num_predict = opts.numPredict;
+  if (opts?.temperature !== undefined) options.temperature = opts.temperature;
+  const threads = normalizeNumThread(opts?.numThread);
+  if (threads !== undefined) options.num_thread = threads;
+  return options;
+}
 
 /**
  * Send one prompt to the local model server's generate endpoint (Ollama's
@@ -438,7 +525,7 @@ export async function generateLocalAiResponse(
         prompt,
         stream: false,
         keep_alive: opts?.keepAlive ?? DEFAULT_KEEP_ALIVE,
-        options: { num_ctx: opts?.numCtx ?? DEFAULT_NUM_CTX },
+        options: buildOllamaOptions({ numCtx: opts?.numCtx, numThread: opts?.numThread }),
       }),
       signal,
     });
@@ -516,6 +603,8 @@ export interface AiGenerateStreamOptions {
   keepAlive?: string | number;
   /** Ollama `options.num_ctx` — context window size in tokens. Default DEFAULT_NUM_CTX (8192); see comment above `DEFAULT_KEEP_ALIVE`. */
   numCtx?: number;
+  /** Ollama `options.num_thread` — omit / 0 for server auto-detect. */
+  numThread?: number | null;
   /**
    * Caller-supplied cancellation signal — e.g. AiChatPanel wires this to the chat store's
    * `beginGeneration()` controller so clicking "Clear chat history"/"New chat" mid-stream actually
@@ -586,6 +675,7 @@ export async function generateLocalAiChatResponse(
     temperature?: number;
     keepAlive?: string | number;
     numCtx?: number;
+    numThread?: number | null;
     signal?: AbortSignal;
   },
 ): Promise<AiGenerateResult> {
@@ -608,11 +698,12 @@ export async function generateLocalAiChatResponse(
         messages,
         stream: false,
         keep_alive: opts?.keepAlive ?? DEFAULT_KEEP_ALIVE,
-        options: {
-          num_predict: opts?.numPredict ?? DEFAULT_CHAT_NUM_PREDICT,
-          num_ctx: opts?.numCtx ?? DEFAULT_NUM_CTX,
+        options: buildOllamaOptions({
+          numCtx: opts?.numCtx,
+          numPredict: opts?.numPredict ?? DEFAULT_CHAT_NUM_PREDICT,
           temperature: opts?.temperature ?? DEFAULT_CHAT_TEMPERATURE,
-        },
+          numThread: opts?.numThread,
+        }),
       }),
       signal: controller.signal,
     });
@@ -689,11 +780,12 @@ export async function generateLocalAiChatResponseStream(
         messages,
         stream: true,
         keep_alive: opts?.keepAlive ?? DEFAULT_KEEP_ALIVE,
-        options: {
-          num_predict: opts?.numPredict ?? DEFAULT_CHAT_NUM_PREDICT,
-          num_ctx: opts?.numCtx ?? DEFAULT_NUM_CTX,
+        options: buildOllamaOptions({
+          numCtx: opts?.numCtx,
+          numPredict: opts?.numPredict ?? DEFAULT_CHAT_NUM_PREDICT,
           temperature: opts?.temperature ?? DEFAULT_CHAT_TEMPERATURE,
-        },
+          numThread: opts?.numThread,
+        }),
       }),
       signal: controller.signal,
     });

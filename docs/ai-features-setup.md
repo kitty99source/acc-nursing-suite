@@ -147,20 +147,36 @@ genuinely stuck/hung process — fully quit and restart it) or still responding 
 specifically stalled or is still running past even the 15-minute ceiling — try again, and
 consider whether the question/attached context is unusually large).
 
-## Groundedness on unknown topics (2026-08-04 follow-up)
+## Groundedness on unknown topics (2026-08-04 — hard app-side gate)
 
-The chat assistant is scoped to **New Zealand ACC + this app's knowledge base**. When a question
-has no (or only weak/off-topic) retrieved document excerpts — e.g. emergency-transport / flight
-criteria, which are not in the ingested corpus — the prompt now injects a hard per-turn
-instruction: reply briefly with either one clarifying question **or** a plain "not in my current
-knowledge base", not a multi-section essay, foreign-jurisdiction frameworks, invented acronyms, or
-a mash-up of unrelated nursing/compliance rules. Static compliance rules / case stages are framed
-as reference material the app injects every turn — **not** prior user messages — so a brand-new
-chat should not invent "you mentioned schedules earlier". Chat sampling uses a cooler default
-temperature (`0.3`) to reduce creative waffle; `num_predict` stays at 2048 so the reasoning
-model's `<think>` budget is not cut short. **New chat** clears messages, chips, and the rolling
-conversation summary together. See `src/lib/aiChatContext.ts` (`NO_RETRIEVED_EXCERPTS_INSTRUCTION`)
-and `docs/research/acc-public-contract-sources-2026-08.md` §7.
+The chat assistant is scoped to **New Zealand ACC + this app's knowledge base**. Prompt-only
+"refuse when no excerpts" instructions were tried twice (`ba6a96a`, `ad054e9`) and **failed in
+production** against `phi4-mini-reasoning` on CPU: with zero RAG hits the model still saw the full
+static Schedule 5.x / NS04 rulebook (always injected into the system prompt) and inventing
+"Emergency Transport Criteria" from nursing package caps, plus Geneva Conventions / foreign
+air-ambulance encyclopaedia content in `<think>`. Soft instructions are not reliable on this model.
+
+**Durable fix — hard pre-flight grounding gate** (`src/lib/ai/groundingGate.ts`):
+
+1. Before any Ollama call (including long-chat summarization), the app runs RAG retrieval **and**
+   scores the question against the static compliance rules / case stages (same TF-IDF-lite scorer
+   family as chunk retrieval; static threshold `MIN_STATIC_RELEVANT_SCORE = 0.25`).
+2. If **no retrieved chunks** AND **static KB is not relevant** AND no record chips are attached
+   AND the message is not a simple greeting/thanks → **the model is never called**. The panel
+   immediately shows a short deterministic assistant message (no Sources chips), e.g. that the
+   current knowledge base has no grounded ACC material on that topic.
+3. When the model *is* called, only static rules that scored as relevant are injected — not the
+   whole rulebook every turn. Retrieved document excerpts are preferred when present.
+4. Prompt scope-lock / groundedness text remains for in-scope turns (never invent named criteria
+   documents, Geneva Conventions, aircraft models, etc. unless literally in excerpts).
+
+So if you ask about emergency-transport / flight criteria (not in the ingested corpus) and get a
+short "I don't have grounded ACC material…" reply with no reasoning toggle and no Sources, that is
+**working as designed** — the app refused before the model could hallucinate. In-scope questions
+(e.g. NS04 prior approval, 25-consult package caps, telehealth / review-rights topics covered by
+ingested docs) still reach the model normally. Chat sampling uses temperature `0.3`; `num_predict`
+stays at 2048. **New chat** clears messages, chips, and the rolling conversation summary together.
+See also `docs/research/acc-public-contract-sources-2026-08.md` §7.
 
 ## Long-chat summarization (2026-08-04)
 

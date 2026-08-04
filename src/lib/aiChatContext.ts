@@ -22,18 +22,23 @@
 import type { AppData, Claim, Contract, Patient } from '../types';
 import { CASE_STAGE_LABEL } from './caseWorkflow';
 import { formatDateNZ } from './format';
-import { buildCaseStageSummary, buildComplianceRuleSummary, buildKnowledgeBaseSections } from './ai/knowledgeBase';
-import { retrieveKnowledgeForQuery } from './ai/knowledgeCorpus';
+import { buildCaseStageSummary, buildComplianceRuleSummary } from './ai/knowledgeBase';
 import { sourceDocById } from './acc/sourceDocs';
 import type { RetrievedChunk } from './ai/knowledgeRetrieval';
 import { DEFAULT_NUM_CTX } from './aiService';
 import { checkContextBudget, CONTEXT_TRIM_TRIGGER_RATIO, contextTooLargeMessage } from './ai/contextBudget';
+import {
+  evaluateChatGrounding,
+  UNGROUNDED_REFUSE_MESSAGE,
+  type ChatGroundingDecision,
+} from './ai/groundingGate';
 
 // Re-exported for backwards compatibility with existing callers/tests — the
 // actual implementation now lives in lib/ai/knowledgeBase.ts (see that file
 // for why: it's the one place future rules/few-shot/RAG-result injection
 // plugs into, rather than this prompt-assembly module).
 export { buildCaseStageSummary, buildComplianceRuleSummary };
+export { UNGROUNDED_REFUSE_MESSAGE, evaluateChatGrounding };
 
 /**
  * One turn of the chat panel's conversation. Lives here (not in
@@ -272,7 +277,13 @@ export const NO_RETRIEVED_EXCERPTS_INSTRUCTION =
   'words. No multi-section essay. No fake citations or markdown schedule links like ' +
   '[Schedule 5.11.1](#).';
 
-export const AI_ASSISTANT_SYSTEM_PROMPT = [
+/**
+ * Base system instructions — deliberately WITHOUT the static compliance rulebook.
+ * Static rules are injected per-turn only when they score as relevant (see
+ * `buildAssistantSystemPrompt` / groundingGate.ts). Dumping Schedule 5.x on every
+ * turn let phi4-mini-reasoning invent "Emergency Transport Criteria" from nursing caps.
+ */
+export const AI_ASSISTANT_SYSTEM_PROMPT_BASE = [
   'You are the built-in assistant for ACCAdminsuite, an offline, on-device admin tool for an ACC ' +
     '(Accident Compensation Corporation, New Zealand) billing/compliance team. Default scope is ' +
     'New Zealand ACC and this app\'s own knowledge base only. This app covers multiple ACC-funded ' +
@@ -281,25 +292,28 @@ export const AI_ASSISTANT_SYSTEM_PROMPT = [
     'You run entirely locally via Ollama on the user\'s own laptop — you must never claim to send, ' +
     'store, or need to send any data anywhere else.',
   'Scope lock — NZ ACC / this knowledge base only: do NOT bring in other countries\' frameworks ' +
-    '(USA HIPAA, Canadian/American air-ambulance schemes, French/European military systems, etc.), ' +
+    '(USA HIPAA, Canadian/American air-ambulance schemes, French/European military systems, ' +
+    'Geneva Conventions, Médecins Sans Frontières, IATA, foreign AerMed/EMERT schemes, etc.), ' +
     'invented acronyms (e.g. METLR, ACASAA, AASAA), aircraft models (Eurocopter, Black Hawk, etc.), ' +
     'cost ranges, or general medical-encyclopaedia content unless those exact facts appear in ' +
     'retrieved document excerpts or attached record chips for THIS turn. If they do not appear, ' +
-    'they are out of scope — refuse or ask one clarifying question instead of writing an essay.',
-    'Conversation history vs reference material — CRITICAL: the static compliance rules and case-' +
-    'workflow stages below are REFERENCE MATERIAL the app injects every turn. They are NOT prior ' +
-    'user messages and NOT "what the user said earlier". NEVER claim the user "provided", ' +
-    '"mentioned", or "gave you earlier" compliance rules, schedule numbers, or case stages unless ' +
-    'that content literally appears as a prior user or assistant turn in the messages array for ' +
-    'this request. A brand-new chat has empty history — do not invent a prior conversation. A ' +
-    '"Rolling prior-chat summary" block (if present) is the ONLY compressed prior-chat context; ' +
-    'if that block is absent, there is no prior chat context.',
-  'Base your advice ONLY on: (1) facts the user stated in the messages array, (2) the static ' +
-    'reference material below WHEN it specifically covers the topic asked, (3) attached record-' +
-    'chip data, and (4) any real ACC document excerpts retrieved for THIS question (each tagged ' +
-    'with its real source document and URL). Do not invent ACC policy, clause numbers, prices, or ' +
-    'thresholds that are not present in this material — if you are not sure, say so plainly ' +
-    'instead of guessing.',
+    'they are out of scope — refuse or ask one clarifying question instead of writing an essay. ' +
+    'Never invent a named criteria document (e.g. "Emergency Transport Criteria (New Zealand ACC ' +
+    'Framework)") that is not literally titled in the provided excerpts or static reference material.',
+  'Conversation history vs reference material — CRITICAL: any static compliance rules / case-' +
+    'workflow stages shown below are REFERENCE MATERIAL the app injects only when relevant to ' +
+    'THIS question. They are NOT prior user messages and NOT "what the user said earlier". NEVER ' +
+    'claim the user "provided", "mentioned", or "gave you earlier" compliance rules, schedule ' +
+    'numbers, or case stages unless that content literally appears as a prior user or assistant ' +
+    'turn in the messages array for this request. A brand-new chat has empty history — do not ' +
+    'invent a prior conversation. A "Rolling prior-chat summary" block (if present) is the ONLY ' +
+    'compressed prior-chat context; if that block is absent, there is no prior chat context.',
+  'Base your advice ONLY on: (1) facts the user stated in the messages array, (2) any static ' +
+    'reference material below WHEN present and it specifically covers the topic asked, (3) ' +
+    'attached record-chip data, and (4) any real ACC document excerpts retrieved for THIS ' +
+    'question (each tagged with its real source document and URL). Do not invent ACC policy, ' +
+    'clause numbers, prices, or thresholds that are not present in this material — if you are ' +
+    'not sure, say so plainly instead of guessing.',
   'CRITICAL — when document excerpts ARE present below: they have ALREADY been retrieved and ' +
     'given to you for this exact question. Never say "I cannot access external documents" or ' +
     'similar — that is false whenever excerpts are present. Answer directly from them, citing ' +
@@ -352,7 +366,6 @@ export const AI_ASSISTANT_SYSTEM_PROMPT = [
     'document it came from (e.g. "per the Nursing Services Service Schedule...") so the user can see ' +
     'where the information came from — do not present it as if you already knew it. Prefer short ' +
     'bullets over filler "comprehensive overview" prose when excerpts are on-topic.',
-  ...buildKnowledgeBaseSections(),
   'If the user has attached one or more record "chips" (a patient, etc.), a block of that record\'s real ' +
     'data will follow this system message — answer using that data specifically, and do not fabricate ' +
     'details (dates, NHI, notes) that are not present in it. If something the user asks about is not in ' +
@@ -364,6 +377,19 @@ export const AI_ASSISTANT_SYSTEM_PROMPT = [
     'a casual greeting "means". Reserve detailed step-by-step reasoning for genuinely complex ' +
     'questions about specific cases, compliance rules, or data that ARE covered by the material above.',
 ].join('\n\n');
+
+/**
+ * Alias kept for existing tests/callers that assert instruction text. Static compliance
+ * sections are NO LONGER part of this constant — they are injected per-turn via
+ * `buildAssistantSystemPrompt(staticSections)` only when relevant.
+ */
+export const AI_ASSISTANT_SYSTEM_PROMPT = AI_ASSISTANT_SYSTEM_PROMPT_BASE;
+
+/** Assembles the system message: base instructions + any per-turn relevant static KB sections. */
+export function buildAssistantSystemPrompt(staticSections: string[] = []): string {
+  if (staticSections.length === 0) return AI_ASSISTANT_SYSTEM_PROMPT_BASE;
+  return [AI_ASSISTANT_SYSTEM_PROMPT_BASE, ...staticSections].join('\n\n');
+}
 
 // ----------------------------------------------------------------------------
 // Conversation -> model-messages assembly.
@@ -473,6 +499,12 @@ export interface BuildChatMessagesOptions {
    * after summarization) and we must not drop further recent turns by re-slicing.
    */
   historyAlreadyWindowed?: boolean;
+  /**
+   * Optional precomputed grounding decision (AiChatPanel runs the gate BEFORE summarization so an
+   * off-topic turn never hits Ollama at all — including the summarize side-job). When omitted,
+   * `buildChatMessages` evaluates the gate itself.
+   */
+  grounding?: ChatGroundingDecision;
 }
 
 /** One real source document whose text was retrieved and injected for a given chat turn — the "Context used" disclosure's citation list. */
@@ -487,7 +519,7 @@ export interface RetrievedSourceCitation {
 }
 
 export interface BuildChatMessagesResult {
-  /** Structured messages array sent to generateLocalAiChatResponseStream (Ollama `/api/chat`). Empty array when `contextTooLarge` is true — never send this to Ollama in that case. */
+  /** Structured messages array sent to generateLocalAiChatResponseStream (Ollama `/api/chat`). Empty array when `contextTooLarge` or `ungroundedRefuse` is true — never send this to Ollama in that case. */
   messages: ChatMessage[];
   /** Just the serialized chip context, for the "Context used" UI — '' if no chips. */
   contextBlock: string;
@@ -502,6 +534,14 @@ export interface BuildChatMessagesResult {
   contextTooLarge?: boolean;
   /** Present alongside `contextTooLarge: true` — the honest, specific user-facing message (see contextBudget.ts `contextTooLargeMessage`). */
   contextTooLargeMessage?: string;
+  /**
+   * True when the hard pre-flight grounding gate fired (no RAG chunks AND static KB not relevant
+   * AND no chips AND not a casual greeting) — the caller MUST persist `ungroundedRefuseMessage`
+   * as a normal assistant bubble and MUST NOT call Ollama. See groundingGate.ts.
+   */
+  ungroundedRefuse?: boolean;
+  /** Present alongside `ungroundedRefuse: true` — the deterministic app-generated refuse text. */
+  ungroundedRefuseMessage?: string;
   /**
    * True when one or more OLDER history turns had to be dropped (oldest-first, after every
    * retrieved knowledge chunk was already dropped) to fit this turn's prompt inside the model's
@@ -550,9 +590,16 @@ function assembleMessages(
   userMessage: string,
   knowledgeBlock: string,
   contextBlock: string,
+  staticSections: string[],
   conversationSummary?: string,
+  /**
+   * When true, skip the hard "NO ACC document excerpts" refuse instruction — used for casual
+   * greetings and chip-only turns where empty retrieval is expected and the model should still
+   * answer briefly from chip data / small talk, not refuse.
+   */
+  skipEmptyRetrievalRefuse?: boolean,
 ): ChatMessage[] {
-  let systemContent = AI_ASSISTANT_SYSTEM_PROMPT;
+  let systemContent = buildAssistantSystemPrompt(staticSections);
   if (knowledgeBlock) {
     systemContent +=
       '\n\nReal ACC document excerpts retrieved and provided to you for THIS exact question — this ' +
@@ -562,10 +609,12 @@ function assembleMessages(
       'inventing an answer — and do not cite any of them as a "source" for content they do not actually ' +
       'support:\n' +
       knowledgeBlock;
-  } else {
-    // Hard turn-local refuse/clarify instruction when retrieval is empty. The static system
-    // prompt alone was not biting hard enough (2026-08-04: emergency-transport → nursing-cap
-    // mashup, then flight → multi-country helicopter encyclopaedia).
+  } else if (!skipEmptyRetrievalRefuse && staticSections.length === 0) {
+    // Defense-in-depth only: the hard app-side gate should have refused before calling the model
+    // when there is truly no grounding. Kept for chip/casual edge cases that still reach here
+    // without static sections, and as a belt-and-braces prompt reminder if a future caller bypasses
+    // the gate. Static-relevant turns with no RAG chunks do NOT get this — the injected rules ARE
+    // the grounding.
     systemContent += `\n\n${NO_RETRIEVED_EXCERPTS_INSTRUCTION}`;
   }
   if (contextBlock) {
@@ -617,7 +666,9 @@ function trimToBudget(
   retrievedChunks: RetrievedChunk[],
   contextBlock: string,
   numCtx: number,
+  staticSections: string[],
   conversationSummary?: string,
+  skipEmptyRetrievalRefuse?: boolean,
 ): { messages: ChatMessage[]; keptChunks: RetrievedChunk[]; historyTrimmed: boolean; tooLarge: boolean } {
   // Already sorted best-first by retrieveTopChunks — pop from the end to drop the LOWEST-scoring
   // chunk first, keeping the most relevant ones as long as possible.
@@ -633,7 +684,9 @@ function trimToBudget(
       userMessage,
       knowledgeBlock,
       contextBlock,
+      staticSections,
       conversationSummary,
+      skipEmptyRetrievalRefuse,
     );
   }
 
@@ -683,19 +736,42 @@ export async function buildChatMessages(opts: BuildChatMessagesOptions): Promise
   const numCtx = opts.numCtx ?? DEFAULT_NUM_CTX;
   const conversationSummary = opts.conversationSummary?.trim() || undefined;
 
-  const retrievedChunks = await retrieveKnowledgeForQuery(opts.userMessage);
+  // Hard pre-flight grounding gate (2026-08-04): prompt-only refuse instructions failed twice
+  // against phi4-mini-reasoning. If neither RAG nor static KB is relevant (and no chips/casual),
+  // refuse in app code — never call the model, never inject Schedule 5.x as bait.
+  const grounding: ChatGroundingDecision =
+    opts.grounding ??
+    (await evaluateChatGrounding({
+      userMessage: opts.userMessage,
+      hasChips: opts.chips.length > 0,
+    }));
+
+  if (!grounding.allowModel) {
+    return {
+      messages: [],
+      contextBlock,
+      retrievedSources: [],
+      ungroundedRefuse: true,
+      ungroundedRefuseMessage: grounding.refuseMessage,
+    };
+  }
+
+  const skipEmptyRetrievalRefuse =
+    grounding.reason === 'casual' || grounding.reason === 'chip-context';
 
   const { messages, keptChunks, historyTrimmed, tooLarge } = trimToBudget(
     recentHistory,
     opts.userMessage,
-    retrievedChunks,
+    grounding.retrievedChunks,
     contextBlock,
     numCtx,
+    grounding.staticSections,
     conversationSummary,
+    skipEmptyRetrievalRefuse,
   );
 
   if (tooLarge) {
-    const itemCount = opts.chips.length + retrievedChunks.length;
+    const itemCount = opts.chips.length + grounding.retrievedChunks.length;
     return {
       messages: [],
       contextBlock,

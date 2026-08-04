@@ -337,8 +337,10 @@ describe('<AiChatPanel />', () => {
         root.render(<AiChatPanel />);
       });
       await flush();
-      await sendMessage('first question');
-      await sendMessage('second question');
+      // Casual greetings pass the hard grounding gate (off-topic free text would refuse before
+      // Ollama and never exercise the timeout counter).
+      await sendMessage('hello');
+      await sendMessage('thanks');
 
       const lastError = useAiChatStore.getState().messages.at(-1)?.error;
       expect(lastError).toContain('2nd reply in a row');
@@ -356,14 +358,49 @@ describe('<AiChatPanel />', () => {
         root.render(<AiChatPanel />);
       });
       await flush();
-      await sendMessage('q1');
-      await sendMessage('q2');
-      await sendMessage('q3');
+      await sendMessage('hello');
+      await sendMessage('thanks');
+      await sendMessage('hi');
 
       const lastError = useAiChatStore.getState().messages.at(-1)?.error;
       // Would say "2nd reply in a row" if the counter hadn't reset on the successful q2 reply.
       expect(lastError).not.toContain('reply in a row');
     });
+  });
+
+  it('hard-gates off-topic questions (emergency transport) — shows app refuse, never calls Ollama (2026-08-04 durable fix)', async () => {
+    aiServiceMocks.generateLocalAiChatResponseStream.mockResolvedValue({
+      ok: true,
+      text: 'should never be used',
+    });
+    useAiChatStore.setState({ hydrated: true });
+    await act(async () => {
+      root.render(<AiChatPanel />);
+    });
+    await flush();
+
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    const setValue = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!;
+    await act(async () => {
+      setValue.call(textarea, 'can you pull up the emergency transport criteria');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const sendButton = container.querySelector('button[aria-label="Send"]') as HTMLButtonElement;
+    await act(async () => {
+      sendButton.click();
+    });
+    await flush();
+
+    expect(aiServiceMocks.generateLocalAiChatResponseStream).not.toHaveBeenCalled();
+    expect(aiServiceMocks.generateLocalAiChatResponse).not.toHaveBeenCalled();
+    const msgs = useAiChatStore.getState().messages;
+    expect(msgs.some((m) => m.role === 'user' && m.content.includes('emergency transport'))).toBe(true);
+    const assistant = msgs.find((m) => m.role === 'assistant');
+    expect(assistant?.content).toContain("don't have grounded ACC material");
+    expect(assistant?.content.toLowerCase()).not.toContain('geneva');
+    expect(assistant?.content.toLowerCase()).not.toContain('schedule 5');
+    expect(assistant?.retrievedSources).toBeUndefined();
+    expect(useAiChatStore.getState().sending).toBe(false);
   });
 
   it('refuses to send and shows a specific "too much context" message — never calls the model — when several large chips together would overflow the context window (2026-08-04 safety net)', async () => {

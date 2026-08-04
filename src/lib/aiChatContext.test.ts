@@ -14,6 +14,7 @@ import {
   serializeContractContext,
   serializePatientContext,
 } from './aiChatContext';
+import { buildKnowledgeBaseSections } from './ai/knowledgeBase';
 
 function contract(overrides: Partial<Contract> = {}): Contract {
   return {
@@ -202,14 +203,16 @@ describe('grounding system prompt', () => {
     const summary = buildComplianceRuleSummary();
     expect(summary).toContain('NS04');
     expect(summary).toContain('Schedule');
-    expect(AI_ASSISTANT_SYSTEM_PROMPT).toContain(summary);
+    // Full rulebook lives in buildKnowledgeBaseSections (tests/docs); production injects only
+    // relevant rules per turn via groundingGate — the base prompt no longer dumps every rule.
+    expect(buildKnowledgeBaseSections().join('\n')).toContain(summary);
   });
 
   it('lists the real case-workflow stages in order', () => {
     const stages = buildCaseStageSummary();
     expect(stages).toContain('Not started');
     expect(stages).toContain('Closed');
-    expect(AI_ASSISTANT_SYSTEM_PROMPT).toContain(stages);
+    expect(buildKnowledgeBaseSections().join('\n')).toContain(stages);
   });
 
   it('states it runs locally and never invents ACC policy', () => {
@@ -275,12 +278,16 @@ describe('grounding system prompt', () => {
   // 2026-08-04 follow-up: brand-new chat asked "emergency transport criteria" — model <think>
   // invented that the user "provided compliance rules earlier" / "mentioned schedules 5.3, 5.11"
   // (those exist only as static reference material). Then fabricated multi-country flight essays.
+  // Static sections are now injected conditionally (groundingGate) — framing lives on the base
+  // prompt (history vs reference) AND on buildRelevantStaticSections when rules are injected.
   it('frames static compliance rules as reference material, not prior user messages / conversation history', () => {
     const lower = AI_ASSISTANT_SYSTEM_PROMPT.toLowerCase();
     expect(lower).toContain('reference material');
-    expect(lower).toContain('not prior user messages');
-    expect(lower).toContain('not conversation history');
     expect(lower).toContain('never claim the user "provided"');
+    // Full rulebook helper (tests/docs) still carries the stronger "NOT prior user messages" framing.
+    const full = buildKnowledgeBaseSections().join('\n').toLowerCase();
+    expect(full).toContain('not prior user messages');
+    expect(full).toContain('not conversation history');
   });
 
   it('locks scope to NZ ACC / this knowledge base and forbids foreign-jurisdiction / encyclopaedia essays', () => {
@@ -290,6 +297,8 @@ describe('grounding system prompt', () => {
     expect(lower).toContain('invented acronyms');
     expect(lower).toContain('aircraft models');
     expect(lower).toContain('medical-encyclopaedia');
+    expect(lower).toContain('geneva conventions');
+    expect(lower).toContain('never invent a named criteria document');
   });
 
   it('forbids fake markdown schedule-link citations', () => {
@@ -349,7 +358,6 @@ describe('buildChatMessages', () => {
   });
 
   it('omits the "Context used" text entirely when there are no chips', async () => {
-    const { NO_RETRIEVED_EXCERPTS_INSTRUCTION } = await import('./aiChatContext');
     const { messages, contextBlock, retrievedSources } = await buildChatMessages({
       history: [],
       chips: [],
@@ -359,8 +367,10 @@ describe('buildChatMessages', () => {
     expect(contextBlock).toBe('');
     expect(retrievedSources).toEqual([]);
     expect(messages[0].content).not.toContain('Context used (attached by the user');
+    // NS04 is static-relevant: base prompt + injected matching rules (no empty-retrieval refuse —
+    // the static rules ARE the grounding for this turn).
     expect(messages[0].content.startsWith(AI_ASSISTANT_SYSTEM_PROMPT)).toBe(true);
-    expect(messages[0].content).toContain(NO_RETRIEVED_EXCERPTS_INSTRUCTION);
+    expect(messages[0].content).toMatch(/NS04/i);
     expect(messages[0].content.toLowerCase()).toContain('fresh chat turn');
     expect(messages).toHaveLength(2);
     expect(messages[1]).toEqual({ role: 'user', content: 'What is NS04?' });
@@ -371,7 +381,14 @@ describe('buildChatMessages', () => {
       role: (i % 2 === 0 ? 'user' : 'assistant') as const,
       content: `turn-${i}`,
     }));
-    const { messages } = await buildChatMessages({ history: longHistory, chips: [], data: dataWith([]), userMessage: 'latest' });
+    // In-scope question so the hard grounding gate allows the model call (an off-topic
+    // "latest" would refuse before assembly).
+    const { messages } = await buildChatMessages({
+      history: longHistory,
+      chips: [],
+      data: dataWith([]),
+      userMessage: 'What is NS04 prior approval?',
+    });
     const contents = messages.map((m) => m.content);
     expect(contents).not.toContain('turn-0');
     expect(contents).toContain('turn-19');
@@ -389,6 +406,10 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
     _resetKnowledgeCorpusCacheForTests();
   });
 
+  // Each chunk is padded so three of them reliably exceed a modest numCtx trim trigger —
+  // short unpadded fixtures stopped forcing a drop after the hard gate removed the full
+  // static rulebook from every system prompt (prompt got smaller; tiny chunks all fit).
+  const PAD = ' Additional elective surgery contract operational detail for budget-trim tests.'.repeat(40);
   const SAMPLE_CORPUS = {
     generatedAt: '2026-08-04T00:00:00.000Z',
     chunks: [
@@ -396,19 +417,25 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
         id: 'nurse-og#0',
         sourceDocId: 'nurse-og',
         chunkIndex: 0,
-        text: 'Extended Nursing (NS04) requires ACC prior approval once 25 consultations have been completed or 105 days have passed for elective surgery ARTP contract questions.',
+        text:
+          'Extended Nursing (NS04) requires ACC prior approval once 25 consultations have been completed or 105 days have passed for elective surgery ARTP contract questions.' +
+          PAD,
       },
       {
         id: 'elective-surgery-og#0',
         sourceDocId: 'elective-surgery-og',
         chunkIndex: 0,
-        text: 'The Assessment Report and Treatment Plan (ARTP) process is required before most contracted elective surgery procedures proceed under this contract.',
+        text:
+          'The Assessment Report and Treatment Plan (ARTP) process is required before most contracted elective surgery procedures proceed under this contract.' +
+          PAD,
       },
       {
         id: 'health-contract-terms-conditions#0',
         sourceDocId: 'health-contract-terms-conditions',
         chunkIndex: 0,
-        text: 'The Supplier must not transmit Personal Information outside New Zealand under this elective surgery contract, per clause 9 of the Standard Terms and Conditions.',
+        text:
+          'The Supplier must not transmit Personal Information outside New Zealand under this elective surgery contract, per clause 9 of the Standard Terms and Conditions.' +
+          PAD,
       },
     ],
   };
@@ -420,10 +447,7 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
       chips: [],
       data: dataWith([]),
       userMessage: 'Tell me about the ARTP process for this elective surgery contract',
-      // A small numCtx forces trimming with this small sample corpus, deterministically, without
-      // needing a giant real-world fixture (empirically, with the current system prompt — retuned
-      // 2026-08-04 for the groundedness / NZ-scope / no-excerpts refuse instructions: all 3 sample
-      // chunks fit at numCtx >= 4400, exactly 2 fit at 4200).
+      // Modest numCtx + padded sample chunks forces dropping at least one retrieved chunk.
       numCtx: 4200,
     });
     expect(contextTooLarge).toBeFalsy();
@@ -458,10 +482,9 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
       chips: [],
       data: dataWith([]),
       userMessage: 'Tell me about the ARTP process for this elective surgery contract',
-      // Slightly tighter than the empty-history trim probe above: with a short prior exchange
-      // present (no "fresh chat" notice), numCtx 4150 still forces dropping at least one chunk
-      // while keeping history — confirms history/user survive the SAME trim pass.
-      numCtx: 4150,
+      // With a short prior exchange present, numCtx 4100 + padded chunks still forces dropping
+      // at least one chunk while keeping history — confirms history/user survive the SAME trim pass.
+      numCtx: 4100,
     });
     expect(contextTooLarge).toBeFalsy();
     expect(retrievedSources.length).toBeLessThan(SAMPLE_CORPUS.chunks.length);
@@ -521,7 +544,8 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
         history,
         chips: [],
         data: dataWith([]),
-        userMessage: 'question four',
+        // In-scope so the hard grounding gate allows assembly (off-topic "question four" would refuse).
+        userMessage: 'What is NS04 prior approval — question four',
         // Small enough that 3 long replies + system prompt don't all fit, but NOT so small that
         // dropping history can't rescue it (unlike the numCtx:50 "refuse outright" case above) —
         // empirically (with the current system prompt — retuned 2026-08-04 for the groundedness /
@@ -529,28 +553,33 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
         // pair once the older two are gone.
         numCtx: 5400,
       });
+      expect(result.ungroundedRefuse).toBeUndefined();
       expect(result.contextTooLarge).toBeFalsy();
       expect(result.historyTrimmed).toBe(true);
       const contents = result.messages.map((m) => m.content);
       // The newest turn and the new user message must survive.
       expect(contents).toContain('question three');
-      expect(contents).toContain('question four');
+      expect(contents).toContain('What is NS04 prior approval — question four');
       // At least the oldest turn must have been dropped to make room.
       expect(contents).not.toContain('question one');
     });
 
     it('still refuses outright (contextTooLarge) if dropping every chunk AND every history turn is not enough', async () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+      // Keep NS04 in the user message so the hard grounding gate allows the call — we are
+      // specifically testing the context-budget safety net, not the ungrounded refuse path.
+      const bloated = `NS04 ${'x'.repeat(400)}`;
       const result = await buildChatMessages({
         history: [
-          { role: 'user', content: 'x'.repeat(400) },
-          { role: 'assistant', content: 'x'.repeat(400) },
+          { role: 'user', content: bloated },
+          { role: 'assistant', content: bloated },
         ],
         chips: [],
         data: dataWith([]),
-        userMessage: 'x'.repeat(400),
+        userMessage: bloated,
         numCtx: 50,
       });
+      expect(result.ungroundedRefuse).toBeUndefined();
       expect(result.contextTooLarge).toBe(true);
       expect(result.messages).toEqual([]);
     });
@@ -563,6 +592,7 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
         data: dataWith([]),
         userMessage: 'how are you',
       });
+      expect(result.ungroundedRefuse).toBeUndefined();
       expect(result.historyTrimmed).toBeUndefined();
     });
   });
@@ -578,16 +608,17 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
         history: recent,
         chips: [],
         data: dataWith([]),
-        userMessage: 'follow up',
+        userMessage: 'What is NS04 follow up',
         conversationSummary: 'Facts established: NS01 package rates were confirmed.',
         historyAlreadyWindowed: true,
       });
+      expect(result.ungroundedRefuse).toBeUndefined();
       expect(result.historySummarized).toBe(true);
       expect(result.messages[0].role).toBe('system');
       expect(result.messages[0].content).toContain('Rolling prior-chat summary');
       expect(result.messages[0].content).toContain('NS01 package rates were confirmed');
       expect(result.messages.map((m) => m.content)).toContain('recent question');
-      expect(result.messages.map((m) => m.content)).toContain('follow up');
+      expect(result.messages.map((m) => m.content)).toContain('What is NS04 follow up');
       // Summary must NOT appear as a fake user/assistant transcript turn.
       expect(result.messages.filter((m) => m.role !== 'system').every((m) => !m.content.includes('NS01 package'))).toBe(
         true,
@@ -600,8 +631,9 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
         history: [{ role: 'user', content: 'hi' }, { role: 'assistant', content: 'hello' }],
         chips: [],
         data: dataWith([]),
-        userMessage: 'next',
+        userMessage: 'What is NS04 next',
       });
+      expect(result.ungroundedRefuse).toBeUndefined();
       expect(result.historySummarized).toBeUndefined();
       // Injection header only — the static system prompt may mention the concept in quotes.
       expect(result.messages[0].content).not.toMatch(
@@ -737,28 +769,26 @@ describe('buildChatMessages — real ACC document retrieval (RAG-lite)', () => {
     expect(retrievedSources.map((s) => s.sourceDocId)).not.toContain('elective-surgery-og');
   });
 
-  it('retrieves nothing for an unrelated question — never forces irrelevant content into the prompt', async () => {
-    const { NO_RETRIEVED_EXCERPTS_INSTRUCTION } = await import('./aiChatContext');
-    const { retrievedSources, messages } = await buildChatMessages({
+  it('hard-gates unrelated questions — empty messages, deterministic refuse, no Ollama payload', async () => {
+    const { UNGROUNDED_REFUSE_MESSAGE } = await import('./aiChatContext');
+    const result = await buildChatMessages({
       history: [],
       chips: [],
       data: dataWith([]),
       userMessage: 'what is the weather like today',
     });
-    expect(retrievedSources).toEqual([]);
-    expect(messages[0].content).not.toContain('Real ACC document excerpts retrieved and provided');
-    expect(messages[0].content).toContain(NO_RETRIEVED_EXCERPTS_INSTRUCTION);
+    expect(result.retrievedSources).toEqual([]);
+    expect(result.messages).toEqual([]);
+    expect(result.ungroundedRefuse).toBe(true);
+    expect(result.ungroundedRefuseMessage).toBe(UNGROUNDED_REFUSE_MESSAGE);
   });
 
-  // 2026-08-04 citation-integrity bug fix: a question that only weakly/coincidentally overlaps
-  // with retrievable chunks (a few shared common words, not a real topic match) must retrieve
-  // NOTHING and show no "Sources" — not the weakly-related chunk(s) a `minScore: 0` cutoff used to
-  // hand the model, which it then cited as decorative, misleading support for a fabricated answer
-  // (the real owner-reported "emergency transport criteria" incident — see
-  // knowledgeRetrieval.ts MIN_RELEVANT_SCORE and docs/research/acc-public-contract-sources-2026-08.md
-  // §7). Uses a larger, more realistic corpus (this describe block's fixture only has 2 chunks,
-  // which inflates IDF/scores too much for a genuinely weak-overlap case to exist).
-  it('retrieves nothing (no decorative Sources) for a question that only weakly/coincidentally overlaps retrievable chunks, not a real topic match', async () => {
+  // 2026-08-04 citation-integrity bug fix + hard-gate follow-up: a question that only
+  // weakly/coincidentally overlaps retrievable chunks must retrieve NOTHING — and the hard
+  // app-side gate must refuse before any model call (prompt-only refuse failed twice on
+  // phi4-mini-reasoning). See knowledgeRetrieval.ts MIN_RELEVANT_SCORE, groundingGate.ts, and
+  // docs/research/acc-public-contract-sources-2026-08.md §7.
+  it('retrieves nothing and hard-gates a weakly/coincidentally overlapping emergency-transport question', async () => {
     const WEAK_OVERLAP_CORPUS = {
       generatedAt: '2026-08-04T00:00:00.000Z',
       chunks: [
@@ -793,43 +823,54 @@ describe('buildChatMessages — real ACC document retrieval (RAG-lite)', () => {
       ],
     };
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => WEAK_OVERLAP_CORPUS }));
-    const { NO_RETRIEVED_EXCERPTS_INSTRUCTION } = await import('./aiChatContext');
-    const { retrievedSources, messages } = await buildChatMessages({
+    const { UNGROUNDED_REFUSE_MESSAGE } = await import('./aiChatContext');
+    const result = await buildChatMessages({
       history: [],
       chips: [],
       data: dataWith([]),
       userMessage: 'What is the ambulance transport criteria for emergency clients requiring urgent care today?',
     });
-    expect(retrievedSources).toEqual([]);
-    expect(messages[0].content).not.toContain('Real ACC document excerpts retrieved and provided');
-    // Empty/weak retrieval must inject the hard refuse/clarify instruction (not just omit excerpts).
-    expect(messages[0].content).toContain(NO_RETRIEVED_EXCERPTS_INSTRUCTION);
-    expect(messages[0].content.toLowerCase()).toContain('must not mash unrelated static compliance rules');
-    // Fresh chat (empty history, no summary) must also get an explicit "no prior conversation" marker.
-    expect(messages[0].content.toLowerCase()).toContain('fresh chat turn');
-    expect(messages[0].content).not.toMatch(
-      /\n\nRolling prior-chat summary \(older turns from THIS chat/,
-    );
+    expect(result.retrievedSources).toEqual([]);
+    expect(result.messages).toEqual([]);
+    expect(result.ungroundedRefuse).toBe(true);
+    expect(result.ungroundedRefuseMessage).toBe(UNGROUNDED_REFUSE_MESSAGE);
+    // Critical: Schedule 5.x / NS04 text must NOT be sitting in any model-bound payload.
+    expect(JSON.stringify(result.messages)).not.toMatch(/Schedule 5\.11|25 consult|NS04/);
   });
 
-  it('assembleMessages with empty history + zero retrieval includes strong refuse/clarify and no prior-chat summary', async () => {
-    const { NO_RETRIEVED_EXCERPTS_INSTRUCTION } = await import('./aiChatContext');
+  it('hard-gates "emergency transport criteria" on a fresh chat — no system prompt with static rules, no model call', async () => {
+    const { UNGROUNDED_REFUSE_MESSAGE } = await import('./aiChatContext');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
-    const { messages, retrievedSources, historySummarized } = await buildChatMessages({
+    const result = await buildChatMessages({
       history: [],
       chips: [],
       data: dataWith([]),
       userMessage: 'can you pull up the emergency transport criteria',
     });
+    expect(result.retrievedSources).toEqual([]);
+    expect(result.historySummarized).toBeUndefined();
+    expect(result.messages).toEqual([]);
+    expect(result.ungroundedRefuse).toBe(true);
+    expect(result.ungroundedRefuseMessage).toBe(UNGROUNDED_REFUSE_MESSAGE);
+  });
+
+  it('allows NS04 prior-approval questions and injects matching static rules (not the full rulebook dump on every turn)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+    const { messages, ungroundedRefuse, retrievedSources } = await buildChatMessages({
+      history: [],
+      chips: [],
+      data: dataWith([]),
+      userMessage: 'When does Extended Nursing NS04 need prior approval?',
+    });
+    expect(ungroundedRefuse).toBeUndefined();
     expect(retrievedSources).toEqual([]);
-    expect(historySummarized).toBeUndefined();
-    expect(messages).toHaveLength(2); // system + user only
+    expect(messages.length).toBeGreaterThanOrEqual(2);
     expect(messages[0].role).toBe('system');
-    expect(messages[1]).toEqual({ role: 'user', content: 'can you pull up the emergency transport criteria' });
-    expect(messages[0].content).toContain(NO_RETRIEVED_EXCERPTS_INSTRUCTION);
-    expect(messages[0].content.toLowerCase()).toContain('fresh chat turn');
-    expect(messages[0].content).not.toMatch(
-      /\n\nRolling prior-chat summary \(older turns from THIS chat/,
-    );
+    expect(messages[0].content).toMatch(/NS04/i);
+    expect(messages[0].content.toLowerCase()).toContain('reference material');
+    // Off-topic predictive rule about NS06 near-50 should not be force-injected just because
+    // we have a nursing question — only rules that scored as relevant.
+    // (NS04-related rules may mention approval; the near-50-ns06 title should be absent.)
+    expect(messages[0].content).not.toContain('Approaching the 50 NS06 cap');
   });
 });

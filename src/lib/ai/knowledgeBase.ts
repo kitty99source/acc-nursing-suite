@@ -1,11 +1,11 @@
 // ============================================================================
-// "Knows the rulebook" static knowledge injected into the AI chat assistant's
-// system prompt. Pulled out of aiChatContext.ts (2026-08-04) into its own
-// module so this is ONE clear place for "what static knowledge does the
-// assistant get told about" — the next additions (more rules, a few-shot
-// "here's how we handled a similar case before" example set, and eventually
-// real RAG search results) all plug in here rather than being scattered
-// across the prompt-assembly code.
+// "Knows the rulebook" static knowledge for the AI chat assistant's system
+// prompt. Pulled out of aiChatContext.ts (2026-08-04) into its own module so
+// this is ONE clear place for "what static knowledge does the assistant get
+// told about" — the next additions (more rules, a few-shot "here's how we
+// handled a similar case before" example set, and eventually real RAG search
+// results) all plug in here rather than being scattered across the
+// prompt-assembly code.
 //
 // Per docs/research/ai-chat-assistant-2026-08.md's research on small local
 // models: this "structured rules file, programmatically summarised into the
@@ -14,6 +14,14 @@
 // knowledge base at this app's current data volume. See that doc for the
 // full research writeup and the "when you have real contract/case history
 // data volume" future RAG build plan.
+//
+// IMPORTANT (2026-08-04 hard-gate follow-up): do NOT dump the full rulebook
+// into every turn. `buildKnowledgeBaseSections()` below is the "all rules"
+// view kept for tests/docs; production prompt assembly uses
+// `buildRelevantStaticSections` from groundingGate.ts so only rules that
+// score as relevant to the current question are injected. Off-topic questions
+// with zero RAG chunks never receive Schedule 5.x text at all (and never
+// reach the model — see evaluateChatGrounding).
 //
 // Everything here is built PROGRAMMATICALLY from this codebase's own real
 // domain data (compliance.ts, caseWorkflow.ts) — never hand-written/invented
@@ -86,17 +94,13 @@ function buildFewShotSection(): string | null {
 }
 
 /**
- * Assembles the full "knows the rulebook" grounding block(s) that get
- * prepended to the assistant's system prompt: compliance rules, case-workflow
- * stages, and (once populated) few-shot examples. One function, one call
- * site — this is the extension point for future RAG search results too (a
- * retrieved-passages block would join this same array).
+ * Full static rulebook sections (ALL compliance rules + case stages). Kept for
+ * unit tests / docs that want to assert the complete rule text exists. Production
+ * chat assembly must use `buildRelevantStaticSections` (groundingGate.ts) instead
+ * — injecting this whole block on every turn is what let phi4-mini-reasoning
+ * mash Schedule 5.x nursing caps into "emergency transport criteria".
  */
 export function buildKnowledgeBaseSections(): string[] {
-  // Framing matters: small local models routinely mis-attribute this block as "what the user
-  // said earlier" / "compliance rules you provided" in their <think> traces (2026-08-04 owner
-  // report on a brand-new chat asking about emergency transport). These are REFERENCE MATERIAL
-  // the app injects every turn — never prior user messages / conversation history.
   const sections = [
     'REFERENCE MATERIAL for this turn only (injected by the app every request — NOT prior user ' +
       'messages, NOT conversation history, NOT something the user "mentioned" or "provided earlier"):\n\n' +

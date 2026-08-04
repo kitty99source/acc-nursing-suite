@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { useAiChatStore, makeMessageId, CHIP_DND_MIME, type AiChatMessage } from '../state/aiChatStore';
-import { buildChatMessages, isConversationGettingLong, type ChatTurn, type ContextChip } from '../lib/aiChatContext';
+import {
+  buildChatMessages,
+  evaluateChatGrounding,
+  isConversationGettingLong,
+  type ChatTurn,
+  type ContextChip,
+} from '../lib/aiChatContext';
 import {
   checkAiServiceStatus,
   generateLocalAiChatResponse,
@@ -201,12 +207,38 @@ export function AiChatPanel() {
     sendStartedAtRef.current = Date.now();
     setSending(true);
     setStreamingText('');
-    setSendPhase('summarizing');
+    setSendPhase('generating');
 
     // AbortController covers BOTH summarization and the streamed answer — Clear chat / Stop /
     // New chat cancel either phase (never leave a nested summarize hang behind a main reply).
     const { id: generationId, signal } = beginGeneration();
 
+    // Hard grounding gate BEFORE any Ollama call (including long-chat summarization). Prompt-only
+    // refuse instructions failed twice on phi4-mini-reasoning (ba6a96a / ad054e9) — off-topic
+    // questions with zero RAG hits must never reach the model, or it invents answers from the
+    // static Schedule 5.x rulebook / general knowledge. See lib/ai/groundingGate.ts.
+    const grounding = await evaluateChatGrounding({
+      userMessage: text,
+      hasChips: attachedChips.length > 0,
+    });
+    if (!grounding.allowModel) {
+      if (!isGenerationCurrent(generationId)) {
+        setSendPhase('idle');
+        return;
+      }
+      addMessage({
+        id: makeMessageId(),
+        role: 'assistant',
+        content: grounding.refuseMessage,
+        createdAt: Date.now(),
+      });
+      setSending(false);
+      setSendPhase('idle');
+      sendStartedAtRef.current = null;
+      return;
+    }
+
+    setSendPhase('summarizing');
     const existingSummary = useAiChatStore.getState().conversationSummary;
     const ensured = await ensureConversationSummary({
       history,
@@ -244,6 +276,8 @@ export function AiChatPanel() {
       retrievedSources,
       contextTooLarge,
       contextTooLargeMessage: tooLargeMessage,
+      ungroundedRefuse,
+      ungroundedRefuseMessage,
       historyTrimmed,
       historySummarized,
     } = await buildChatMessages({
@@ -253,7 +287,27 @@ export function AiChatPanel() {
       userMessage: text,
       conversationSummary: ensured.summary?.text,
       historyAlreadyWindowed: historyWindowed,
+      grounding,
     });
+
+    // Defense-in-depth: buildChatMessages also returns the gate result (e.g. if a future caller
+    // skips the early check above). Same UX as the early return — no Ollama, no Sources.
+    if (ungroundedRefuse) {
+      if (!isGenerationCurrent(generationId)) {
+        setSendPhase('idle');
+        return;
+      }
+      addMessage({
+        id: makeMessageId(),
+        role: 'assistant',
+        content: ungroundedRefuseMessage || 'I don\'t have grounded ACC material on that in my current knowledge base.',
+        createdAt: Date.now(),
+      });
+      setSending(false);
+      setSendPhase('idle');
+      sendStartedAtRef.current = null;
+      return;
+    }
 
     // 2026-08-04 context-overflow safety net (see aiChatContext.ts `buildChatMessages` /
     // contextBudget.ts): even after dropping the lowest-relevance retrieved knowledge chunks, the

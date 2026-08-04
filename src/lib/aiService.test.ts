@@ -164,7 +164,7 @@ describe('generateLocalAiResponse', () => {
     const [, init] = fetchImpl.mock.calls[0];
     const body = JSON.parse(init.body);
     expect(body.keep_alive).toBe('30m');
-    expect(body.options?.num_ctx).toBe(4096);
+    expect(body.options?.num_ctx).toBe(8192);
   });
 
   it('lets a caller override keep_alive and num_ctx', async () => {
@@ -306,7 +306,7 @@ describe('generateLocalAiChatResponseStream', () => {
     });
     const [, init] = fetchImpl.mock.calls[0];
     const body = JSON.parse(init.body);
-    expect(body.options?.num_ctx).toBe(4096);
+    expect(body.options?.num_ctx).toBe(8192);
     expect(body.options?.num_ctx).toBeLessThan(131072);
   });
 
@@ -316,10 +316,10 @@ describe('generateLocalAiChatResponseStream', () => {
     );
     await generateLocalAiChatResponseStream('http://127.0.0.1:11434', sampleMessages, {
       fetchImpl: fetchImpl as unknown as FetchLike,
-      numCtx: 8192,
+      numCtx: 16384,
     });
     const [, init] = fetchImpl.mock.calls[0];
-    expect(JSON.parse(init.body).options.num_ctx).toBe(8192);
+    expect(JSON.parse(init.body).options.num_ctx).toBe(16384);
   });
 
   it('correctly reassembles a JSON line split across two stream reads', async () => {

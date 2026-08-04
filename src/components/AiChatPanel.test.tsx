@@ -19,6 +19,9 @@ vi.mock('../lib/idb', () => idbMocks);
 // logic, which is exercised by the mocked generateLocalAiChatResponseStream below.
 const aiServiceMocks = vi.hoisted(() => ({
   generateLocalAiChatResponseStream: vi.fn(),
+  // aiChatContext.ts's buildChatMessages reads this for its context-budget check — a real value
+  // (not a mock-only stub) so the budget/trim logic behaves the same as production in this suite.
+  DEFAULT_NUM_CTX: 8192,
 }));
 vi.mock('../lib/aiService', () => aiServiceMocks);
 
@@ -246,6 +249,60 @@ describe('<AiChatPanel />', () => {
 
     expect(container.textContent).toContain("Couldn't reach the local AI model.");
     expect(container.textContent).toContain('timed out');
+    expect(useAiChatStore.getState().sending).toBe(false);
+  });
+
+  it('refuses to send and shows a specific "too much context" message — never calls the model — when several large chips together would overflow the context window (2026-08-04 safety net)', async () => {
+    // 8 large Contract chips, each with a big rate table — even after this fix's chip
+    // compaction bounds any ONE chip's payload, attaching enough of them at once should still
+    // trip the preflight safety net rather than silently sending an oversized prompt.
+    const bigRateTable = Array.from({ length: 300 }, (_, i) => ({
+      serviceCode: `PT${String(i).padStart(3, '0')}`,
+      description: 'A realistic service item description of representative length for this schedule.',
+      rate: 50 + i,
+    }));
+    const contracts = Array.from({ length: 8 }, (_, i) => ({
+      id: `ct-${i}`,
+      providerName: `Big Contract ${i}`,
+      customerNumber: '1234',
+      claimsEmail: 'claims@example.test',
+      effectiveFrom: '2026-01-01',
+      effectiveTo: '',
+      serviceCodesCovered: bigRateTable.map((r) => r.serviceCode),
+      rateTable: bigRateTable,
+      notes: '',
+    }));
+    useStore.setState({
+      data: {
+        ...emptyData(),
+        settings: { ...emptyData().settings, aiFeaturesEnabled: true },
+        contracts,
+      },
+    });
+    useAiChatStore.setState({
+      hydrated: true,
+      chips: contracts.map((c) => ({ id: `contract:${c.id}`, type: 'contract' as const, recordId: c.id, label: c.providerName })),
+    });
+    await act(async () => {
+      root.render(<AiChatPanel />);
+    });
+    await flush();
+
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    const setValue = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!;
+    await act(async () => {
+      setValue.call(textarea, 'Summarize all of these contracts');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const sendButton = container.querySelector('button[aria-label="Send"]') as HTMLButtonElement;
+    await act(async () => {
+      sendButton.click();
+    });
+    await flush();
+
+    expect(container.textContent).toContain('a lot of context');
+    expect(container.textContent).toContain('one specific');
+    expect(aiServiceMocks.generateLocalAiChatResponseStream).not.toHaveBeenCalled();
     expect(useAiChatStore.getState().sending).toBe(false);
   });
 

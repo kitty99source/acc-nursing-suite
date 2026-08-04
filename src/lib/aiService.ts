@@ -113,16 +113,44 @@ const DEFAULT_CHAT_NUM_PREDICT = 2048;
 //    that model-card maximum when a request doesn't specify `num_ctx`, which
 //    allocates a KV-cache sized for a 128K-token conversation even for a
 //    two-line "hello" — a real, avoidable CPU/memory cost on every single
-//    request. This app's own prompt assembly (`buildChatMessages` in
-//    `aiChatContext.ts`, `MAX_HISTORY_TURNS = 8`) never sends anywhere close
-//    to that much text — a capped few-thousand-word system prompt + context
-//    chip + short history window comfortably fits well under 8K tokens in
-//    every realistic case. `4096` is used as a safe, generous default (not
-//    the smallest possible value) — large enough that a legitimately long
-//    patient-context chip + full compliance rulebook + 8 history turns still
-//    fits without silent truncation, small enough to meaningfully shrink the
-//    KV-cache allocation vs. the 131072 default. Overridable per-call
-//    (`numCtx` option) if a future caller genuinely needs more.
+//    request. `4096` was chosen THEN as a safe, generous default — before
+//    this app had a Contract chip or real narrative RAG content to inject.
+//
+//    2026-08-04 UPDATE: 4096 turned out to be genuinely too small for this
+//    app's own real feature set once it existed. A live incident: the owner
+//    attached a real Contract chip (a 39-row Allied Health rate table) and
+//    asked to "summarize it" — the chat combined that chip (~1.7K estimated
+//    tokens even before this fix's chip-compaction), a table-of-contents
+//    knowledge-retrieval chunk (~1.1K tokens of pure noise — see
+//    tocDetection.ts, now filtered out), a substantive terms-and-conditions
+//    chunk (~1K tokens), the system/compliance-rules prompt (~1.4K tokens),
+//    and conversation history into one request that plausibly EXCEEDED the
+//    4096-token budget on the prompt alone, before the model had generated a
+//    single token of its own reply — `num_ctx` is the TOTAL window shared
+//    between prompt and generation, so there was no room left for Ollama to
+//    do anything but choke, which surfaced as "the local AI model stopped
+//    responding" (aiService.ts `chatErrorMessage`) rather than an honest
+//    "too much context" message.
+//
+//    Raised to `8192` — not the model's own 131072 maximum, which would be a
+//    real, unjustified extra CPU/memory cost on this CPU-only <16GB-RAM
+//    hardware for no realistic benefit. Reasoning: with this fix's OTHER two
+//    changes also in place (compact Contract-chip rate tables — see
+//    aiChatContext.ts `serializeContractContext` — and ToC-chunk filtering —
+//    see tocDetection.ts), a realistic worst case (one large Contract chip +
+//    a full 8-turn history window + the system/compliance prompt + up to 3
+//    retrieved knowledge chunks) estimates to roughly 3.5-4K tokens of
+//    prompt — comfortably under half of 8192, leaving genuine headroom for
+//    the reserved ~2048-token reply ceiling (`DEFAULT_CHAT_NUM_PREDICT`)
+//    PLUS a safety margin, since the char-based token estimate used here and
+//    in contextBudget.ts is a rough approximation, not the model's real
+//    tokenizer. `16384`+ was considered and rejected for now — it would only
+//    matter for a scenario (e.g. several large chips attached at once) that
+//    the new preflight safety net (contextBudget.ts `checkContextBudget`,
+//    wired into `buildChatMessages`) now catches and refuses cleanly instead
+//    of silently sending, so there is no real content this app generates
+//    today that 8192 can't already fit with room to spare. Overridable
+//    per-call (`numCtx` option) if a future caller genuinely needs more.
 // NOT applied, and why (per the owner's own "don't apply blindly" instruction):
 //   - `num_thread`: Ollama's own runtime already defaults this to the
 //     detected physical CPU core count (`runtime.NumCPU()` server-side) and
@@ -150,7 +178,7 @@ const DEFAULT_CHAT_NUM_PREDICT = 2048;
 //     `numPredict`.
 // ----------------------------------------------------------------------------
 export const DEFAULT_KEEP_ALIVE = '30m';
-export const DEFAULT_NUM_CTX = 4096;
+export const DEFAULT_NUM_CTX = 8192;
 
 function stripTrailingSlash(url: string): string {
   return url.replace(/\/+$/, '');
@@ -270,7 +298,7 @@ export interface AiGenerateOptions {
   model?: string;
   /** Ollama top-level `keep_alive` field — how long to keep the model warm in RAM after this request. Default DEFAULT_KEEP_ALIVE ("30m"). */
   keepAlive?: string | number;
-  /** Ollama `options.num_ctx` — context window size in tokens. Default DEFAULT_NUM_CTX (4096); see comment above. */
+  /** Ollama `options.num_ctx` — context window size in tokens. Default DEFAULT_NUM_CTX (8192); see comment above. */
   numCtx?: number;
 }
 
@@ -356,7 +384,7 @@ export interface AiGenerateStreamOptions {
   numPredict?: number;
   /** Ollama top-level `keep_alive` field — how long to keep the model warm in RAM after this request. Default DEFAULT_KEEP_ALIVE ("30m"). */
   keepAlive?: string | number;
-  /** Ollama `options.num_ctx` — context window size in tokens. Default DEFAULT_NUM_CTX (4096); see comment above `DEFAULT_KEEP_ALIVE`. */
+  /** Ollama `options.num_ctx` — context window size in tokens. Default DEFAULT_NUM_CTX (8192); see comment above `DEFAULT_KEEP_ALIVE`. */
   numCtx?: number;
   /**
    * Caller-supplied cancellation signal — e.g. AiChatPanel wires this to the chat store's

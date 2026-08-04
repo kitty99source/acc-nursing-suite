@@ -96,4 +96,26 @@ describe('retrieveTopChunks (RAG-lite relevance scoring)', () => {
     const results = retrieveTopChunks('ACC Supplier client', allChunks, index, { k: 2 });
     expect(results.length).toBeLessThanOrEqual(2);
   });
+
+  it('excludes a table-of-contents-shaped chunk even when it would otherwise score well (2026-08-04 context-overflow fix)', () => {
+    // Built directly (not via chunkDocumentText) since knowledgeChunking.ts now excludes
+    // ToC-shaped chunks at ingestion time too — this test exercises retrieveTopChunks's own
+    // defense-in-depth filter for a corpus/chunk source built before that ingestion-time fix.
+    const tocChunk = {
+      id: 'elective-surgery-og#toc',
+      sourceDocId: 'elective-surgery-og',
+      chunkIndex: 999,
+      text:
+        'Table of Contents Useful Contact Information ' +
+        '........................................................................................... 1 ' +
+        'Useful Links .................................................................................................................. 2 ' +
+        '1. Introduction ........................................................................................... 4 ' +
+        '2. Who can hold this Contract? ................................................................................... 4 ' +
+        '3. What does the contract cover? ............................................................................... 5',
+    };
+    const chunksWithToc = [...allChunks, tocChunk];
+    const indexWithToc = buildCorpusIndex(chunksWithToc);
+    const results = retrieveTopChunks('What is the ARTP process for elective surgery prior approval?', chunksWithToc, indexWithToc);
+    expect(results.map((r) => r.chunk.id)).not.toContain(tocChunk.id);
+  });
 });

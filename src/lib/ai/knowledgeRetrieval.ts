@@ -19,6 +19,7 @@
 // ============================================================================
 
 import type { KnowledgeChunk } from './knowledgeChunking';
+import { isLikelyTableOfContents } from './tocDetection';
 
 const STOPWORDS = new Set([
   'the', 'a', 'an', 'and', 'or', 'of', 'to', 'in', 'on', 'for', 'is', 'are', 'was', 'were', 'be',
@@ -106,6 +107,11 @@ export function retrieveTopChunks(
   const k = opts.k ?? 3;
   const minScore = opts.minScore ?? 0;
   return chunks
+    // Defense-in-depth backstop, on top of knowledgeChunking.ts already excluding ToC-shaped
+    // chunks at ingestion time — catches any corpus asset built before this fix, or a future chunk
+    // source this detector wasn't run against. A bare table-of-contents chunk has zero
+    // substantive value, so it is never worth injecting regardless of how it happens to score.
+    .filter((chunk) => !isLikelyTableOfContents(chunk.text))
     .map((chunk) => ({ chunk, score: scoreChunk(query, chunk, index) }))
     .filter((r) => r.score > minScore)
     .sort((a, b) => b.score - a.score)

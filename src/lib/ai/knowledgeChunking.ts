@@ -8,6 +8,8 @@
 // the real files under docs/research/raw-text/ and calls this.
 // ============================================================================
 
+import { isLikelyTableOfContents } from './tocDetection';
+
 export interface KnowledgeChunk {
   /** Stable id: `${sourceDocId}#${chunkIndex}`. */
   id: string;
@@ -82,7 +84,16 @@ export function chunkDocumentText(
     merged[merged.length - 1] = `${merged[merged.length - 1]}\n${last}`;
   }
 
-  return merged.map((text, chunkIndex) => ({
+  // Table-of-contents pages (leader-dot title/page-number lists — see
+  // docs/research raw text for real examples like "Elective Surgery Services
+  // Operational Guidelines") are excluded here, at ingestion time, rather
+  // than merely deprioritized at retrieval time — they carry zero
+  // substantive content, so there is no scenario where shipping one in
+  // knowledge-chunks.json at all is useful (2026-08-04 AI-chat
+  // context-overflow bug fix; see tocDetection.ts).
+  const substantive = merged.filter((text) => !isLikelyTableOfContents(text));
+
+  return substantive.map((text, chunkIndex) => ({
     id: `${sourceDocId}#${chunkIndex}`,
     sourceDocId,
     chunkIndex,

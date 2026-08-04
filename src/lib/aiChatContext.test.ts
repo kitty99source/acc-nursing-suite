@@ -130,6 +130,55 @@ describe('serializeContractContext', () => {
     expect(text).toContain('none on file');
     expect(text).toContain('Notes: none');
   });
+
+  // 2026-08-04 context-overflow bug fix: a real 39-row Contract chip (Allied Health schedule),
+  // serialized with the old always-verbose-description logic, combined with knowledge-retrieval
+  // context to plausibly exceed the model's context window and time out — see aiService.ts
+  // DEFAULT_NUM_CTX comment for the full incident writeup.
+  describe('many-row rate tables (compact view)', () => {
+    function bigRateTable(count: number) {
+      return Array.from({ length: count }, (_, i) => ({
+        serviceCode: `PT${String(i).padStart(2, '0')}`,
+        description:
+          'A fairly long, realistic service item description matching the real Allied Health schedule rows, ' +
+          'covering things like initial consultation requirements and clinical documentation expectations.',
+        rate: 50 + i,
+      }));
+    }
+
+    it('switches to a compact code+price view (no verbose descriptions) once a contract has many rows', () => {
+      const c = contract({ rateTable: bigRateTable(39) });
+      const text = serializeContractContext(c);
+      expect(text).toContain('compact view');
+      expect(text).not.toContain('A fairly long, realistic service item description');
+      expect(text).toContain('PT00: $50.00');
+      expect(text).toContain('PT38: $88.00');
+    });
+
+    it('keeps the full verbose per-row description for a small rate table (existing behaviour unaffected)', () => {
+      const c = contract({ rateTable: bigRateTable(5) });
+      const text = serializeContractContext(c);
+      expect(text).not.toContain('compact view');
+      expect(text).toContain('A fairly long, realistic service item description');
+    });
+
+    it('produces a reasonably bounded chip payload for a real-world-sized (39-row) contract — the actual crashing case', () => {
+      const c = contract({ rateTable: bigRateTable(39) });
+      const text = serializeContractContext(c);
+      // The real incident's old verbose serialization of this same 39-row shape was ~6.7K
+      // characters; the compact view should be dramatically smaller.
+      expect(text.length).toBeLessThan(3000);
+    });
+
+    it('caps the number of rows actually listed even for a very large schedule (e.g. Elective Surgery-sized), with a clear "more not shown" note', () => {
+      const c = contract({ rateTable: bigRateTable(300) });
+      const text = serializeContractContext(c);
+      expect(text).toContain('more code(s) not shown');
+      expect(text).toContain('ask about a specific code');
+      // Bounded regardless of how many rows the real schedule has.
+      expect(text.length).toBeLessThan(4000);
+    });
+  });
 });
 
 describe('buildContextBlock', () => {
@@ -239,6 +288,120 @@ describe('buildChatMessages', () => {
     expect(contents).toContain('turn-19');
     // system + 8 history turns + new user message
     expect(messages).toHaveLength(1 + 8 + 1);
+  });
+});
+
+describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', () => {
+  beforeEach(() => {
+    _resetKnowledgeCorpusCacheForTests();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    _resetKnowledgeCorpusCacheForTests();
+  });
+
+  const SAMPLE_CORPUS = {
+    generatedAt: '2026-08-04T00:00:00.000Z',
+    chunks: [
+      {
+        id: 'nurse-og#0',
+        sourceDocId: 'nurse-og',
+        chunkIndex: 0,
+        text: 'Extended Nursing (NS04) requires ACC prior approval once 25 consultations have been completed or 105 days have passed for elective surgery ARTP contract questions.',
+      },
+      {
+        id: 'elective-surgery-og#0',
+        sourceDocId: 'elective-surgery-og',
+        chunkIndex: 0,
+        text: 'The Assessment Report and Treatment Plan (ARTP) process is required before most contracted elective surgery procedures proceed under this contract.',
+      },
+      {
+        id: 'health-contract-terms-conditions#0',
+        sourceDocId: 'health-contract-terms-conditions',
+        chunkIndex: 0,
+        text: 'The Supplier must not transmit Personal Information outside New Zealand under this elective surgery contract, per clause 9 of the Standard Terms and Conditions.',
+      },
+    ],
+  };
+
+  it('drops the lowest-relevance retrieved chunk first when the prompt would exceed the trim-trigger budget, keeping the most relevant one(s)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => SAMPLE_CORPUS }));
+    const { retrievedSources, contextTooLarge } = await buildChatMessages({
+      history: [],
+      chips: [],
+      data: dataWith([]),
+      userMessage: 'Tell me about the ARTP process for this elective surgery contract',
+      // A small numCtx forces trimming with this small sample corpus, deterministically, without
+      // needing a giant real-world fixture (empirically: all 3 sample chunks fit at numCtx >=
+      // ~2200, exactly 2 fit at 2100, exactly 1 — the most relevant — fits at 2000).
+      numCtx: 2100,
+    });
+    expect(contextTooLarge).toBeFalsy();
+    expect(retrievedSources.length).toBeLessThan(SAMPLE_CORPUS.chunks.length);
+    expect(retrievedSources.some((s) => s.sourceDocId === 'elective-surgery-og')).toBe(true);
+  });
+
+  it('refuses to send (contextTooLarge) rather than exceed the model context window, even after trimming all retrievable chunks', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => SAMPLE_CORPUS }));
+    const p = patient({ notes: 'x'.repeat(2000) });
+    const data = dataWith([p]);
+    const result = await buildChatMessages({
+      history: [],
+      chips: [makePatientChip(p)],
+      data,
+      userMessage: 'Summarize everything you know',
+      // Tiny numCtx that not even the system prompt alone can fit under, once the reserved
+      // response budget is subtracted — this is the deliberate "even after best-effort trimming,
+      // it's still too big" safety-net case.
+      numCtx: 50,
+    });
+    expect(result.contextTooLarge).toBe(true);
+    expect(result.contextTooLargeMessage).toBeTruthy();
+    expect(result.contextTooLargeMessage).toContain('try asking about one specific');
+    expect(result.messages).toEqual([]);
+  });
+
+  it('never trims conversation history or the user message, even once knowledge chunks are being dropped for budget', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => SAMPLE_CORPUS }));
+    const { messages, contextTooLarge, retrievedSources } = await buildChatMessages({
+      history: [{ role: 'user', content: 'earlier question' }, { role: 'assistant', content: 'earlier answer' }],
+      chips: [],
+      data: dataWith([]),
+      userMessage: 'Tell me about the ARTP process for this elective surgery contract',
+      // Same numCtx that forces chunk-dropping in the test above — confirms history/user survive
+      // the SAME trim pass that drops knowledge chunks, not just an untrimmed happy path.
+      numCtx: 2100,
+    });
+    expect(contextTooLarge).toBeFalsy();
+    expect(retrievedSources.length).toBeLessThan(SAMPLE_CORPUS.chunks.length);
+    const contents = messages.map((m) => m.content);
+    expect(contents).toContain('earlier question');
+    expect(contents).toContain('earlier answer');
+    expect(contents).toContain('Tell me about the ARTP process for this elective surgery contract');
+  });
+
+  it('fits comfortably under the real default num_ctx for a realistic worst case (one large Contract chip + retrieved chunks), confirming the fix actually resolves the incident', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => SAMPLE_CORPUS }));
+    const bigContract = contract({
+      rateTable: Array.from({ length: 39 }, (_, i) => ({
+        serviceCode: `PT${String(i).padStart(2, '0')}`,
+        description: 'Realistic Allied Health service item description text of representative length for this schedule.',
+        rate: 50 + i,
+      })),
+    });
+    const data: AppData = { ...emptyData(), contracts: [bigContract] };
+    const result = await buildChatMessages({
+      history: [
+        { role: 'user', content: 'hi' },
+        { role: 'assistant', content: 'hello, how can I help?' },
+      ],
+      chips: [makeContractChip(bigContract)],
+      data,
+      userMessage: 'Summarize this contract for me',
+      // Real default — this is the actual production value after the fix.
+    });
+    expect(result.contextTooLarge).toBeFalsy();
+    expect(result.messages.length).toBeGreaterThan(0);
   });
 });
 

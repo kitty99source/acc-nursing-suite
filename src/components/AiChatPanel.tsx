@@ -120,12 +120,36 @@ export function AiChatPanel() {
     setSending(true);
     setStreamingText('');
 
-    const { messages: chatMessages, contextBlock, retrievedSources } = await buildChatMessages({
+    const {
+      messages: chatMessages,
+      contextBlock,
+      retrievedSources,
+      contextTooLarge,
+      contextTooLargeMessage: tooLargeMessage,
+    } = await buildChatMessages({
       history,
       chips: attachedChips,
       data,
       userMessage: text,
     });
+
+    // 2026-08-04 context-overflow safety net (see aiChatContext.ts `buildChatMessages` /
+    // contextBudget.ts): even after dropping the lowest-relevance retrieved knowledge chunks, the
+    // assembled prompt would still be too large to fit the model's context window with room for a
+    // reply — refuse to send rather than risk the real "Ollama crashed or got stuck" timeout the
+    // owner hit. This is a clean, honest failure shown BEFORE any network call, not a generic
+    // error after a long stall.
+    if (contextTooLarge) {
+      addMessage({
+        id: makeMessageId(),
+        role: 'assistant',
+        content: tooLargeMessage || 'This request includes too much context to send safely.',
+        createdAt: Date.now(),
+        contextUsed: contextBlock || undefined,
+      });
+      setSending(false);
+      return;
+    }
     // Tag this send with a fresh generation id + AbortController (see aiChatStore.ts
     // `beginGeneration`/`isGenerationCurrent`) — clicking "Clear chat history" or "New chat" while
     // this request is in flight aborts the controller AND bumps the id, so a late-arriving chunk or

@@ -26,6 +26,8 @@ import { buildCaseStageSummary, buildComplianceRuleSummary, buildKnowledgeBaseSe
 import { retrieveKnowledgeForQuery } from './ai/knowledgeCorpus';
 import { sourceDocById } from './acc/sourceDocs';
 import type { RetrievedChunk } from './ai/knowledgeRetrieval';
+import { DEFAULT_NUM_CTX } from './aiService';
+import { checkContextBudget, CONTEXT_TRIM_TRIGGER_RATIO, contextTooLargeMessage } from './ai/contextBudget';
 
 // Re-exported for backwards compatibility with existing callers/tests — the
 // actual implementation now lives in lib/ai/knowledgeBase.ts (see that file
@@ -132,6 +134,28 @@ export function serializePatientContext(patient: Patient, data: AppData): string
   return lines.join('\n');
 }
 
+// ----------------------------------------------------------------------------
+// 2026-08-04 context-overflow bug fix: a Contract chip used to dump every
+// single rate-table row's full description unconditionally — a real 39-row
+// Allied Health schedule serialized to ~6.7K characters (~1.7K estimated
+// tokens) on its own, and this app also has schedules with hundreds of rows
+// (e.g. Elective Surgery), which would have serialized to tens of thousands
+// of characters with no ceiling at all. Combined with knowledge-retrieval
+// chunks + the system prompt + conversation history, this was the real cause
+// of the owner's "summarize this contract" request timing out (see
+// aiService.ts DEFAULT_NUM_CTX comment). Fix: once a contract has "many"
+// rows, switch to a compact code+price-only view and cap how many rows are
+// listed at all — a genuinely large table's chip payload now stays roughly
+// bounded regardless of how many rows the real schedule has, and the user is
+// told exactly how to get the missing detail (ask about a specific code)
+// rather than the chip silently omitting rows with no explanation.
+// ----------------------------------------------------------------------------
+
+/** More than this many rows: drop the (often long) per-row description and show code + price only. */
+const CONTRACT_RATE_TABLE_COMPACT_THRESHOLD = 10;
+/** Hard ceiling on rows actually listed, even in compact form — protects against a schedule with hundreds of codes (e.g. Elective Surgery) still producing an unbounded chip payload. */
+const CONTRACT_RATE_TABLE_MAX_ROWS_SHOWN = 40;
+
 /**
  * Plain-text serialization of one Contract record's real data fields — same faithful,
  * un-embellished rendering rule as `serializePatientContext` (this is exactly what's shown back
@@ -150,9 +174,28 @@ export function serializeContractContext(contract: Contract): string {
   if (contract.rateTable.length === 0) {
     lines.push('Rate table: none on file');
   } else {
-    lines.push(`Rate table (${contract.rateTable.length}):`);
-    for (const r of contract.rateTable) {
-      lines.push(`  - ${r.serviceCode}${r.description ? ` (${r.description})` : ''}: $${r.rate.toFixed(2)}`);
+    const rows = contract.rateTable;
+    const compact = rows.length > CONTRACT_RATE_TABLE_COMPACT_THRESHOLD;
+    const shown = rows.slice(0, CONTRACT_RATE_TABLE_MAX_ROWS_SHOWN);
+    const hiddenCount = rows.length - shown.length;
+    lines.push(
+      `Rate table (${rows.length}${
+        compact ? ', compact view — code + price only; ask about a specific code for its full description' : ''
+      }):`,
+    );
+    for (const r of shown) {
+      lines.push(
+        compact
+          ? `  - ${r.serviceCode}: $${r.rate.toFixed(2)}`
+          : `  - ${r.serviceCode}${r.description ? ` (${r.description})` : ''}: $${r.rate.toFixed(2)}`,
+      );
+    }
+    if (hiddenCount > 0) {
+      const exampleCode = rows[shown.length]?.serviceCode ?? shown[0]?.serviceCode;
+      lines.push(
+        `  ...and ${hiddenCount} more code(s) not shown — ask about a specific code (e.g. "what's the rate ` +
+          `for ${exampleCode}?") for detail.`,
+      );
     }
   }
   lines.push(`Notes: ${contract.notes?.trim() || 'none'}`);
@@ -269,6 +312,8 @@ export interface BuildChatMessagesOptions {
   chips: ContextChip[];
   data: AppData;
   userMessage: string;
+  /** The `num_ctx` this request will actually be sent with (see aiService.ts DEFAULT_NUM_CTX) — used to decide whether/how much to trim. Defaults to DEFAULT_NUM_CTX. */
+  numCtx?: number;
 }
 
 /** One real source document whose text was retrieved and injected for a given chat turn — the "Context used" disclosure's citation list. */
@@ -283,12 +328,21 @@ export interface RetrievedSourceCitation {
 }
 
 export interface BuildChatMessagesResult {
-  /** Structured messages array sent to generateLocalAiChatResponseStream (Ollama `/api/chat`). */
+  /** Structured messages array sent to generateLocalAiChatResponseStream (Ollama `/api/chat`). Empty array when `contextTooLarge` is true — never send this to Ollama in that case. */
   messages: ChatMessage[];
   /** Just the serialized chip context, for the "Context used" UI — '' if no chips. */
   contextBlock: string;
-  /** Real ACC source documents whose text was retrieved (via the RAG-lite keyword/TF-IDF scorer — see knowledgeRetrieval.ts) and injected into the system message for this turn — [] if nothing scored above the relevance threshold. */
+  /** Real ACC source documents whose text was retrieved (via the RAG-lite keyword/TF-IDF scorer — see knowledgeRetrieval.ts) and injected into the system message for this turn — [] if nothing scored above the relevance threshold. Reflects chunks actually kept after any budget-driven trimming below. */
   retrievedSources: RetrievedSourceCitation[];
+  /**
+   * True when the assembled prompt was still too large to fit `numCtx` with room for a reply,
+   * EVEN AFTER dropping the lowest-relevance retrieved chunks (see the trimming loop below) — the
+   * 2026-08-04 context-overflow safety net. The caller (AiChatPanel) must show
+   * `contextTooLargeMessage` instead of sending `messages` to Ollama at all.
+   */
+  contextTooLarge?: boolean;
+  /** Present alongside `contextTooLarge: true` — the honest, specific user-facing message (see contextBudget.ts `contextTooLargeMessage`). */
+  contextTooLargeMessage?: string;
 }
 
 function buildRetrievedKnowledgeBlock(chunks: RetrievedChunk[]): { text: string; citations: RetrievedSourceCitation[] } {
@@ -322,13 +376,12 @@ function buildRetrievedKnowledgeBlock(chunks: RetrievedChunk[]): { text: string;
  * (never throws) if the corpus asset is unavailable — this function's
  * chip/history/system-prompt assembly is otherwise exactly as before.
  */
-export async function buildChatMessages(opts: BuildChatMessagesOptions): Promise<BuildChatMessagesResult> {
-  const contextBlock = buildContextBlock(opts.chips, opts.data);
-  const recentHistory = opts.history.slice(-MAX_HISTORY_TURNS);
-
-  const retrievedChunks = await retrieveKnowledgeForQuery(opts.userMessage);
-  const { text: knowledgeBlock, citations: retrievedSources } = buildRetrievedKnowledgeBlock(retrievedChunks);
-
+function assembleMessages(
+  recentHistory: ChatTurn[],
+  userMessage: string,
+  knowledgeBlock: string,
+  contextBlock: string,
+): ChatMessage[] {
   let systemContent = AI_ASSISTANT_SYSTEM_PROMPT;
   if (knowledgeBlock) {
     systemContent += `\n\nReal ACC document excerpts relevant to this question (cite the source when you use these):\n${knowledgeBlock}`;
@@ -341,7 +394,91 @@ export async function buildChatMessages(opts: BuildChatMessagesOptions): Promise
   for (const turn of recentHistory) {
     messages.push({ role: turn.role, content: turn.content });
   }
-  messages.push({ role: 'user', content: opts.userMessage });
+  messages.push({ role: 'user', content: userMessage });
+  return messages;
+}
 
+/**
+ * Context-budget trimming + final safety net (2026-08-04 fix for the real
+ * "Contract chip + ToC chunk + T&Cs chunk" timeout incident — see
+ * aiService.ts DEFAULT_NUM_CTX and contextBudget.ts for the full writeup).
+ *
+ * Priority order, matching the incident's own real trade-offs: conversation
+ * history and the user's own question are NEVER trimmed (they're small and
+ * are the actual point of the request); the Contract-chip rate table is
+ * already kept roughly bounded regardless of budget by
+ * `serializeContractContext`'s compact view; so the one thing left to trim
+ * reactively, in response to an actually-oversized prompt, is the
+ * lowest-relevance retrieved knowledge chunks — dropped one at a time,
+ * lowest score first, only once the estimated prompt would use more than
+ * `CONTEXT_TRIM_TRIGGER_RATIO` of `numCtx`. If even dropping every retrieved
+ * chunk still leaves the prompt too large to fit `numCtx` with room for a
+ * reply (e.g. several large chips attached at once), this refuses to send
+ * at all rather than risk the same crash/hang the owner hit.
+ */
+function trimToBudget(
+  recentHistory: ChatTurn[],
+  userMessage: string,
+  retrievedChunks: RetrievedChunk[],
+  contextBlock: string,
+  numCtx: number,
+): { messages: ChatMessage[]; keptChunks: RetrievedChunk[]; tooLarge: boolean } {
+  // Already sorted best-first by retrieveTopChunks — pop from the end to drop the LOWEST-scoring
+  // chunk first, keeping the most relevant ones as long as possible.
+  const remaining = [...retrievedChunks];
+
+  function build(): ChatMessage[] {
+    const { text: knowledgeBlock } = buildRetrievedKnowledgeBlock(remaining);
+    return assembleMessages(recentHistory, userMessage, knowledgeBlock, contextBlock);
+  }
+
+  // Reserve a fraction of `numCtx` for the model's own reply rather than a fixed token count —
+  // this way the "safe" ceiling scales with whatever `numCtx` is actually in effect, and lines up
+  // exactly with `CONTEXT_TRIM_TRIGGER_RATIO` (the trim loop and the final safety-net check both
+  // target the SAME real ceiling, rather than two different thresholds that could disagree). At
+  // the real default (numCtx 8192), this reserves 2048 tokens — matching
+  // `DEFAULT_CHAT_NUM_PREDICT` exactly, not a coincidence: both represent "how much of the window
+  // a real reply could realistically use".
+  const reservedForResponseTokens = numCtx * (1 - CONTEXT_TRIM_TRIGGER_RATIO);
+
+  let messages = build();
+  let budget = checkContextBudget(messages, { numCtx, reservedForResponseTokens });
+
+  while (remaining.length > 0 && !budget.ok) {
+    remaining.pop();
+    messages = build();
+    budget = checkContextBudget(messages, { numCtx, reservedForResponseTokens });
+  }
+
+  return { messages: budget.ok ? messages : [], keptChunks: remaining, tooLarge: !budget.ok };
+}
+
+export async function buildChatMessages(opts: BuildChatMessagesOptions): Promise<BuildChatMessagesResult> {
+  const contextBlock = buildContextBlock(opts.chips, opts.data);
+  const recentHistory = opts.history.slice(-MAX_HISTORY_TURNS);
+  const numCtx = opts.numCtx ?? DEFAULT_NUM_CTX;
+
+  const retrievedChunks = await retrieveKnowledgeForQuery(opts.userMessage);
+
+  const { messages, keptChunks, tooLarge } = trimToBudget(
+    recentHistory,
+    opts.userMessage,
+    retrievedChunks,
+    contextBlock,
+    numCtx,
+  );
+
+  if (tooLarge) {
+    const itemCount = opts.chips.length + retrievedChunks.length;
+    return {
+      messages: [],
+      contextBlock,
+      retrievedSources: [],
+      contextTooLarge: true,
+      contextTooLargeMessage: contextTooLargeMessage(itemCount),
+    };
+  }
+
+  const { citations: retrievedSources } = buildRetrievedKnowledgeBlock(keptChunks);
   return { messages, contextBlock, retrievedSources };
 }

@@ -36,6 +36,12 @@ const aiServiceMocks = vi.hoisted(() => ({
     profile === 'fast' ? 'phi4-mini' : 'phi4-mini-reasoning',
   resolveChatNumPredict: (profile: 'reasoning' | 'fast' = 'reasoning') => (profile === 'fast' ? 768 : 2048),
   resolveKeepAlive: (keepLoaded?: boolean) => (keepLoaded ? -1 : '30m'),
+  // Post-abort cooldown helpers — default "not busy" so existing send tests are unaffected.
+  isModelBusyDraining: vi.fn(() => false),
+  modelBusyMessage: () =>
+    'The local model is still finishing the previous cancelled request — wait a couple of seconds and send again.',
+  noteModelAbort: vi.fn(),
+  _resetModelBusyForTests: vi.fn(),
 }));
 vi.mock('../lib/aiService', () => aiServiceMocks);
 

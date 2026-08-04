@@ -26,7 +26,15 @@ import { buildCaseStageSummary, buildComplianceRuleSummary } from './ai/knowledg
 import { sourceDocById } from './acc/sourceDocs';
 import type { RetrievedChunk } from './ai/knowledgeRetrieval';
 import { DEFAULT_NUM_CTX } from './aiService';
-import { checkContextBudget, CONTEXT_TRIM_TRIGGER_RATIO, contextTooLargeMessage } from './ai/contextBudget';
+import {
+  AGGRESSIVE_CONTEXT_BLOCK_MAX_CHARS,
+  AGGRESSIVE_HISTORY_MSG_MAX_CHARS,
+  AGGRESSIVE_SUMMARY_MAX_CHARS,
+  checkContextBudget,
+  CONTEXT_TRIM_TRIGGER_RATIO,
+  contextHistoryTooLargeMessage,
+  contextTooLargeMessage,
+} from './ai/contextBudget';
 import {
   evaluateChatGrounding,
   UNGROUNDED_REFUSE_MESSAGE,
@@ -278,6 +286,23 @@ export const NO_RETRIEVED_EXCERPTS_INSTRUCTION =
   '[Schedule 5.11.1](#).';
 
 /**
+ * Injected when the hard gate allows the model but grounding is thin (lexicon-only, static
+ * rules without RAG, or only weak retrieval). Makes the clarifying-question preference
+ * impossible to "miss" beside the empty/thin retrieval outcome — phi4-mini-reasoning has
+ * repeatedly noted ambiguity in `<think>` then answered from general knowledge anyway.
+ */
+export const THIN_OR_AMBIGUOUS_CLARIFY_INSTRUCTION =
+  'PER-TURN PRIORITY (read before answering): Grounding for this turn is thin (lexicon and/or ' +
+  'static rules only, or only weak document overlap — not a rich excerpt set). If the question is ' +
+  'ambiguous between ACC Service-Schedule / contract / billing meaning vs everyday meaning ' +
+  '(school timetable, bus/train route, retail hours, software project schedule, etc.), you MUST ' +
+  'ask ONE short clarifying question which meaning they want — do NOT assume general knowledge ' +
+  'and do NOT write an encyclopedia answer. If answering would require facts outside the ' +
+  'retrieved excerpts / lexicon / chips / static ACC rules for THIS turn, prefer ONE short ' +
+  'clarifying question OR plainly "not in my current knowledge base". Do NOT ask a clarifying ' +
+  'question on every turn — only when under-specified or out-of-corpus.';
+
+/**
  * Base system instructions — deliberately WITHOUT the static compliance rulebook.
  * Static rules are injected per-turn only when they score as relevant (see
  * `buildAssistantSystemPrompt` / groundingGate.ts). Dumping Schedule 5.x on every
@@ -291,6 +316,16 @@ export const AI_ASSISTANT_SYSTEM_PROMPT_BASE = [
     'health (physiotherapy/occupational therapy/hand therapy/podiatry) — not just district nursing. ' +
     'You run entirely locally via Ollama on the user\'s own laptop — you must never claim to send, ' +
     'store, or need to send any data anywhere else.',
+  // Placed near the top on purpose: prior "OK to ask" wording later in the prompt was ignored by
+  // phi4-mini-reasoning (owner 2026-08-04: model notes ambiguity in <think> then never asks).
+  'CRITICAL — clarifying questions over general knowledge (HIGHEST PRIORITY): When a question is ' +
+    'ambiguous, under-specified, or would require general knowledge outside the retrieved ' +
+    'excerpts / lexicon / chips / static ACC rules for THIS turn, you MUST prefer ONE short ' +
+    'clarifying question OR a plain "not in my current knowledge base" reply. Do NOT write ' +
+    'encyclopedia answers about schools, buses, foreign frameworks, aircraft, medical trivia, ' +
+    'or other out-of-corpus topics. Noticing ambiguity in your private reasoning is NOT enough — ' +
+    'the visible answer must ask or refuse. Do NOT ask a clarifying question on every turn: when ' +
+    'the request is already clear AND grounded in the material below, answer normally.',
   'Domain glossary — ACC "schedule" / "Service Schedule" / "contract": in this app and in ACC ' +
     'provider work, these words normally mean ACC\'s published provider Service Schedule documents ' +
     '(the national contract templates that define covered services, codes, and prices for a service ' +
@@ -306,7 +341,8 @@ export const AI_ASSISTANT_SYSTEM_PROMPT_BASE = [
     'knowledge base. Give short plain-language summaries of other distinct ACC schedules (e.g. ' +
     'Elective Surgery, Allied Health / physiotherapy, vocational rehabilitation where present) and ' +
     'cite the real source titles. Do NOT invent unrelated industry "schedule" taxonomies (schools, ' +
-    'buses, retail inventory, software methodologies, etc.).',
+    'buses, retail inventory, software methodologies, etc.). If it is unclear whether they mean ACC ' +
+    'Service Schedules vs everyday "schedules", ask ONE clarifying question instead of assuming.',
   'Scope lock — NZ ACC / this knowledge base only: do NOT bring in other countries\' frameworks ' +
     '(USA HIPAA, Canadian/American air-ambulance schemes, French/European military systems, ' +
     'Geneva Conventions, Médecins Sans Frontières, IATA, foreign AerMed/EMERT schemes, etc.), ' +
@@ -365,13 +401,7 @@ export const AI_ASSISTANT_SYSTEM_PROMPT_BASE = [
     'literally appear in the material given to you. This applies even under your own step-by-step ' +
     'reasoning — do not reason your way into "since I lack real access, I will rely on general ' +
     'knowledge" and then present the result as if it were grounded; the correct move when you ' +
-    'genuinely lack grounding is to say so, not to guess confidently.',
-  'It is also OK to ask a brief clarifying question instead of guessing: if the user\'s question is ' +
-    'ambiguous or under-specified in a way that would force you to guess a key detail to answer well ' +
-    '(e.g. which specific scenario, service, timeframe, or document they mean), ask ONE short, ' +
-    'targeted clarifying question rather than answering broadly on a guess. Keep it brief — one ' +
-    'question, not an interrogation — the same way a good coding assistant asks one clarifying ' +
-    'question about an ambiguous request rather than guessing at requirements.',
+    'genuinely lack grounding is to say so (or ask ONE clarifying question), not to guess confidently.',
   'IMPORTANT distinction: any ACC Service Schedule / price-table content shown to you is ACC\'s ' +
     'NATIONAL PUBLISHED TEMPLATE (the same public document ACC applies to every supplier of that ' +
     'service type) — it is NEVER this specific organisation\'s own signed, negotiated contract. If ' +
@@ -614,6 +644,8 @@ function assembleMessages(
    * answer briefly from chip data / small talk, not refuse.
    */
   skipEmptyRetrievalRefuse?: boolean,
+  /** When true, inject the thin/ambiguous clarifying-question per-turn priority block. */
+  injectThinClarifyNudge?: boolean,
 ): ChatMessage[] {
   let systemContent = buildAssistantSystemPrompt(staticSections);
   if (knowledgeBlock) {
@@ -632,6 +664,9 @@ function assembleMessages(
     // the gate. Static-relevant turns with no RAG chunks do NOT get this — the injected rules ARE
     // the grounding.
     systemContent += `\n\n${NO_RETRIEVED_EXCERPTS_INSTRUCTION}`;
+  }
+  if (injectThinClarifyNudge) {
+    systemContent += `\n\n${THIN_OR_AMBIGUOUS_CLARIFY_INSTRUCTION}`;
   }
   if (contextBlock) {
     systemContent += `\n\nContext used (attached by the user for this question):\n${contextBlock}`;
@@ -656,6 +691,31 @@ function assembleMessages(
   }
   messages.push({ role: 'user', content: userMessage });
   return messages;
+}
+
+/** Clip a string to `maxChars`, appending an ellipsis when truncated. */
+function clipForBudget(text: string, maxChars: number): string {
+  const t = text.trim();
+  if (t.length <= maxChars) return t;
+  return `${t.slice(0, Math.max(0, maxChars - 1)).trimEnd()}…`;
+}
+
+/**
+ * True when grounding allows the model but retrieval is thin / lexicon-or-static-only —
+ * triggers the per-turn clarifying-question nudge. Not used for casual greetings or rich RAG.
+ */
+export function shouldInjectThinClarifyNudge(grounding: ChatGroundingDecision): boolean {
+  if (!grounding.allowModel) return false;
+  if (grounding.reason === 'casual' || grounding.reason === 'chip-context') return false;
+  if (grounding.reason === 'lexicon-relevant') return true;
+  if (grounding.reason === 'static-relevant' && grounding.retrievedChunks.length === 0) return true;
+  // Thin RAG: only one weak-ish chunk (barely above the corpus relevance floor).
+  if (grounding.reason === 'retrieved-chunks') {
+    const chunks = grounding.retrievedChunks;
+    if (chunks.length === 0) return true;
+    if (chunks.length === 1 && chunks[0]!.score < 0.55) return true;
+  }
+  return false;
 }
 
 /**
@@ -685,13 +745,16 @@ function trimToBudget(
   staticSections: string[],
   conversationSummary?: string,
   skipEmptyRetrievalRefuse?: boolean,
+  injectThinClarifyNudge?: boolean,
 ): { messages: ChatMessage[]; keptChunks: RetrievedChunk[]; historyTrimmed: boolean; tooLarge: boolean } {
   // Already sorted best-first by retrieveTopChunks — pop from the end to drop the LOWEST-scoring
   // chunk first, keeping the most relevant ones as long as possible.
   const remainingChunks = [...retrievedChunks];
   // Oldest-first drop order once chunks are exhausted (see multi-turn fix comment above) — slice
   // from the FRONT so the most recent exchanges are the last thing lost.
-  let remainingHistory = recentHistory;
+  let remainingHistory = recentHistory.map((t) => ({ ...t }));
+  let workingSummary = conversationSummary?.trim() || undefined;
+  let workingContext = contextBlock;
 
   function build(): ChatMessage[] {
     const { text: knowledgeBlock } = buildRetrievedKnowledgeBlock(remainingChunks);
@@ -699,20 +762,20 @@ function trimToBudget(
       remainingHistory,
       userMessage,
       knowledgeBlock,
-      contextBlock,
+      workingContext,
       staticSections,
-      conversationSummary,
+      workingSummary,
       skipEmptyRetrievalRefuse,
+      injectThinClarifyNudge,
     );
   }
 
   // Reserve a fraction of `numCtx` for the model's own reply rather than a fixed token count —
   // this way the "safe" ceiling scales with whatever `numCtx` is actually in effect, and lines up
   // exactly with `CONTEXT_TRIM_TRIGGER_RATIO` (the trim loop and the final safety-net check both
-  // target the SAME real ceiling, rather than two different thresholds that could disagree). At
-  // the real default (numCtx 8192), this reserves 2048 tokens — matching
-  // `DEFAULT_CHAT_NUM_PREDICT` exactly, not a coincidence: both represent "how much of the window
-  // a real reply could realistically use".
+  // target the SAME real ceiling, rather than two different thresholds that could disagree).
+  // At default numCtx 8192 with ratio 0.65 this reserves ~2867 tokens — deliberately above
+  // `DEFAULT_CHAT_NUM_PREDICT` (2048) so the char≈token estimate still leaves real headroom.
   const reservedForResponseTokens = numCtx * (1 - CONTEXT_TRIM_TRIGGER_RATIO);
 
   let messages = build();
@@ -734,6 +797,40 @@ function trimToBudget(
     remainingHistory = remainingHistory.slice(1);
     messages = build();
     budget = checkContextBudget(messages, { numCtx, reservedForResponseTokens });
+  }
+
+  // Priority 3 (2026-08-04 fortify): still over budget after extractive summary + drop chunks +
+  // drop oldest turns — aggressively clip summary / history bodies, then refuse rather than
+  // hang. Prefer a thinner prompt over a hung Ollama call.
+  if (!budget.ok && workingSummary) {
+    workingSummary = clipForBudget(workingSummary, AGGRESSIVE_SUMMARY_MAX_CHARS);
+    messages = build();
+    budget = checkContextBudget(messages, { numCtx, reservedForResponseTokens });
+  }
+  if (!budget.ok && remainingHistory.length > 0) {
+    remainingHistory = remainingHistory.map((t) => ({
+      ...t,
+      content: clipForBudget(t.content, AGGRESSIVE_HISTORY_MSG_MAX_CHARS),
+    }));
+    messages = build();
+    budget = checkContextBudget(messages, { numCtx, reservedForResponseTokens });
+  }
+  // Last resort for long-chat: drop the rolling summary entirely.
+  if (!budget.ok && workingSummary) {
+    workingSummary = undefined;
+    messages = build();
+    budget = checkContextBudget(messages, { numCtx, reservedForResponseTokens });
+  }
+  // Oversized attached chip context: refuse rather than clipping records into a useless stub
+  // that would "fit" the budget but ignore what the user attached (same honest refuse as the
+  // original multi-chip safety net).
+  if (!budget.ok && workingContext.length > AGGRESSIVE_CONTEXT_BLOCK_MAX_CHARS) {
+    return {
+      messages: [],
+      keptChunks: remainingChunks,
+      historyTrimmed: remainingHistory.length < recentHistory.length,
+      tooLarge: true,
+    };
   }
 
   return {
@@ -777,6 +874,8 @@ export async function buildChatMessages(opts: BuildChatMessagesOptions): Promise
     grounding.reason === 'chip-context' ||
     grounding.reason === 'lexicon-relevant';
 
+  const injectThinClarifyNudge = shouldInjectThinClarifyNudge(grounding);
+
   const { messages, keptChunks, historyTrimmed, tooLarge } = trimToBudget(
     recentHistory,
     opts.userMessage,
@@ -786,16 +885,23 @@ export async function buildChatMessages(opts: BuildChatMessagesOptions): Promise
     grounding.staticSections,
     conversationSummary,
     skipEmptyRetrievalRefuse,
+    injectThinClarifyNudge,
   );
 
   if (tooLarge) {
+    // Prefer history-oriented refuse copy when the user didn't attach a pile of chips/chunks —
+    // that's the usual long-chat overload shape after extractive summary still can't fit.
     const itemCount = opts.chips.length + grounding.retrievedChunks.length;
+    const refuseMsg =
+      itemCount === 0 || recentHistory.length >= 4
+        ? contextHistoryTooLargeMessage()
+        : contextTooLargeMessage(itemCount);
     return {
       messages: [],
       contextBlock,
       retrievedSources: [],
       contextTooLarge: true,
-      contextTooLargeMessage: contextTooLargeMessage(itemCount),
+      contextTooLargeMessage: refuseMsg,
     };
   }
 

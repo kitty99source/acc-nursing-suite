@@ -45,8 +45,13 @@ export function estimateMessagesTokenCount(messages: Array<{ content: string }>)
  * rough char-based estimate, not the model's real tokenizer — trimming
  * early, before the window is actually full, is deliberately conservative
  * rather than cutting it exactly to the wire.
+ *
+ * 2026-08-04 fortify: lowered from 0.75 → 0.65 after occasional "can't reach
+ * the model" reports that were still context overload (char≈token estimate
+ * under-counted real BPE tokens). More headroom = trim/refuse earlier,
+ * prefer fail-fast honest UI over a hung Ollama call.
  */
-export const CONTEXT_TRIM_TRIGGER_RATIO = 0.75;
+export const CONTEXT_TRIM_TRIGGER_RATIO = 0.65;
 
 /**
  * Reserve this many tokens of `num_ctx` for the model's own reply — matches
@@ -101,3 +106,31 @@ export function contextTooLargeMessage(itemCount: number): string {
     'asking about one specific code/topic instead of attaching everything at once.'
   );
 }
+
+/**
+ * Refuse copy when the prompt is still over budget after extractive summary + dropping
+ * retrieved chunks + oldest history + aggressive content truncation. Distinct from the
+ * chip/item-count message so a long chat gets honest "start a new chat" guidance rather
+ * than blaming attached records.
+ */
+export function contextHistoryTooLargeMessage(): string {
+  return (
+    'This chat has grown too large for the local model to handle safely in one request ' +
+    '(even after summarizing and trimming earlier turns). Start a new chat for this topic, ' +
+    'or ask a shorter follow-up about one specific code/rule — otherwise the request would ' +
+    'likely hang or crash the model.'
+  );
+}
+
+/**
+ * Soft ceiling used by the aggressive content-truncation pass in `trimToBudget` once
+ * chunks and whole history turns are already gone: each remaining history message's
+ * body is clipped to this many characters (newest turns kept fuller via later pass).
+ */
+export const AGGRESSIVE_HISTORY_MSG_MAX_CHARS = 600;
+
+/** Soft ceiling for the rolling conversation-summary block during aggressive trim. */
+export const AGGRESSIVE_SUMMARY_MAX_CHARS = 800;
+
+/** Soft ceiling for the attached chip context block during aggressive trim. */
+export const AGGRESSIVE_CONTEXT_BLOCK_MAX_CHARS = 2400;

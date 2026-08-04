@@ -128,19 +128,20 @@ comments:
    that actually detects a genuinely stuck/crashed reply (Ollama died mid-response, connection
    dropped) — a real freeze produces zero chunks for a full 2 minutes, which no known-legitimate
    slow-but-alive case has ever hit. Unchanged since it was introduced.
-2. **Hard ceiling — 15 minutes total, regardless of progress.** Originally 5 minutes; raised
-   after a 3rd real timeout report where the reply was visibly, actively streaming a real
-   answer (not stuck) and the app's own liveness self-test confirmed Ollama was responding
-   throughout — the 5-minute ceiling was simply too tight for a genuinely long, bounded
-   (2048-token-capped) CPU-only reasoning reply, especially with the model's own hidden
-   chain-of-thought counted against that same token budget. 15 minutes gives real headroom for
-   a legitimately slow-but-healthy worst case while still catching a truly pathological
-   "technically still emitting chunks, but absurdly slow" runaway case that the inactivity timer
-   alone would never trip.
+2. **Hard ceiling — 8 minutes total, regardless of progress.** Originally 5 minutes, briefly
+   raised to 15 after a 3rd real timeout on a healthy long reply; later lowered to 8 minutes
+   (2026-08-04 fortify) so a pathological hang fails faster with a clear message instead of a
+   10+ minute "can't reach the model" stall. The inactivity timer remains the primary stall
+   detector; this ceiling is only a pathological backstop for a bounded (`num_predict`-capped)
+   reply that somehow keeps trickling tokens forever.
 3. **UI messaging** now switches from the initial "30-90 seconds" framing to "Still generating —
    a detailed response like this can take several minutes on this hardware" once a reply has run
    past 2 minutes, so a genuinely long (but healthy) reply doesn't look broken/stuck to the owner
-   while it's still working within the new, looser ceiling (`src/components/AiChatPanel.tsx`).
+   while it's still working within the ceiling (`src/components/AiChatPanel.tsx`).
+4. **Context-budget fortify (2026-08-04):** pre-flight estimate after extractive summary + trim;
+   if still over budget, aggressive content clip then an honest refuse (not a hung Ollama call).
+   After Stop/Clear abort, a short ~2.5s "model busy" cooldown prevents stacking a new generate
+   while Ollama drains (aborting the fetch *is* the cancel — no separate cancel API).
 
 **If a reply times out anyway:** the panel's own "Quick check" note (a live `GET /api/tags` ping,
 independent of the chat request) tells you whether Ollama itself is unreachable (points to a
@@ -172,6 +173,11 @@ air-ambulance encyclopaedia content in `<think>`. Soft instructions are not reli
    are preferred when present.
 4. Prompt scope-lock / groundedness text remains for in-scope turns (never invent named criteria
    documents, Geneva Conventions, aircraft models, etc. unless literally in excerpts).
+5. **Clarifying questions over general knowledge (2026-08-04 fortify):** the system prompt now
+   leads with a highest-priority rule — when ambiguous or out-of-corpus, ask ONE short clarifying
+   question or say "not in knowledge base" (do not write encyclopedia answers). When the gate
+   allows but retrieval is thin / lexicon-only, a per-turn instruction reinjects that preference
+   so phi4-mini-reasoning cannot "miss" it after noting ambiguity only inside `<think>`.
 
 So if you ask about a topic genuinely absent from the ingested corpus (e.g. Geneva conventions) and get a
 short "I don't have grounded ACC material…" reply with no reasoning toggle and no Sources, that is
@@ -180,6 +186,8 @@ short "I don't have grounded ACC material…" reply with no reasoning toggle and
 transport / patient travel** — see `docs/research/acc-public-contract-sources-2026-08.md` §10)
 still reach the model normally. Chat sampling uses temperature `0.3`; `num_predict` stays at
 2048. **New chat** clears messages, chips, and the rolling conversation summary together.
+Assistant replies render as compact markdown (headings/lists/tables/code) via `AiChatMarkdown`;
+user messages stay plain; "Show reasoning" stays a collapsed plain dump.
 
 ## Long-chat summarization (2026-08-04; extractive-first fix same day)
 

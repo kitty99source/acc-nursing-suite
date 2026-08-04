@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   checkAiServiceStatus,
   extractJsonFromModelText,
@@ -20,7 +20,12 @@ import {
   DEFAULT_KEEP_ALIVE,
   FAST_AI_MODEL,
   FAST_CHAT_NUM_PREDICT,
+  MODEL_BUSY_COOLDOWN_MS,
   REASONING_AI_MODEL,
+  isModelBusyDraining,
+  modelBusyMessage,
+  noteModelAbort,
+  _resetModelBusyForTests,
   type ChatApiMessage,
   type FetchLike,
 } from './aiService';
@@ -522,9 +527,38 @@ describe('generateLocalAiChatResponseStream', () => {
   // reasoning reply was being killed by the old 5-minute hard ceiling even though it was never
   // stuck (chunks kept arriving well within the inactivity window throughout) — see the full
   // incident writeup in aiService.ts's DEFAULT_CHAT_TOTAL_TIMEOUT_MS comment.
-  it('raised the hard total-timeout ceiling to 15 minutes (was 5) so a healthy long reply is not cut off, while keeping the 2-minute inactivity timer unchanged', () => {
-    expect(DEFAULT_CHAT_TOTAL_TIMEOUT_MS).toBe(900_000);
+  it('keeps an 8-minute hard total-timeout ceiling (fail-fast vs 10+ min hang) with the 2-minute inactivity timer unchanged', () => {
+    expect(DEFAULT_CHAT_TOTAL_TIMEOUT_MS).toBe(480_000);
     expect(DEFAULT_CHAT_INACTIVITY_TIMEOUT_MS).toBe(120_000);
+  });
+
+  describe('model busy cooldown after abort (2026-08-04 fortify)', () => {
+    beforeEach(() => {
+      _resetModelBusyForTests();
+    });
+    afterEach(() => {
+      _resetModelBusyForTests();
+    });
+
+    it('marks the model busy for MODEL_BUSY_COOLDOWN_MS after noteModelAbort', () => {
+      expect(isModelBusyDraining()).toBe(false);
+      noteModelAbort();
+      expect(isModelBusyDraining()).toBe(true);
+      expect(modelBusyMessage().toLowerCase()).toContain('still finishing');
+      expect(MODEL_BUSY_COOLDOWN_MS).toBeGreaterThanOrEqual(2000);
+    });
+
+    it('clears the busy flag after the cooldown elapses', () => {
+      vi.useFakeTimers();
+      try {
+        noteModelAbort();
+        expect(isModelBusyDraining()).toBe(true);
+        vi.advanceTimersByTime(MODEL_BUSY_COOLDOWN_MS + 1);
+        expect(isModelBusyDraining()).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   it('does not abort a stream still receiving regular chunks well past the OLD 5-minute ceiling, as long as it finishes before the new 15-minute one', async () => {

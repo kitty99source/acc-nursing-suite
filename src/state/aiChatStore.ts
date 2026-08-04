@@ -28,6 +28,7 @@
 // ============================================================================
 
 import { create } from 'zustand';
+import { noteModelAbort } from '../lib/aiService';
 import type { AiChatMessage, ContextChip } from '../lib/aiChatContext';
 import type { ConversationSummaryState } from '../lib/ai/conversationSummary';
 import { clearAiChatHistory, loadAiChatHistory, saveAiChatHistory } from '../lib/idb';
@@ -149,6 +150,14 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
   activeGenerationId: 0,
   activeAbortController: null,
   beginGeneration: () => {
+    // Abort any prior in-flight controller before starting a new one (defense-in-depth —
+    // the panel normally blocks with `sending`, but Stop clears sending while Ollama may
+    // still be draining; never leave two live AbortControllers racing).
+    const prior = get().activeAbortController;
+    if (prior) {
+      prior.abort();
+      noteModelAbort();
+    }
     const controller = new AbortController();
     const id = get().activeGenerationId + 1;
     set({ activeGenerationId: id, activeAbortController: controller });
@@ -213,7 +222,9 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
     // Cancel any in-flight request FIRST (before wiping state) so a stale response's own eventual
     // `.then()`/stream-read continuation cannot land after `activeGenerationId` has already moved on
     // — belt-and-braces with the id bump below, since `abort()` isn't always instant.
+    const hadActive = !!get().activeAbortController;
     get().activeAbortController?.abort();
+    if (hadActive) noteModelAbort();
     set((s) => ({
       messages: [],
       chips: [],
@@ -227,7 +238,9 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
   },
   stopGeneration: () => {
     const s = get();
+    const hadActive = !!s.activeAbortController;
     s.activeAbortController?.abort();
+    if (hadActive) noteModelAbort();
     const partial = parseThinkResponse(s.streamingText).answer;
     set((st) => {
       if (!partial) {

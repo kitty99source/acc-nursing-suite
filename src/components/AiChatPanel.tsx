@@ -16,11 +16,14 @@ import {
   resolveChatNumPredict,
   resolveKeepAlive,
   isChatTimeoutError,
+  isModelBusyDraining,
+  modelBusyMessage,
 } from '../lib/aiService';
 import { ensureConversationSummary, RECENT_VERBATIM_MESSAGES } from '../lib/ai/conversationSummary';
 import { parseThinkResponse } from '../lib/ai/thinkParser';
 import { shouldAutoScroll } from '../lib/chatScroll';
 import { IconChat, IconClose, IconMinimize, IconSend, IconStop, IconTrash } from './icons';
+import { AiChatMarkdown } from './AiChatMarkdown';
 
 // ============================================================================
 // Global, always-available AI chat panel — docked bottom-right, collapsed to
@@ -208,6 +211,27 @@ export function AiChatPanel() {
   async function send() {
     const text = input.trim();
     if (!text || sending) return;
+
+    // Don't stack a new generate while a prior Stop/Clear abort is still draining Ollama —
+    // that was a common path into "can't reach the model" on the next send.
+    if (isModelBusyDraining()) {
+      addMessage({
+        id: makeMessageId(),
+        role: 'user',
+        content: text,
+        createdAt: Date.now(),
+        chips: [...chips],
+      });
+      addMessage({
+        id: makeMessageId(),
+        role: 'assistant',
+        content: modelBusyMessage(),
+        createdAt: Date.now(),
+      });
+      setInput('');
+      return;
+    }
+
     setInput('');
 
     const history: ChatTurn[] = messages.map((m) => ({ role: m.role, content: m.content }));
@@ -559,7 +583,7 @@ export function AiChatPanel() {
         {messages.map((m) => (
           <div key={m.id} className="text-sm">
             <div
-              className="rounded-lg px-2.5 py-1.5 whitespace-pre-wrap"
+              className={m.role === 'user' ? 'rounded-lg px-2.5 py-1.5 whitespace-pre-wrap' : 'rounded-lg px-2.5 py-1.5'}
               style={
                 m.role === 'user'
                   ? { background: 'var(--accent-soft)', color: 'var(--text)', marginLeft: '2rem' }
@@ -575,7 +599,11 @@ export function AiChatPanel() {
                   ))}
                 </div>
               )}
-              {m.content}
+              {m.role === 'assistant' && !m.error ? (
+                <AiChatMarkdown content={m.content} />
+              ) : (
+                m.content
+              )}
               {m.stopped && (
                 <span
                   className="ml-1 text-[10px] font-semibold uppercase align-middle"

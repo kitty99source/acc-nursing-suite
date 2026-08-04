@@ -105,7 +105,63 @@ const DEFAULT_GENERATE_TIMEOUT_MS = 60_000;
 // memory pressure into a near-stalled-but-technically-still-emitting state)
 // that would otherwise never trip the inactivity timer at all.
 export const DEFAULT_CHAT_INACTIVITY_TIMEOUT_MS = 120_000;
-export const DEFAULT_CHAT_TOTAL_TIMEOUT_MS = 900_000;
+/**
+ * Hard ceiling for a single chat reply. Lowered from 15 → 8 minutes (2026-08-04 fortify):
+ * prefer fail-fast with a clear timeout message over a 10+ minute hang that surfaces as
+ * "can't reach the model". Healthy replies still have headroom (inactivity timer is the
+ * real stall detector; this is only a pathological backstop).
+ */
+export const DEFAULT_CHAT_TOTAL_TIMEOUT_MS = 480_000;
+
+// ----------------------------------------------------------------------------
+// Post-abort "model busy" cooldown (2026-08-04 fortify).
+//
+// Aborting the browser fetch (Stop / Clear / New chat / timeout) closes the HTTP
+// socket. Ollama usually stops generating when the client disconnects, but on
+// CPU-only laptops a short residual drain is common — a follow-up `/api/chat`
+// started immediately can queue behind that work and then itself time out as
+// "can't reach the model". There is no cheap per-request cancel API beyond
+// disconnecting the stream (documented below); a short client-side cooldown
+// prevents stacking a new generate while the previous abort is still draining.
+// ----------------------------------------------------------------------------
+
+/** How long after a user/timeout abort we refuse to start another generate. */
+export const MODEL_BUSY_COOLDOWN_MS = 2_500;
+
+let modelDrainUntilMs = 0;
+
+/** Call when a chat generate was aborted (Stop, Clear, timeout AbortError). */
+export function noteModelAbort(): void {
+  modelDrainUntilMs = Date.now() + MODEL_BUSY_COOLDOWN_MS;
+}
+
+/** True while a previous abort's cooldown window is still open. */
+export function isModelBusyDraining(nowMs: number = Date.now()): boolean {
+  return nowMs < modelDrainUntilMs;
+}
+
+/** Milliseconds remaining in the busy cooldown (0 when clear). */
+export function modelBusyRemainingMs(nowMs: number = Date.now()): number {
+  return Math.max(0, modelDrainUntilMs - nowMs);
+}
+
+/** User-facing copy when a send is blocked because the prior abort is still draining. */
+export function modelBusyMessage(): string {
+  return (
+    'The local model is still finishing the previous cancelled request — wait a couple of ' +
+    'seconds and send again (starting another generate immediately often hangs).'
+  );
+}
+
+/**
+ * Best-effort: aborting the fetch IS the cancel signal to Ollama (disconnect ends the
+ * stream). There is no separate cheap "cancel request id" endpoint used here — calling
+ * noteModelAbort() + waiting MODEL_BUSY_COOLDOWN_MS is the stacking guard.
+ * @internal exported for tests that need to clear the cooldown between cases.
+ */
+export function _resetModelBusyForTests(): void {
+  modelDrainUntilMs = 0;
+}
 
 // ----------------------------------------------------------------------------
 // Generation-length ceiling (2026-08-04 "rambling on 'hello'" bug fix).
@@ -586,9 +642,9 @@ export interface AiGenerateStreamOptions {
   /**
    * Hard ceiling for the whole request regardless of progress — a loose backstop against a
    * pathological "technically still emitting chunks, but absurdly slow" case, NOT the mechanism
-   * for detecting a genuinely stuck/frozen stream (that's `inactivityTimeoutMs`). Default 15
-   * minutes — see DEFAULT_CHAT_TOTAL_TIMEOUT_MS for why 15 minutes specifically (2026-08-04 fix:
-   * the previous 5-minute value was killing healthy, still-progressing long replies).
+   * for detecting a genuinely stuck/frozen stream (that's `inactivityTimeoutMs`). Default 8
+   * minutes — see DEFAULT_CHAT_TOTAL_TIMEOUT_MS (fail-fast vs 10+ min hang; inactivity timer
+   * remains the real stall detector).
    */
   timeoutMs?: number;
   /** Reset on every chunk received. Default 2 minutes — see DEFAULT_CHAT_INACTIVITY_TIMEOUT_MS. */
@@ -822,6 +878,11 @@ export async function generateLocalAiChatResponseStream(
     if (!state.accumulated.trim()) return { ok: false, error: 'Empty response from local AI model' };
     return { ok: true, text: state.accumulated };
   } catch (err) {
+    // Any abort (user Stop / Clear, inactivity, or total ceiling) may leave Ollama briefly
+    // draining — mark the cooldown so the next send does not stack on top.
+    if (err instanceof Error && err.name === 'AbortError') {
+      noteModelAbort();
+    }
     return { ok: false, error: chatErrorMessage(err) };
   } finally {
     clearAllTimers();

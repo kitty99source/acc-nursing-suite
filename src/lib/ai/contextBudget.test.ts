@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   checkContextBudget,
+  contextHistoryTooLargeMessage,
   contextTooLargeMessage,
   CONTEXT_TRIM_TRIGGER_RATIO,
   DEFAULT_RESERVED_FOR_RESPONSE_TOKENS,
@@ -73,5 +74,18 @@ describe('CONTEXT_TRIM_TRIGGER_RATIO', () => {
   it('is a sensible fraction below 1 (trims before the window is completely full)', () => {
     expect(CONTEXT_TRIM_TRIGGER_RATIO).toBeGreaterThan(0);
     expect(CONTEXT_TRIM_TRIGGER_RATIO).toBeLessThan(1);
+  });
+
+  it('stays at or below 0.65 so char≈token under-estimates still leave headroom (2026-08-04 fortify)', () => {
+    expect(CONTEXT_TRIM_TRIGGER_RATIO).toBeLessThanOrEqual(0.65);
+  });
+});
+
+describe('contextHistoryTooLargeMessage', () => {
+  it('tells the user to start a new chat rather than blaming attached chips', () => {
+    const msg = contextHistoryTooLargeMessage();
+    expect(msg.toLowerCase()).toContain('new chat');
+    expect(msg.toLowerCase()).toContain('too large');
+    expect(msg.toLowerCase()).not.toContain('items)');
   });
 });

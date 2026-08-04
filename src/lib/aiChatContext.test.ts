@@ -4,6 +4,7 @@ import { _resetKnowledgeCorpusCacheForTests } from './ai/knowledgeCorpus';
 import type { AppData, Claim, Contract, Patient } from '../types';
 import {
   AI_ASSISTANT_SYSTEM_PROMPT,
+  THIN_OR_AMBIGUOUS_CLARIFY_INSTRUCTION,
   buildCaseStageSummary,
   buildChatMessages,
   buildComplianceRuleSummary,
@@ -13,8 +14,11 @@ import {
   serializeChipContext,
   serializeContractContext,
   serializePatientContext,
+  shouldInjectThinClarifyNudge,
 } from './aiChatContext';
 import { buildKnowledgeBaseSections } from './ai/knowledgeBase';
+import { contextHistoryTooLargeMessage } from './ai/contextBudget';
+import type { ChatGroundingDecision } from './ai/groundingGate';
 
 function contract(overrides: Partial<Contract> = {}): Contract {
   return {
@@ -264,10 +268,12 @@ describe('grounding system prompt', () => {
     expect(lower).toContain('red/silver/gold');
   });
 
-  it('explicitly permits asking one brief clarifying question rather than guessing on an ambiguous request', () => {
+  it('prominently requires clarifying questions over general knowledge (not buried "OK to ask" wording)', () => {
     const lower = AI_ASSISTANT_SYSTEM_PROMPT.toLowerCase();
-    expect(lower).toContain('ok to ask a brief clarifying question');
-    expect(lower).toContain('one short, targeted clarifying question');
+    expect(lower).toContain('clarifying questions over general knowledge');
+    expect(lower).toContain('highest priority');
+    expect(lower).toContain('noticing ambiguity in your private reasoning is not enough');
+    expect(lower).toContain('do not ask a clarifying question on every turn');
   });
 
   it('tells the model not to reason its way into confident fabrication under its own step-by-step thinking', () => {
@@ -472,9 +478,12 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
       // Modest numCtx + padded sample chunks forces dropping at least one retrieved chunk.
       // Slightly above the pre-lexicon 4200 so the injected ARTP common-terms entry still leaves
       // room to keep the top elective-surgery chunk after dropping the lowest-scoring one(s).
-      numCtx: 4800,
+      // Ratio 0.65 + larger clarifying system prompt: need enough headroom that the
+      // top elective-surgery chunk survives after dropping lower-scoring ones.
+      numCtx: 7500,
     });
     expect(contextTooLarge).toBeFalsy();
+    expect(retrievedSources.length).toBeGreaterThan(0);
     expect(retrievedSources.length).toBeLessThan(SAMPLE_CORPUS.chunks.length);
     expect(retrievedSources.some((s) => s.sourceDocId === 'elective-surgery-og')).toBe(true);
   });
@@ -575,7 +584,9 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
         // empirically (with the current system prompt — retuned 2026-08-04 for the groundedness /
         // NZ-scope / no-excerpts refuse instructions) leaves room for exactly the newest (turn-3)
         // pair once the older two are gone.
-        numCtx: 5400,
+        // Tuned for CONTEXT_TRIM_TRIGGER_RATIO 0.65 + larger clarifying system prompt:
+        // still forces dropping older long replies while keeping the newest pair.
+        numCtx: 7200,
       });
       expect(result.ungroundedRefuse).toBeUndefined();
       expect(result.contextTooLarge).toBeFalsy();
@@ -606,6 +617,32 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
       expect(result.ungroundedRefuse).toBeUndefined();
       expect(result.contextTooLarge).toBe(true);
       expect(result.messages).toEqual([]);
+    });
+
+    it('refuses with history-oriented message for synthetic oversized history (no chips) after trim fails', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+      // Synthetic oversized multi-turn history — mirrors a long chat after extractive summary
+      // still cannot fit. Must refuse BEFORE any Ollama call with an honest short UI message.
+      const huge = `NS04 prior approval ${'y'.repeat(8_000)}`;
+      const history = Array.from({ length: 8 }, (_, i) =>
+        i % 2 === 0
+          ? { role: 'user' as const, content: `${huge} turn-${i}` }
+          : { role: 'assistant' as const, content: `${huge} reply-${i}` },
+      );
+      const result = await buildChatMessages({
+        history,
+        chips: [],
+        data: dataWith([]),
+        userMessage: `NS04 ${'z'.repeat(4_000)} final question`,
+        numCtx: 400,
+        conversationSummary: `Prior summary: ${'s'.repeat(2_000)}`,
+        historyAlreadyWindowed: true,
+      });
+      expect(result.ungroundedRefuse).toBeUndefined();
+      expect(result.contextTooLarge).toBe(true);
+      expect(result.messages).toEqual([]);
+      expect(result.contextTooLargeMessage).toBe(contextHistoryTooLargeMessage());
+      expect(result.contextTooLargeMessage).toContain('new chat');
     });
 
     it('does not report historyTrimmed when the conversation already fits without dropping anything', async () => {
@@ -981,5 +1018,102 @@ describe('buildChatMessages — real ACC document retrieval (RAG-lite)', () => {
     expect(system).toContain('school timetables');
     expect(system).toMatch(/service schedule \(provider contract schedule\)|acc service schedule/);
     expect(system).not.toContain('school bus');
+  });
+});
+
+describe('shouldInjectThinClarifyNudge / thin grounding clarify instruction', () => {
+  it('exports a prominent per-turn clarifying-question instruction', () => {
+    expect(THIN_OR_AMBIGUOUS_CLARIFY_INSTRUCTION.toLowerCase()).toContain('per-turn priority');
+    expect(THIN_OR_AMBIGUOUS_CLARIFY_INSTRUCTION.toLowerCase()).toContain('ask one short clarifying question');
+    expect(THIN_OR_AMBIGUOUS_CLARIFY_INSTRUCTION.toLowerCase()).toContain('do not assume general knowledge');
+  });
+
+  it('injects for lexicon-only and static-only turns, not casual or rich RAG', () => {
+    const emptyStatic = {
+      relevantRules: [],
+      includeCaseStages: false,
+      caseStagesScore: 0,
+      maxScore: 0,
+      isRelevant: false,
+    };
+    const lexicon: ChatGroundingDecision = {
+      allowModel: true,
+      retrievedChunks: [],
+      staticRelevance: emptyStatic,
+      staticSections: ['lexicon'],
+      lexiconHits: [{ term: 'PHAS', expansion: 'Public Health Acute Services', definition: 'x', source: 't' }],
+      reason: 'lexicon-relevant',
+    };
+    const staticOnly: ChatGroundingDecision = {
+      allowModel: true,
+      retrievedChunks: [],
+      staticRelevance: { ...emptyStatic, isRelevant: true, maxScore: 0.5 },
+      staticSections: ['rules'],
+      lexiconHits: [],
+      reason: 'static-relevant',
+    };
+    const casual: ChatGroundingDecision = {
+      allowModel: true,
+      retrievedChunks: [],
+      staticRelevance: emptyStatic,
+      staticSections: [],
+      lexiconHits: [],
+      reason: 'casual',
+    };
+    const richRag: ChatGroundingDecision = {
+      allowModel: true,
+      retrievedChunks: [
+        {
+          chunk: {
+            id: 'c1',
+            sourceDocId: 'nursing',
+            chunkIndex: 0,
+            text: 'NS04 prior approval',
+          },
+          score: 0.9,
+        },
+      ],
+      staticRelevance: emptyStatic,
+      staticSections: [],
+      lexiconHits: [],
+      reason: 'retrieved-chunks',
+    };
+    const thinRag: ChatGroundingDecision = {
+      allowModel: true,
+      retrievedChunks: [
+        {
+          chunk: {
+            id: 'c2',
+            sourceDocId: 'nursing',
+            chunkIndex: 0,
+            text: 'weak overlap',
+          },
+          score: 0.4,
+        },
+      ],
+      staticRelevance: emptyStatic,
+      staticSections: [],
+      lexiconHits: [],
+      reason: 'retrieved-chunks',
+    };
+    expect(shouldInjectThinClarifyNudge(lexicon)).toBe(true);
+    expect(shouldInjectThinClarifyNudge(staticOnly)).toBe(true);
+    expect(shouldInjectThinClarifyNudge(casual)).toBe(false);
+    expect(shouldInjectThinClarifyNudge(richRag)).toBe(false);
+    expect(shouldInjectThinClarifyNudge(thinRag)).toBe(true);
+  });
+
+  it('injects the thin-clarify block into the system message for lexicon-grounded turns', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+    // PHAS is in the common-terms lexicon — gate allows, retrieval empty → thin nudge.
+    const result = await buildChatMessages({
+      history: [],
+      chips: [],
+      data: dataWith([]),
+      userMessage: 'What does PHAS mean in ACC?',
+    });
+    expect(result.ungroundedRefuse).toBeUndefined();
+    expect(result.messages[0]?.content).toContain('PER-TURN PRIORITY');
+    expect(result.messages[0]?.content).toContain(THIN_OR_AMBIGUOUS_CLARIFY_INSTRUCTION.slice(0, 40));
   });
 });

@@ -70,7 +70,7 @@ function readRaw(id) {
 // 1. Structured price tables -> src/lib/acc/generated/schedules.json
 // ---------------------------------------------------------------------------
 
-const nursingItems = scheduleParser.parsePricedCodeTable(readRaw('nursing-service-schedule'), knownCodes.NURSING_CODES);
+const nursingItems = nationalContracts.parseNursingText(readRaw('nursing-service-schedule'));
 const alliedItems = scheduleParser.parsePricedCodeTable(
   readRaw('allied-health-services-service-schedule'),
   knownCodes.ALLIED_HEALTH_CODES,

@@ -20,6 +20,26 @@ import { parseCotrRateSheet, parsePricedCodeTable, type CotrRateItem, type Sched
 import { sourceDocById } from './sourceDocs';
 
 /**
+ * The Nursing Services Service Schedule's real price table ("Table 1 - Service Items and Prices")
+ * is followed by a second, unrelated "Table 2 - Relationship Management" section (roles/contacts,
+ * not codes/prices) and then several more pages of narrative clauses — without a boundary, NSAC
+ * (the last known code) captured everything after it to the end of the document as its own
+ * description/pricing-unit text (a ~62KB single item), same root cause just fixed for Elective
+ * Surgery's Table 1/Table 2 boundary. Slices the raw text to end at the real "Table 2 -" marker
+ * before parsing. Falls back to the whole text (old behaviour) if the marker isn't found, so this
+ * never silently produces zero items.
+ */
+function sliceNursingTable(text: string): string {
+  const table2Start = text.indexOf('Table 2 -');
+  return table2Start === -1 ? text : text.slice(0, table2Start);
+}
+
+/** Exported so scripts/ingest-acc-schedules.mjs uses this exact same boundary-slicing logic. */
+export function parseNursingText(text: string): ScheduleItem[] {
+  return parsePricedCodeTable(sliceNursingTable(text), NURSING_CODES);
+}
+
+/**
  * The Elective Surgery Service Schedule has two real, separate price tables (Table 1 "Core
  * Service Items and Prices" = procedures, Table 2 "Non-core Service Items and Prices" = theatre
  * time/ward stay/2nd surgeon/etc.) — this slices the raw text to each table's own section before
@@ -168,7 +188,7 @@ export function buildNationalScheduleContracts(rawText: Record<string, string>):
   const out: Omit<Contract, 'id'>[] = [];
 
   const nursingText = rawText['nursing-service-schedule'];
-  if (nursingText) out.push(contractFromNursingItems(parsePricedCodeTable(nursingText, NURSING_CODES)));
+  if (nursingText) out.push(contractFromNursingItems(parseNursingText(nursingText)));
 
   const alliedText = rawText['allied-health-services-service-schedule'];
   if (alliedText) out.push(contractFromAlliedHealthItems(parsePricedCodeTable(alliedText, ALLIED_HEALTH_CODES)));

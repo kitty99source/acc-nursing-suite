@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { chunkDocumentText } from './knowledgeChunking';
-import { buildCorpusIndex, retrieveTopChunks, tokenize } from './knowledgeRetrieval';
+import { buildCorpusIndex, NEAR_DUPLICATE_SIMILARITY_THRESHOLD, retrieveTopChunks, tokenize } from './knowledgeRetrieval';
 
 describe('tokenize', () => {
   it('lowercases, strips punctuation and drops stopwords', () => {
@@ -117,5 +117,73 @@ describe('retrieveTopChunks (RAG-lite relevance scoring)', () => {
     const indexWithToc = buildCorpusIndex(chunksWithToc);
     const results = retrieveTopChunks('What is the ARTP process for elective surgery prior approval?', chunksWithToc, indexWithToc);
     expect(results.map((r) => r.chunk.id)).not.toContain(tocChunk.id);
+  });
+
+  // 2026-08-04 follow-up fix: a second consecutive owner timeout report showed the top-3 results
+  // for one question could include 2-3 near-identical/overlapping chunks from the SAME source
+  // document — wasteful even though (per the investigation) it was not the actual cause of that
+  // specific timeout. Guard against genuinely redundant content crowding out a diverse top-k.
+  describe('near-duplicate chunk dedup', () => {
+    const baseText =
+      'The Supplier must not transmit, transfer, export or store Personal Information and ' +
+      'Confidential Information outside of New Zealand and/or Australia, in accordance with the ' +
+      'Standard Terms and Conditions clause 9 information security obligations for this contract.';
+
+    const nearDuplicateChunk = {
+      id: 'health-contract-terms-conditions#1',
+      sourceDocId: 'health-contract-terms-conditions',
+      chunkIndex: 1,
+      // Same substantive content, reworded/reordered slightly — a real near-duplicate, not an
+      // exact string match, since retrieval chunking rarely produces byte-identical chunks.
+      text:
+        'The Supplier must not transfer, transmit, export or store Confidential Information and ' +
+        'Personal Information outside of New Zealand or Australia, per Standard Terms and Conditions ' +
+        'clause 9 information security obligations under this contract.',
+    };
+
+    const genuinelyDifferentChunk = {
+      id: 'health-contract-terms-conditions#2',
+      sourceDocId: 'health-contract-terms-conditions',
+      chunkIndex: 2,
+      text:
+        'Either party may terminate this Contract for services by giving 90 days written notice to ' +
+        'the other party, without needing to show cause, subject to the transition obligations in ' +
+        'clause 14 regarding client handover and outstanding invoices.',
+    };
+
+    it('skips a near-duplicate candidate chunk from the same source document, keeping a genuinely different one instead', () => {
+      const chunksWithDup = [...allChunks, nearDuplicateChunk, genuinelyDifferentChunk];
+      const dupIndex = buildCorpusIndex(chunksWithDup);
+      const results = retrieveTopChunks(
+        'Can client information be stored outside New Zealand under the Standard Terms and Conditions?',
+        chunksWithDup,
+        dupIndex,
+        { k: 3 },
+      );
+      const ids = results.map((r) => r.chunk.id);
+      // The two near-duplicate chunks about the SAME clause should never both appear.
+      const bothTermsVariants = ids.includes(termsChunk.id) && ids.includes(nearDuplicateChunk.id);
+      expect(bothTermsVariants).toBe(false);
+      // The dropped "slot" should go to a genuinely different chunk, not just fewer total results.
+      expect(ids).toContain(genuinelyDifferentChunk.id);
+    });
+
+    it('does not dedup two chunks from the same document that are only topically related, not near-identical', () => {
+      // health-contract-terms-conditions' own real termsChunk vs. the unrelated-content
+      // genuinelyDifferentChunk (different clause entirely) must both be retrievable together.
+      const chunksWithBoth = [termsChunk, genuinelyDifferentChunk];
+      const idx = buildCorpusIndex(chunksWithBoth);
+      const results = retrieveTopChunks('Standard Terms and Conditions contract clauses', chunksWithBoth, idx, { k: 2 });
+      expect(results.length).toBe(2);
+    });
+
+    it('the near-duplicate fixture pair really is above the similarity threshold (sanity check the fixture, not just the behaviour)', () => {
+      const a = new Set(tokenize(baseText));
+      const b = new Set(tokenize(nearDuplicateChunk.text));
+      const intersection = [...a].filter((t) => b.has(t)).length;
+      const union = new Set([...a, ...b]).size;
+      const jaccard = intersection / union;
+      expect(jaccard).toBeGreaterThan(NEAR_DUPLICATE_SIMILARITY_THRESHOLD);
+    });
   });
 });

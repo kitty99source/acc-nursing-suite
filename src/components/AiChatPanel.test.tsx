@@ -22,6 +22,12 @@ const aiServiceMocks = vi.hoisted(() => ({
   // aiChatContext.ts's buildChatMessages reads this for its context-budget check — a real value
   // (not a mock-only stub) so the budget/trim logic behaves the same as production in this suite.
   DEFAULT_NUM_CTX: 8192,
+  // Real (not mock-only stub) implementation — a plain marker-substring check, safe to run as-is
+  // in this suite so tests can exercise the real "is this a timeout" branch in AiChatPanel.
+  isChatTimeoutError: (error?: string) => !!error && error.includes('crashed or got stuck mid-response'),
+  // Defaults to "Ollama is reachable" so existing non-timeout-diagnostic tests aren't affected —
+  // individual timeout-diagnostic tests below override this per-case.
+  checkAiServiceStatus: vi.fn(async () => ({ available: true, modelAvailable: true, models: [] })),
 }));
 vi.mock('../lib/aiService', () => aiServiceMocks);
 
@@ -250,6 +256,102 @@ describe('<AiChatPanel />', () => {
     expect(container.textContent).toContain("Couldn't reach the local AI model.");
     expect(container.textContent).toContain('timed out');
     expect(useAiChatStore.getState().sending).toBe(false);
+  });
+
+  // 2026-08-04 follow-up fix: a SECOND consecutive real owner timeout, after the same-day
+  // context-overflow fix had already landed and was confirmed working (measured prompt size well
+  // under budget) — added a lightweight app-side "ping Ollama" self-test so the owner (and any
+  // future incident) can immediately tell "Ollama itself is dead" from "this one reply stalled".
+  describe('timeout self-test diagnostic (2026-08-04 follow-up fix)', () => {
+    const TIMEOUT_ERROR =
+      'The local AI model stopped responding and this request timed out. This usually means Ollama ' +
+      'crashed or got stuck mid-response — try sending the message again, and restart Ollama from the ' +
+      'system tray if it keeps happening.';
+
+    async function sendMessage(text: string) {
+      const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+      const setValue = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!;
+      await act(async () => {
+        setValue.call(textarea, text);
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      const sendButton = container.querySelector('button[aria-label="Send"]') as HTMLButtonElement;
+      await act(async () => {
+        sendButton.click();
+      });
+      await flush();
+    }
+
+    beforeEach(() => {
+      useAiChatStore.setState({ hydrated: true, messages: [], chips: [] });
+    });
+
+    it('pings Ollama and reports it as unreachable/likely hung when a timeout occurs and the ping also fails', async () => {
+      aiServiceMocks.generateLocalAiChatResponseStream.mockResolvedValue({ ok: false, error: TIMEOUT_ERROR });
+      aiServiceMocks.checkAiServiceStatus.mockResolvedValue({ available: false, modelAvailable: false, models: [] });
+
+      await act(async () => {
+        root.render(<AiChatPanel />);
+      });
+      await flush();
+      await sendMessage('hello');
+
+      expect(aiServiceMocks.checkAiServiceStatus).toHaveBeenCalled();
+      const lastError = useAiChatStore.getState().messages.at(-1)?.error;
+      expect(lastError).toContain('not responding at all right now');
+      expect(lastError).toContain('taskkill');
+    });
+
+    it('pings Ollama and reports it as still reachable (this specific reply just stalled) on the FIRST timeout', async () => {
+      aiServiceMocks.generateLocalAiChatResponseStream.mockResolvedValue({ ok: false, error: TIMEOUT_ERROR });
+      aiServiceMocks.checkAiServiceStatus.mockResolvedValue({ available: true, modelAvailable: true, models: [] });
+
+      await act(async () => {
+        root.render(<AiChatPanel />);
+      });
+      await flush();
+      await sendMessage('hello');
+
+      const lastError = useAiChatStore.getState().messages.at(-1)?.error;
+      expect(lastError).toContain('still responding to a basic ping');
+      expect(lastError).not.toContain('reply in a row');
+    });
+
+    it('escalates to recommending a full process kill on the SECOND consecutive timeout, even though Ollama still answers the ping', async () => {
+      aiServiceMocks.generateLocalAiChatResponseStream.mockResolvedValue({ ok: false, error: TIMEOUT_ERROR });
+      aiServiceMocks.checkAiServiceStatus.mockResolvedValue({ available: true, modelAvailable: true, models: [] });
+
+      await act(async () => {
+        root.render(<AiChatPanel />);
+      });
+      await flush();
+      await sendMessage('first question');
+      await sendMessage('second question');
+
+      const lastError = useAiChatStore.getState().messages.at(-1)?.error;
+      expect(lastError).toContain('2nd reply in a row');
+      expect(lastError).toContain('taskkill');
+    });
+
+    it('resets the consecutive-timeout counter after a successful reply', async () => {
+      aiServiceMocks.checkAiServiceStatus.mockResolvedValue({ available: true, modelAvailable: true, models: [] });
+      aiServiceMocks.generateLocalAiChatResponseStream
+        .mockResolvedValueOnce({ ok: false, error: TIMEOUT_ERROR })
+        .mockResolvedValueOnce({ ok: true, text: 'All good now' })
+        .mockResolvedValueOnce({ ok: false, error: TIMEOUT_ERROR });
+
+      await act(async () => {
+        root.render(<AiChatPanel />);
+      });
+      await flush();
+      await sendMessage('q1');
+      await sendMessage('q2');
+      await sendMessage('q3');
+
+      const lastError = useAiChatStore.getState().messages.at(-1)?.error;
+      // Would say "2nd reply in a row" if the counter hadn't reset on the successful q2 reply.
+      expect(lastError).not.toContain('reply in a row');
+    });
   });
 
   it('refuses to send and shows a specific "too much context" message — never calls the model — when several large chips together would overflow the context window (2026-08-04 safety net)', async () => {

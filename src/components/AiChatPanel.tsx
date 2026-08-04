@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { useAiChatStore, makeMessageId, CHIP_DND_MIME, type AiChatMessage } from '../state/aiChatStore';
 import { buildChatMessages, type ChatTurn, type ContextChip } from '../lib/aiChatContext';
-import { generateLocalAiChatResponseStream } from '../lib/aiService';
+import { checkAiServiceStatus, generateLocalAiChatResponseStream, isChatTimeoutError } from '../lib/aiService';
 import { parseThinkResponse } from '../lib/ai/thinkParser';
 import { shouldAutoScroll } from '../lib/chatScroll';
 import { IconChat, IconClose, IconMinimize, IconSend, IconStop, IconTrash } from './icons';
@@ -20,6 +20,52 @@ import { IconChat, IconClose, IconMinimize, IconSend, IconStop, IconTrash } from
 // (dropped on this panel's chip zone) or a "click to attach" button — both
 // call the same `addChip` action, so either path produces an identical chip.
 // ============================================================================
+
+/**
+ * Runs a quick, lightweight liveness ping against Ollama (`checkAiServiceStatus` — a plain
+ * `GET /api/tags` with its own short ~2.5s timeout, completely independent of the chat request
+ * that just timed out) and returns a short, honest follow-up note distinguishing two genuinely
+ * different situations that otherwise look identical to the owner:
+ *
+ * 1. Ollama itself is not responding to ANYTHING right now — most likely a stuck/hung process
+ *    left over from an earlier crash (system tray "Quit" does not always fully terminate a hung
+ *    process). This is the case a full process kill actually fixes.
+ * 2. Ollama IS still responding to a basic ping, so it isn't fully dead — the chat reply itself
+ *    was just slow or got stuck on that one request. Still worth a full restart if it recurs, but
+ *    the phrasing (and evidence) is different from case 1.
+ *
+ * 2026-08-04: added after a SECOND consecutive real owner timeout report, once measuring the
+ * actual prompt size confirmed the just-landed context-budget fix was working correctly (a small,
+ * well-under-budget prompt still timed out) — see docs/ai-features-setup.md and the aiService.ts/
+ * contextBudget.ts comments for the fuller incident writeup. This never blocks or delays the
+ * user's next message; it's a best-effort diagnostic appended to the failed reply only.
+ */
+async function diagnoseTimeout(baseUrl: string, consecutiveCount: number): Promise<string> {
+  const status = await checkAiServiceStatus(baseUrl, { timeoutMs: 3000 });
+  const killInstruction =
+    'Fully quit and reopen Ollama — on Windows, the system tray "Quit" does not always fully stop ' +
+    'a hung process, so use Task Manager or run "taskkill /IM ollama.exe /F" in a Command Prompt ' +
+    'first, THEN reopen Ollama fresh.';
+  if (!status.available) {
+    return (
+      'Quick check: Ollama is not responding at all right now (not just this one request) — this ' +
+      `points to a stuck/hung Ollama process, most likely left over from an earlier crash. ${killInstruction}`
+    );
+  }
+  if (consecutiveCount >= 2) {
+    return (
+      `Quick check: Ollama IS still responding to a basic ping, so it isn't fully dead — but this is the ` +
+      `${consecutiveCount}${consecutiveCount === 2 ? 'nd' : 'th'} reply in a row that has specifically stalled, ` +
+      `which points to Ollama being stuck mid-request rather than this being an unlucky one-off. ${killInstruction} ` +
+      'Then try again with a shorter/simpler question first.'
+    );
+  }
+  return (
+    'Quick check: Ollama is still responding to a basic ping, so it is not fully dead — this specific ' +
+    'reply just timed out or got stuck. Try sending it again; if it keeps happening, fully restart Ollama ' +
+    `(not just the tray "Quit") to clear any stuck state.`
+  );
+}
 
 export function AiChatPanel() {
   const settings = useStore((s) => s.data.settings);
@@ -44,6 +90,13 @@ export function AiChatPanel() {
 
   const [input, setInput] = useState('');
   const [dragOver, setDragOver] = useState(false);
+  // How many chat replies IN A ROW have timed out (see aiService.ts `isChatTimeoutError`) — reset
+  // to 0 on any successful reply or any non-timeout failure. Purely a UI-escalation counter (never
+  // persisted): a single timeout gets a mild "try again" note, but the SECOND consecutive one
+  // (2026-08-04 real owner incident: back-to-back timeouts after a context-overflow fix that had
+  // already landed) escalates to explicitly recommending a full process kill, since Ollama's system
+  // tray "Quit" has been observed not to fully terminate a hung process from an earlier crash.
+  const consecutiveTimeoutsRef = useRef(0);
   // "Sticky scroll": whether the view is (or was, at the last scroll event) at/near the bottom —
   // see lib/chatScroll.ts. Starts true so a freshly-opened panel still lands on the latest message.
   const [stickToBottom, setStickToBottom] = useState(true);
@@ -175,6 +228,7 @@ export function AiChatPanel() {
     if (!isGenerationCurrent(generationId)) return;
 
     if (result.ok) {
+      consecutiveTimeoutsRef.current = 0;
       // Phi-4-mini-reasoning always emits a `<think>...</think>` chain-of-thought before its
       // real answer (see lib/ai/thinkParser.ts) — split that out here so `content` (the primary
       // bubble) is just the short final answer, with the reasoning trace kept for the "Show
@@ -190,12 +244,19 @@ export function AiChatPanel() {
         retrievedSources: retrievedSources.length ? retrievedSources : undefined,
       });
     } else {
+      let diagnosticNote: string | undefined;
+      if (isChatTimeoutError(result.error)) {
+        consecutiveTimeoutsRef.current += 1;
+        diagnosticNote = await diagnoseTimeout(settings.aiServiceBaseUrl, consecutiveTimeoutsRef.current);
+      } else {
+        consecutiveTimeoutsRef.current = 0;
+      }
       addMessage({
         id: makeMessageId(),
         role: 'assistant',
         content: "Couldn't reach the local AI model.",
         createdAt: Date.now(),
-        error: result.error,
+        error: diagnosticNote ? `${result.error}\n\n${diagnosticNote}` : result.error,
         contextUsed: contextBlock || undefined,
         retrievedSources: retrievedSources.length ? retrievedSources : undefined,
       });

@@ -354,15 +354,26 @@ export async function generateLocalAiResponse(
  * more likely explanation is a genuinely stuck/crashed Ollama process, not
  * "still starting up", so the message should say that instead.
  */
+/**
+ * Marker substring unique to `chatErrorMessage`'s AbortError case — used by `isChatTimeoutError`
+ * so a caller (AiChatPanel) can distinguish "this reply specifically timed out" from any other
+ * failure (HTTP error, empty response, etc.) without re-parsing prose or comparing whole strings.
+ */
+const CHAT_TIMEOUT_MARKER = 'crashed or got stuck mid-response';
+
 function chatErrorMessage(err: unknown): string {
   if (err instanceof Error && err.name === 'AbortError') {
     return (
-      'The local AI model stopped responding and this request timed out. This usually means Ollama ' +
-      'crashed or got stuck mid-response — try sending the message again, and restart Ollama from the ' +
-      'system tray if it keeps happening.'
+      `The local AI model stopped responding and this request timed out. This usually means Ollama ${CHAT_TIMEOUT_MARKER} ` +
+      '— try sending the message again, and restart Ollama from the system tray if it keeps happening.'
     );
   }
   return errorMessage(err);
+}
+
+/** True when `error` is the specific "this chat reply timed out" message from `chatErrorMessage` above (as opposed to any other chat failure). */
+export function isChatTimeoutError(error: string | undefined): boolean {
+  return !!error && error.includes(CHAT_TIMEOUT_MARKER);
 }
 
 /** One message in Ollama's `/api/chat` structured `messages` array. */

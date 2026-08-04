@@ -93,10 +93,46 @@ export interface RetrievedChunk {
   score: number;
 }
 
+// ----------------------------------------------------------------------------
+// Near-duplicate-chunk dedup (2026-08-04, follow-up to the same-day
+// context-overflow fix). Real incident: a "summarize this contract" question
+// retrieved the top 3 chunks by score, and 2-3 of them came from the SAME
+// source document (health-contract-terms-conditions) — e.g. a short cover-
+// page/signature-block chunk and a substantive "scope of these standard
+// terms" chunk. In THAT specific incident the chunks turned out to be
+// different (non-overlapping) sections of the document, not literal
+// duplicates, and the combined prompt was measured (see contextBudget.ts/
+// aiChatContext.test.ts) to fit comfortably under the num_ctx budget — so
+// this was not the actual cause of that timeout. It is still a real, valid
+// concern on its own terms: nothing here previously stopped two genuinely
+// near-identical chunks (e.g. two adjacent, heavily-overlapping paragraphs
+// from the same long clause) from both landing in the top-k and wasting a
+// retrieval "slot" on redundant content instead of a second, complementary
+// source. Fixed by skipping a candidate chunk once it is textually very
+// similar (Jaccard token-overlap) to a chunk already selected, so the top-k
+// results stay diverse rather than accidentally redundant.
+// ----------------------------------------------------------------------------
+
+/** Above this Jaccard token-overlap ratio, a candidate chunk is treated as a near-duplicate of an already-selected one and skipped. */
+export const NEAR_DUPLICATE_SIMILARITY_THRESHOLD = 0.8;
+
+function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0;
+  let intersection = 0;
+  for (const t of a) {
+    if (b.has(t)) intersection++;
+  }
+  const union = a.size + b.size - intersection;
+  return union === 0 ? 0 : intersection / union;
+}
+
 /**
  * Returns up to `k` chunks most relevant to `query`, ranked by TF-IDF-lite score, excluding any
  * chunk that scores at or below `minScore` (default: excludes zero-overlap chunks entirely, so an
  * unrelated question genuinely retrieves nothing rather than an arbitrary "closest of a bad lot").
+ * Also skips any candidate that is a near-duplicate (see `NEAR_DUPLICATE_SIMILARITY_THRESHOLD`) of
+ * a chunk already selected, so redundant/overlapping content from the same source document doesn't
+ * crowd out a genuinely different, complementary chunk.
  */
 export function retrieveTopChunks(
   query: string,
@@ -106,7 +142,7 @@ export function retrieveTopChunks(
 ): RetrievedChunk[] {
   const k = opts.k ?? 3;
   const minScore = opts.minScore ?? 0;
-  return chunks
+  const ranked = chunks
     // Defense-in-depth backstop, on top of knowledgeChunking.ts already excluding ToC-shaped
     // chunks at ingestion time — catches any corpus asset built before this fix, or a future chunk
     // source this detector wasn't run against. A bare table-of-contents chunk has zero
@@ -114,6 +150,19 @@ export function retrieveTopChunks(
     .filter((chunk) => !isLikelyTableOfContents(chunk.text))
     .map((chunk) => ({ chunk, score: scoreChunk(query, chunk, index) }))
     .filter((r) => r.score > minScore)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, k);
+    .sort((a, b) => b.score - a.score);
+
+  const selected: RetrievedChunk[] = [];
+  const selectedTokenSets: Set<string>[] = [];
+  for (const candidate of ranked) {
+    if (selected.length >= k) break;
+    const candidateTokens = new Set(tokenize(candidate.chunk.text));
+    const isNearDuplicate = selectedTokenSets.some(
+      (existing) => jaccardSimilarity(candidateTokens, existing) > NEAR_DUPLICATE_SIMILARITY_THRESHOLD,
+    );
+    if (isNearDuplicate) continue;
+    selected.push(candidate);
+    selectedTokenSets.push(candidateTokens);
+  }
+  return selected;
 }

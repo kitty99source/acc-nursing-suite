@@ -9,9 +9,44 @@
 // ============================================================================
 
 import type { Contract, ContractRateEntry } from '../../types';
-import { ALLIED_HEALTH_CODES, COTR_ALL_CODES, ELECTIVE_SURGERY_CODES, NURSING_CODES } from './knownCodes';
+import {
+  ALLIED_HEALTH_CODES,
+  COTR_ALL_CODES,
+  ELECTIVE_SURGERY_CODES,
+  ELECTIVE_SURGERY_NONCORE_CODES,
+  NURSING_CODES,
+} from './knownCodes';
 import { parseCotrRateSheet, parsePricedCodeTable, type CotrRateItem, type ScheduleItem } from './scheduleParser';
 import { sourceDocById } from './sourceDocs';
+
+/**
+ * The Elective Surgery Service Schedule has two real, separate price tables (Table 1 "Core
+ * Service Items and Prices" = procedures, Table 2 "Non-core Service Items and Prices" = theatre
+ * time/ward stay/2nd surgeon/etc.) — this slices the raw text to each table's own section before
+ * parsing, both so Table 2's codes are only searched for within Table 2 (see
+ * ELECTIVE_SURGERY_NONCORE_CODES's doc comment for why that matters — ESR09/ESRNC each also
+ * appear once as a mid-description reference inside a Table 1 procedure) and so a future core-vs-
+ * non-core split stays easy to reason about. Falls back to the whole text (old behaviour) if a
+ * table-boundary marker isn't found, so this never silently produces zero items.
+ */
+function sliceElectiveSurgeryTables(text: string): { coreText: string; noncoreText: string } {
+  const table2Start = text.indexOf('Table 2:');
+  const table3Start = text.indexOf('Table 3:');
+  if (table2Start === -1) return { coreText: text, noncoreText: '' };
+  return {
+    coreText: text.slice(0, table2Start),
+    noncoreText: table3Start === -1 ? text.slice(table2Start) : text.slice(table2Start, table3Start),
+  };
+}
+
+/** Exported so scripts/ingest-acc-schedules.mjs uses this exact same core+non-core combining logic. */
+export function parseElectiveSurgeryText(text: string): ScheduleItem[] {
+  const { coreText, noncoreText } = sliceElectiveSurgeryTables(text);
+  return [
+    ...parsePricedCodeTable(coreText, ELECTIVE_SURGERY_CODES),
+    ...parsePricedCodeTable(noncoreText, ELECTIVE_SURGERY_NONCORE_CODES),
+  ];
+}
 
 /** Marker written into every seeded record's `customFields`, so seeding can be idempotent/detectable. */
 export const NATIONAL_SCHEDULE_MARKER_KEY = 'accNationalScheduleSourceId';
@@ -77,7 +112,7 @@ function contractFromAlliedHealthItems(items: ScheduleItem[]): Omit<Contract, 'i
 function contractFromElectiveSurgeryItems(items: ScheduleItem[]): Omit<Contract, 'id'> {
   const doc = sourceDocById('elective-surgery-service-schedule')!;
   return {
-    providerName: 'ACC — Elective Surgery Services: 3D Imaging + Ankle/Foot Arthrodesis subset (National Service Schedule)',
+    providerName: 'ACC — Elective Surgery Services (National Service Schedule)',
     customerNumber: '',
     claimsEmail: '',
     effectiveFrom: doc.effectiveFrom!,
@@ -85,12 +120,12 @@ function contractFromElectiveSurgeryItems(items: ScheduleItem[]): Omit<Contract,
     serviceCodesCovered: items.map((i) => i.code),
     rateTable: toRateTable(items),
     notes:
-      `${NATIONAL_SCHEDULE_DISCLAIMER}\n\nSource: ${doc.title} (${doc.url}). NOTE: this Service Schedule ` +
-      'covers ~500+ procedure codes across many body regions (knee, hip, spine, shoulder, etc.) — only the ' +
-      '3D Intraoperative Imaging codes and the full Ankle/Foot Arthrodesis (AFT1xx) family are structured ' +
-      'here as a verified subset (per the research doc\'s own scoping recommendation). The complete price ' +
-      'table text is still searchable via the AI chat assistant (full-text knowledge base), so ask about a ' +
-      'specific procedure even if it is not in this structured rate table.',
+      `${NATIONAL_SCHEDULE_DISCLAIMER}\n\nSource: ${doc.title} (${doc.url}). This is the FULL real price ` +
+      'table from both Table 1 "Core Service Items and Prices" (every procedure code across all body-region ' +
+      'families in the schedule — ankle/foot, knee, hip, shoulder, spine, wrist/hand, urology, ophthalmology, ' +
+      'ENT, elbow/forearm, skin/plastics, nerve) and Table 2 "Non-core Service Items and Prices" (theatre ' +
+      'time, ward/HDU/ICU stay, 2nd surgeon, follow-up visits, etc.) — not a curated subset. See ' +
+      'knownCodes.ts for exactly how each code was verified against the real document text.',
     customFields: { [NATIONAL_SCHEDULE_MARKER_KEY]: doc.id },
   };
 }
@@ -139,7 +174,7 @@ export function buildNationalScheduleContracts(rawText: Record<string, string>):
   if (alliedText) out.push(contractFromAlliedHealthItems(parsePricedCodeTable(alliedText, ALLIED_HEALTH_CODES)));
 
   const electiveText = rawText['elective-surgery-service-schedule'];
-  if (electiveText) out.push(contractFromElectiveSurgeryItems(parsePricedCodeTable(electiveText, ELECTIVE_SURGERY_CODES)));
+  if (electiveText) out.push(contractFromElectiveSurgeryItems(parseElectiveSurgeryText(electiveText)));
 
   const cotrText = rawText['ACC1523-Specified-treatment-provider-costs'];
   if (cotrText) out.push(contractFromCotrItems(parseCotrRateSheet(cotrText, COTR_ALL_CODES)));

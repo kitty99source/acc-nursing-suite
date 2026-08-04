@@ -94,6 +94,13 @@ describe('parsePricedCodeTable', () => {
     expect(ns10!.actualCost).toBe(true);
   });
 
+  it('also recognises the plain "Actual Costs" phrasing (no "and reasonable") used by some schedules', () => {
+    const items = parsePricedCodeTable('ESR04 \nAnaesthetic other \nActual Costs \n', ['ESR04']);
+    const esr04 = items.find((i) => i.code === 'ESR04')!;
+    expect(esr04.actualCost).toBe(true);
+    expect(esr04.price).toBeNull();
+  });
+
   it('extracts a dollar cost-cap alongside "actual and reasonable cost" when present', () => {
     const items = parsePricedCodeTable(SYNTHETIC_NURSING_TABLE, NURSING_CODES);
     const nsac = items.find((i) => i.code === 'NSAC');

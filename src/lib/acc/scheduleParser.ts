@@ -47,7 +47,11 @@ export interface ScheduleItem {
 }
 
 const ANY_PRICE_RE = /\$\s*([\d,]+\.\d{2})/;
-const ACTUAL_COST_RE = /actual\s+and\s+reasonable/i;
+// Matches both "actual and reasonable cost(s)" (most schedules) and the plain "Actual Costs"
+// phrasing used by the Elective Surgery Service Schedule's non-core items (ESR04/ESR11/ESR13/
+// ESR14/URABASKT/URAGRASP etc.) — both mean "no fixed price, billed at cost", confirmed against
+// the real raw text (docs/research/raw-text/elective-surgery-service-schedule.txt).
+const ACTUAL_COST_RE = /actual\s+(?:and\s+reasonable\s+)?costs?\b/i;
 
 function collapseWhitespace(s: string): string {
   return s.replace(/\s+/g, ' ').trim();

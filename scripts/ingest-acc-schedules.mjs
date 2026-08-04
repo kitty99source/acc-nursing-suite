@@ -31,27 +31,36 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { transformSync } from 'esbuild';
-import Module from 'node:module';
+import Module, { createRequire } from 'node:module';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 const RAW_TEXT_DIR = path.join(ROOT, 'docs/research/raw-text');
+const require = createRequire(import.meta.url);
+
+// Registered once so a loaded module's own `require('./sibling')` (with no extension, e.g.
+// nationalContracts.ts requiring './knownCodes') also resolves through this same TS-via-esbuild
+// path, rather than only working for modules loaded directly by this script.
+Module._extensions['.ts'] = function loadTsExtension(module, filename) {
+  const src = fs.readFileSync(filename, 'utf-8');
+  const { code } = transformSync(src, { loader: 'ts', format: 'cjs', sourcefile: filename });
+  module._compile(code, filename);
+};
 
 function loadTsModule(relPath) {
   const absPath = path.join(ROOT, relPath);
-  const src = fs.readFileSync(absPath, 'utf-8');
-  const { code } = transformSync(src, { loader: 'ts', format: 'cjs', sourcefile: absPath });
-  const m = new Module(absPath);
-  m.filename = absPath;
-  m.paths = Module._nodeModulePaths(path.dirname(absPath));
-  m._compile(code, absPath);
-  return m.exports;
+  return require(absPath);
 }
+
 
 const scheduleParser = loadTsModule('src/lib/acc/scheduleParser.ts');
 const knownCodes = loadTsModule('src/lib/acc/knownCodes.ts');
 const sourceDocsMod = loadTsModule('src/lib/acc/sourceDocs.ts');
 const chunking = loadTsModule('src/lib/ai/knowledgeChunking.ts');
+// Reuses nationalContracts.ts's own core+non-core table-slicing logic, so this generator script
+// is never a second, drifting reimplementation of how the Elective Surgery Service Schedule's two
+// real price tables get combined.
+const nationalContracts = loadTsModule('src/lib/acc/nationalContracts.ts');
 
 function readRaw(id) {
   return fs.readFileSync(path.join(RAW_TEXT_DIR, `${id}.txt`), 'utf-8');
@@ -66,10 +75,7 @@ const alliedItems = scheduleParser.parsePricedCodeTable(
   readRaw('allied-health-services-service-schedule'),
   knownCodes.ALLIED_HEALTH_CODES,
 );
-const electiveItems = scheduleParser.parsePricedCodeTable(
-  readRaw('elective-surgery-service-schedule'),
-  knownCodes.ELECTIVE_SURGERY_CODES,
-);
+const electiveItems = nationalContracts.parseElectiveSurgeryText(readRaw('elective-surgery-service-schedule'));
 const cotrItems = scheduleParser.parseCotrRateSheet(
   readRaw('ACC1523-Specified-treatment-provider-costs'),
   knownCodes.COTR_ALL_CODES,
@@ -131,7 +137,7 @@ console.log('--- ACC document ingestion summary ---');
 console.log(`Nursing Service Schedule: ${nursingItems.length} codes (${nursingItems.filter((i) => i.price !== null).length} priced)`);
 console.log(`Allied Health Service Schedule: ${alliedItems.length} codes (${alliedItems.filter((i) => i.price !== null).length} priced)`);
 console.log(
-  `Elective Surgery Service Schedule (structured subset): ${electiveItems.length} codes (${electiveItems.filter((i) => i.price !== null).length} priced)`,
+  `Elective Surgery Service Schedule (FULL — Table 1 core + Table 2 non-core): ${electiveItems.length} codes (${electiveItems.filter((i) => i.price !== null).length} priced, ${electiveItems.filter((i) => i.actualCost).length} actual-cost)`,
 );
 console.log(`ACC1523 CoTR rate sheet: ${cotrItems.length} codes`);
 console.log(

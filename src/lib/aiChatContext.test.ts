@@ -233,6 +233,43 @@ describe('grounding system prompt', () => {
     expect(lower).toContain('groundedness');
     expect(lower).toContain('never invent or substitute place names');
   });
+
+  // 2026-08-04 follow-up quality bug: asked about "emergency transport criteria" (a real
+  // Auckland-vs-Wellington scenario), the model invented a fully fabricated, confident-sounding
+  // "Red/Silver/Gold/Green" ambulance triage system and specific clinical timeframes that appear
+  // nowhere in the ingested corpus (confirmed by search — see
+  // docs/research/acc-public-contract-sources-2026-08.md §7), then cited "Sources (3)" that were
+  // real chunks about completely unrelated topics (Elective Surgery ARTP, Nursing travel/GPT
+  // eligibility) as if they supported the invented answer. Regression guards below.
+  it('includes a citation-integrity instruction against citing sources that do not actually support the answer', () => {
+    const lower = AI_ASSISTANT_SYSTEM_PROMPT.toLowerCase();
+    expect(lower).toContain('citation integrity');
+    expect(lower).toContain('do not cite them');
+    expect(lower).toContain('do not actually address what the user asked');
+  });
+
+  it('explicitly permits saying "I don\'t know" instead of fabricating a confident answer', () => {
+    const lower = AI_ASSISTANT_SYSTEM_PROMPT.toLowerCase();
+    expect(lower).toContain('ok, and preferred, to say you do not know');
+    expect(lower).toContain('does not have grounded information on that specific topic');
+  });
+
+  it('forbids inventing named classification systems/schemes not literally present in the given material', () => {
+    const lower = AI_ASSISTANT_SYSTEM_PROMPT.toLowerCase();
+    expect(lower).toContain('named classification systems');
+    expect(lower).toContain('red/silver/gold');
+  });
+
+  it('explicitly permits asking one brief clarifying question rather than guessing on an ambiguous request', () => {
+    const lower = AI_ASSISTANT_SYSTEM_PROMPT.toLowerCase();
+    expect(lower).toContain('ok to ask a brief clarifying question');
+    expect(lower).toContain('one short, targeted clarifying question');
+  });
+
+  it('tells the model not to reason its way into confident fabrication under its own step-by-step thinking', () => {
+    const lower = AI_ASSISTANT_SYSTEM_PROMPT.toLowerCase();
+    expect(lower).toContain('this applies even under your own step-by-step reasoning');
+  });
 });
 
 describe('buildChatMessages', () => {
@@ -349,10 +386,10 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
       data: dataWith([]),
       userMessage: 'Tell me about the ARTP process for this elective surgery contract',
       // A small numCtx forces trimming with this small sample corpus, deterministically, without
-      // needing a giant real-world fixture (empirically, with the current system prompt: all 3
-      // sample chunks fit at numCtx >= 2600, exactly 2 fit at 2500, exactly 1 — the most relevant
-      // — fits at 2400).
-      numCtx: 2500,
+      // needing a giant real-world fixture (empirically, with the current system prompt — retuned
+      // 2026-08-04 for the citation-integrity fix's longer prompt: all 3 sample chunks fit at
+      // numCtx >= 3400, exactly 2 fit at 3300).
+      numCtx: 3300,
     });
     expect(contextTooLarge).toBeFalsy();
     expect(retrievedSources.length).toBeLessThan(SAMPLE_CORPUS.chunks.length);
@@ -388,7 +425,7 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
       userMessage: 'Tell me about the ARTP process for this elective surgery contract',
       // Same numCtx that forces chunk-dropping in the test above — confirms history/user survive
       // the SAME trim pass that drops knowledge chunks, not just an untrimmed happy path.
-      numCtx: 2500,
+      numCtx: 3300,
     });
     expect(contextTooLarge).toBeFalsy();
     expect(retrievedSources.length).toBeLessThan(SAMPLE_CORPUS.chunks.length);
@@ -451,9 +488,10 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
         userMessage: 'question four',
         // Small enough that 3 long replies + system prompt don't all fit, but NOT so small that
         // dropping history can't rescue it (unlike the numCtx:50 "refuse outright" case above) —
-        // empirically (with the current system prompt) leaves room for exactly the newest
-        // (turn-3) pair once the older two are gone.
-        numCtx: 3600,
+        // empirically (with the current system prompt — retuned 2026-08-04 for the
+        // citation-integrity fix's longer prompt) leaves room for exactly the newest (turn-3) pair
+        // once the older two are gone.
+        numCtx: 4300,
       });
       expect(result.contextTooLarge).toBeFalsy();
       expect(result.historyTrimmed).toBe(true);
@@ -626,6 +664,59 @@ describe('buildChatMessages — real ACC document retrieval (RAG-lite)', () => {
       chips: [],
       data: dataWith([]),
       userMessage: 'what is the weather like today',
+    });
+    expect(retrievedSources).toEqual([]);
+    expect(messages[0].content).not.toContain('Real ACC document excerpts');
+  });
+
+  // 2026-08-04 citation-integrity bug fix: a question that only weakly/coincidentally overlaps
+  // with retrievable chunks (a few shared common words, not a real topic match) must retrieve
+  // NOTHING and show no "Sources" — not the weakly-related chunk(s) a `minScore: 0` cutoff used to
+  // hand the model, which it then cited as decorative, misleading support for a fabricated answer
+  // (the real owner-reported "emergency transport criteria" incident — see
+  // knowledgeRetrieval.ts MIN_RELEVANT_SCORE and docs/research/acc-public-contract-sources-2026-08.md
+  // §7). Uses a larger, more realistic corpus (this describe block's fixture only has 2 chunks,
+  // which inflates IDF/scores too much for a genuinely weak-overlap case to exist).
+  it('retrieves nothing (no decorative Sources) for a question that only weakly/coincidentally overlaps retrievable chunks, not a real topic match', async () => {
+    const WEAK_OVERLAP_CORPUS = {
+      generatedAt: '2026-08-04T00:00:00.000Z',
+      chunks: [
+        {
+          id: 'nurse-og#0',
+          sourceDocId: 'nurse-og',
+          chunkIndex: 0,
+          text:
+            'Short Term Nursing Package is for clients who require in-person consultations for 13 or fewer ' +
+            'calendar days and does not require prior ACC approval. Extended Nursing consultations are used ' +
+            'once 25 in-person consultations have been completed or the client has received treatment for ' +
+            'more than 105 days, and require prior ACC approval before invoicing under NS04.',
+        },
+        {
+          id: 'elective-surgery-og#0',
+          sourceDocId: 'elective-surgery-og',
+          chunkIndex: 0,
+          text:
+            'The Assessment Report and Treatment Plan (ARTP) is the process by which a surgeon requests ' +
+            'prior approval from ACC for a contracted elective surgery procedure. Non-Prior-Approval ' +
+            'procedures listed in Appendix 4 do not require an ARTP submission before surgery proceeds.',
+        },
+        {
+          id: 'allied-health-og#0',
+          sourceDocId: 'allied-health-og',
+          chunkIndex: 0,
+          text:
+            'Telehealth consultations for physiotherapy, hand therapy and podiatry must meet the ACC ' +
+            'Telehealth Guide requirements, including client consent recorded in clinical notes and an ' +
+            'initial risk assessment to ensure client safety before the telehealth consultation begins.',
+        },
+      ],
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => WEAK_OVERLAP_CORPUS }));
+    const { retrievedSources, messages } = await buildChatMessages({
+      history: [],
+      chips: [],
+      data: dataWith([]),
+      userMessage: 'What is the ambulance transport criteria for emergency clients requiring urgent care today?',
     });
     expect(retrievedSources).toEqual([]);
     expect(messages[0].content).not.toContain('Real ACC document excerpts');

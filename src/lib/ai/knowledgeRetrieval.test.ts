@@ -92,6 +92,22 @@ describe('retrieveTopChunks (RAG-lite relevance scoring)', () => {
     expect(results).toHaveLength(0);
   });
 
+  // 2026-08-04 citation-integrity bug fix: the real owner-reported incident asked about
+  // ambulance/emergency-transport criteria — a topic genuinely absent from this corpus. The old
+  // `minScore` default of `0` only excluded ZERO-overlap chunks; a query sharing just a couple of
+  // incidental common words (e.g. "criteria", "emergency", "approval") with an unrelated chunk
+  // still scored weakly above zero and got retrieved/cited as if it were real support. This query
+  // scores <=0.06 against every chunk here (verified empirically) — well below MIN_RELEVANT_SCORE
+  // (0.21) — and must now retrieve NOTHING, not the single weakest-matching chunk.
+  it('returns nothing for a query that only weakly/coincidentally overlaps the corpus, not a real topic match (MIN_RELEVANT_SCORE)', () => {
+    const results = retrieveTopChunks(
+      'What is the ambulance transport criteria for emergency clients requiring urgent care today?',
+      allChunks,
+      index,
+    );
+    expect(results).toHaveLength(0);
+  });
+
   it('respects the k limit', () => {
     const results = retrieveTopChunks('ACC Supplier client', allChunks, index, { k: 2 });
     expect(results.length).toBeLessThanOrEqual(2);
@@ -154,11 +170,16 @@ describe('retrieveTopChunks (RAG-lite relevance scoring)', () => {
     it('skips a near-duplicate candidate chunk from the same source document, keeping a genuinely different one instead', () => {
       const chunksWithDup = [...allChunks, nearDuplicateChunk, genuinelyDifferentChunk];
       const dupIndex = buildCorpusIndex(chunksWithDup);
+      // minScore: 0 isolates the dedup mechanic under test from the separate 2026-08-04
+      // citation-integrity relevance-threshold fix (MIN_RELEVANT_SCORE) — this tiny synthetic
+      // fixture's "genuinely different" chunk scores far lower than a real corpus's typical
+      // on-topic chunk simply because there are only 2 chunks to compute IDF against, not because
+      // it's actually irrelevant.
       const results = retrieveTopChunks(
         'Can client information be stored outside New Zealand under the Standard Terms and Conditions?',
         chunksWithDup,
         dupIndex,
-        { k: 3 },
+        { k: 3, minScore: 0 },
       );
       const ids = results.map((r) => r.chunk.id);
       // The two near-duplicate chunks about the SAME clause should never both appear.
@@ -173,7 +194,11 @@ describe('retrieveTopChunks (RAG-lite relevance scoring)', () => {
       // genuinelyDifferentChunk (different clause entirely) must both be retrievable together.
       const chunksWithBoth = [termsChunk, genuinelyDifferentChunk];
       const idx = buildCorpusIndex(chunksWithBoth);
-      const results = retrieveTopChunks('Standard Terms and Conditions contract clauses', chunksWithBoth, idx, { k: 2 });
+      // minScore: 0 — same isolation rationale as the test above.
+      const results = retrieveTopChunks('Standard Terms and Conditions contract clauses', chunksWithBoth, idx, {
+        k: 2,
+        minScore: 0,
+      });
       expect(results.length).toBe(2);
     });
 

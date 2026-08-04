@@ -126,10 +126,41 @@ function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
   return union === 0 ? 0 : intersection / union;
 }
 
+// ----------------------------------------------------------------------------
+// 2026-08-04 citation-integrity bug fix: `minScore` used to default to `0`,
+// which only excludes chunks with literally ZERO overlapping non-stopword
+// terms — a chunk that merely shares one or two incidental common words with
+// the query (e.g. "criteria", "services") still scored (weakly) above zero
+// and was retrieved, attached as a decorative "Sources (N)" citation, and
+// handed to the model even when it had nothing to do with what was actually
+// asked. Real incident: an owner question about ambulance/emergency
+// transport criteria retrieved 3 chunks — none about emergency transport —
+// from Elective Surgery ARTP and Nursing travel/eligibility content, purely
+// on weak keyword overlap; the model then fabricated a confident answer and
+// cited those unrelated chunks as if they supported it.
+//
+// Empirically probed against the real 415-chunk ingested corpus (see
+// aiChatContext.test.ts "citation integrity" tests and the ingestion note in
+// docs/research/acc-public-contract-sources-2026-08.md §7): genuinely
+// on-topic queries score >=0.22 against real matching chunks (e.g. "When
+// does Extended Nursing NS04 need prior approval?" -> 0.56+), while queries
+// about topics genuinely absent from the corpus (e.g. the real emergency-
+// transport-criteria question) top out around 0.13-0.21 even against their
+// closest (still irrelevant) chunk. `MIN_RELEVANT_SCORE` sits in that gap —
+// high enough to reject the weak, coincidental-overlap matches that drove
+// this bug, without requiring a rewrite to real semantic/embedding search.
+// This is a genuine coverage-gap problem, not fixable by retrieval tuning
+// alone — see the system-prompt "groundedness"/"OK to say you don't know"
+// instructions in aiChatContext.ts for the complementary behavioural fix.
+// ----------------------------------------------------------------------------
+export const MIN_RELEVANT_SCORE = 0.21;
+
 /**
  * Returns up to `k` chunks most relevant to `query`, ranked by TF-IDF-lite score, excluding any
- * chunk that scores at or below `minScore` (default: excludes zero-overlap chunks entirely, so an
- * unrelated question genuinely retrieves nothing rather than an arbitrary "closest of a bad lot").
+ * chunk that scores at or below `minScore` (default `MIN_RELEVANT_SCORE` — see above; not just
+ * zero-overlap chunks, but weakly/coincidentally-overlapping ones too, so a question on a topic
+ * genuinely absent from the corpus retrieves nothing at all rather than an arbitrary "closest of a
+ * bad lot" that a model could be misled into citing as if it were real support).
  * Also skips any candidate that is a near-duplicate (see `NEAR_DUPLICATE_SIMILARITY_THRESHOLD`) of
  * a chunk already selected, so redundant/overlapping content from the same source document doesn't
  * crowd out a genuinely different, complementary chunk.
@@ -141,7 +172,7 @@ export function retrieveTopChunks(
   opts: { k?: number; minScore?: number } = {},
 ): RetrievedChunk[] {
   const k = opts.k ?? 3;
-  const minScore = opts.minScore ?? 0;
+  const minScore = opts.minScore ?? MIN_RELEVANT_SCORE;
   const ranked = chunks
     // Defense-in-depth backstop, on top of knowledgeChunking.ts already excluding ToC-shaped
     // chunks at ingestion time — catches any corpus asset built before this fix, or a future chunk

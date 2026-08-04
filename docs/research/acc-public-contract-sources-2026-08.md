@@ -266,3 +266,58 @@ billing distinction), using the same public-fetch-and-chunk methodology as §1�
 above. Both would need to be confirmed as real, currently-fetchable public
 documents (not assumed) before ingestion, per this doc's own "nothing here is
 fabricated or guessed" standard.
+
+## 7. Follow-up ingestion candidate found 2026-08-04 — emergency transport / ambulance triage criteria
+
+A repeat/related owner-reported AI-chat quality bug: asked about **emergency
+transport criteria** (again framed around a real Auckland-vs-Wellington
+scenario), the assistant invented a fully fabricated, confident-sounding
+**"Red/Silver/Gold/Green" ambulance triage classification** attributed to "New
+Zealand's ambulance services", plus invented specific clinical criteria/
+timeframes (e.g. "MI >30 min for PCI", "stroke patients <3hrs for
+thrombolysis") — then cited "Sources (3)" that were real retrieved chunks
+about completely unrelated topics (Elective Surgery ARTP priority
+classification; Nursing client travel/GPT eligibility), attached only because
+they weakly/coincidentally shared a few common words with the question, not
+because they actually addressed it.
+
+Searched the same ingested `public/data/acc/knowledge-chunks.json` corpus
+(415 chunks, same 8 source documents as §6) directly for ambulance/emergency-
+transport-criteria content:
+
+| Term searched | Chunks found | What they actually are |
+| --- | --- | --- |
+| `ambulance` | 1 | `elective-surgery-og` — a single passing mention of "ambulance transfer" as an example of a billable **ESR13 unusual/unspecified cost** line item (equipment hire/ambulance transfer with supplier invoice), not any triage/eligibility criteria |
+| `emergency transport` | 0 | none |
+| `triage` | 2 | `nursing-service-schedule` and `allied-health-services-service-schedule` — both about **ARTP/service prioritisation for elective procedures**, unrelated to ambulance dispatch |
+| `thrombolysis` / `PCI` / `red/silver` | 0 each | none |
+
+**Conclusion: this is a genuine content-coverage gap, not a retrieval-algorithm
+bug** — the same pattern as §6's patient-travel gap. No ingested document
+addresses ambulance dispatch/emergency-transport eligibility criteria, clinical
+triage timeframes, or any named triage classification scheme at all; the
+"Red/Silver/Gold/Green" system, the specific clinical timeframes, and the
+implied linkage to Elective Surgery ARTP/Nursing travel content were all
+invented by the model, not retrieved.
+
+Fixed in the same pass (not ingestion — see `src/lib/aiChatContext.ts` and
+`src/lib/ai/knowledgeRetrieval.ts`):
+1. **Citation integrity** — retrieval's `minScore` cutoff (`MIN_RELEVANT_SCORE`
+   in `knowledgeRetrieval.ts`, was `0`) now excludes not just zero-overlap
+   chunks but weakly/coincidentally-overlapping ones too, so a genuinely
+   off-topic question like this one now retrieves **zero** chunks (no
+   "Sources" shown at all) instead of the 2-3 nearest-but-irrelevant chunks
+   that got misleadingly cited before.
+2. **System-prompt "OK to say you don't know"** — new explicit instructions
+   telling the model it is fine, and preferred, to say its knowledge base
+   doesn't specifically cover a topic (or to ask one brief clarifying
+   question on an ambiguous request) rather than fabricate a confident,
+   fully-structured answer; and to never cite a retrieved source as if it
+   supports content it does not actually contain.
+
+**Recommended future ingestion pass (not done in this task — scoped
+separately):** research and ingest ACC's real ambulance/emergency-transport
+policy (e.g. any published criteria for ACC-funded ambulance transport,
+inter-hospital transfer, or air ambulance eligibility), confirmed as a real,
+currently-fetchable public document (not assumed) before ingestion, per this
+doc's own "nothing here is fabricated or guessed" standard.

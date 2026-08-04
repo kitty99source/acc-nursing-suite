@@ -78,6 +78,17 @@ export interface AiChatMessage {
    * back, rather than that looking like an unexplained lapse.
    */
   historyTrimmed?: boolean;
+  /**
+   * Set when older turns were compressed into a rolling summary for the model prompt (see
+   * lib/ai/conversationSummary.ts) — the visible transcript is unchanged; this only flags that
+   * the model saw a summary of earlier messages rather than every older turn verbatim.
+   */
+  historySummarized?: boolean;
+  /**
+   * Set when summarization was attempted but failed/timed out, so the send fell back to dropping
+   * oldest turns (same degradation as `historyTrimmed`, with a clearer reason).
+   */
+  summaryFallbackTrimmed?: boolean;
 }
 
 export type ContextChipType = 'patient' | 'contract';
@@ -409,6 +420,16 @@ export interface BuildChatMessagesOptions {
   userMessage: string;
   /** The `num_ctx` this request will actually be sent with (see aiService.ts DEFAULT_NUM_CTX) — used to decide whether/how much to trim. Defaults to DEFAULT_NUM_CTX. */
   numCtx?: number;
+  /**
+   * Rolling summary of older turns (see lib/ai/conversationSummary.ts). Injected into the system
+   * message; when set, `history` should already be the recent verbatim window only.
+   */
+  conversationSummary?: string;
+  /**
+   * When true, skip the usual `MAX_HISTORY_TURNS` slice — caller already windowed history (e.g.
+   * after summarization) and we must not drop further recent turns by re-slicing.
+   */
+  historyAlreadyWindowed?: boolean;
 }
 
 /** One real source document whose text was retrieved and injected for a given chat turn — the "Context used" disclosure's citation list. */
@@ -446,6 +467,8 @@ export interface BuildChatMessagesResult {
    * turn, rather than it looking like the model silently forgot something.
    */
   historyTrimmed?: boolean;
+  /** True when a rolling conversation summary was injected into the system message for this turn. */
+  historySummarized?: boolean;
 }
 
 function buildRetrievedKnowledgeBlock(chunks: RetrievedChunk[]): { text: string; citations: RetrievedSourceCitation[] } {
@@ -484,6 +507,7 @@ function assembleMessages(
   userMessage: string,
   knowledgeBlock: string,
   contextBlock: string,
+  conversationSummary?: string,
 ): ChatMessage[] {
   let systemContent = AI_ASSISTANT_SYSTEM_PROMPT;
   if (knowledgeBlock) {
@@ -497,6 +521,12 @@ function assembleMessages(
   }
   if (contextBlock) {
     systemContent += `\n\nContext used (attached by the user for this question):\n${contextBlock}`;
+  }
+  if (conversationSummary?.trim()) {
+    systemContent +=
+      '\n\nEarlier conversation summary (older turns were compressed for context size — treat as ' +
+      'prior context for this chat, not as verbatim quotes; the most recent turns follow as real ' +
+      `messages):\n${conversationSummary.trim()}`;
   }
 
   const messages: ChatMessage[] = [{ role: 'system', content: systemContent }];
@@ -531,6 +561,7 @@ function trimToBudget(
   retrievedChunks: RetrievedChunk[],
   contextBlock: string,
   numCtx: number,
+  conversationSummary?: string,
 ): { messages: ChatMessage[]; keptChunks: RetrievedChunk[]; historyTrimmed: boolean; tooLarge: boolean } {
   // Already sorted best-first by retrieveTopChunks — pop from the end to drop the LOWEST-scoring
   // chunk first, keeping the most relevant ones as long as possible.
@@ -541,7 +572,13 @@ function trimToBudget(
 
   function build(): ChatMessage[] {
     const { text: knowledgeBlock } = buildRetrievedKnowledgeBlock(remainingChunks);
-    return assembleMessages(remainingHistory, userMessage, knowledgeBlock, contextBlock);
+    return assembleMessages(
+      remainingHistory,
+      userMessage,
+      knowledgeBlock,
+      contextBlock,
+      conversationSummary,
+    );
   }
 
   // Reserve a fraction of `numCtx` for the model's own reply rather than a fixed token count —
@@ -584,8 +621,11 @@ function trimToBudget(
 
 export async function buildChatMessages(opts: BuildChatMessagesOptions): Promise<BuildChatMessagesResult> {
   const contextBlock = buildContextBlock(opts.chips, opts.data);
-  const recentHistory = opts.history.slice(-MAX_HISTORY_TURNS);
+  const recentHistory = opts.historyAlreadyWindowed
+    ? [...opts.history]
+    : opts.history.slice(-MAX_HISTORY_TURNS);
   const numCtx = opts.numCtx ?? DEFAULT_NUM_CTX;
+  const conversationSummary = opts.conversationSummary?.trim() || undefined;
 
   const retrievedChunks = await retrieveKnowledgeForQuery(opts.userMessage);
 
@@ -595,6 +635,7 @@ export async function buildChatMessages(opts: BuildChatMessagesOptions): Promise
     retrievedChunks,
     contextBlock,
     numCtx,
+    conversationSummary,
   );
 
   if (tooLarge) {
@@ -609,7 +650,13 @@ export async function buildChatMessages(opts: BuildChatMessagesOptions): Promise
   }
 
   const { citations: retrievedSources } = buildRetrievedKnowledgeBlock(keptChunks);
-  return { messages, contextBlock, retrievedSources, historyTrimmed: historyTrimmed || undefined };
+  return {
+    messages,
+    contextBlock,
+    retrievedSources,
+    historyTrimmed: historyTrimmed || undefined,
+    historySummarized: conversationSummary ? true : undefined,
+  };
 }
 
 // ----------------------------------------------------------------------------

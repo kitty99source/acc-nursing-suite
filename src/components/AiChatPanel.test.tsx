@@ -19,6 +19,9 @@ vi.mock('../lib/idb', () => idbMocks);
 // logic, which is exercised by the mocked generateLocalAiChatResponseStream below.
 const aiServiceMocks = vi.hoisted(() => ({
   generateLocalAiChatResponseStream: vi.fn(),
+  // Non-streaming chat helper used only for long-chat summarization — short-chat panel tests
+  // never hit the threshold, so this should not be called; still must be exported for the import.
+  generateLocalAiChatResponse: vi.fn(async () => ({ ok: true, text: 'summary stub' })),
   // aiChatContext.ts's buildChatMessages reads this for its context-budget check — a real value
   // (not a mock-only stub) so the budget/trim logic behaves the same as production in this suite.
   DEFAULT_NUM_CTX: 8192,
@@ -51,7 +54,16 @@ beforeEach(() => {
   idbMocks.saveAiChatHistory.mockClear();
   idbMocks.clearAiChatHistory.mockClear();
   aiServiceMocks.generateLocalAiChatResponseStream.mockReset();
-  useAiChatStore.setState({ open: true, chips: [], messages: [], sending: false, streamingText: '', hydrated: false });
+  aiServiceMocks.generateLocalAiChatResponse.mockReset().mockResolvedValue({ ok: true, text: 'summary stub' });
+  useAiChatStore.setState({
+    open: true,
+    chips: [],
+    messages: [],
+    conversationSummary: null,
+    sending: false,
+    streamingText: '',
+    hydrated: false,
+  });
   useStore.setState({ data: { ...emptyData(), settings: { ...emptyData().settings, aiFeaturesEnabled: true } } });
   container = document.createElement('div');
   document.body.appendChild(container);

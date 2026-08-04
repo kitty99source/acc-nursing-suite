@@ -555,6 +555,68 @@ export interface AiGenerateStreamOptions {
  * is a single-shot structured-answer prompt with no multi-turn transcript
  * risk, so it is deliberately left on `/api/generate`.
  */
+/**
+ * Non-streaming `/api/chat` helper — used for short, bounded side-jobs like
+ * conversation summarization (see lib/ai/conversationSummary.ts), NOT for the
+ * main chat reply (that stays on the streaming path below). Same structured
+ * `messages` array / chat-template behaviour as the stream variant; fixed
+ * total timeout (default 60s, overridable) instead of inactivity-reset, since
+ * a summarize call is intentionally short (`num_predict` capped by the caller).
+ */
+export async function generateLocalAiChatResponse(
+  baseUrl: string,
+  messages: ChatApiMessage[],
+  opts?: {
+    fetchImpl?: FetchLike;
+    model?: string;
+    timeoutMs?: number;
+    numPredict?: number;
+    keepAlive?: string | number;
+    numCtx?: number;
+    signal?: AbortSignal;
+  },
+): Promise<AiGenerateResult> {
+  if (opts?.signal?.aborted) {
+    return { ok: false, error: chatErrorMessage(Object.assign(new Error('Aborted'), { name: 'AbortError' })) };
+  }
+  const fetchImpl = opts?.fetchImpl ?? fetch;
+  const model = opts?.model ?? DEFAULT_AI_MODEL;
+  const controller = new AbortController();
+  if (opts?.signal) {
+    opts.signal.addEventListener('abort', () => controller.abort(), { once: true });
+  }
+  const timer = setTimeout(() => controller.abort(), opts?.timeoutMs ?? DEFAULT_GENERATE_TIMEOUT_MS);
+  try {
+    const res = await fetchImpl(`${stripTrailingSlash(baseUrl)}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        messages,
+        stream: false,
+        keep_alive: opts?.keepAlive ?? DEFAULT_KEEP_ALIVE,
+        options: {
+          num_predict: opts?.numPredict ?? DEFAULT_CHAT_NUM_PREDICT,
+          num_ctx: opts?.numCtx ?? DEFAULT_NUM_CTX,
+        },
+      }),
+      signal: controller.signal,
+    });
+    if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
+    const json = (await res.json()) as { message?: { content?: unknown }; error?: unknown };
+    if (typeof json.error === 'string' && json.error.trim()) {
+      return { ok: false, error: json.error };
+    }
+    const text = typeof json.message?.content === 'string' ? json.message.content : '';
+    if (!text.trim()) return { ok: false, error: 'Empty response from local AI model' };
+    return { ok: true, text };
+  } catch (err) {
+    return { ok: false, error: chatErrorMessage(err) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function generateLocalAiChatResponseStream(
   baseUrl: string,
   messages: ChatApiMessage[],

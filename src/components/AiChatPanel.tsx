@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { useAiChatStore, makeMessageId, CHIP_DND_MIME, type AiChatMessage } from '../state/aiChatStore';
 import { buildChatMessages, isConversationGettingLong, type ChatTurn, type ContextChip } from '../lib/aiChatContext';
-import { checkAiServiceStatus, generateLocalAiChatResponseStream, isChatTimeoutError } from '../lib/aiService';
+import {
+  checkAiServiceStatus,
+  generateLocalAiChatResponse,
+  generateLocalAiChatResponseStream,
+  isChatTimeoutError,
+} from '../lib/aiService';
+import { ensureConversationSummary } from '../lib/ai/conversationSummary';
 import { parseThinkResponse } from '../lib/ai/thinkParser';
 import { shouldAutoScroll } from '../lib/chatScroll';
 import { IconChat, IconClose, IconMinimize, IconSend, IconStop, IconTrash } from './icons';
@@ -73,12 +79,14 @@ export function AiChatPanel() {
   const open = useAiChatStore((s) => s.open);
   const chips = useAiChatStore((s) => s.chips);
   const messages = useAiChatStore((s) => s.messages);
+  const conversationSummary = useAiChatStore((s) => s.conversationSummary);
   const sending = useAiChatStore((s) => s.sending);
   const streamingText = useAiChatStore((s) => s.streamingText);
   const setOpen = useAiChatStore((s) => s.setOpen);
   const addChip = useAiChatStore((s) => s.addChip);
   const removeChip = useAiChatStore((s) => s.removeChip);
   const addMessage = useAiChatStore((s) => s.addMessage);
+  const setConversationSummary = useAiChatStore((s) => s.setConversationSummary);
   const setSending = useAiChatStore((s) => s.setSending);
   const setStreamingText = useAiChatStore((s) => s.setStreamingText);
   const newChat = useAiChatStore((s) => s.newChat);
@@ -90,6 +98,8 @@ export function AiChatPanel() {
 
   const [input, setInput] = useState('');
   const [dragOver, setDragOver] = useState(false);
+  /** Local UI phase while `sending` — summarization runs before the streamed answer, never nested. */
+  const [sendPhase, setSendPhase] = useState<'idle' | 'summarizing' | 'generating'>('idle');
   // How many chat replies IN A ROW have timed out (see aiService.ts `isChatTimeoutError`) — reset
   // to 0 on any successful reply or any non-timeout failure. Purely a UI-escalation counter (never
   // persisted): a single timeout gets a mild "try again" note, but the SECOND consecutive one
@@ -178,6 +188,7 @@ export function AiChatPanel() {
     setInput('');
 
     const history: ChatTurn[] = messages.map((m) => ({ role: m.role, content: m.content }));
+    const historyMessageIds = messages.map((m) => m.id);
     const attachedChips = [...chips];
     const userMessage: AiChatMessage = {
       id: makeMessageId(),
@@ -190,6 +201,33 @@ export function AiChatPanel() {
     sendStartedAtRef.current = Date.now();
     setSending(true);
     setStreamingText('');
+    setSendPhase('summarizing');
+
+    // AbortController covers BOTH summarization and the streamed answer — Clear chat / Stop /
+    // New chat cancel either phase (never leave a nested summarize hang behind a main reply).
+    const { id: generationId, signal } = beginGeneration();
+
+    const existingSummary = useAiChatStore.getState().conversationSummary;
+    const ensured = await ensureConversationSummary({
+      history,
+      historyMessageIds,
+      existing: existingSummary,
+      baseUrl: settings.aiServiceBaseUrl,
+      signal,
+      summarizeFn: generateLocalAiChatResponse,
+    });
+
+    if (!isGenerationCurrent(generationId)) {
+      setSendPhase('idle');
+      return;
+    }
+
+    if (ensured.summary && (ensured.status === 'created' || ensured.status === 'reused')) {
+      setConversationSummary(ensured.summary);
+    }
+
+    const historyWindowed = ensured.historySummarized || ensured.summaryFailed;
+    setSendPhase('generating');
 
     const {
       messages: chatMessages,
@@ -198,11 +236,14 @@ export function AiChatPanel() {
       contextTooLarge,
       contextTooLargeMessage: tooLargeMessage,
       historyTrimmed,
+      historySummarized,
     } = await buildChatMessages({
-      history,
+      history: ensured.recentHistory,
       chips: attachedChips,
       data,
       userMessage: text,
+      conversationSummary: ensured.summary?.text,
+      historyAlreadyWindowed: historyWindowed,
     });
 
     // 2026-08-04 context-overflow safety net (see aiChatContext.ts `buildChatMessages` /
@@ -212,6 +253,10 @@ export function AiChatPanel() {
     // owner hit. This is a clean, honest failure shown BEFORE any network call, not a generic
     // error after a long stall.
     if (contextTooLarge) {
+      if (!isGenerationCurrent(generationId)) {
+        setSendPhase('idle');
+        return;
+      }
       addMessage({
         id: makeMessageId(),
         role: 'assistant',
@@ -220,14 +265,11 @@ export function AiChatPanel() {
         contextUsed: contextBlock || undefined,
       });
       setSending(false);
+      setSendPhase('idle');
+      sendStartedAtRef.current = null;
       return;
     }
-    // Tag this send with a fresh generation id + AbortController (see aiChatStore.ts
-    // `beginGeneration`/`isGenerationCurrent`) — clicking "Clear chat history" or "New chat" while
-    // this request is in flight aborts the controller AND bumps the id, so a late-arriving chunk or
-    // final message below can tell it's stale and must discard itself instead of writing into a
-    // conversation the user has since cleared/moved on from (2026-08-04 owner-reported race fix).
-    const { id: generationId, signal } = beginGeneration();
+
     // Streamed (Ollama `/api/chat` with `stream: true`) so the panel can render tokens as they
     // arrive instead of a blank spinner for the whole reply — see aiService.ts for both the
     // inactivity-reset timeout that makes this faster-feeling/safer against premature timeouts,
@@ -244,7 +286,10 @@ export function AiChatPanel() {
     // superseded result silently rather than reappending it into (or overwriting) whatever the
     // user has since started. No error toast: this is the deliberate, expected outcome of a
     // user-initiated cancellation, not a failure.
-    if (!isGenerationCurrent(generationId)) return;
+    if (!isGenerationCurrent(generationId)) {
+      setSendPhase('idle');
+      return;
+    }
 
     if (result.ok) {
       consecutiveTimeoutsRef.current = 0;
@@ -262,6 +307,8 @@ export function AiChatPanel() {
         contextUsed: contextBlock || undefined,
         retrievedSources: retrievedSources.length ? retrievedSources : undefined,
         historyTrimmed: historyTrimmed || undefined,
+        historySummarized: historySummarized || ensured.historySummarized || undefined,
+        summaryFallbackTrimmed: ensured.summaryFailed || undefined,
       });
     } else {
       let diagnosticNote: string | undefined;
@@ -271,18 +318,23 @@ export function AiChatPanel() {
       } else {
         consecutiveTimeoutsRef.current = 0;
       }
+      const errorDetail = diagnosticNote ? `${result.error}\n\n${diagnosticNote}` : result.error;
       addMessage({
         id: makeMessageId(),
         role: 'assistant',
         content: "Couldn't reach the local AI model.",
         createdAt: Date.now(),
-        error: diagnosticNote ? `${result.error}\n\n${diagnosticNote}` : result.error,
+        error: ensured.summaryFailed
+          ? `${errorDetail}\n\n${ensured.summaryFailedMessage}`
+          : errorDetail,
         contextUsed: contextBlock || undefined,
         retrievedSources: retrievedSources.length ? retrievedSources : undefined,
+        summaryFallbackTrimmed: ensured.summaryFailed || undefined,
       });
     }
     setStreamingText('');
     setSending(false);
+    setSendPhase('idle');
     sendStartedAtRef.current = null;
   }
 
@@ -350,16 +402,26 @@ export function AiChatPanel() {
         trash icon above to clear it.
       </p>
 
+      {conversationSummary?.text && (
+        <p
+          className="px-3 py-1.5 text-[11px] shrink-0 border-b"
+          style={{ color: 'var(--muted)', borderColor: 'var(--border)', background: 'var(--surface-2)' }}
+          data-testid="earlier-messages-summarized"
+        >
+          Earlier messages summarized for the model — your full chat above is unchanged.
+        </p>
+      )}
       {isConversationGettingLong(messages.length) && (
         <p
           className="px-3 py-1.5 text-[11px] shrink-0 border-b"
           style={{ color: 'var(--muted)', borderColor: 'var(--border)', background: 'var(--surface-2)' }}
         >
-          This conversation is getting long — starting a{' '}
+          This conversation is getting long — older turns are compressed automatically when needed.
+          Starting a{' '}
           <button type="button" className="underline" style={{ color: 'var(--accent)' }} onClick={newChat}>
             new chat
           </button>{' '}
-          for a new topic can help keep replies fast.
+          for a new topic can still help keep replies fast.
         </p>
       )}
       <div className="relative flex-1 min-h-0">
@@ -440,7 +502,19 @@ export function AiChatPanel() {
                 </div>
               </details>
             )}
-            {m.role === 'assistant' && m.historyTrimmed && (
+            {m.role === 'assistant' && m.summaryFallbackTrimmed && (
+              <p className="text-[10px] mt-1" style={{ color: 'var(--muted)', marginRight: '2rem' }}>
+                Could not compress earlier messages, so some oldest turns were left out of context for this
+                reply. Your full chat above is unchanged — try again, or start a new chat for a fresh topic.
+              </p>
+            )}
+            {m.role === 'assistant' && m.historySummarized && !m.summaryFallbackTrimmed && (
+              <p className="text-[10px] mt-1" style={{ color: 'var(--muted)', marginRight: '2rem' }}>
+                Earlier messages were summarized for the model for this reply — your full chat above is
+                unchanged.
+              </p>
+            )}
+            {m.role === 'assistant' && m.historyTrimmed && !m.summaryFallbackTrimmed && (
               <p className="text-[10px] mt-1" style={{ color: 'var(--muted)', marginRight: '2rem' }}>
                 This conversation is long, so some of the earliest messages were left out of context for this
                 reply to keep it fast — start a new chat if you need the model to recall the very start.
@@ -483,8 +557,20 @@ export function AiChatPanel() {
           const longRunningCopy =
             "Still generating — a detailed response like this can take several minutes on this " +
             "hardware. It's still making progress; no need to resend or restart.";
+          const summarizingCopy =
+            'Compressing earlier messages so this long chat stays within the model’s context window…';
           return (
             <div className="text-sm" style={{ marginRight: '2rem' }}>
+              {sendPhase === 'summarizing' && !streamingText && (
+                <div
+                  className="rounded-lg px-2.5 py-1.5 mb-1 text-xs flex items-center gap-1.5"
+                  style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}
+                  aria-label="Summarizing earlier messages"
+                >
+                  <span className="spinner" aria-hidden="true" style={{ width: 10, height: 10 }} />
+                  {summarizingCopy}
+                </div>
+              )}
               {parsed.thinking && (
                 <div
                   className="rounded-lg px-2.5 py-1.5 mb-1 text-xs whitespace-pre-wrap max-h-40 overflow-y-auto"
@@ -525,7 +611,7 @@ export function AiChatPanel() {
                   </span>
                 </div>
               ) : (
-                !parsed.thinking && (
+                !parsed.thinking && sendPhase !== 'summarizing' && (
                   <div className="rounded-lg px-2.5 py-1.5 inline-flex items-center gap-2" style={{ background: 'var(--surface-2)' }}>
                     <span className="spinner" aria-hidden="true" />
                     <span className="text-xs" style={{ color: 'var(--muted)' }}>

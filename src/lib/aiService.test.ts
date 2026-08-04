@@ -3,6 +3,7 @@ import {
   checkAiServiceStatus,
   extractJsonFromModelText,
   generateLocalAiResponse,
+  generateLocalAiChatResponse,
   generateLocalAiChatResponseStream,
   modelListIncludes,
   DEFAULT_CHAT_INACTIVITY_TIMEOUT_MS,
@@ -190,6 +191,37 @@ describe('generateLocalAiResponse', () => {
     });
     const [, init] = fetchImpl.mock.calls[0];
     expect(JSON.parse(init.body).model).toBe('qwen3-4b-instruct');
+  });
+});
+
+describe('generateLocalAiChatResponse (non-streaming — summarization side-jobs)', () => {
+  it('POSTs stream:false to /api/chat and returns message.content', async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({ message: { role: 'assistant', content: 'Facts: NS01 discussed.' } }),
+    );
+    const result = await generateLocalAiChatResponse('http://127.0.0.1:11434', sampleMessages, {
+      fetchImpl: fetchImpl as unknown as FetchLike,
+      numPredict: 600,
+    });
+    expect(result).toEqual({ ok: true, text: 'Facts: NS01 discussed.' });
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe('http://127.0.0.1:11434/api/chat');
+    const body = JSON.parse(init.body);
+    expect(body.stream).toBe(false);
+    expect(body.messages).toEqual(sampleMessages);
+    expect(body.options.num_predict).toBe(600);
+  });
+
+  it('aborts when the caller signal is already aborted', async () => {
+    const fetchImpl = vi.fn();
+    const controller = new AbortController();
+    controller.abort();
+    const result = await generateLocalAiChatResponse('http://127.0.0.1:11434', sampleMessages, {
+      fetchImpl: fetchImpl as unknown as FetchLike,
+      signal: controller.signal,
+    });
+    expect(result.ok).toBe(false);
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });
 

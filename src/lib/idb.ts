@@ -431,6 +431,11 @@ export interface AiChatHistoryRecord {
   messages: import('./aiChatContext').AiChatMessage[];
   chips: import('./aiChatContext').ContextChip[];
   savedAt: number;
+  /**
+   * Rolling summary of older turns for the model prompt (see lib/ai/conversationSummary.ts).
+   * Optional for backwards compatibility with histories persisted before summarization existed.
+   */
+  conversationSummary?: import('./ai/conversationSummary').ConversationSummaryState | null;
 }
 
 export async function loadAiChatHistory(): Promise<AiChatHistoryRecord | undefined> {

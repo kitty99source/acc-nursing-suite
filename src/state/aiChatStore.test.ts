@@ -21,7 +21,14 @@ beforeEach(() => {
   idbMocks.loadAiChatHistory.mockClear().mockResolvedValue(undefined);
   idbMocks.saveAiChatHistory.mockClear();
   idbMocks.clearAiChatHistory.mockClear();
-  useAiChatStore.setState({ open: false, chips: [], messages: [], sending: false, hydrated: false });
+  useAiChatStore.setState({
+    open: false,
+    chips: [],
+    messages: [],
+    conversationSummary: null,
+    sending: false,
+    hydrated: false,
+  });
 });
 
 describe('useAiChatStore', () => {
@@ -145,6 +152,31 @@ describe('useAiChatStore persistence (IndexedDB, mocked)', () => {
     expect(s.chips).toEqual([]);
     expect(s.sending).toBe(false);
     expect(idbMocks.clearAiChatHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it('persists and hydrates a rolling conversationSummary with the chat session', async () => {
+    const summary = {
+      text: 'Facts: NS01 discussed.',
+      throughMessageId: 'm2',
+      updatedAt: 99,
+    };
+    useAiChatStore.getState().setConversationSummary(summary);
+    expect(idbMocks.saveAiChatHistory).toHaveBeenLastCalledWith(
+      expect.objectContaining({ conversationSummary: summary }),
+    );
+
+    useAiChatStore.setState({ hydrated: false, conversationSummary: null, messages: [], chips: [] });
+    idbMocks.loadAiChatHistory.mockResolvedValue({
+      messages: [],
+      chips: [],
+      conversationSummary: summary,
+      savedAt: 99,
+    });
+    await useAiChatStore.getState().hydrate();
+    expect(useAiChatStore.getState().conversationSummary).toEqual(summary);
+
+    useAiChatStore.getState().clearHistory();
+    expect(useAiChatStore.getState().conversationSummary).toBeNull();
   });
 });
 

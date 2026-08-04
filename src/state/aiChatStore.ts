@@ -29,6 +29,7 @@
 
 import { create } from 'zustand';
 import type { AiChatMessage, ContextChip } from '../lib/aiChatContext';
+import type { ConversationSummaryState } from '../lib/ai/conversationSummary';
 import { clearAiChatHistory, loadAiChatHistory, saveAiChatHistory } from '../lib/idb';
 import { parseThinkResponse } from '../lib/ai/thinkParser';
 
@@ -41,6 +42,12 @@ interface AiChatState {
   open: boolean;
   chips: ContextChip[];
   messages: AiChatMessage[];
+  /**
+   * Rolling summary of older turns injected into the model prompt on long chats
+   * (see lib/ai/conversationSummary.ts). Persisted with the conversation so a
+   * reload does not re-summarize from scratch. Null when none exists yet.
+   */
+  conversationSummary: ConversationSummaryState | null;
   sending: boolean;
   /**
    * Live-accumulated text of the in-flight streamed reply, so the panel can render tokens as
@@ -68,7 +75,8 @@ interface AiChatState {
    * AbortController for the in-flight request started by the most recent `beginGeneration` call,
    * if any. `clearHistory`/`newChat` abort this before wiping the conversation, so the underlying
    * fetch is actually cancelled instead of merely orphaned (left running in the background with no
-   * one caring about its result).
+   * one caring about its result). Also aborts an in-flight summarization that runs before the
+   * main streamed answer (see AiChatPanel `send`).
    */
   activeAbortController: AbortController | null;
   /**
@@ -86,6 +94,7 @@ interface AiChatState {
   removeChip: (id: string) => void;
   clearChips: () => void;
   addMessage: (message: AiChatMessage) => void;
+  setConversationSummary: (summary: ConversationSummaryState | null) => void;
   setSending: (sending: boolean) => void;
   setStreamingText: (text: string) => void;
   newChat: () => void;
@@ -114,8 +123,17 @@ function newId(): string {
 }
 
 /** Fire-and-forget persist of the current conversation. Never throws into the caller — a failed local save should not break the chat UI. */
-function persist(messages: AiChatMessage[], chips: ContextChip[]): void {
-  void saveAiChatHistory({ messages, chips, savedAt: Date.now() }).catch(() => {
+function persist(
+  messages: AiChatMessage[],
+  chips: ContextChip[],
+  conversationSummary: ConversationSummaryState | null,
+): void {
+  void saveAiChatHistory({
+    messages,
+    chips,
+    conversationSummary: conversationSummary ?? null,
+    savedAt: Date.now(),
+  }).catch(() => {
     // Best-effort only — same graceful-degradation contract as the rest of the AI integration.
   });
 }
@@ -124,6 +142,7 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
   open: false,
   chips: [],
   messages: [],
+  conversationSummary: null,
   sending: false,
   streamingText: '',
   hydrated: false,
@@ -142,25 +161,30 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
     set((s) => {
       if (s.chips.some((c) => c.id === chip.id)) return s;
       const chips = [...s.chips, chip];
-      persist(s.messages, chips);
+      persist(s.messages, chips, s.conversationSummary);
       return { chips };
     }),
   removeChip: (id) =>
     set((s) => {
       const chips = s.chips.filter((c) => c.id !== id);
-      persist(s.messages, chips);
+      persist(s.messages, chips, s.conversationSummary);
       return { chips };
     }),
   clearChips: () =>
     set((s) => {
-      persist(s.messages, []);
+      persist(s.messages, [], s.conversationSummary);
       return { chips: [] };
     }),
   addMessage: (message) =>
     set((s) => {
       const messages = [...s.messages, message];
-      persist(messages, s.chips);
+      persist(messages, s.chips, s.conversationSummary);
       return { messages };
+    }),
+  setConversationSummary: (summary) =>
+    set((s) => {
+      persist(s.messages, s.chips, summary);
+      return { conversationSummary: summary };
     }),
   setSending: (sending) => set({ sending }),
   setStreamingText: (text) => set({ streamingText: text }),
@@ -174,7 +198,12 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
     if (get().hydrated) return;
     try {
       const record = await loadAiChatHistory();
-      set({ messages: record?.messages ?? [], chips: record?.chips ?? [], hydrated: true });
+      set({
+        messages: record?.messages ?? [],
+        chips: record?.chips ?? [],
+        conversationSummary: record?.conversationSummary ?? null,
+        hydrated: true,
+      });
     } catch {
       // No persisted history (or IndexedDB unavailable) — start with an empty conversation.
       set({ hydrated: true });
@@ -188,6 +217,7 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
     set((s) => ({
       messages: [],
       chips: [],
+      conversationSummary: null,
       sending: false,
       streamingText: '',
       activeGenerationId: s.activeGenerationId + 1,
@@ -216,7 +246,7 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
         stopped: true,
       };
       const messages = [...st.messages, stoppedMessage];
-      persist(messages, st.chips);
+      persist(messages, st.chips, st.conversationSummary);
       return {
         messages,
         sending: false,

@@ -530,6 +530,46 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
       expect(result.historyTrimmed).toBeUndefined();
     });
   });
+
+  describe('conversation summary injection (2026-08-04 smart summarization)', () => {
+    it('injects the rolling summary into the system message and keeps recent turns verbatim', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+      const recent = [
+        { role: 'user' as const, content: 'recent question' },
+        { role: 'assistant' as const, content: 'recent answer' },
+      ];
+      const result = await buildChatMessages({
+        history: recent,
+        chips: [],
+        data: dataWith([]),
+        userMessage: 'follow up',
+        conversationSummary: 'Facts established: NS01 package rates were confirmed.',
+        historyAlreadyWindowed: true,
+      });
+      expect(result.historySummarized).toBe(true);
+      expect(result.messages[0].role).toBe('system');
+      expect(result.messages[0].content).toContain('Earlier conversation summary');
+      expect(result.messages[0].content).toContain('NS01 package rates were confirmed');
+      expect(result.messages.map((m) => m.content)).toContain('recent question');
+      expect(result.messages.map((m) => m.content)).toContain('follow up');
+      // Summary must NOT appear as a fake user/assistant transcript turn.
+      expect(result.messages.filter((m) => m.role !== 'system').every((m) => !m.content.includes('NS01 package'))).toBe(
+        true,
+      );
+    });
+
+    it('does not claim historySummarized when no summary was provided', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+      const result = await buildChatMessages({
+        history: [{ role: 'user', content: 'hi' }, { role: 'assistant', content: 'hello' }],
+        chips: [],
+        data: dataWith([]),
+        userMessage: 'next',
+      });
+      expect(result.historySummarized).toBeUndefined();
+      expect(result.messages[0].content).not.toContain('Earlier conversation summary');
+    });
+  });
 });
 
 describe('context-chip re-injection (2026-08-04 investigation)', () => {

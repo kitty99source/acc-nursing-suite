@@ -147,6 +147,28 @@ genuinely stuck/hung process — fully quit and restart it) or still responding 
 specifically stalled or is still running past even the 15-minute ceiling — try again, and
 consider whether the question/attached context is unusually large).
 
+## Long-chat summarization (2026-08-04)
+
+On a long conversation, raw history alone can still overflow the model's context window (or hang
+Ollama) even with the 15-minute ceiling and oldest-turn trim. The chat panel now uses
+**Cursor-style rolling summarization** before each send when needed:
+
+1. **When:** prior history reaches 8+ messages, or the older-than-recent portion alone exceeds
+   ~1200 estimated tokens. Checked *before* the main reply starts, so an oversized prompt is not
+   sent first.
+2. **How:** the same local Ollama model writes a short structured summary of older turns (facts,
+   decisions, open questions, attached chip topics). The last 4 messages (2 exchanges) stay
+   verbatim. Summarization is capped (~600 tokens, 3-minute timeout) and uses `AbortController`
+   so Clear chat / Stop / New chat cancel it — never nested under a streaming answer.
+3. **Where:** the rolling summary is saved with the chat in IndexedDB (same local key as the
+   transcript). Reload reuses it instead of re-summarizing from scratch. Your visible message
+   list is **not** rewritten — only the prompt sent to the model is compressed. The panel shows
+   an “Earlier messages summarized” note when a summary is active.
+4. **If summarization fails:** falls back to the existing aggressive oldest-turn trim and shows
+   an honest note — never hangs forever guessing from deleted context.
+
+See `src/lib/ai/conversationSummary.ts` and `src/lib/aiChatContext.ts` (`buildChatMessages`).
+
 ## Speed optimization research (2026-08-04)
 
 Beyond the settings already applied earlier this session (`keep_alive`, right-sized `num_ctx`,

@@ -223,7 +223,8 @@ describe('grounding system prompt', () => {
   // issues — regression guards below.
   it('explicitly tells the model it already has real document access and must not deny it', () => {
     const lower = AI_ASSISTANT_SYSTEM_PROMPT.toLowerCase();
-    expect(lower).toContain('you do have access to real reference material');
+    expect(lower).toContain('when document excerpts are present');
+    expect(lower).toContain('already been retrieved');
     expect(lower).toContain('never say');
     expect(lower).toContain('cannot access external documents');
   });
@@ -269,6 +270,38 @@ describe('grounding system prompt', () => {
   it('tells the model not to reason its way into confident fabrication under its own step-by-step thinking', () => {
     const lower = AI_ASSISTANT_SYSTEM_PROMPT.toLowerCase();
     expect(lower).toContain('this applies even under your own step-by-step reasoning');
+  });
+
+  // 2026-08-04 follow-up: brand-new chat asked "emergency transport criteria" — model <think>
+  // invented that the user "provided compliance rules earlier" / "mentioned schedules 5.3, 5.11"
+  // (those exist only as static reference material). Then fabricated multi-country flight essays.
+  it('frames static compliance rules as reference material, not prior user messages / conversation history', () => {
+    const lower = AI_ASSISTANT_SYSTEM_PROMPT.toLowerCase();
+    expect(lower).toContain('reference material');
+    expect(lower).toContain('not prior user messages');
+    expect(lower).toContain('not conversation history');
+    expect(lower).toContain('never claim the user "provided"');
+  });
+
+  it('locks scope to NZ ACC / this knowledge base and forbids foreign-jurisdiction / encyclopaedia essays', () => {
+    const lower = AI_ASSISTANT_SYSTEM_PROMPT.toLowerCase();
+    expect(lower).toContain('new zealand acc');
+    expect(lower).toContain('other countries');
+    expect(lower).toContain('invented acronyms');
+    expect(lower).toContain('aircraft models');
+    expect(lower).toContain('medical-encyclopaedia');
+  });
+
+  it('forbids fake markdown schedule-link citations', () => {
+    expect(AI_ASSISTANT_SYSTEM_PROMPT).toContain('[Schedule 5.11.1](#)');
+    expect(AI_ASSISTANT_SYSTEM_PROMPT.toLowerCase()).toContain('do not invent markdown links');
+  });
+
+  it('requires brief refuse/clarify when no document excerpts were retrieved', () => {
+    const lower = AI_ASSISTANT_SYSTEM_PROMPT.toLowerCase();
+    expect(lower).toContain('no acc document excerpts were retrieved');
+    expect(lower).toContain('not a multi-section essay');
+    expect(lower).toContain('roughly 80 words');
   });
 });
 
@@ -316,6 +349,7 @@ describe('buildChatMessages', () => {
   });
 
   it('omits the "Context used" text entirely when there are no chips', async () => {
+    const { NO_RETRIEVED_EXCERPTS_INSTRUCTION } = await import('./aiChatContext');
     const { messages, contextBlock, retrievedSources } = await buildChatMessages({
       history: [],
       chips: [],
@@ -324,11 +358,12 @@ describe('buildChatMessages', () => {
     });
     expect(contextBlock).toBe('');
     expect(retrievedSources).toEqual([]);
-    expect(messages[0].content).not.toContain('Context used');
-    expect(messages).toEqual([
-      { role: 'system', content: AI_ASSISTANT_SYSTEM_PROMPT },
-      { role: 'user', content: 'What is NS04?' },
-    ]);
+    expect(messages[0].content).not.toContain('Context used (attached by the user');
+    expect(messages[0].content.startsWith(AI_ASSISTANT_SYSTEM_PROMPT)).toBe(true);
+    expect(messages[0].content).toContain(NO_RETRIEVED_EXCERPTS_INSTRUCTION);
+    expect(messages[0].content.toLowerCase()).toContain('fresh chat turn');
+    expect(messages).toHaveLength(2);
+    expect(messages[1]).toEqual({ role: 'user', content: 'What is NS04?' });
   });
 
   it('caps history to the most recent turns so the messages array stays bounded', async () => {
@@ -387,9 +422,9 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
       userMessage: 'Tell me about the ARTP process for this elective surgery contract',
       // A small numCtx forces trimming with this small sample corpus, deterministically, without
       // needing a giant real-world fixture (empirically, with the current system prompt — retuned
-      // 2026-08-04 for the citation-integrity fix's longer prompt: all 3 sample chunks fit at
-      // numCtx >= 3400, exactly 2 fit at 3300).
-      numCtx: 3300,
+      // 2026-08-04 for the groundedness / NZ-scope / no-excerpts refuse instructions: all 3 sample
+      // chunks fit at numCtx >= 4400, exactly 2 fit at 4200).
+      numCtx: 4200,
     });
     expect(contextTooLarge).toBeFalsy();
     expect(retrievedSources.length).toBeLessThan(SAMPLE_CORPUS.chunks.length);
@@ -423,9 +458,10 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
       chips: [],
       data: dataWith([]),
       userMessage: 'Tell me about the ARTP process for this elective surgery contract',
-      // Same numCtx that forces chunk-dropping in the test above — confirms history/user survive
-      // the SAME trim pass that drops knowledge chunks, not just an untrimmed happy path.
-      numCtx: 3300,
+      // Slightly tighter than the empty-history trim probe above: with a short prior exchange
+      // present (no "fresh chat" notice), numCtx 4150 still forces dropping at least one chunk
+      // while keeping history — confirms history/user survive the SAME trim pass.
+      numCtx: 4150,
     });
     expect(contextTooLarge).toBeFalsy();
     expect(retrievedSources.length).toBeLessThan(SAMPLE_CORPUS.chunks.length);
@@ -488,10 +524,10 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
         userMessage: 'question four',
         // Small enough that 3 long replies + system prompt don't all fit, but NOT so small that
         // dropping history can't rescue it (unlike the numCtx:50 "refuse outright" case above) —
-        // empirically (with the current system prompt — retuned 2026-08-04 for the
-        // citation-integrity fix's longer prompt) leaves room for exactly the newest (turn-3) pair
-        // once the older two are gone.
-        numCtx: 4300,
+        // empirically (with the current system prompt — retuned 2026-08-04 for the groundedness /
+        // NZ-scope / no-excerpts refuse instructions) leaves room for exactly the newest (turn-3)
+        // pair once the older two are gone.
+        numCtx: 5400,
       });
       expect(result.contextTooLarge).toBeFalsy();
       expect(result.historyTrimmed).toBe(true);
@@ -548,7 +584,7 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
       });
       expect(result.historySummarized).toBe(true);
       expect(result.messages[0].role).toBe('system');
-      expect(result.messages[0].content).toContain('Earlier conversation summary');
+      expect(result.messages[0].content).toContain('Rolling prior-chat summary');
       expect(result.messages[0].content).toContain('NS01 package rates were confirmed');
       expect(result.messages.map((m) => m.content)).toContain('recent question');
       expect(result.messages.map((m) => m.content)).toContain('follow up');
@@ -567,7 +603,10 @@ describe('buildChatMessages — context budget / safety net (2026-08-04 fix)', (
         userMessage: 'next',
       });
       expect(result.historySummarized).toBeUndefined();
-      expect(result.messages[0].content).not.toContain('Earlier conversation summary');
+      // Injection header only — the static system prompt may mention the concept in quotes.
+      expect(result.messages[0].content).not.toMatch(
+        /\n\nRolling prior-chat summary \(older turns from THIS chat/,
+      );
     });
   });
 });
@@ -699,6 +738,7 @@ describe('buildChatMessages — real ACC document retrieval (RAG-lite)', () => {
   });
 
   it('retrieves nothing for an unrelated question — never forces irrelevant content into the prompt', async () => {
+    const { NO_RETRIEVED_EXCERPTS_INSTRUCTION } = await import('./aiChatContext');
     const { retrievedSources, messages } = await buildChatMessages({
       history: [],
       chips: [],
@@ -706,7 +746,8 @@ describe('buildChatMessages — real ACC document retrieval (RAG-lite)', () => {
       userMessage: 'what is the weather like today',
     });
     expect(retrievedSources).toEqual([]);
-    expect(messages[0].content).not.toContain('Real ACC document excerpts');
+    expect(messages[0].content).not.toContain('Real ACC document excerpts retrieved and provided');
+    expect(messages[0].content).toContain(NO_RETRIEVED_EXCERPTS_INSTRUCTION);
   });
 
   // 2026-08-04 citation-integrity bug fix: a question that only weakly/coincidentally overlaps
@@ -752,6 +793,7 @@ describe('buildChatMessages — real ACC document retrieval (RAG-lite)', () => {
       ],
     };
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => WEAK_OVERLAP_CORPUS }));
+    const { NO_RETRIEVED_EXCERPTS_INSTRUCTION } = await import('./aiChatContext');
     const { retrievedSources, messages } = await buildChatMessages({
       history: [],
       chips: [],
@@ -759,6 +801,35 @@ describe('buildChatMessages — real ACC document retrieval (RAG-lite)', () => {
       userMessage: 'What is the ambulance transport criteria for emergency clients requiring urgent care today?',
     });
     expect(retrievedSources).toEqual([]);
-    expect(messages[0].content).not.toContain('Real ACC document excerpts');
+    expect(messages[0].content).not.toContain('Real ACC document excerpts retrieved and provided');
+    // Empty/weak retrieval must inject the hard refuse/clarify instruction (not just omit excerpts).
+    expect(messages[0].content).toContain(NO_RETRIEVED_EXCERPTS_INSTRUCTION);
+    expect(messages[0].content.toLowerCase()).toContain('must not mash unrelated static compliance rules');
+    // Fresh chat (empty history, no summary) must also get an explicit "no prior conversation" marker.
+    expect(messages[0].content.toLowerCase()).toContain('fresh chat turn');
+    expect(messages[0].content).not.toMatch(
+      /\n\nRolling prior-chat summary \(older turns from THIS chat/,
+    );
+  });
+
+  it('assembleMessages with empty history + zero retrieval includes strong refuse/clarify and no prior-chat summary', async () => {
+    const { NO_RETRIEVED_EXCERPTS_INSTRUCTION } = await import('./aiChatContext');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+    const { messages, retrievedSources, historySummarized } = await buildChatMessages({
+      history: [],
+      chips: [],
+      data: dataWith([]),
+      userMessage: 'can you pull up the emergency transport criteria',
+    });
+    expect(retrievedSources).toEqual([]);
+    expect(historySummarized).toBeUndefined();
+    expect(messages).toHaveLength(2); // system + user only
+    expect(messages[0].role).toBe('system');
+    expect(messages[1]).toEqual({ role: 'user', content: 'can you pull up the emergency transport criteria' });
+    expect(messages[0].content).toContain(NO_RETRIEVED_EXCERPTS_INSTRUCTION);
+    expect(messages[0].content.toLowerCase()).toContain('fresh chat turn');
+    expect(messages[0].content).not.toMatch(
+      /\n\nRolling prior-chat summary \(older turns from THIS chat/,
+    );
   });
 });

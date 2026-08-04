@@ -121,7 +121,17 @@ export const DEFAULT_CHAT_TOTAL_TIMEOUT_MS = 900_000;
 // unbounded. This is a ceiling, not a target — most replies (including any
 // short "hello"-style greeting, per the new brevity system-prompt
 // instruction in aiChatContext.ts) will finish well under it.
-const DEFAULT_CHAT_NUM_PREDICT = 2048;
+/** Hard ceiling on chat reply tokens (`options.num_predict`). Exported for tests / callers. */
+export const DEFAULT_CHAT_NUM_PREDICT = 2048;
+
+/**
+ * Slightly-cooler sampling for chat (Ollama default is typically ~0.8). Lower temperature
+ * reduces creative multi-country / encyclopaedia waffle on unknown topics without cutting the
+ * reasoning model's `<think>` budget the way a lower `num_predict` would. Still high enough that
+ * grounded contract/compliance summaries stay fluent. Overridable via `temperature` on the
+ * chat helpers.
+ */
+export const DEFAULT_CHAT_TEMPERATURE = 0.3;
 
 // ----------------------------------------------------------------------------
 // CPU-only speed tuning (2026-08-04, owner ask: "make it faster" on a
@@ -500,6 +510,8 @@ export interface AiGenerateStreamOptions {
   onChunk?: (accumulatedText: string) => void;
   /** Hard ceiling on generated tokens (Ollama's `options.num_predict`). Default 2048 — see DEFAULT_CHAT_NUM_PREDICT. */
   numPredict?: number;
+  /** Ollama `options.temperature`. Default DEFAULT_CHAT_TEMPERATURE (0.3) — see that constant. */
+  temperature?: number;
   /** Ollama top-level `keep_alive` field — how long to keep the model warm in RAM after this request. Default DEFAULT_KEEP_ALIVE ("30m"). */
   keepAlive?: string | number;
   /** Ollama `options.num_ctx` — context window size in tokens. Default DEFAULT_NUM_CTX (8192); see comment above `DEFAULT_KEEP_ALIVE`. */
@@ -571,6 +583,7 @@ export async function generateLocalAiChatResponse(
     model?: string;
     timeoutMs?: number;
     numPredict?: number;
+    temperature?: number;
     keepAlive?: string | number;
     numCtx?: number;
     signal?: AbortSignal;
@@ -598,6 +611,7 @@ export async function generateLocalAiChatResponse(
         options: {
           num_predict: opts?.numPredict ?? DEFAULT_CHAT_NUM_PREDICT,
           num_ctx: opts?.numCtx ?? DEFAULT_NUM_CTX,
+          temperature: opts?.temperature ?? DEFAULT_CHAT_TEMPERATURE,
         },
       }),
       signal: controller.signal,
@@ -678,6 +692,7 @@ export async function generateLocalAiChatResponseStream(
         options: {
           num_predict: opts?.numPredict ?? DEFAULT_CHAT_NUM_PREDICT,
           num_ctx: opts?.numCtx ?? DEFAULT_NUM_CTX,
+          temperature: opts?.temperature ?? DEFAULT_CHAT_TEMPERATURE,
         },
       }),
       signal: controller.signal,

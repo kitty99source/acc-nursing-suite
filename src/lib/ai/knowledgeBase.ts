@@ -93,10 +93,21 @@ function buildFewShotSection(): string | null {
  * retrieved-passages block would join this same array).
  */
 export function buildKnowledgeBaseSections(): string[] {
+  // Framing matters: small local models routinely mis-attribute this block as "what the user
+  // said earlier" / "compliance rules you provided" in their <think> traces (2026-08-04 owner
+  // report on a brand-new chat asking about emergency transport). These are REFERENCE MATERIAL
+  // the app injects every turn — never prior user messages / conversation history.
   const sections = [
-    'Known compliance rules (rule title, ACC schedule/clause reference, plain description):\n' +
+    'REFERENCE MATERIAL for this turn only (injected by the app every request — NOT prior user ' +
+      'messages, NOT conversation history, NOT something the user "mentioned" or "provided earlier"):\n\n' +
+      'Static compliance rules (rule title, ACC schedule/clause reference, plain description). ' +
+      'Use a rule ONLY when it specifically answers the question; never mash unrelated rules ' +
+      '(e.g. nursing package caps) into an answer about a different topic:\n' +
       buildComplianceRuleSummary(),
-    'Case workflow stages a claim moves through, in order: ' + buildCaseStageSummary() + '.',
+    'Static case-workflow stages a claim moves through in this app, in order (same reference-' +
+      'material rule — not user-provided history): ' +
+      buildCaseStageSummary() +
+      '.',
   ];
   const fewShot = buildFewShotSection();
   if (fewShot) sections.push(fewShot);

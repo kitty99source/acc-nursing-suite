@@ -73,14 +73,20 @@ describe('useAiChatStore', () => {
     expect(useAiChatStore.getState().messages).toHaveLength(1);
   });
 
-  it('newChat clears chips, messages, and sending state', () => {
+  it('newChat clears chips, messages, conversationSummary, and sending state', () => {
     useAiChatStore.getState().addChip(chip('p1'));
     useAiChatStore.getState().addMessage({ id: 'm1', role: 'user', content: 'hi', createdAt: Date.now() });
+    useAiChatStore.getState().setConversationSummary({
+      text: 'Facts: leftover from a previous thread.',
+      throughMessageId: 'm1',
+      updatedAt: Date.now(),
+    });
     useAiChatStore.getState().setSending(true);
     useAiChatStore.getState().newChat();
     const s = useAiChatStore.getState();
     expect(s.chips).toEqual([]);
     expect(s.messages).toEqual([]);
+    expect(s.conversationSummary).toBeNull();
     expect(s.sending).toBe(false);
   });
 

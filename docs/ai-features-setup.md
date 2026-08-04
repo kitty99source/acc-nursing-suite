@@ -147,6 +147,21 @@ genuinely stuck/hung process — fully quit and restart it) or still responding 
 specifically stalled or is still running past even the 15-minute ceiling — try again, and
 consider whether the question/attached context is unusually large).
 
+## Groundedness on unknown topics (2026-08-04 follow-up)
+
+The chat assistant is scoped to **New Zealand ACC + this app's knowledge base**. When a question
+has no (or only weak/off-topic) retrieved document excerpts — e.g. emergency-transport / flight
+criteria, which are not in the ingested corpus — the prompt now injects a hard per-turn
+instruction: reply briefly with either one clarifying question **or** a plain "not in my current
+knowledge base", not a multi-section essay, foreign-jurisdiction frameworks, invented acronyms, or
+a mash-up of unrelated nursing/compliance rules. Static compliance rules / case stages are framed
+as reference material the app injects every turn — **not** prior user messages — so a brand-new
+chat should not invent "you mentioned schedules earlier". Chat sampling uses a cooler default
+temperature (`0.3`) to reduce creative waffle; `num_predict` stays at 2048 so the reasoning
+model's `<think>` budget is not cut short. **New chat** clears messages, chips, and the rolling
+conversation summary together. See `src/lib/aiChatContext.ts` (`NO_RETRIEVED_EXCERPTS_INSTRUCTION`)
+and `docs/research/acc-public-contract-sources-2026-08.md` §7.
+
 ## Long-chat summarization (2026-08-04)
 
 On a long conversation, raw history alone can still overflow the model's context window (or hang

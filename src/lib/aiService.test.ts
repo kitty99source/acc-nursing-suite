@@ -8,6 +8,7 @@ import {
   modelListIncludes,
   DEFAULT_CHAT_INACTIVITY_TIMEOUT_MS,
   DEFAULT_CHAT_TOTAL_TIMEOUT_MS,
+  DEFAULT_CHAT_TEMPERATURE,
   type ChatApiMessage,
   type FetchLike,
 } from './aiService';
@@ -306,6 +307,30 @@ describe('generateLocalAiChatResponseStream', () => {
     });
     const [, init] = fetchImpl.mock.calls[0];
     expect(JSON.parse(init.body).options.num_predict).toBe(256);
+  });
+
+  it('uses a cooler default temperature so unknown-topic replies are less inventively waffle-y', async () => {
+    const fetchImpl = vi.fn(async () =>
+      streamResponse([JSON.stringify({ message: { role: 'assistant', content: 'ok' }, done: true })]),
+    );
+    await generateLocalAiChatResponseStream('http://127.0.0.1:11434', sampleMessages, {
+      fetchImpl: fetchImpl as unknown as FetchLike,
+    });
+    const [, init] = fetchImpl.mock.calls[0];
+    expect(JSON.parse(init.body).options.temperature).toBe(DEFAULT_CHAT_TEMPERATURE);
+    expect(DEFAULT_CHAT_TEMPERATURE).toBeLessThan(0.8);
+  });
+
+  it('lets a caller override the default chat temperature', async () => {
+    const fetchImpl = vi.fn(async () =>
+      streamResponse([JSON.stringify({ message: { role: 'assistant', content: 'ok' }, done: true })]),
+    );
+    await generateLocalAiChatResponseStream('http://127.0.0.1:11434', sampleMessages, {
+      fetchImpl: fetchImpl as unknown as FetchLike,
+      temperature: 0.7,
+    });
+    const [, init] = fetchImpl.mock.calls[0];
+    expect(JSON.parse(init.body).options.temperature).toBe(0.7);
   });
 
   it('sets a keep_alive so the model stays warm between chat turns instead of unloading after Ollama\'s 5-minute default', async () => {

@@ -8,7 +8,7 @@ import {
   generateLocalAiChatResponseStream,
   isChatTimeoutError,
 } from '../lib/aiService';
-import { ensureConversationSummary } from '../lib/ai/conversationSummary';
+import { ensureConversationSummary, RECENT_VERBATIM_MESSAGES } from '../lib/ai/conversationSummary';
 import { parseThinkResponse } from '../lib/ai/thinkParser';
 import { shouldAutoScroll } from '../lib/chatScroll';
 import { IconChat, IconClose, IconMinimize, IconSend, IconStop, IconTrash } from './icons';
@@ -224,6 +224,15 @@ export function AiChatPanel() {
 
     if (ensured.summary && (ensured.status === 'created' || ensured.status === 'reused')) {
       setConversationSummary(ensured.summary);
+    } else if (
+      // Defense-in-depth new-chat isolation: if there is nothing older than the recent
+      // window (or history is empty), a leftover summary must not linger in the store even
+      // though buildChatMessages would not inject it when `ensured.summary` is absent.
+      !ensured.historySummarized &&
+      existingSummary &&
+      history.length <= RECENT_VERBATIM_MESSAGES
+    ) {
+      setConversationSummary(null);
     }
 
     const historyWindowed = ensured.historySummarized || ensured.summaryFailed;
